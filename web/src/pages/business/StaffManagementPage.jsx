@@ -100,7 +100,7 @@ const getInvitationStatusConfig = (t) => ({
 /**
  * StatsCard — single stat card with icon and value.
  */
-const StatsCard = memo(function StatsCard({ title, value, icon: Icon, color, loading: isLoading }) {
+const StatsCard = memo(({ title, value, icon: Icon, color, loading: isLoading }) => {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -125,13 +125,13 @@ const StatsCard = memo(function StatsCard({ title, value, icon: Icon, color, loa
 /**
  * StaffCard — card-based staff member display.
  */
-const StaffCard = memo(function StaffCard({
+const StaffCard = memo(({
   staffMember,
   onEdit,
   onResetPassword,
   onToggleStatus,
   onRemove,
-}) {
+}) => {
   const { t } = useTranslation();
   const initials = (staffMember.profile?.fullName || staffMember.email || "?")
     .split(" ")

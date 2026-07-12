@@ -45,17 +45,11 @@ const ForgotPasswordPage = () => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      const response = await authService.forgotPassword(data.email);
+      await authService.forgotPassword(data.email);
       setEmailSent(true);
       toast.success(t("auth.forgotPassword.success"));
 
       // Hiển thị token nếu ở dev mode (để test)
-      if (response.data?.resetToken) {
-        console.warn("Reset Token (DEV only):", response.data.resetToken);
-        toast.success(`Token: ${response.data.resetToken}`, {
-          duration: 10000,
-        });
-      }
     } catch (error) {
       toast.error(error.message || t("auth.forgotPassword.failed"));
     } finally {

@@ -2,6 +2,13 @@ import prisma from "../../config/prismaClient.js";
 import crypto from "crypto";
 import { sendVerificationEmail } from "../communication/mailer.service.js";
 
+const OTP_TTL_MINUTES = 10;
+const MAX_OTP_ATTEMPTS = 5;
+
+const hashValue = (value) => crypto.createHash("sha256").update(String(value)).digest("hex");
+
+const generateOtpCode = () => String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+
 /**
  * Lấy danh sách email verifications (sắp xếp DESC - mới nhất lên đầu)
  */
@@ -81,11 +88,15 @@ export const getAll = async (query) => {
 export const create = async (data) => {
   // Generate secure raw token
   const rawToken = crypto.randomBytes(32).toString("hex");
-  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+  const tokenHash = hashValue(rawToken);
+  const otpCode = generateOtpCode();
+  const otpHash = hashValue(otpCode);
 
   // Token expires in 24 hours
   const expiresAt = new Date();
   expiresAt.setHours(expiresAt.getHours() + 24);
+  const otpExpiresAt = new Date();
+  otpExpiresAt.setMinutes(otpExpiresAt.getMinutes() + OTP_TTL_MINUTES);
 
   // Delete old unverified tokens for this user
   await prisma.emailVerification.deleteMany({
@@ -100,20 +111,21 @@ export const create = async (data) => {
       userId: data.userId,
       email: data.email,
       token: tokenHash, // lưu hash, không lưu raw token
+      otpHash,
+      otpExpiresAt,
+      otpAttempts: 0,
+      otpLockedUntil: null,
       expiresAt,
     },
   });
 
   // In link xác thực ra log console (tiện lợi cho việc dev/test khi SMTP lỗi)
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-  const verifyLink = `${frontendUrl}/verify-email?token=${encodeURIComponent(rawToken)}`;
-  console.log(`\n[DEV ONLY] Link xac thuc email cho user ${data.email}:\n${verifyLink}\n`);
-
   // Gửi email với raw token
   try {
     await sendVerificationEmail({
       to: data.email,
       token: rawToken,
+      otpCode,
       name: data.name,
     });
   } catch (error) {
@@ -129,7 +141,7 @@ export const create = async (data) => {
  * Xác thực email bằng raw token (hash trước khi lookup)
  */
 export const verify = async (rawToken) => {
-  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+  const tokenHash = hashValue(rawToken);
 
   const verification = await prisma.emailVerification.findUnique({
     where: { token: tokenHash },
@@ -162,6 +174,80 @@ export const verify = async (rawToken) => {
     prisma.emailVerification.update({
       where: { id: verification.id },
       data: { verifiedAt: now },
+    }),
+    prisma.user.update({
+      where: { id: verification.userId },
+      data: { emailVerified: true },
+    }),
+  ]);
+
+  return updatedVerification;
+};
+
+/**
+ * Verify email by 6-digit OTP while keeping the existing email link flow.
+ */
+export const verifyOtp = async ({ email, otp }) => {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const normalizedOtp = String(otp || "").replace(/\D/g, "");
+  const now = new Date();
+
+  const verification = await prisma.emailVerification.findFirst({
+    where: {
+      email: normalizedEmail,
+      verifiedAt: null,
+    },
+    include: {
+      user: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  if (!verification || !verification.otpHash) {
+    const error = new Error("Ma OTP khong hop le hoac da het han");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (verification.otpLockedUntil && verification.otpLockedUntil > now) {
+    const error = new Error("Ban da nhap sai qua nhieu lan. Vui long gui lai ma OTP.");
+    error.statusCode = 429;
+    throw error;
+  }
+
+  if (verification.expiresAt < now || !verification.otpExpiresAt || verification.otpExpiresAt < now) {
+    const error = new Error("Ma OTP khong hop le hoac da het han");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (hashValue(normalizedOtp) !== verification.otpHash) {
+    const nextAttempts = verification.otpAttempts + 1;
+    await prisma.emailVerification.update({
+      where: { id: verification.id },
+      data: {
+        otpAttempts: nextAttempts,
+        ...(nextAttempts >= MAX_OTP_ATTEMPTS
+          ? { otpLockedUntil: new Date(now.getTime() + OTP_TTL_MINUTES * 60 * 1000) }
+          : {}),
+      },
+    });
+
+    const error = new Error("Ma OTP khong dung");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const [updatedVerification] = await prisma.$transaction([
+    prisma.emailVerification.update({
+      where: { id: verification.id },
+      data: {
+        verifiedAt: now,
+        otpAttempts: 0,
+        otpLockedUntil: null,
+      },
     }),
     prisma.user.update({
       where: { id: verification.userId },

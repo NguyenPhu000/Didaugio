@@ -59,7 +59,7 @@ const formatTimestamp = (dateStr) => {
 /**
  * TimelineEntry — single audit log entry in timeline style.
  */
-const TimelineEntry = memo(function TimelineEntry({ entry, isLast }) {
+const TimelineEntry = memo(({ entry, isLast }) => {
   const actionColor =
     ACTION_COLORS[entry.action] || "bg-gray-100 text-gray-700 border-gray-200";
 
@@ -209,7 +209,7 @@ export default function AuditLog({
     };
 
     const csv = [headers.map(escapeCsv).join(","), ...rows.map((r) => r.map(escapeCsv).join(","))].join("\r\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([`\uFEFF${  csv}`], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;

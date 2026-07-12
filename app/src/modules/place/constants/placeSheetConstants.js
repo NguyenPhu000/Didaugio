@@ -5,6 +5,8 @@
  * all import from a single source of truth.
  */
 
+import { REVIEW_MEDIA_LIMIT } from "../utils/reviewMedia";
+
 const ACTIVE_FONT_FAMILY = "Afacad";
 
 const FONT_FAMILIES = {
@@ -54,7 +56,7 @@ export const TOKENS = {
 
 export const REVIEW_FILTER_RATINGS = [5, 4, 3, 2, 1];
 
-export const REVIEW_MEDIA_LIMIT = 6;
+export { REVIEW_MEDIA_LIMIT };
 
 /**
  * Format a review count into a human-readable bilingual string.

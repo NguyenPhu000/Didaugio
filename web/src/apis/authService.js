@@ -75,6 +75,11 @@ export const authService = {
     return response;
   },
 
+  verifyEmailOtp: async ({ email, otp }) => {
+    const response = await api.post("/auth/verify-email-otp", { email, otp });
+    return response;
+  },
+
   // Gửi lại email xác thực
   resendVerification: async () => {
     const response = await api.post("/auth/resend-verification");

@@ -51,7 +51,7 @@ import {
 
 const MIN_WITHDRAWAL_AMOUNT = 50000;
 
-const EarningsPage = memo(function EarningsPage() {
+const EarningsPage = memo(() => {
   const { t } = useTranslation();
 
   const STATUS_MAP = {

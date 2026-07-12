@@ -20,7 +20,14 @@ export const uploadBuffer = (buffer, options = {}) => {
       { folder: options.folder || "didaugio", ...options },
       (error, result) => {
         if (error) return reject(error);
-        resolve({ url: result.secure_url, publicId: result.public_id });
+        resolve({
+          url: result.secure_url,
+          publicId: result.public_id,
+          bytes: result.bytes,
+          duration: result.duration,
+          format: result.format,
+          resourceType: result.resource_type,
+        });
       },
     );
     stream.end(buffer);

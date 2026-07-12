@@ -9,6 +9,10 @@ prisma/migrations
 prisma/migrations/*
 !prisma/migrations/20260702000000_trip_plan_refactor/
 !prisma/migrations/20260702000000_trip_plan_refactor/migration.sql
+!prisma/migrations/20260709000000_add_email_verification_otp/
+!prisma/migrations/20260709000000_add_email_verification_otp/migration.sql
+!prisma/migrations/20260709010000_add_place_ai_guides/
+!prisma/migrations/20260709010000_add_place_ai_guides/migration.sql
 tests
 storage/sensitive/*
 !storage/sensitive/.gitkeep

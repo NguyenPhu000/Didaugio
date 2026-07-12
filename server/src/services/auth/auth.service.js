@@ -17,6 +17,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
   verifyEmailSchema,
+  verifyEmailOtpSchema,
   resendVerificationPublicSchema,
 } from "../../models/index.js";
 import * as emailVerificationService from "../activity/emailVerification.service.js";
@@ -678,6 +679,22 @@ export const verifyEmail = async (data) => {
   }
 };
 
+export const verifyEmailOtp = async (data) => {
+  const validated = verifyEmailOtpSchema.parse(data);
+
+  try {
+    await emailVerificationService.verifyOtp(validated);
+    return { message: "Xac thuc email thanh cong" };
+  } catch (error) {
+    if (error.statusCode) throw error;
+    throw new ServiceError(
+      error.message || ERROR_MESSAGES.VALIDATION_ERROR,
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+};
+
 export const resendVerificationEmail = async (userId) => {
   try {
     await emailVerificationService.resend(userId);
@@ -1095,6 +1112,7 @@ export default {
   forgotPassword,
   resetPassword,
   verifyEmail,
+  verifyEmailOtp,
   resendVerificationEmail,
   resendVerificationEmailPublic,
   getSessions,

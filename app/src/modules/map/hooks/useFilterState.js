@@ -181,6 +181,13 @@ export function useFilterState({
     [activeFilterGroup, handleQuickFilterToggle],
   );
 
+  const handleResetFilters = useCallback(() => {
+    setActiveCategoryId(null);
+    setActiveArea(ALL_AREAS_KEY);
+    setQuickFilters({ ...DEFAULT_QUICK_FILTERS });
+    setFilterPickerVisible(false);
+  }, []);
+
   return {
     activeFilterGroup,
     activeCategoryId,
@@ -195,5 +202,6 @@ export function useFilterState({
     handleOpenFilterPicker,
     handleCloseFilterPicker,
     handleSelectFilterOption,
+    handleResetFilters,
   };
 }

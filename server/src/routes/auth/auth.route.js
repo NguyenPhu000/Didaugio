@@ -15,6 +15,7 @@ import {
   resetPasswordSchema,
   revokeSessionParamSchema,
   verifyEmailSchema,
+  verifyEmailOtpSchema,
 } from "../../models/index.js";
 
 const router = express.Router();
@@ -49,6 +50,11 @@ router.post(
   "/verify-email",
   validateBody(verifyEmailSchema),
   authController.verifyEmail,
+);
+router.post(
+  "/verify-email-otp",
+  validateBody(verifyEmailOtpSchema),
+  authController.verifyEmailOtp,
 );
 router.post(
   "/resend-verification-public",

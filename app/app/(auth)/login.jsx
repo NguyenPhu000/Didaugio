@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { Link } from "expo-router";
+import { Link, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { GoogleLogo } from "../../src/components/primitives/GoogleLogo";
@@ -33,8 +33,9 @@ export default function LoginScreen() {
   const { continueAsGuest } = useAuth();
   const { login, isLoading, error } = useLogin();
   const { t } = useTranslation();
+  const params = useLocalSearchParams();
 
-  const [identifier, setIdentifier] = useState("");
+  const [identifier, setIdentifier] = useState(String(params?.identifier || ""));
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -44,7 +45,6 @@ export default function LoginScreen() {
   const passwordRef = useRef(null);
 
   const handleLogin = () => {
-    if (!identifier.trim() || !password.trim()) return;
     login(identifier.trim(), password);
   };
 

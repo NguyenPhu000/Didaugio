@@ -37,6 +37,7 @@ const usePlaceStore = create(
         priceTo: null,
         openingHours: [],
         amenities: [],
+        spokenGuide: { locale: "vi-VN", text: "", faqs: [] },
       },
 
       currentStep: 1,
@@ -116,6 +117,7 @@ const usePlaceStore = create(
             priceTo: null,
             openingHours: [],
             amenities: [],
+            spokenGuide: { locale: "vi-VN", text: "", faqs: [] },
           },
           currentStep: 1,
         });
@@ -156,6 +158,11 @@ const usePlaceStore = create(
             priceTo: place.priceTo || null,
             openingHours: place.openingHours || [],
             amenities: place.amenities || [],
+            spokenGuide: place.spokenGuide || {
+              locale: "vi-VN",
+              text: "",
+              faqs: [],
+            },
           },
           currentStep: 1,
         });

@@ -15,6 +15,7 @@ import {
   Image as ImageIcon,
   CheckCircle2,
   AlertCircle,
+  Headphones,
 } from "lucide-react";
 import usePlaceStore from "@/stores/placeStore";
 import { useCategories } from "@/hooks/queries/useCategoryQueries";
@@ -199,6 +200,25 @@ const StepPreview = ({ isEditMode }) => {
               </p>
             </CardContent>
           </Card>
+
+          {(wizardData.spokenGuide?.text || wizardData.spokenGuide?.faqs?.length > 0) && (
+            <Card className="border-cyan-100">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Headphones className="h-5 w-5 text-cyan-700" />
+                  Thuyết minh địa điểm
+                </CardTitle>
+                <CardDescription>
+                  {wizardData.spokenGuide?.faqs?.length || 0}/5 câu hỏi thường gặp
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="whitespace-pre-line text-sm leading-6 text-muted-foreground">
+                  {wizardData.spokenGuide?.text || "Chỉ có nội dung câu hỏi thường gặp."}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Tags & Price */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Mail, CheckCircle, Loader2 } from "lucide-react";
+import { Mail, CheckCircle, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/stores/authStore";
 import { authService } from "@/apis";
+import OtpInput from "@/components/auth/OtpInput";
 
 const CheckEmailPage = () => {
   const { t } = useTranslation();
@@ -14,7 +15,10 @@ const CheckEmailPage = () => {
   const [searchParams] = useSearchParams();
   const { user, isAuthenticated, logout } = useAuthStore();
   const [isResending, setIsResending] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [resent, setResent] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [otpError, setOtpError] = useState(null);
 
   const queryEmail = searchParams.get("email") || "";
   const email = user?.email || queryEmail;
@@ -33,6 +37,30 @@ const CheckEmailPage = () => {
       toast.error(error.message || "Không thể gửi lại email");
     } finally {
       setIsResending(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setOtpError(null);
+    if (!email) {
+      setOtpError("Vui long nhap email de xac thuc.");
+      return;
+    }
+    if (otp.length !== 6) {
+      setOtpError("Nhap du 6 so OTP trong email.");
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      await authService.verifyEmailOtp({ email, otp });
+      toast.success("Xac thuc email thanh cong. Vui long dang nhap.");
+      logout();
+      navigate("/login", { replace: true, state: { identifier: email } });
+    } catch (error) {
+      setOtpError(error.message || "Ma OTP khong hop le hoac da het han.");
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -69,6 +97,43 @@ const CheckEmailPage = () => {
           </div>
 
           <div className="space-y-3">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <ShieldCheck className="h-4 w-4 text-blue-600" />
+                Xac thuc nhanh bang OTP
+              </div>
+              <OtpInput
+                value={otp}
+                onChange={(nextOtp) => {
+                  setOtp(nextOtp);
+                  if (otpError) setOtpError(null);
+                }}
+                disabled={isVerifying}
+                error={Boolean(otpError)}
+              />
+              {otpError ? (
+                <p className="mt-2 text-xs font-medium text-red-600">{otpError}</p>
+              ) : (
+                <p className="mt-2 text-xs text-slate-500">
+                  Ma OTP gom 6 so, co hieu luc trong 10 phut.
+                </p>
+              )}
+              <Button
+                onClick={handleVerifyOtp}
+                disabled={isVerifying || !email}
+                className="mt-4 w-full bg-slate-950 hover:bg-slate-800"
+              >
+                {isVerifying ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Dang xac thuc...
+                  </>
+                ) : (
+                  "Xac thuc OTP"
+                )}
+              </Button>
+            </div>
+
             {resent ? (
               <div className="flex items-center justify-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
                 <CheckCircle className="w-5 h-5" />

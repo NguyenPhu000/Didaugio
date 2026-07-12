@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#a7f3d0"
+      "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": ["**/*"],
     "plugins": [
@@ -35,7 +35,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#a7f3d0",
+          "backgroundColor": "#ffffff",
           "resizeMode": "contain"
         }
       ],
@@ -59,7 +59,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#a7f3d0"
+        "backgroundColor": "#ffffff"
       },
       "package": "vn.ipointgenie.app",
       "softwareKeyboardLayoutMode": "resize",
@@ -77,7 +77,7 @@
     },
     "androidStatusBar": {
       "translucent": false,
-      "backgroundColor": "#a7f3d0",
+      "backgroundColor": "#ffffff",
       "barStyle": "dark-content"
     },
     "ios": {

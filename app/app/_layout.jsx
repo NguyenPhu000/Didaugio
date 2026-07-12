@@ -35,6 +35,7 @@ import { useUIStore } from "../src/stores/uiStore";
 import { useOfflineSync } from "../src/modules/trips/hooks/useTripsOffline";
 import { useAlertStore } from "../src/stores/alertStore";
 import { GlobalAlert } from "../src/components/composed/GlobalAlert";
+import { isMobileUserRole } from "../src/modules/auth/utils/authRoleAccess";
 
 // Tat strict mode canh bao doc/ghi shared value truc tiep trong render cycle vi mot so thu vien ben thu ba (nhu bottom-sheet, draggable-flatlist) chua cap nhat tuong thich.
 configureReanimatedLogger({
@@ -96,6 +97,8 @@ export default function RootLayout() {
   const userLanguage = useUIStore((s) => s.language);
   
   const accessToken = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
+  const clearSession = useAuthStore((s) => s.clearSession);
   const isGuest = useAuthStore((s) => s.isGuest);
   const hasOnboarded = useUIStore((s) => s.hasOnboarded);
 
@@ -252,6 +255,13 @@ export default function RootLayout() {
     const inExploreStack = rootSegment === "explore";
     const isPublicRoute = inPublicTabs || inPlaceDetail || inEventDetail || inExploreStack;
     const isLoggedIn = !!accessToken || isGuest;
+    const hasInvalidMobileRole = Boolean(accessToken && user && !isMobileUserRole(user));
+
+    if (hasInvalidMobileRole) {
+      clearSession();
+      router.replace("/(auth)/login");
+      return;
+    }
 
     if (!isLoggedIn && !inAuthGroup && !isPublicRoute) {
       router.replace("/(auth)/login");
@@ -270,7 +280,7 @@ export default function RootLayout() {
     if (isLoggedIn && !inOnboarding && !hasOnboarded && accessToken) {
       router.replace("/onboarding");
     }
-  }, [isStoreReady, timeoutReady, accessToken, isGuest, segments, hasOnboarded, router]);
+  }, [isStoreReady, timeoutReady, accessToken, user, clearSession, isGuest, segments, hasOnboarded, router]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

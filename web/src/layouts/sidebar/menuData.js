@@ -53,7 +53,7 @@ export function getMenuData() {
       title: t("nav.dashboard"),
       icon: Home,
       url: ADMIN_ROUTES.DASHBOARD,
-      roles: [R.SUPER_ADMIN, R.ADMIN, R.STAFF],
+      roles: [R.SUPER_ADMIN, R.ADMIN],
     },
     {
       key: "dashboard-business",
@@ -91,7 +91,7 @@ export function getMenuData() {
           title: t("nav.management.placesPending"),
           url: ADMIN_ROUTES.PLACES_PENDING,
           icon: ClipboardCheck,
-          roles: [R.SUPER_ADMIN, R.ADMIN, R.STAFF],
+          roles: [R.SUPER_ADMIN, R.ADMIN],
           permission: PERMISSIONS.PLACES.APPROVE,
         },
       ],

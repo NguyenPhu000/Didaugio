@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import i18n from "@/i18n";
 import { registerApi } from "../api/authApi";
 
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
 
 export function useRegister() {
@@ -46,7 +46,7 @@ export function useRegister() {
         return false;
       }
 
-      if (password.length < 6) {
+      if (password.length < 8) {
         setError(i18n.t("authValidation.passwordMin"));
         return false;
       }
@@ -75,7 +75,10 @@ export function useRegister() {
           res?.message ||
             i18n.t("authValidation.registerSuccess"),
         );
-        return true;
+        return {
+          email: normalizedEmail,
+          message: res?.message || i18n.t("authValidation.registerSuccess"),
+        };
       } catch (err) {
         const msg = err?.message || i18n.t("authValidation.registerFailed");
         setError(msg);

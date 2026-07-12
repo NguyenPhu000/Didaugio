@@ -684,7 +684,7 @@ const EventEditModal = ({ open, onClose, item, onSave, loading }) => {
                 id="ev-title"
                 value={form.title}
                 onChange={(e) => setField("title", e.target.value)}
-                placeholder={t("admin.cms.eventName") + "..."}
+                placeholder={`${t("admin.cms.eventName")  }...`}
 
                 className="text-base"
               />
@@ -1421,19 +1421,19 @@ const QuickPlaceCreateModal = ({ open, onClose, onSuccess }) => {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      toast.error(t("admin.cms.placeName") + " " + t("common.required"));
+      toast.error(`${t("admin.cms.placeName")  } ${  t("common.required")}`);
       return;
     }
     if (!address.trim()) {
-      toast.error(t("admin.cms.address") + " " + t("common.required"));
+      toast.error(`${t("admin.cms.address")  } ${  t("common.required")}`);
       return;
     }
     if (!categoryId) {
-      toast.error(t("admin.cms.category") + " " + t("common.required"));
+      toast.error(`${t("admin.cms.category")  } ${  t("common.required")}`);
       return;
     }
     if (!districtId) {
-      toast.error(t("admin.cms.district") + " " + t("common.required"));
+      toast.error(`${t("admin.cms.district")  } ${  t("common.required")}`);
       return;
     }
 

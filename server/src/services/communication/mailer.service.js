@@ -32,10 +32,20 @@ const transporter = nodemailer.createTransport({
 /**
  * Gửi email xác thực tài khoản
  */
-export const sendVerificationEmail = async ({ to, token, name }) => {
+export const sendVerificationEmail = async ({ to, token, otpCode, name }) => {
   const verifyUrl = `${FRONTEND_URL}/verify-email?token=${encodeURIComponent(
     token,
   )}`;
+  const otpHtml = otpCode
+    ? `
+          <p class="label">MA OTP:</p>
+          <div style="margin: 24px 0; padding: 18px; background: #f8fafc; border: 2px solid #000; text-align: center; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 34px; line-height: 1; letter-spacing: 10px; font-weight: 800; color: #000;">${escapeHtml(otpCode)}</div>
+          <p style="font-size: 13px; color: #444;">Ma OTP co hieu luc trong 10 phut. Khong chia se ma nay voi bat ky ai.</p>
+    `
+    : "";
+  const otpText = otpCode
+    ? `Ma OTP xac thuc cua ban: ${otpCode}\nMa nay co hieu luc trong 10 phut.\n\n`
+    : "";
 
   const html = `
     <!DOCTYPE html>
@@ -188,6 +198,8 @@ export const sendVerificationEmail = async ({ to, token, name }) => {
           
           <p style="margin-top: 24px;">Cảm ơn bạn đã đăng ký tài khoản. Để hoàn tất quá trình đăng ký và kích hoạt tài khoản, vui lòng xác thực địa chỉ email của bạn:</p>
           
+          ${otpHtml}
+
           <div class="button-container">
             <a href="${verifyUrl}" class="button">XÁC THỰC NGAY</a>
           </div>
@@ -217,7 +229,7 @@ Xin chào ${escapeHtml(name) || "bạn"},
 Cảm ơn bạn đã đăng ký tài khoản.
 
 Để hoàn tất quá trình đăng ký, vui lòng truy cập link sau để xác thực email:
-${verifyUrl}
+${otpText}${verifyUrl}
 
 Link này có hiệu lực trong 24 giờ.
 

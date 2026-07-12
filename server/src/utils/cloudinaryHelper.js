@@ -77,3 +77,20 @@ export const deleteMapMarkerImage = async (imageUrl) => {
     throw error;
   }
 };
+
+export const deleteCloudinaryAsset = async (publicId, options = {}) => {
+  if (!publicId) {
+    return { result: "skipped", reason: "missing_public_id" };
+  }
+
+  const resourceType = options.resourceType || "image";
+
+  try {
+    return await cloudinary.uploader.destroy(publicId, {
+      resource_type: resourceType,
+    });
+  } catch (error) {
+    console.error("Loi khi xoa asset tren Cloudinary:", error);
+    throw error;
+  }
+};

@@ -9,7 +9,22 @@ import i18n from "@/i18n";
 import { useAuthStore } from "../../../stores/authStore";
 import { loginGoogleApi } from "../api/authApi";
 import { normalizeAuthSessionResponse } from "../utils/normalizeAuthSession";
+import { assertMobileUserRole } from "../utils/authRoleAccess";
 
+let GoogleSignin = null;
+let statusCodes = {
+  SIGN_IN_CANCELLED: "SIGN_IN_CANCELLED",
+  IN_PROGRESS: "IN_PROGRESS",
+  PLAY_SERVICES_NOT_AVAILABLE: "PLAY_SERVICES_NOT_AVAILABLE",
+};
+
+try {
+  const GoogleModule = require("@react-native-google-signin/google-signin");
+  GoogleSignin = GoogleModule.GoogleSignin;
+  statusCodes = { ...statusCodes, ...GoogleModule.statusCodes };
+} catch (_e) {
+  // Bỏ qua lỗi trên môi trường Expo Go hoặc môi trường thiếu liên kết native
+}
 WebBrowser.maybeCompleteAuthSession();
 
 const buildLoginError = (message, code) => ({ message, code });
@@ -33,6 +48,12 @@ const parseIdTokenFromUrl = (url) => {
   }
   return new URLSearchParams(fragment).get("id_token");
 };
+
+const getNativeGoogleIdToken = (userInfo) =>
+  userInfo?.data?.idToken ||
+  userInfo?.idToken ||
+  userInfo?.serverAuthCode ||
+  null;
 
 export function useGoogleLogin() {
   const router = useRouter();
@@ -112,6 +133,23 @@ export function useGoogleLogin() {
 
   const [request, response, promptAsync] = Google.useAuthRequest(googleConfig);
 
+  useEffect(() => {
+    if (isExpoGo || !googleConfig.webClientId) return;
+
+    if (!GoogleSignin) {
+      console.warn("GoogleSignin native module is not available. Skipping configuration.");
+      return;
+    }
+
+    GoogleSignin.configure({
+      webClientId: googleConfig.webClientId,
+      iosClientId: googleConfig.iosClientId,
+      offlineAccess: false,
+      forceCodeForRefreshToken: false,
+      profileImageSize: 120,
+    });
+  }, [googleConfig.iosClientId, googleConfig.webClientId, isExpoGo]);
+
   const finalizeGoogleSession = useCallback(
     async (idToken) => {
       if (finishingRef.current) return;
@@ -127,6 +165,8 @@ export function useGoogleLogin() {
             errorMessage || i18n.t("authValidation.googleInvalidSession"),
           );
         }
+
+        assertMobileUserRole(user);
 
         await setSession({
           user,
@@ -256,7 +296,7 @@ export function useGoogleLogin() {
       return;
     }
 
-    if (!request) {
+    if (isExpoGo && !request) {
       setError(i18n.t("authValidation.googleNotReady"));
       return;
     }
@@ -295,13 +335,38 @@ export function useGoogleLogin() {
         return;
       }
 
-      const result = await promptAsync(promptOptions);
-      if (result.type === "cancel" || result.type === "dismiss") {
-        clearCallbackTimeout();
-        setIsLoading(false);
+      if (!GoogleSignin) {
+        throw new Error("Google native Sign-in module is not linked or failed to load.");
       }
+
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
+
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = getNativeGoogleIdToken(userInfo);
+      if (!idToken) {
+        const tokens = await GoogleSignin.getTokens().catch(() => null);
+        if (!tokens?.idToken) {
+          throw buildLoginError(
+            i18n.t("authValidation.googleNoIdToken"),
+            "GOOGLE_NO_ID_TOKEN",
+          );
+        }
+        await finalizeGoogleSession(tokens.idToken);
+        return;
+      }
+
+      await finalizeGoogleSession(idToken);
     } catch (e) {
       clearCallbackTimeout();
+      if (
+        e?.code === statusCodes.SIGN_IN_CANCELLED ||
+        e?.code === statusCodes.IN_PROGRESS
+      ) {
+        setIsLoading(false);
+        return;
+      }
       const normalizedError = buildLoginError(
         e?.message || i18n.t("authValidation.loginFailed"),
         e?.code || "GOOGLE_LOGIN_FAILED",

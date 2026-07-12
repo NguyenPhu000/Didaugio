@@ -3,7 +3,6 @@ import { Link, Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/stores/authStore";
 import { useBusinessProfile } from "@/hooks/queries/useBusinessQueries";
-import { ROLES } from "@/constants/constants";
 import { BUSINESS_STATUS } from "@/constants/businessConstants";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { Hourglass } from "lucide-react";
@@ -149,10 +148,6 @@ const BusinessGuard = ({ children, allowWhenPendingOrRejected = false }) => {
       entitlements: biz.subscription.entitlements,
     });
   }, [biz?.id, biz?.status, biz?.subscription, setUser, user]);
-
-  // Staff bypass business status checks — they just need to be linked to a business
-  if (user?.roleId === ROLES.STAFF) return children;
-  if (user?.roleId !== ROLES.BUSINESS) return children;
 
   // Kiểm tra xác thực email — nếu chưa xác thực → redirect đến trang check-email
   if (user && !user.emailVerified) {

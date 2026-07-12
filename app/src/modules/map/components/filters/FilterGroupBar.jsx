@@ -12,73 +12,86 @@ const FilterGroupBar = memo(function FilterGroupBar({
   onOpenFilterPicker,
 }) {
   return (
-    <View className="mt-3 px-4" pointerEvents="auto">
+    <View className="mt-3 px-4 gap-3" pointerEvents="auto">
+      {/* 1. Dãy Chips phân loại */}
       <View className="flex-row items-center gap-2">
-        <View className="flex-row items-center gap-2">
-          <View
-            className="flex-row items-center rounded-full border p-0.5"
-            style={{ backgroundColor: "#FFFFFF", borderColor: "rgba(0, 0, 0, 0.18)" }}
-          >
-            {FILTER_GROUP_OPTIONS.map((group) => {
-              const active = activeFilterGroup === group.key;
-              return (
-                <Pressable
-                  key={group.key}
-                  onPress={() => onSelectFilterGroup(group.key)}
-                  className={cn(
-                    "h-[30px] flex-row items-center gap-1 rounded-[15px] border px-2.5",
-                    active ? "border-ink bg-ink" : "border-[#D1D5DB] bg-white",
-                  )}
-                >
-                  <MaterialIconsRounded
-                    name={group.icon}
-                    size={13}
-                    color={active ? "#FFFFFF" : "#111111"}
-                  />
-                  <Text
-                    className={cn(
-                      "text-[11px] font-semibold",
-                      active ? "text-white" : "text-ink",
-                    )}
-                  >
-                    {group.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Pressable
-            onPress={onOpenFilterPicker}
-            className="flex-1 flex-row items-center justify-between rounded-[17px] border px-3"
-            style={{
-              height: 34,
-              backgroundColor: "#FFFFFF",
-              borderColor: "rgba(0, 0, 0, 0.22)",
-            }}
-          >
-            <View className="flex-1 flex-row items-center gap-1.5">
+        {FILTER_GROUP_OPTIONS.map((group) => {
+          const active = activeFilterGroup === group.key;
+          return (
+            <Pressable
+              key={group.key}
+              onPress={() => onSelectFilterGroup(group.key)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={group.label}
+              className={cn(
+                "h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border active:opacity-70",
+                active
+                  ? "border-slate-900 bg-slate-900"
+                  : "border-slate-200 bg-white"
+              )}
+            >
               <MaterialIconsRounded
-                name={activeFilterGroupMeta.icon}
-                size={14}
-                color="#111111"
+                name={group.icon}
+                size={16}
+                color={active ? "#FFFFFF" : "#475569"} // text-slate-600
               />
               <Text
                 numberOfLines={1}
-                className="text-xs font-semibold"
-                style={{ color: "#111111" }}
+                className={cn(
+                  "text-xs font-semibold",
+                  active ? "text-white" : "text-slate-600"
+                )}
               >
-                {activeFilterSummaryLabel}
+                {group.label}
               </Text>
-            </View>
-            <MaterialIconsRounded
-              name="keyboard-arrow-down"
-              size={18}
-              color="#111111"
-            />
-          </Pressable>
-        </View>
+            </Pressable>
+          );
+        })}
       </View>
+
+      {/* 2. Nút bấm hiển thị chi tiết (Picker Button) */}
+      <Pressable
+        onPress={onOpenFilterPicker}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`${activeFilterGroupMeta.label}: ${activeFilterSummaryLabel}`}
+        className="min-h-[48px] flex-row items-center justify-between rounded-2xl border border-slate-100 bg-white shadow-sm active:opacity-70 px-3 py-2"
+      >
+        <View className="flex-1 flex-row items-center gap-3">
+          {/* Icon Container bo tròn */}
+          <View className="h-9 w-9 items-center justify-center rounded-full bg-slate-100">
+            <MaterialIconsRounded
+              name={activeFilterGroupMeta.icon}
+              size={18}
+              color="#0F172A" // text-slate-900
+            />
+          </View>
+          
+          {/* Khối Text */}
+          <View className="flex-1 justify-center">
+            <Text
+              numberOfLines={1}
+              className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500"
+            >
+              {activeFilterGroupMeta.label}
+            </Text>
+            <Text
+              numberOfLines={1}
+              className="text-sm font-bold text-slate-900 leading-tight"
+            >
+              {activeFilterSummaryLabel}
+            </Text>
+          </View>
+        </View>
+        
+        <MaterialIconsRounded
+          name="keyboard-arrow-down"
+          size={22}
+          color="#0F172A"
+        />
+      </Pressable>
     </View>
   );
 });

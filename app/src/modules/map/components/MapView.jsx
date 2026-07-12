@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import ClusteredMapView from "react-native-map-clustering";
 import { Marker, PROVIDER_DEFAULT, UrlTile } from "react-native-maps";
 import {
@@ -17,6 +17,7 @@ import {
   MAP_CONFIGS,
 } from "../config/mapConfig";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
+import { regionToZoom } from "../utils/mapZoom";
 
 const CLEAN_NATIVE_MAP_STYLE = [
   { featureType: "poi", stylers: [{ visibility: "off" }] },
@@ -164,7 +165,7 @@ const ClusterMarker = memo(function ClusterMarker({ cluster, onPress }) {
 });
 
 const PlaceMarker = memo(
-  ({ place, isActive, onSelectPlace, onLongPressPlace }) => {
+  ({ place, isActive, showLabel, onSelectPlace, onLongPressPlace }) => {
     const handlePress = useCallback(() => {
       onSelectPlace?.(place);
     }, [onSelectPlace, place]);
@@ -174,9 +175,9 @@ const PlaceMarker = memo(
     }, [onLongPressPlace, place]);
 
     const markerColor = isActive
-      ? "#0284c7"
+      ? "#0F766E"
       : place?.isFeatured
-        ? "#f59e0b"
+        ? "#F59E0B"
         : CATEGORY_MARKER_STYLES[place?.categoryId]?.color || "#ef4444";
     const coordinate = {
       latitude: place.latitude,
@@ -196,7 +197,7 @@ const PlaceMarker = memo(
         pinColor={markerColor}
         tracksViewChanges={false}
       >
-        {place?.name ? (
+        {showLabel && place?.name ? (
           <View
             className="absolute left-full top-1/2 ml-1.5 -translate-y-[7px]"
             pointerEvents="none"
@@ -221,7 +222,8 @@ const PlaceMarker = memo(
     prev.place?.latitude === next.place?.latitude &&
     prev.place?.longitude === next.place?.longitude &&
     prev.place?.markerImageUri === next.place?.markerImageUri &&
-    prev.isActive === next.isActive,
+    prev.isActive === next.isActive &&
+    prev.showLabel === next.showLabel,
 );
 
 PlaceMarker.displayName = "PlaceMarker";
@@ -250,13 +252,12 @@ const MapView = memo(
       },
       ref,
     ) => {
+      const { width: viewportWidth } = useWindowDimensions();
       const mapRef = useRef(null);
       const regionRef = useRef(INITIAL_REGION);
       const tileErrorTimerRef = useRef(null);
       const [tileError, setTileError] = useState(false);
-      const [, setCurrentZoom] = useState(() =>
-        Math.round(Math.log2(360 / INITIAL_REGION.latitudeDelta))
-      );
+      const [showMarkerLabels, setShowMarkerLabels] = useState(false);
 
       useImperativeHandle(ref, () => ({
         flyTo: ([lng, lat], zoom = 14) => {
@@ -335,16 +336,16 @@ const MapView = memo(
       const handleRegionChangeComplete = useCallback(
         (region) => {
           regionRef.current = region;
-          const zoom = Math.round(Math.log2(360 / region.latitudeDelta));
-          setCurrentZoom((prev) => {
-            if (prev !== zoom) {
-              onZoomChange?.(zoom);
-              return zoom;
-            }
-            return prev;
-          });
+          const zoomValue = regionToZoom(region, viewportWidth);
+          const nextShowMarkerLabels = zoomValue >= 15;
+
+          setShowMarkerLabels((previous) =>
+            previous === nextShowMarkerLabels ? previous : nextShowMarkerLabels,
+          );
+
+          onZoomChange?.(Math.round(zoomValue));
         },
-        [onZoomChange],
+        [onZoomChange, viewportWidth],
       );
 
       const handleTileError = useCallback(() => {
@@ -431,6 +432,7 @@ const MapView = memo(
               key={place.id}
               place={place}
               isActive={place.id === selectedPlaceId}
+              showLabel={place.id === selectedPlaceId || showMarkerLabels}
               onSelectPlace={onSelectPlace}
               onLongPressPlace={onLongPressPlace}
             />

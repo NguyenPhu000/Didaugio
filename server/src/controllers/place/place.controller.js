@@ -276,6 +276,7 @@ export const createPlace = async (req, res, next) => {
       openingHours,
       amenities,
       status,
+      spokenGuide,
     } = req.body;
 
     const place = await placeService.createPlace(
@@ -302,6 +303,7 @@ export const createPlace = async (req, res, next) => {
         openingHours,
         amenities,
         status,
+        spokenGuide,
       },
       req.user.userId,
     );
@@ -636,6 +638,22 @@ export const getPlaceReviews = async (req, res, next) => {
   }
 };
 
+export const getMyPlaceReview = async (req, res, next) => {
+  try {
+    const review = await appService.getMyPlaceReview(
+      Number(req.params.id),
+      getUserId(req),
+    );
+    res.json({
+      success: true,
+      data: review,
+      message: "Láº¥y Ä‘Ã¡nh giÃ¡ cá»§a báº¡n thÃ nh cÃ´ng",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const createReview = async (req, res, next) => {
   try {
     const review = await appService.createOrUpdateReview(
@@ -675,5 +693,6 @@ export default {
   getHomeData,
   getBusinessServices,
   getPlaceReviews,
+  getMyPlaceReview,
   createReview,
 };

@@ -68,6 +68,19 @@ export const amenitySchema = z.object({
   icon: z.string().max(50).optional().nullable(),
 });
 
+const spokenGuideFaqSchema = z.object({
+  question: z.string().trim().max(200),
+  answer: z.string().trim().max(2000),
+});
+
+export const spokenGuideSchema = z
+  .object({
+    locale: z.string().trim().max(20).default("vi-VN"),
+    text: z.string().trim().max(5000).default(""),
+    faqs: z.array(spokenGuideFaqSchema).max(5).default([]),
+  })
+  .nullable();
+
 export const createPlaceSchema = z.object({
   name: z
     .string({ required_error: "Tên địa điểm không được để trống" })
@@ -165,6 +178,7 @@ export const createPlaceSchema = z.object({
   amenities: z.array(amenitySchema).max(20).optional(),
   tagIds: z.array(z.number().int().positive()).max(20).optional(),
   businessId: z.number().int().positive().optional().nullable(),
+  spokenGuide: spokenGuideSchema.optional(),
 });
 
 export const updatePlaceSchema = z.object({
@@ -210,6 +224,7 @@ export const updatePlaceSchema = z.object({
   amenities: z.array(amenitySchema).max(20).optional(),
   tagIds: z.array(z.number().int().positive()).max(20).optional(),
   status: z.enum(["pending", "approved", "rejected", "draft"]).optional(),
+  spokenGuide: spokenGuideSchema.optional(),
 });
 
 export const getPlacesQuerySchema = paginationLargeSchema.extend({
@@ -324,14 +339,14 @@ export const createPlaceReviewSchema = z.object({
   media: z
     .array(
       z.object({
-        mediaData: z.string().min(1),
+        mediaData: z.string().min(1).max(900_000),
         thumbnailUrl: z.string().trim().optional().nullable(),
         mediaType: z.string().trim().min(1).max(50).default("image"),
         caption: z.string().max(200).optional().nullable(),
         order: z.number().int().min(0).optional(),
       }),
     )
-    .max(5, "Chỉ được đính kèm tối đa 5 ảnh")
+    .max(3, "Chỉ được đính kèm tối đa 3 ảnh")
     .optional(),
 });
 
