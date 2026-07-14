@@ -5,6 +5,7 @@ import NetInfo from "@react-native-community/netinfo";
 import { getMyTripsApi, createTripApi, deleteTripApi, getTripDetailApi } from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
 import { TRIP_OFFLINE_GC_MS } from "../../../constants/trip-offline-cache";
+import { createRandomId } from "../../../utils/createRandomId";
 
 const TRIPS_CACHE_KEY = "@trips_cache";
 const CACHE_VERSION = "v5";
@@ -245,13 +246,13 @@ export function useCreateTripCached() {
         try {
           const raw = await safeAsyncStorage.getItem(pendingActionsKey);
           const actions = raw ? JSON.parse(raw) : [];
-          const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+          const tempId = createRandomId("temp");
           actions.push({ type, data, tempId, timestamp: Date.now() });
           await safeAsyncStorage.setItem(pendingActionsKey, JSON.stringify(actions));
           return tempId;
         } catch (storageError) {
           console.warn("[TripsOffline] Failed to queue pending create action:", storageError);
-          return `temp_${Date.now()}`;
+          return createRandomId("temp");
         }
       };
 

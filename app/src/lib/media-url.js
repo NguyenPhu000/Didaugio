@@ -170,7 +170,7 @@ export function resolvePlaceImageUri(place) {
 
   const resolved = resolveMediaUrl(raw);
   if (resolved) return resolved;
-  return getCategoryPlaceholder(place?.category?.name || place?.categoryName);
+  return getCategoryPlaceholder();
 }
 
 /**

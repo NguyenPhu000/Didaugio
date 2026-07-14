@@ -3,6 +3,8 @@ import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 
 export const MAX_UPLOAD_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+export const MAX_UPLOAD_FIELD_SIZE_BYTES = 64 * 1024;
+export const MAX_UPLOAD_FIELDS = 10;
 export const MAX_BASE64_DATA_URI_LENGTH =
   Math.ceil((MAX_UPLOAD_FILE_SIZE_BYTES * 4) / 3) + 2048;
 export const ALLOWED_UPLOAD_MIME_TYPES = [
@@ -41,9 +43,16 @@ const storage = hasCloudinaryConfig
     })
   : multer.memoryStorage();
 
-const upload = multer({
+const createUpload = ({ maxFiles = 1, maxFields = MAX_UPLOAD_FIELDS } = {}) =>
+  multer({
   storage,
-  limits: { fileSize: MAX_UPLOAD_FILE_SIZE_BYTES },
+  limits: {
+    fileSize: MAX_UPLOAD_FILE_SIZE_BYTES,
+    fieldSize: MAX_UPLOAD_FIELD_SIZE_BYTES,
+    files: maxFiles,
+    fields: maxFields,
+    parts: maxFiles + maxFields,
+  },
   fileFilter: (req, file, cb) => {
     if (!allowedMimeTypes.has(file.mimetype)) {
       const error = new Error(
@@ -55,14 +64,19 @@ const upload = multer({
     }
     cb(null, true);
   },
-});
+  });
+
+const upload = createUpload();
 
 export const uploadSingle = (fieldName) => upload.single(fieldName);
 
 export const uploadMultiple = (fieldName, maxCount = 10) =>
-  upload.array(fieldName, maxCount);
+  createUpload({ maxFiles: maxCount }).array(fieldName, maxCount);
 
-export const uploadFields = (fields) => upload.fields(fields);
+export const uploadFields = (fields) =>
+  createUpload({
+    maxFiles: fields.reduce((total, field) => total + (field.maxCount ?? 1), 0),
+  }).fields(fields);
 
 export const businessDocUpload = uploadFields([
   { name: "idCardFront", maxCount: 1 },

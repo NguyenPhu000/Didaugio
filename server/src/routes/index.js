@@ -38,6 +38,7 @@ import serviceBookingRoutes from "./booking/serviceBooking.route.js";
 import aiRoutes from "./ai/ai.route.js";
 import routingRoutes from "../modules/routing/routing.routes.js";
 import navigationRoutes from "../modules/navigation/navigation.routes.js";
+import placeTelemetryRoutes from "./analytics/placeTelemetry.route.js";
 import dashboardRoutes from "./dashboard/dashboard.route.js";
 import notificationRoutes from "./notification/notification.route.js";
 import eventRoutes from "./event/event.route.js";
@@ -144,6 +145,7 @@ export const registerApiRoutes = (app) => {
   app.use("/api/ai", aiRoutes);
   app.use("/api/routes", routingRoutes);
   app.use("/api/navigation", navigationRoutes);
+  app.use("/api/telemetry", placeTelemetryRoutes);
   app.use("/api", userPermissionRoutes);
   app.use("/api", userRoutes);
 };

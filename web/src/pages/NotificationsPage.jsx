@@ -59,7 +59,7 @@ function formatRelativeTime(value) {
 
 const normalizeNotificationsResponse = (response) => {
   const data = response?.data || response || [];
-  const items = Array.isArray(data) ? data.map(normalizeNotification) : [];
+  const items = Array.isArray(data) ? data.map((item) => normalizeNotification(item)) : [];
   return {
     items,
     unreadCount:

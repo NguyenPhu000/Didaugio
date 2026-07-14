@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import safeAsyncStorage from "../utils/safeAsyncStorage";
+import { createRandomId } from "../utils/createRandomId";
 
 const { persist, createJSONStorage } = require("zustand/middleware");
 
@@ -33,7 +34,7 @@ function normalizeMessage(message) {
 
   return {
     ...message,
-    id: message.id || `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    id: message.id || createRandomId("message"),
     role: message.role || "assistant",
     text: message.text ?? message.content ?? "",
     createdAt,

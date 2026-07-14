@@ -373,7 +373,7 @@ const StepPreview = ({ isEditMode }) => {
           ) : (
             <>
               <Check className="h-4 w-4" />
-              {isEditMode ? t("admin.placeWizard.preview.save") : t("admin.placeWizard.preview.save")}
+              {isEditMode ? t("admin.placeWizard.preview.save") : t("common.create")}
             </>
           )}
         </Button>

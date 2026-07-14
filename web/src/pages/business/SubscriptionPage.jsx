@@ -311,9 +311,11 @@ export default function SubscriptionPage() {
                     <span className="text-lg font-semibold">{plan.name}</span>
                   </div>
                   <span className="text-xl font-bold">
-                    {formatVND(plan.priceMonthly)}
+                    {formatVND(
+                      sub.billingCycle === "yearly" ? plan.priceYearly ?? plan.priceMonthly : plan.priceMonthly,
+                    )}
                     <span className="text-sm font-normal text-muted-foreground">
-                      /{t("subscription.plans.monthly")}
+                      /{sub.billingCycle === "yearly" ? t("subscription.plans.yearly") : t("subscription.plans.monthly")}
                     </span>
                   </span>
                 </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/stores/authStore";
 import { dashboardService } from "@/apis/dashboardService";
@@ -37,6 +37,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getTableSerialNumber } from "@/utils/tableSerial";
+import PlaceHeatmap from "@/components/analytics/PlaceHeatmap";
+import { useAdminPlaceHeatmap } from "@/hooks/queries/useTelemetryQueries";
+
+const HEATMAP_RANGE_DAYS = { "7d": 7, "30d": 30, "90d": 90 };
 
 // ─── Stat Card ─────────────────────────────────────────────────────────────────
 
@@ -204,8 +208,15 @@ const AdminAnalyticsPage = () => {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState("7d");
+  const [heatmapAction, setHeatmapAction] = useState("all");
   const [stats, setStats] = useState(null);
   const [activityData, setActivityData] = useState([]);
+  const heatmapFilters = useMemo(() => ({
+    action: heatmapAction,
+    fromDate: new Date(Date.now() - (HEATMAP_RANGE_DAYS[timeRange] || 7) * 24 * 60 * 60 * 1000).toISOString(),
+    toDate: new Date().toISOString(),
+  }), [heatmapAction, timeRange]);
+  const placeHeatmap = useAdminPlaceHeatmap(heatmapFilters);
 
   useEffect(() => {
     const loadData = async () => {
@@ -424,6 +435,29 @@ const AdminAnalyticsPage = () => {
             </CardContent>
           </Card>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5" />
+              Bản đồ nhiệt tương tác địa điểm
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4 flex justify-end">
+              <Select value={heatmapAction} onValueChange={setHeatmapAction}>
+                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả tương tác</SelectItem>
+                  <SelectItem value="VIEW">Lượt xem</SelectItem>
+                  <SelectItem value="DIRECTION">Chỉ đường</SelectItem>
+                  <SelectItem value="BOOKING_CLICK">Nhấn đặt chỗ</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <PlaceHeatmap {...placeHeatmap} />
+          </CardContent>
+        </Card>
 
         {/* Top Products */}
         <Card>

@@ -505,7 +505,6 @@ const ContractSignModal = ({
           userAgent:
             typeof navigator !== "undefined" ? navigator.userAgent : "",
           timezone,
-          ip: "171.252.154.174",
           otpVerified: true,
           phoneVerified: partyAData.phone,
         },

@@ -50,6 +50,7 @@ export function buildSubscriptionEntitlements(subscription) {
     }, {}),
     limits: {
       maxPlaces: plan?.maxPlaces ?? 0,
+      maxServices: plan?.maxServices ?? 0,
       maxBookings: plan?.maxBookings ?? 0,
       maxStaff: plan?.maxStaff ?? 0,
     },

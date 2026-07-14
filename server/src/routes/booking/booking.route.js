@@ -3,6 +3,7 @@ import * as controller from "../../controllers/booking/booking.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { checkBusinessOwnership } from "../../middlewares/businessOwnership.js";
 import { requireActiveBusiness } from "../../middlewares/requireActiveBusiness.js";
+import { requireActiveSubscription } from "../../middlewares/subscriptionFeatureLock.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import { validateBody } from "../../middlewares/validateSchema.js";
 import { auditLog } from "../../middlewares/auditLogMiddleware.js";
@@ -41,6 +42,7 @@ router.post(
 );
 
 router.use(requireActiveBusiness({ requireContractSigned: true }));
+router.use(requireActiveSubscription);
 
 router.get("/", hasPermission("bookings.view"), controller.getAll);
 router.get("/stats", hasPermission("bookings.view"), controller.getStats);

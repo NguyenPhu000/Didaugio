@@ -13,6 +13,10 @@ prisma/migrations/*
 !prisma/migrations/20260709000000_add_email_verification_otp/migration.sql
 !prisma/migrations/20260709010000_add_place_ai_guides/
 !prisma/migrations/20260709010000_add_place_ai_guides/migration.sql
+!prisma/migrations/20260712000000_add_review_media_public_id/
+!prisma/migrations/20260712000000_add_review_media_public_id/migration.sql
+!prisma/migrations/20260714000000_add_subscription_limits_and_place_telemetry/
+!prisma/migrations/20260714000000_add_subscription_limits_and_place_telemetry/migration.sql
 tests
 storage/sensitive/*
 !storage/sensitive/.gitkeep

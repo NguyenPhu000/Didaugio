@@ -280,7 +280,7 @@ function InlineAddPlaceModal({
       <View className="flex-1 justify-end">
         <Pressable style={StyleSheet.absoluteFillObject} className="bg-black/45" onPress={onClose} />
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "padding"}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           className="flex-1 justify-end w-full"
           pointerEvents="box-none"
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}

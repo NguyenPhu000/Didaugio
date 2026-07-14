@@ -97,6 +97,9 @@ export const ENDPOINTS = {
     navigate: "/navigation/navigate",
     telemetry: "/navigation/telemetry",
   },
+  telemetry: {
+    place: (placeId) => `/telemetry/places/${placeId}`,
+  },
   boundaries: {
     districts: "/boundaries/districts",
     wards: "/boundaries/wards",

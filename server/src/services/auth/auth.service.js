@@ -873,7 +873,7 @@ export const loginWithGoogle = async (
     throw new ServiceError("Không lấy được email từ Google", 401, "NO_EMAIL");
   }
 
-  if (email_verified !== "true" && email_verified !== true) {
+  if (email_verified !== true) {
     throw new ServiceError(
       "Email Google chưa được xác thực",
       401,

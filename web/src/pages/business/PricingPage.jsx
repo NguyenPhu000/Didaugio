@@ -29,7 +29,7 @@ export default function PricingPage() {
 
   const plans = plansRes?.data?.data || plansRes?.data || [];
   const currentSub = currentRes?.data?.data || currentRes?.data || {};
-  const currentPlanSlug = currentSub.plan?.slug;
+  const currentPlanSlug = currentSub.status && currentSub.status !== "canceled" ? currentSub.plan?.slug : null;
 
   const sortedPlans = [...plans].sort(
     (a, b) => (a.priceMonthly ?? 0) - (b.priceMonthly ?? 0),
@@ -103,6 +103,10 @@ export default function PricingPage() {
             plan={plan}
             billingCycle={billingCycle}
             isCurrent={plan.slug === currentPlanSlug}
+            canChangeBillingCycle={
+              plan.slug === currentPlanSlug
+              && billingCycle !== (currentSub.billingCycle || "monthly")
+            }
             isPopular={plan.slug === popularSlug}
             onSelect={setSelectedPlan}
           />
@@ -152,6 +156,7 @@ export default function PricingPage() {
         onOpenChange={(open) => !open && setSelectedPlan(null)}
         targetPlan={selectedPlan}
         currentPlan={currentSub.plan}
+        billingCycle={billingCycle}
       />
     </div>
   );

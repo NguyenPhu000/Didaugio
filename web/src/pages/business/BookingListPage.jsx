@@ -962,6 +962,7 @@ const BookingListPage = () => {
   };
 
   const handleRescheduleConfirmed = async (bookingTime, businessNote) => {
+    if (!rescheduleModal?.id) return;
     setActionLoading("reschedule");
     try {
       await bookingApi.reschedule(rescheduleModal.id, bookingTime, { businessNote });

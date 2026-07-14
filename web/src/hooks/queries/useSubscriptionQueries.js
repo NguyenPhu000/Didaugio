@@ -25,10 +25,10 @@ export function useSubscriptionPlans() {
   );
 }
 
-export function useProration(targetPlanId) {
+export function useProration(targetPlanId, billingCycle = "monthly") {
   return useApiQuery(
-    queryKeys.subscriptions.proration(targetPlanId),
-    () => subscriptionService.getProration(targetPlanId),
+    queryKeys.subscriptions.proration(targetPlanId, billingCycle),
+    () => subscriptionService.getProration(targetPlanId, billingCycle),
     { enabled: !!targetPlanId, staleTime: 30 * 1000 },
   );
 }
@@ -71,7 +71,8 @@ export function useUpgradeSubscription() {
   const queryClient = useQueryClient();
 
   return useApiMutation(
-    (targetPlanId) => subscriptionService.upgrade(targetPlanId),
+    ({ targetPlanId, billingCycle }) =>
+      subscriptionService.upgrade(targetPlanId, billingCycle),
     {
       onSuccess: () => {
         invalidateQueries(queryClient, [
@@ -127,6 +128,23 @@ export function useCancelSubscription() {
           queryKeys.subscriptions.current(),
         ]);
         toast.success("Hủy gói dịch vụ thành công");
+      },
+    },
+  );
+}
+
+export function usePayInvoiceFromWallet() {
+  const queryClient = useQueryClient();
+
+  return useApiMutation(
+    (invoiceId) => subscriptionService.payInvoiceFromWallet(invoiceId),
+    {
+      onSuccess: () => {
+        invalidateQueries(queryClient, [
+          queryKeys.subscriptions.current(),
+          queryKeys.subscriptions.invoices(),
+        ]);
+        toast.success("Thanh toán hóa đơn từ ví doanh thu thành công");
       },
     },
   );

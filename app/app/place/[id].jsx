@@ -3,6 +3,7 @@
     Alert,
     FlatList,
     Linking,
+    Platform,
     Pressable,
     ScrollView,
     Text,
@@ -63,6 +64,7 @@
     shouldShowBookingCta,
   } from "../../src/modules/place/utils/spokenGuide";
   import { getReviewSubmissionError } from "../../src/modules/place/utils/reviewSubmissionError";
+  import { trackPlaceTelemetryApi } from "../../src/modules/place/api/placeApi";
 
   const MAIN_REVIEW_LIMIT = 2;
   const MAX_GALLERY_IMAGES = 8;
@@ -229,10 +231,25 @@
     const [isSavedLocal, setIsSavedLocal] = useState(false);
     const [tripSheetKey, setTripSheetKey] = useState(0);
     const [activeSpeechKey, setActiveSpeechKey] = useState(null);
+    const viewedPlaceIdRef = useRef(null);
+
+    const trackPlaceAction = useCallback((action) => {
+      if (!resolvedPlaceId) return;
+
+      void trackPlaceTelemetryApi(resolvedPlaceId, action, Platform.OS).catch(() => {
+        // Analytics must never block a visitor's primary action.
+      });
+    }, [resolvedPlaceId]);
 
     useEffect(() => {
       setIsSavedLocal(Boolean(place?.isSaved));
     }, [place?.id, place?.isSaved]);
+
+    useEffect(() => {
+      if (!resolvedPlaceId || viewedPlaceIdRef.current === resolvedPlaceId) return;
+      viewedPlaceIdRef.current = resolvedPlaceId;
+      trackPlaceAction("VIEW");
+    }, [resolvedPlaceId, trackPlaceAction]);
 
     // Task 3 Step 1: Speech lifecycle cleanup
     const stopSpeech = useCallback(() => {
@@ -317,6 +334,7 @@
     }, [accessToken, place, isSavedLocal, unsaveMutation, saveMutation, addToast, router, t]);
 
     const handleNavigate = useCallback(() => {
+      trackPlaceAction("DIRECTION");
       if (place?.latitude && place?.longitude) {
         router.push({
           pathname: "/(tabs)/map",
@@ -336,7 +354,7 @@
           params: { search: String(place.name || place.address) },
         });
       }
-    }, [place, router]);
+    }, [place, router, trackPlaceAction]);
 
     const handleAddToTrip = useCallback(() => {
       if (!place?.id) return;
@@ -376,8 +394,9 @@
       }
 
       if (!place?.id) return;
+      trackPlaceAction("BOOKING_CLICK");
       router.push(`/booking/${place.id}`);
-    }, [accessToken, place?.id, router, t]);
+    }, [accessToken, place?.id, router, t, trackPlaceAction]);
 
     const handleOpenReviewComposer = useCallback(() => {
       if (!accessToken) {

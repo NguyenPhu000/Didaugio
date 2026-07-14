@@ -14,6 +14,7 @@ import {
   generateBookingQR,
 } from "../../utils/generateQR.js";
 import ServiceError from "../../utils/serviceError.js";
+import { assertBusinessLimit } from "../subscription/subscriptionEntitlement.service.js";
 import { combineUseDateAndTime } from "../../utils/bookingTimeSlot.js";
 import {
   checkAvailability,
@@ -1048,6 +1049,21 @@ export const create = async (payload = {}, userId) => {
       return serializeBookingUser(existingBooking);
     }
   }
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const currentMonthBookings = await prisma.booking.count({
+    where: {
+      businessId: service.businessId,
+      status: { in: ["pending", "confirmed", "completed"] },
+      createdAt: { gte: startOfMonth, lt: startOfNextMonth },
+    },
+  });
+  await assertBusinessLimit(
+    service.businessId,
+    "maxBookings",
+    currentMonthBookings,
+  );
 
   let bookingResult;
   try {

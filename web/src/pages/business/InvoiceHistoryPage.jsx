@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FileText, Receipt } from "lucide-react";
+import { Loader2, Receipt, WalletCards } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -22,7 +22,10 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { formatVND, formatDateTime } from "@/components/business/dashboardWidgetHelpers";
-import { useSubscriptionInvoices } from "@/hooks/queries/useSubscriptionQueries";
+import {
+  usePayInvoiceFromWallet,
+  useSubscriptionInvoices,
+} from "@/hooks/queries/useSubscriptionQueries";
 
 const STATUS_STYLES = {
   pending: "bg-amber-50 text-amber-700 border-amber-200",
@@ -47,6 +50,7 @@ export default function InvoiceHistoryPage() {
   });
 
   const { data, isLoading, refetch } = useSubscriptionInvoices(filters);
+  const payFromWallet = usePayInvoiceFromWallet();
   const invoices = data?.data?.data || data?.data || [];
   const pagination = data?.data?.pagination || {
     page: 1,
@@ -111,6 +115,7 @@ export default function InvoiceHistoryPage() {
                   <TableHead className="text-right">{t("subscription.invoice.table.amount")}</TableHead>
                   <TableHead>{t("subscription.invoice.table.status")}</TableHead>
                   <TableHead>{t("subscription.invoice.table.transactionRef")}</TableHead>
+                  <TableHead className="text-right">{t("common.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -137,6 +142,23 @@ export default function InvoiceHistoryPage() {
                     </TableCell>
                     <TableCell className="font-mono text-xs">
                       {invoice.transactionRef || invoice.id?.slice(0, 8) || "-"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {invoice.status === "pending" ? (
+                        <Button
+                          size="sm"
+                          disabled={payFromWallet.isPending}
+                          onClick={() => payFromWallet.mutate(invoice.id)}
+                          className="bg-emerald-600 text-white hover:bg-emerald-700"
+                        >
+                          {payFromWallet.isPending ? (
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <WalletCards className="mr-1.5 h-3.5 w-3.5" />
+                          )}
+                          Thanh toán bằng ví
+                        </Button>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}

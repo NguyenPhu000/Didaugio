@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import Constants from "expo-constants";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import * as Linking from "expo-linking";
 import * as Google from "expo-auth-session/providers/google";
 import { makeRedirectUri } from "expo-auth-session";
@@ -66,8 +66,7 @@ export function useGoogleLogin() {
   const timeoutRef = useRef(null);
 
   const isExpoGo =
-    Constants.executionEnvironment === "storeClient" ||
-    Constants.appOwnership === "expo";
+    Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
   const googleConfig = useMemo(() => {
     const owner =

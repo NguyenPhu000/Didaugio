@@ -64,93 +64,13 @@ import {
   TripContentCard as SampleTripContentCard,
   TripEditModal as SampleTripEditModal,
 } from "./cms/sample-trips";
+import { compressBannerImage } from "./cms/banners/imageCompression";
+import { getContentTypes } from "./cms/contentTypes";
+import { EventTabContent } from "./cms/events/EventTabContent";
 
 // ─── Image Compression ───────────────────────────────────────────────────────
 
-const compressBannerImage = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target.result;
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        let width = img.width;
-        let height = img.height;
-        const MAX_WIDTH = 1080;
-
-        if (width > MAX_WIDTH) {
-          height *= MAX_WIDTH / width;
-          width = MAX_WIDTH;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
-        resolve(dataUrl);
-      };
-      img.onerror = () => reject("Invalid image format");
-    };
-    reader.onerror = () => reject("Cannot read file");
-  });
-};
-
 // ─── Content Types ─────────────────────────────────────────────────────────────
-
-const getContentTypes = (t) => [
-  {
-    id: "events",
-    label: t("admin.cms.tabLabels.events"),
-    icon: Calendar,
-    description: t("admin.cms.eventsDesc"),
-    color: "bg-rose-500",
-    gradient: "from-rose-500 to-pink-600",
-  },
-  {
-    id: "trips",
-    label: t("admin.cms.tabLabels.sampleTrips"),
-    icon: Compass,
-    description: t("admin.cms.sampleTripsDesc"),
-    color: "bg-purple-500",
-    gradient: "from-purple-500 to-indigo-600",
-  },
-  {
-    id: "banners",
-    label: t("admin.cms.tabLabels.banners"),
-    icon: ImageIcon,
-    description: t("admin.cms.bannersDesc"),
-    color: "bg-blue-500",
-    gradient: "from-blue-500 to-indigo-600",
-  },
-  {
-    id: "announcements",
-    label: t("admin.cms.tabLabels.notifications"),
-    icon: Bell,
-    description: t("admin.cms.notificationsDesc"),
-    color: "bg-amber-500",
-    gradient: "from-amber-500 to-orange-600",
-  },
-  {
-    id: "featured",
-    label: t("admin.cms.tabLabels.featured"),
-    icon: Star,
-    description: t("admin.cms.featuredDesc"),
-    color: "bg-emerald-500",
-    gradient: "from-emerald-500 to-teal-600",
-  },
-  {
-    id: "pages",
-    label: t("admin.cms.tabLabels.staticPages"),
-    icon: FileText,
-    description: t("admin.cms.staticPagesDesc"),
-    color: "bg-purple-500",
-    gradient: "from-purple-500 to-violet-600",
-  },
-];
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
@@ -1695,7 +1615,7 @@ const CMSContentPage = () => {
   const user = useAuthStore((state) => state.user);
   const userRole = user?.roleId || 5;
 
-  const CONTENT_TYPES = [
+  const LEGACY_CONTENT_TYPES = [
     {
       id: "events",
       label: t("admin.cms.tabLabels.events", "Sự kiện"),
@@ -1733,6 +1653,8 @@ const CMSContentPage = () => {
       color: "bg-emerald-500",
     },
   ];
+
+  const CONTENT_TYPES = useMemo(() => getContentTypes(t), [t]);
 
   const allowedContentTypes = CONTENT_TYPES.filter((type) => {
     if (type.id === "trips" || type.id === "events" || type.id === "banners" || type.id === "announcements") {
@@ -2426,6 +2348,18 @@ const CMSContentPage = () => {
         </Card>
 
         {/* Content List */}
+        {activeTab === "events" ? (
+          <EventTabContent
+            items={items}
+            isLoading={loading}
+            search={search}
+            statusFilter={statusFilter}
+            onCreate={() => setEditModal({ open: true, item: null })}
+            onEdit={handleEdit}
+            onToggle={handleToggle}
+            onDelete={handleDelete}
+          />
+        ) : (
         <div className="space-y-3">
           {loading ? (
             Array.from({ length: 3 }).map((_, i) => (
@@ -2478,15 +2412,7 @@ const CMSContentPage = () => {
             </Card>
           ) : (
             filteredItems.map((item) =>
-              activeTab === "events" ? (
-                <EventContentCard
-                  key={item.id}
-                  item={item}
-                  onEdit={handleEdit}
-                  onToggle={handleToggle}
-                  onDelete={handleDelete}
-                />
-              ) : activeTab === "trips" ? (
+              activeTab === "trips" ? (
                 <SampleTripContentCard
                   key={item.id}
                   item={item}
@@ -2506,6 +2432,7 @@ const CMSContentPage = () => {
             )
           )}
         </div>
+        )}
       </div>
 
       {/* Event Modal */}

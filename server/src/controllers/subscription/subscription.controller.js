@@ -47,7 +47,11 @@ export async function getProration(req, res, next) {
       return errorResponse(res, 400, "targetPlanId là bắt buộc", ERROR_CODES.VALIDATION_ERROR);
     }
 
-    const data = await subscriptionService.calculateProration(businessId, targetPlanId);
+    const data = await subscriptionService.calculateProration(
+      businessId,
+      targetPlanId,
+      req.query.billingCycle,
+    );
     return successResponse(res, data);
   } catch (error) {
     if (error.message?.includes("không tồn tại") || error.message?.includes("Không tìm thấy")) {
@@ -67,12 +71,16 @@ export async function upgrade(req, res, next) {
       return errorResponse(res, 403, "Không tìm thấy doanh nghiệp", "NO_BUSINESS");
     }
 
-    const { targetPlanId } = req.body;
+    const { targetPlanId, billingCycle } = req.body;
     if (!targetPlanId) {
       return errorResponse(res, 400, "targetPlanId là bắt buộc", ERROR_CODES.VALIDATION_ERROR);
     }
 
-    const result = await subscriptionService.upgrade(businessId, targetPlanId);
+    const result = await subscriptionService.upgrade(
+      businessId,
+      targetPlanId,
+      billingCycle,
+    );
     return successResponse(res, result, "Tạo hóa đơn thanh toán thành công");
   } catch (error) {
     if (error.message?.includes("không tồn tại") || error.message?.includes("Không tìm thấy")) {

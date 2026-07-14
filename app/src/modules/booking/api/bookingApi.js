@@ -1,15 +1,8 @@
 import client from "../../../api/client";
 import { ENDPOINTS } from "../../../api/endpoints";
+import { createRandomId } from "../../../utils/createRandomId";
 
-const createIdempotencyKey = () => {
-  if (typeof globalThis.crypto?.randomUUID === "function") {
-    return globalThis.crypto.randomUUID();
-  }
-
-  return `booking-${Date.now().toString(36)}-${Math.random()
-    .toString(36)
-    .slice(2, 12)}`;
-};
+const createIdempotencyKey = () => createRandomId("booking");
 
 export const getPlaceServicesApi = (placeId) =>
   client.get(ENDPOINTS.places.services, { params: { placeId } });

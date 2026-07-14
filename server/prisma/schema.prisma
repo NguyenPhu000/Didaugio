@@ -539,6 +539,7 @@ model Place {
   tripStops        TripStop[]
   checkins         UserCheckin[]
   aiGuides         PlaceAiGuide[]
+  telemetries      PlaceTelemetry[]
 
   @@index([categoryId])
   @@index([districtId])
@@ -551,6 +552,22 @@ model Place {
   @@index([deletedAt])
   @@index([isFeatured, status, ratingAvg(sort: Desc)])
   @@map("places")
+}
+
+model PlaceTelemetry {
+  id         Int      @id @default(autoincrement())
+  placeId    Int      @map("place_id")
+  userId     Int?     @map("user_id")
+  action     String
+  ipAddress  String?  @map("ip_address")
+  deviceType String?  @map("device_type")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  place Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@index([placeId, action])
+  @@index([createdAt])
+  @@map("place_telemetry")
 }
 
 model PlaceAiGuide {
@@ -682,6 +699,7 @@ model ReviewMedia {
   id        Int      @id @default(autoincrement())
   reviewId  Int      @map("review_id")
   mediaData String   @map("media_data")
+  publicId  String?  @map("public_id")
   mediaType String   @default("image") @map("media_type")
   caption   String?
   order     Int      @default(0)
@@ -1458,6 +1476,7 @@ model SubscriptionPlan {
   priceMonthly    Int      @map("price_monthly")   // VND
   priceYearly     Int?     @map("price_yearly")    // VND, null = không hỗ trợ yearly
   maxPlaces       Int      @default(5)             @map("max_places")
+  maxServices     Int      @default(5)             @map("max_services")
   maxBookings     Int      @default(100)           @map("max_bookings_per_month")
   maxStaff        Int      @default(2)             @map("max_staff")
   features        Json     @default("[]")          // ["analytics", "priority_support", ...]

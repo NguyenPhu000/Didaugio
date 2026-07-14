@@ -55,7 +55,8 @@ export default function ChatV1() {
     setMessages((prev) => GiftedChat.append(prev, [userMsg]));
 
     const botId = `bot-${Date.now()}`;
-    const reply = BOT_REPLIES[Math.floor(Math.random() * BOT_REPLIES.length)];
+    const replyIndex = Number.parseInt(botId.slice(-6), 10) % BOT_REPLIES.length;
+    const reply = BOT_REPLIES[replyIndex];
     streamingIds.add(botId);
 
     botTimeoutRef.current = setTimeout(() => {

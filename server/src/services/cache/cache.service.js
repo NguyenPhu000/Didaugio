@@ -28,7 +28,7 @@ const cache = new NodeCache({
  */
 export function buildKey(prefix, params = {}) {
   const sorted = Object.keys(params)
-    .sort()
+    .sort((left, right) => left.localeCompare(right))
     .filter(
       (k) => params[k] !== undefined && params[k] !== null && params[k] !== "",
     )

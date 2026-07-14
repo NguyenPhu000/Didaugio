@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -19,7 +19,10 @@ import {
   Circle,
   CreditCard,
   Building2,
+  Flame,
 } from "lucide-react";
+import PlaceHeatmap from "@/components/analytics/PlaceHeatmap";
+import { useBusinessPlaceHeatmap } from "@/hooks/queries/useTelemetryQueries";
 import { useBusinessProfile, useBusinessDashboard } from "@/hooks/queries/useBusinessQueries";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { BOOKING_STATUS } from "@/constants/constants";
@@ -38,6 +41,13 @@ import {
 import { formatVND, formatDateTime } from "@/components/business/dashboardWidgetHelpers";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { getDocumentStatus } from "@/apis/documentApi";
 import { downloadContract } from "@/apis/businessApi";
@@ -49,6 +59,13 @@ const BusinessDashboardPage = memo(() => {
   const { user } = useAuthStore();
   const { data: businessRes } = useBusinessProfile();
   const { data: statsRes, isLoading } = useBusinessDashboard();
+  const [heatmapAction, setHeatmapAction] = useState("all");
+  const heatmapFilters = useMemo(() => ({
+    action: heatmapAction,
+    fromDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    toDate: new Date().toISOString(),
+  }), [heatmapAction]);
+  const placeHeatmap = useBusinessPlaceHeatmap(heatmapFilters);
 
   const business = businessRes?.data || businessRes;
   const stats = statsRes?.data || statsRes;
@@ -480,6 +497,21 @@ const BusinessDashboardPage = memo(() => {
           </div>
         </BusinessSectionCard>
       )}
+
+      <BusinessSectionCard title="Bản đồ nhiệt tương tác địa điểm" titleIcon={Flame}>
+        <div className="mb-4 flex justify-end">
+          <Select value={heatmapAction} onValueChange={setHeatmapAction}>
+            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả tương tác</SelectItem>
+              <SelectItem value="VIEW">Lượt xem</SelectItem>
+              <SelectItem value="DIRECTION">Chỉ đường</SelectItem>
+              <SelectItem value="BOOKING_CLICK">Nhấn đặt chỗ</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <PlaceHeatmap {...placeHeatmap} />
+      </BusinessSectionCard>
     </div>
   );
 });

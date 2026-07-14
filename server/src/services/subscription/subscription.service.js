@@ -46,6 +46,16 @@ function buildPeriodDates(billingCycle = "monthly", referenceDate = null) {
   return { periodStart, periodEnd, dueDate };
 }
 
+function getPeriodEndFrom(startDate, billingCycle) {
+  const periodEnd = new Date(startDate);
+  if (billingCycle === "yearly") {
+    periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+  } else {
+    periodEnd.setMonth(periodEnd.getMonth() + 1);
+  }
+  return periodEnd;
+}
+
 async function getNextInvoiceSequence(businessId, yyyymm) {
   const pattern = `${TX_REF_PREFIX}-${businessId}-${yyyymm}-%`;
   const last = await prisma.subscriptionInvoice.findFirst({
@@ -429,14 +439,14 @@ export async function getPlans() {
   });
 }
 
-export async function calculateProration(businessId, targetPlanId) {
+export async function calculateProration(businessId, targetPlanId, requestedBillingCycle = "monthly") {
   const subscription = await prisma.subscription.findUnique({
     where: { businessId },
     include: { plan: true },
   });
 
   if (!subscription) {
-    throw new ServiceError("Doanh nghiệp chưa có subscription", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError("Doanh nghiệp chưa có gói dịch vụ", 404, ERROR_CODES.NOT_FOUND);
   }
 
   const targetPlan = await prisma.subscriptionPlan.findUnique({
@@ -446,17 +456,41 @@ export async function calculateProration(businessId, targetPlanId) {
   if (!targetPlan || !targetPlan.isActive) {
     throw new ServiceError("Plan đích không tồn tại hoặc đã ngừng hoạt động", 404, ERROR_CODES.NOT_FOUND);
   }
-
-  if (subscription.planId === targetPlanId) {
-    throw new ServiceError("Bạn đang sử dụng plan này rồi", 400, ERROR_CODES.VALIDATION_ERROR);
+  if (requestedBillingCycle === "yearly" && targetPlan.priceYearly == null) {
+    throw new ServiceError("Plan này không hỗ trợ thanh toán theo năm", 400, ERROR_CODES.VALIDATION_ERROR);
   }
 
-  const direction = getPlanChangeDirection(subscription.plan, targetPlan);
-  if (direction === "same") {
-    throw new ServiceError("Chỉ được nâng cấp lên plan cao hơn", 400, ERROR_CODES.VALIDATION_ERROR);
+  const isCanceled = subscription.status === "canceled";
+
+  if (!isCanceled) {
+    const isBillingCycleChange = subscription.billingCycle !== requestedBillingCycle;
+    if (subscription.planId === targetPlanId && !isBillingCycleChange) {
+      throw new ServiceError("Bạn đang sử dụng plan này rồi", 400, ERROR_CODES.VALIDATION_ERROR);
+    }
+
+    const direction = getPlanChangeDirection(subscription.plan, targetPlan);
+    if (direction === "same" && !isBillingCycleChange) {
+      throw new ServiceError("Chỉ được nâng cấp lên plan cao hơn", 400, ERROR_CODES.VALIDATION_ERROR);
+    }
   }
 
   const now = new Date();
+
+  if (isCanceled) {
+    const targetPrice = getSubscriptionPrice(targetPlan, requestedBillingCycle);
+    return {
+      currentPlan: { id: subscription.plan.id, name: subscription.plan.name, price: 0 },
+      targetPlan: { id: targetPlan.id, name: targetPlan.name, price: targetPrice },
+      direction: "upgrade",
+      effectiveAt: now,
+      remainingDays: 0,
+      totalDays: 30,
+      unusedCredit: 0,
+      prorationAmount: targetPrice,
+      chargeAmount: targetPrice,
+    };
+  }
+
   const periodEnd = new Date(subscription.currentPeriodEnd);
   const totalDays = Math.max(
     1,
@@ -465,11 +499,17 @@ export async function calculateProration(businessId, targetPlanId) {
   const remainingDays = Math.max(0, Math.ceil((periodEnd - now) / (1000 * 60 * 60 * 24)));
 
   const currentPrice = getSubscriptionPrice(subscription.plan, subscription.billingCycle);
-  const targetPrice = getSubscriptionPrice(targetPlan, subscription.billingCycle);
+  const targetPrice = getSubscriptionPrice(targetPlan, requestedBillingCycle);
 
   const unusedCredit = Math.round((currentPrice / totalDays) * remainingDays);
-  const prorationAmount = Math.round((targetPrice / totalDays) * remainingDays);
+  const isBillingCycleChange = subscription.billingCycle !== requestedBillingCycle;
+  const prorationAmount = isBillingCycleChange
+    ? targetPrice
+    : Math.round((targetPrice / totalDays) * remainingDays);
   const chargeAmount = Math.max(0, prorationAmount - unusedCredit);
+
+  const planDirection = getPlanChangeDirection(subscription.plan, targetPlan);
+  const direction = planDirection === "same" ? "upgrade" : planDirection;
 
   return {
     currentPlan: { id: subscription.plan.id, name: subscription.plan.name, price: currentPrice },
@@ -484,19 +524,19 @@ export async function calculateProration(businessId, targetPlanId) {
   };
 }
 
-export async function upgrade(businessId, targetPlanId) {
+export async function upgrade(businessId, targetPlanId, requestedBillingCycle = "monthly") {
   const subscription = await prisma.subscription.findUnique({
     where: { businessId },
     include: { plan: true },
   });
 
   if (!subscription) {
-    throw new ServiceError("Doanh nghiệp chưa có subscription", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError("Doanh nghiệp chưa có gói dịch vụ", 404, ERROR_CODES.NOT_FOUND);
   }
 
-  if (["past_due", "canceled"].includes(subscription.status)) {
+  if (subscription.status === "past_due") {
     throw new ServiceError(
-      "Subscription đang bị khóa. Vui lòng thanh toán trước khi nâng cấp",
+      "Gói dịch vụ đang bị khóa do quá hạn thanh toán. Vui lòng thanh toán trước khi tiếp tục.",
       400,
       "SUBSCRIPTION_LOCKED",
     );
@@ -509,22 +549,35 @@ export async function upgrade(businessId, targetPlanId) {
   if (!targetPlan || !targetPlan.isActive) {
     throw new ServiceError("Plan đích không tồn tại hoặc đã ngừng hoạt động", 404, ERROR_CODES.NOT_FOUND);
   }
-
-  if (subscription.planId === targetPlanId) {
-    throw new ServiceError("Bạn đang sử dụng plan này rồi", 400, ERROR_CODES.VALIDATION_ERROR);
+  if (requestedBillingCycle === "yearly" && targetPlan.priceYearly == null) {
+    throw new ServiceError("Plan này không hỗ trợ thanh toán theo năm", 400, ERROR_CODES.VALIDATION_ERROR);
   }
 
-  if (getPlanChangeDirection(subscription.plan, targetPlan) !== "upgrade") {
-    throw new ServiceError("Chỉ được nâng cấp lên plan cao hơn", 400, ERROR_CODES.VALIDATION_ERROR);
+  const isCanceled = subscription.status === "canceled";
+
+  if (!isCanceled) {
+    const isBillingCycleChange = subscription.billingCycle !== requestedBillingCycle;
+    if (subscription.planId === targetPlanId && !isBillingCycleChange) {
+      throw new ServiceError("Bạn đang sử dụng plan này rồi", 400, ERROR_CODES.VALIDATION_ERROR);
+    }
+
+    if (getPlanChangeDirection(subscription.plan, targetPlan) !== "upgrade" && !isBillingCycleChange) {
+      throw new ServiceError("Chỉ được nâng cấp lên plan cao hơn", 400, ERROR_CODES.VALIDATION_ERROR);
+    }
   }
 
   // Kiểm tra invoice upgrade pending trùng lặp (chống race condition khi user click nhiều lần)
-  const existingUpgradeInvoice = await prisma.subscriptionInvoice.findFirst({
+  const pendingUpgradeInvoices = await prisma.subscriptionInvoice.findMany({
     where: {
       subscriptionId: subscription.id,
       status: "pending",
       metadata: { path: ["type"], equals: "upgrade" },
     },
+  });
+  const existingUpgradeInvoice = pendingUpgradeInvoices.find((invoice) => {
+    const metadata = invoice.metadata || {};
+    return Number(metadata.targetPlanId) === Number(targetPlanId)
+      && metadata.billingCycle === requestedBillingCycle;
   });
   if (existingUpgradeInvoice) {
     return {
@@ -536,23 +589,62 @@ export async function upgrade(businessId, targetPlanId) {
       },
     };
   }
+  if (pendingUpgradeInvoices.length > 0) {
+    await prisma.subscriptionInvoice.updateMany({
+      where: { id: { in: pendingUpgradeInvoices.map((invoice) => invoice.id) } },
+      data: {
+        status: "canceled",
+        notes: "Thay bằng yêu cầu đổi gói mới",
+      },
+    });
+  }
 
   const now = new Date();
-  const periodEnd = new Date(subscription.currentPeriodEnd);
-  const totalDays = Math.max(
-    1,
-    Math.ceil((periodEnd - new Date(subscription.currentPeriodStart)) / (1000 * 60 * 60 * 24)),
-  );
-  const remainingDays = Math.max(0, Math.ceil((periodEnd - now) / (1000 * 60 * 60 * 24)));
+  const targetPrice = getSubscriptionPrice(targetPlan, requestedBillingCycle);
+  let chargeAmount = targetPrice;
 
-  const currentPrice = getSubscriptionPrice(subscription.plan, subscription.billingCycle);
-  const targetPrice = getSubscriptionPrice(targetPlan, subscription.billingCycle);
+  if (!isCanceled) {
+    const periodEnd = new Date(subscription.currentPeriodEnd);
+    const totalDays = Math.max(
+      1,
+      Math.ceil((periodEnd - new Date(subscription.currentPeriodStart)) / (1000 * 60 * 60 * 24)),
+    );
+    const remainingDays = Math.max(0, Math.ceil((periodEnd - now) / (1000 * 60 * 60 * 24)));
 
-  const unusedCredit = Math.round((currentPrice / totalDays) * remainingDays);
-  const prorationAmount = Math.round((targetPrice / totalDays) * remainingDays);
-  const chargeAmount = Math.max(0, prorationAmount - unusedCredit);
+    const currentPrice = getSubscriptionPrice(subscription.plan, subscription.billingCycle);
+    const unusedCredit = Math.round((currentPrice / totalDays) * remainingDays);
+    const isBillingCycleChange = subscription.billingCycle !== requestedBillingCycle;
+    const prorationAmount = isBillingCycleChange
+      ? targetPrice
+      : Math.round((targetPrice / totalDays) * remainingDays);
+    chargeAmount = Math.max(0, prorationAmount - unusedCredit);
+  }
 
-  const { periodStart, periodEnd: pe, dueDate } = buildPeriodDates(subscription.billingCycle);
+  if (chargeAmount === 0) {
+    const currentPeriodStart = now;
+    const periodEnd = getPeriodEndFrom(now, requestedBillingCycle);
+    const updatedSubscription = await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: {
+        status: "active",
+        planId: targetPlanId,
+        billingCycle: requestedBillingCycle,
+        currentPeriodStart,
+        currentPeriodEnd: periodEnd,
+        gracePeriodEnd: null,
+        metadata: {
+          ...clearScheduledDowngrade(subscription.metadata || {}),
+          reminderSent: false,
+          previousPlanId: subscription.planId,
+        },
+      },
+      include: { plan: true },
+    });
+    invalidateFeatureLockCache();
+    return { subscription: updatedSubscription, invoice: null, applied: true };
+  }
+
+  const { periodStart, periodEnd: pe, dueDate } = buildPeriodDates(requestedBillingCycle);
   const yyyymm = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
   const sequence = await getNextInvoiceSequence(businessId, yyyymm);
   const transactionRef = `${TX_REF_PREFIX}-${businessId}-${yyyymm}-${String(sequence).padStart(3, "0")}`;
@@ -577,11 +669,14 @@ export async function upgrade(businessId, targetPlanId) {
       dueDate,
       periodStart: now,
       periodEnd: pe,
-      notes: `Nâng cấp từ ${subscription.plan.name} → ${targetPlan.name}`,
+      notes: isCanceled
+        ? `Đăng ký lại gói ${targetPlan.name}`
+        : `Nâng cấp từ ${subscription.plan.name} → ${targetPlan.name}`,
       metadata: {
         type: "upgrade",
         previousPlanId: subscription.planId,
         targetPlanId,
+        billingCycle: requestedBillingCycle,
       },
     },
   });
@@ -596,12 +691,12 @@ export async function scheduleDowngrade(businessId, targetPlanId) {
   });
 
   if (!subscription) {
-    throw new ServiceError("Doanh nghiá»‡p chÆ°a cÃ³ subscription", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError("Doanh nghiệp chưa có gói dịch vụ", 404, ERROR_CODES.NOT_FOUND);
   }
 
   if (["past_due", "canceled", "paused"].includes(subscription.status)) {
     throw new ServiceError(
-      "Subscription Ä‘ang bá»‹ khÃ³a. Vui lÃ²ng kÃ­ch hoáº¡t láº¡i trÆ°á»›c khi Ä‘á»•i gÃ³i",
+      "Gói dịch vụ đang bị khóa. Vui lòng thanh toán hoặc kích hoạt lại trước khi đổi gói",
       400,
       "SUBSCRIPTION_LOCKED",
     );
@@ -612,11 +707,11 @@ export async function scheduleDowngrade(businessId, targetPlanId) {
   });
 
   if (!targetPlan || !targetPlan.isActive) {
-    throw new ServiceError("Plan Ä‘Ã­ch khÃ´ng tá»“n táº¡i hoáº·c Ä‘Ã£ ngá»«ng hoáº¡t Ä‘á»™ng", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError("Plan đích không tồn tại hoặc đã ngừng hoạt động", 404, ERROR_CODES.NOT_FOUND);
   }
 
   if (getPlanChangeDirection(subscription.plan, targetPlan) !== "downgrade") {
-    throw new ServiceError("Háº¡ gÃ³i chá»‰ Ã¡p dá»¥ng cho plan tháº¥p hÆ¡n gÃ³i hiá»‡n táº¡i", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError("Hạ gói chỉ áp dụng cho plan thấp hơn gói hiện tại", 400, ERROR_CODES.VALIDATION_ERROR);
   }
 
   const metadata = buildScheduledDowngradeMetadata(subscription.metadata || {}, {
@@ -643,7 +738,7 @@ export async function cancelScheduledDowngrade(businessId) {
   });
 
   if (!subscription) {
-    throw new ServiceError("Doanh nghiá»‡p chÆ°a cÃ³ subscription", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError("Doanh nghiệp chưa có gói dịch vụ", 404, ERROR_CODES.NOT_FOUND);
   }
 
   const updated = await prisma.subscription.update({
@@ -796,7 +891,7 @@ export async function processSubscriptionWebhook(body, headers = {}, rawBody = n
     }
 
     if (freshInvoice.status !== "pending") {
-      throw new ServiceError("HÃ³a Ä‘Æ¡n khÃ´ng á»Ÿ tráº¡ng thÃ¡i chá» thanh toÃ¡n", 400, "INVOICE_NOT_PAYABLE");
+      throw new ServiceError("Hóa đơn không ở trạng thái chờ thanh toán", 400, "INVOICE_NOT_PAYABLE");
     }
 
     await tx.subscriptionInvoice.update({
@@ -809,15 +904,12 @@ export async function processSubscriptionWebhook(body, headers = {}, rawBody = n
 
     if (isUpgrade) {
       // Upgrade: tính period mới từ bây giờ (không kéo dài period cũ)
-      const newPeriodEnd = new Date(now);
-      if (sub.billingCycle === "yearly") {
-        newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 1);
-      } else {
-        newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
-      }
+      const targetBillingCycle = invoiceMeta.billingCycle || sub.billingCycle;
+      const newPeriodEnd = getPeriodEndFrom(now, targetBillingCycle);
       updateData = {
         status: "active",
         planId: invoiceMeta.targetPlanId,
+        billingCycle: targetBillingCycle,
         currentPeriodStart: now,
         currentPeriodEnd: newPeriodEnd,
         gracePeriodEnd: null,
@@ -829,12 +921,7 @@ export async function processSubscriptionWebhook(body, headers = {}, rawBody = n
       };
     } else {
       // Renewal: kéo dài từ periodEnd hiện tại
-      const newPeriodEnd = new Date(sub.currentPeriodEnd);
-      if (sub.billingCycle === "yearly") {
-        newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 1);
-      } else {
-        newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
-      }
+      const newPeriodEnd = getPeriodEndFrom(sub.currentPeriodEnd, sub.billingCycle);
       updateData = {
         status: "active",
         currentPeriodStart: sub.currentPeriodEnd,
@@ -1120,16 +1207,16 @@ export async function payInvoiceFromWallet(businessId, invoiceId) {
       SELECT id, status, amount FROM subscription_invoices WHERE id = ${invoiceId} FOR UPDATE
     `;
     if (!lockedInvoice) {
-      throw new ServiceError("HÃ³a Ä‘Æ¡n khÃ´ng tá»“n táº¡i", 404, "INVOICE_NOT_FOUND");
+      throw new ServiceError("Hóa đơn không tồn tại", 404, "INVOICE_NOT_FOUND");
     }
     if (lockedInvoice.status === "paid") {
-      throw new ServiceError("HÃ³a Ä‘Æ¡n Ä‘Ã£ Ä‘Æ°á»£c thanh toÃ¡n", 400, "ALREADY_PAID");
+      throw new ServiceError("Hóa đơn đã được thanh toán", 400, "ALREADY_PAID");
     }
     if (lockedInvoice.status === "canceled") {
-      throw new ServiceError("HÃ³a Ä‘Æ¡n Ä‘Ã£ bá»‹ há»§y", 400, "INVOICE_CANCELED");
+      throw new ServiceError("Hóa đơn đã bị hủy", 400, "INVOICE_CANCELED");
     }
     if (lockedInvoice.status !== "pending") {
-      throw new ServiceError("HÃ³a Ä‘Æ¡n khÃ´ng á»Ÿ tráº¡ng thÃ¡i chá» thanh toÃ¡n", 400, "INVOICE_NOT_PAYABLE");
+      throw new ServiceError("Hóa đơn không ở trạng thái chá» thanh toÃ¡n", 400, "INVOICE_NOT_PAYABLE");
     }
 
     // Lock the wallet row
@@ -1171,12 +1258,10 @@ export async function payInvoiceFromWallet(businessId, invoiceId) {
     const sub = invoice.subscription;
     const invoiceMeta = invoice.metadata || {};
     const isUpgrade = invoiceMeta.type === "upgrade" && invoiceMeta.targetPlanId;
-    const newPeriodEnd = new Date(isUpgrade ? now : sub.currentPeriodEnd);
-    if (sub.billingCycle === "yearly") {
-      newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 1);
-    } else {
-      newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
-    }
+    const targetBillingCycle = isUpgrade
+      ? invoiceMeta.billingCycle || sub.billingCycle
+      : sub.billingCycle;
+    const newPeriodEnd = getPeriodEndFrom(isUpgrade ? now : sub.currentPeriodEnd, targetBillingCycle);
 
     await tx.subscriptionInvoice.update({
       where: { id: invoiceId },
@@ -1191,6 +1276,7 @@ export async function payInvoiceFromWallet(businessId, invoiceId) {
       data: {
         status: "active",
         ...(isUpgrade ? { planId: invoiceMeta.targetPlanId } : {}),
+        ...(isUpgrade ? { billingCycle: targetBillingCycle } : {}),
         currentPeriodStart: now,
         currentPeriodEnd: newPeriodEnd,
         gracePeriodEnd: null,

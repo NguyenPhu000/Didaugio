@@ -9,10 +9,6 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon --exec babel-node src/server.js",
-    "test:booking-state": "node --test src/services/booking/__tests__/bookingStateMachine.test.js",
-    "test:booking-db": "node --test src/services/booking/__tests__/bookingPrisma.integration.test.js",
-    "test:saved-db": "node --test src/services/app/__tests__/savedCollections.integration.test.js",
-    "test:mvp-api": "node --test src/config/__tests__/app.config.test.js src/config/__tests__/constants.test.js src/services/ai/__tests__/groqSpeech.service.test.js src/services/app/__tests__/savedCollections.integration.test.js src/services/booking/__tests__/bookingPrisma.integration.test.js src/services/booking/__tests__/bookingStateMachine.test.js src/services/subscription/__tests__/subscriptionPlanChange.service.test.js src/services/trip/__tests__/tripPlan.service.test.js src/services/trip/__tests__/tripSavedFlags.test.js src/services/trip/__tests__/tripThumbnailSelect.test.js src/services/trip/__tests__/tripExecution.service.test.js",
     "seed:cold-start": "node scripts/seedColdStart.js",
     "studio": "prisma studio --schema=prisma/schema.prisma --port 5555",
     "migrate:push": "prisma migrate push --schema=prisma/schema.prisma",

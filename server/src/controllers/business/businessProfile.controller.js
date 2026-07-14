@@ -17,6 +17,24 @@ const MAX_UPLOAD_FILE_SIZE_MB = Math.floor(
   MAX_UPLOAD_FILE_SIZE_BYTES / (1024 * 1024),
 );
 
+export const buildTrustedSignerMetadata = (
+  req,
+  clientMetadata = {},
+  signedAt,
+) => {
+  const {
+    ip: _clientIp,
+    userAgent: _clientUserAgent,
+    ...safeClientMetadata
+  } = clientMetadata || {};
+  return {
+    ...safeClientMetadata,
+    signedAt,
+    ip: req.ip || "127.0.0.1",
+    userAgent: req.headers?.["user-agent"] || "",
+  };
+};
+
 const toStoredFileValue = (file) => {
   if (!file) return null;
   if (file.path) return file.path;
@@ -210,12 +228,11 @@ export const signContract = async (req, res, next) => {
     }
 
     // 3. Gọi contractStorage.signContract để embed chữ ký vào PDF
-    const signerMetadata = {
-      ip: req.ip || req.headers["x-forwarded-for"] || "127.0.0.1",
-      userAgent: req.headers["user-agent"],
-      signedAt: req.body.signedAt,
-      ...(req.body.signerMetadata || {}),
-    };
+    const signerMetadata = buildTrustedSignerMetadata(
+      req,
+      req.body.signerMetadata,
+      req.body.signedAt,
+    );
 
     const result = await contractStorageService.signContract(
       businessId,

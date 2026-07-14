@@ -11,7 +11,8 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import Constants from "expo-constants";
+import Constants, { ExecutionEnvironment } from "expo-constants";
+import { createRandomId } from "../utils/createRandomId";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import apiClient from "../api/client";
@@ -20,8 +21,7 @@ import { QUERY_KEYS } from "../constants/query-keys";
 import { useAuthStore } from "../stores/authStore";
 
 const isExpoGo =
-  Constants?.executionEnvironment === "storeClient" ||
-  Constants?.appOwnership === "expo";
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 let Notifications = null;
 if (!isExpoGo) {
@@ -118,7 +118,7 @@ function normalizeIncomingNotification(raw) {
     raw?.request?.identifier ||
     data?.notificationId ||
     data?.id ||
-    `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    createRandomId("notification");
 
   return {
     id: String(id),

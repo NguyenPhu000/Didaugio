@@ -15,3 +15,6 @@ export const getMyPlaceReviewApi = (id) =>
 
 export const createReviewApi = (id, payload) =>
   client.post(ENDPOINTS.places.reviews(id), payload);
+
+export const trackPlaceTelemetryApi = (id, action, deviceType) =>
+  client.post(ENDPOINTS.telemetry.place(id), { action, deviceType });

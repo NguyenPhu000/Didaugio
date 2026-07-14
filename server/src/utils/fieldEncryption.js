@@ -3,7 +3,7 @@
  * Uses AES-256-GCM for authenticated encryption
  */
 
-import crypto from "crypto";
+import crypto from "node:crypto";
 
 const ENCRYPTION_KEY = process.env.FIELD_ENCRYPTION_KEY;
 const ALGORITHM = "aes-256-gcm";
@@ -35,7 +35,7 @@ export function validateEncryptionKey() {
  * @returns {string|null} - Encrypted value in format "iv:authTag:ciphertext" or null if input is null/empty
  */
 export function encryptField(plaintext) {
-  if (plaintext === null || plaintext === undefined || plaintext === "") {
+  if (plaintext == null || plaintext === "") {
     return null;
   }
 
@@ -62,7 +62,7 @@ export function encryptField(plaintext) {
  * @returns {string|null} - Decrypted plaintext or null if input is null
  */
 export function decryptField(encryptedData) {
-  if (encryptedData === null || encryptedData === undefined || encryptedData === "") {
+  if (encryptedData == null || encryptedData === "") {
     return null;
   }
 

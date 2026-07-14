@@ -7,11 +7,6 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:install": "playwright install chromium",
     "preview": "vite preview",
     "shadcn:add": "npx shadcn@latest add",
     "shadcn:init": "npx shadcn@latest init"

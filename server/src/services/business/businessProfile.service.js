@@ -1,6 +1,7 @@
 /**
  * Business Profile Service - SRP: Quản lý hồ sơ doanh nghiệp (đăng ký, cập nhật, xem)
  */
+import crypto from "node:crypto";
 import prisma from "../../config/prismaClient.js";
 import bcrypt from "bcrypt";
 import { encryptField, decryptField, isEncrypted } from "../../utils/fieldEncryption.js";
@@ -685,7 +686,7 @@ export const sendContractOtp = async (userId) => {
   }
 
   // Sinh OTP 6 chữ số
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const code = crypto.randomInt(100000, 1000000).toString();
   const ownerName = business.owner?.profile?.fullName || business.businessName;
   const toEmail = business.owner?.email;
 

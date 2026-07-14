@@ -187,10 +187,10 @@ export const signBusinessContractSchema = z
       .object({
         userAgent: z.string().max(1000).optional(),
         timezone: z.string().max(120).optional(),
-        ip: z.string().max(45).optional(),
         otpVerified: z.boolean().optional(),
         phoneVerified: z.string().max(20).optional(),
       })
+      .strict()
       .optional(),
   })
   .strict();

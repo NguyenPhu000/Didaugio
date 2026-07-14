@@ -844,6 +844,7 @@ const ServiceListPage = () => {
   }, [t, loadServices]);
 
   const handleUpdate = useCallback(async (data) => {
+    if (!editService?.id) return;
     await businessOfferingApi.update(editService.id, data);
     toast.success(t("business.services.updateSuccess"));
     setEditService(null);

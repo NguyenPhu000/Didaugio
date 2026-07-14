@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 /**
  * Tính khoảng cách thực tế (Haversine) giữa 2 tọa độ GPS.
  * Trả về khoảng cách tính bằng mét.
@@ -32,7 +33,7 @@ export function kMeansClustering(places, k) {
   const selectedIndices = new Set();
   
   // Chọn centroid đầu tiên ngẫu nhiên
-  const firstIndex = Math.floor(Math.random() * places.length);
+  const firstIndex = crypto.randomInt(0, places.length);
   centroids.push({
     lat: Number(places[firstIndex].latitude),
     lng: Number(places[firstIndex].longitude),

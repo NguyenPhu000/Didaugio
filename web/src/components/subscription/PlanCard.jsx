@@ -21,6 +21,7 @@ const PLAN_ACCENT = {
 export default function PlanCard({
   plan,
   isCurrent,
+  canChangeBillingCycle = false,
   isPopular,
   billingCycle = "monthly",
   onSelect,
@@ -28,6 +29,7 @@ export default function PlanCard({
   const { t } = useTranslation();
   const Icon = PLAN_ICONS[plan.slug] || Zap;
   const price = billingCycle === "yearly" ? plan.priceYearly : plan.priceMonthly;
+  const isAvailableForCycle = billingCycle !== "yearly" || Number.isFinite(plan.priceYearly);
   const accent = PLAN_ACCENT[plan.slug] || PLAN_ACCENT.basic;
 
   return (
@@ -89,7 +91,7 @@ export default function PlanCard({
       </CardContent>
 
       <CardFooter className="pt-2">
-        {isCurrent ? (
+        {isCurrent && !canChangeBillingCycle ? (
           <Button variant="outline" className="w-full" disabled>
             {t("subscription.plans.current")}
           </Button>
@@ -98,8 +100,9 @@ export default function PlanCard({
             className="w-full"
             variant={isPopular ? "default" : "outline"}
             onClick={() => onSelect?.(plan)}
+            disabled={!isAvailableForCycle}
           >
-            {t("subscription.plans.select")}
+            {isAvailableForCycle ? t("subscription.plans.select") : t("subscription.plans.unavailable")}
           </Button>
         )}
       </CardFooter>

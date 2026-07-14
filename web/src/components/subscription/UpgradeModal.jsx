@@ -25,13 +25,14 @@ function unwrapResponse(res) {
   return res?.data?.data || res?.data || {};
 }
 
-export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPlan }) {
+export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPlan, billingCycle = "monthly" }) {
   const { t } = useTranslation();
   const [step, setStep] = useState("confirm");
   const [invoice, setInvoice] = useState(null);
 
   const { data: prorationRes, isLoading: prorationLoading } = useProration(
     open ? targetPlan?.id : null,
+    billingCycle,
   );
   const upgradeMutation = useUpgradeSubscription();
   const downgradeMutation = useDowngradeSubscription();
@@ -60,7 +61,7 @@ export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPl
     const interval = setInterval(() => {
       refetchSub().then((res) => {
         const sub = unwrapResponse(res);
-        if (sub?.planId === targetPlan.id) {
+        if (sub?.planId === targetPlan.id && sub?.billingCycle === billingCycle) {
           setStep("success");
           clearInterval(interval);
         }
@@ -68,7 +69,7 @@ export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPl
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [invoice, refetchSub, step, targetPlan?.id]);
+  }, [billingCycle, invoice, refetchSub, step, targetPlan?.id]);
 
   const handleConfirm = () => {
     if (!targetPlan?.id) return;
@@ -80,13 +81,14 @@ export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPl
       return;
     }
 
-    upgradeMutation.mutate(targetPlan.id, {
+    upgradeMutation.mutate({ targetPlanId: targetPlan.id, billingCycle }, {
       onSuccess: (res) => {
         const invoiceData = unwrapResponse(res)?.invoice;
         if (invoiceData?.qrUrl) {
           setInvoice(invoiceData);
           setStep("qr");
         } else {
+          refetchSub();
           setStep("success");
         }
       },
@@ -154,7 +156,11 @@ export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPl
                       {isDowngrade ? t("subscription.changePlan.payNow") : t("subscription.changePlan.totalPayment")}
                     </span>
                     <span className="text-lg font-bold">
-                      {formatVND(proration.chargeAmount ?? targetPlan?.priceMonthly ?? 0)}
+                      {formatVND(
+                        proration.chargeAmount
+                        ?? (billingCycle === "yearly" ? targetPlan?.priceYearly : targetPlan?.priceMonthly)
+                        ?? 0,
+                      )}
                     </span>
                   </div>
 

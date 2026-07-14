@@ -17,11 +17,11 @@ const getCurrentSubscription = () => api.get(`${SUBSCRIPTIONS_URL}/current`);
 
 const getPlans = () => api.get(`${SUBSCRIPTIONS_URL}/plans`);
 
-const getProration = (targetPlanId) =>
-  api.get(`${SUBSCRIPTIONS_URL}/proration`, { params: { targetPlanId } });
+const getProration = (targetPlanId, billingCycle = "monthly") =>
+  api.get(`${SUBSCRIPTIONS_URL}/proration`, { params: { targetPlanId, billingCycle } });
 
-const upgrade = (targetPlanId) =>
-  api.post(`${SUBSCRIPTIONS_URL}/upgrade`, { targetPlanId });
+const upgrade = (targetPlanId, billingCycle = "monthly") =>
+  api.post(`${SUBSCRIPTIONS_URL}/upgrade`, { targetPlanId, billingCycle });
 
 const downgrade = (targetPlanId) =>
   api.post(`${SUBSCRIPTIONS_URL}/downgrade`, { targetPlanId });
@@ -36,6 +36,9 @@ const getInvoices = (params = {}) =>
 
 const cancelSubscription = (reason) =>
   api.post(`${SUBSCRIPTIONS_URL}/cancel`, { reason });
+
+const payInvoiceFromWallet = (invoiceId) =>
+  api.post(`${SUBSCRIPTIONS_URL}/invoices/${invoiceId}/pay-from-wallet`);
 
 // ── Admin endpoints ─────────────────────────────────────────────────
 
@@ -66,6 +69,7 @@ const subscriptionService = {
   cancelScheduledDowngrade,
   getInvoices,
   cancelSubscription,
+  payInvoiceFromWallet,
   getAdminSubscriptions,
   getAdminStats,
   getAdminPlans,

@@ -38,7 +38,7 @@ const STRICT_TEXT_FIELDS = [
  * @returns {string|null} - Sanitized value
  */
 function strictSanitize(value) {
-  if (value === null || value === undefined) return null;
+  if (value == null) return null;
   if (typeof value !== "string") return value;
 
   let sanitized = value;
@@ -67,7 +67,7 @@ function strictSanitize(value) {
  * @returns {Object} - { valid: boolean, error?: string }
  */
 function validateNoHtml(value, fieldName) {
-  if (value === null || value === undefined) return { valid: true };
+  if (value == null) return { valid: true };
   if (typeof value !== "string") return { valid: true };
 
   // Check for HTML/script patterns
