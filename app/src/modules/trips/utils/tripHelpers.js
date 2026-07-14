@@ -208,7 +208,7 @@ export function getHeroTrip(trips) {
       return aDate - bDate;
     });
 
-  return candidates[0]?.trip || trips?.[0] || null;
+  return candidates[0]?.trip ?? null;
 }
 
 export function sortTripsForDashboard(trips) {

@@ -18,14 +18,22 @@ function setPlaceSavedFlag(qc, placeId, isSaved) {
   });
 }
 
+function selectSavedList(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.data)) return data.data;
+  return [];
+}
+
 export function useSavedPlaces(enabled = true) {
   return useQuery({
     queryKey: ["saved-places"],
     queryFn: () => getSavedPlacesApi(),
     enabled,
-    select: (data) => data?.data || [],
+    select: selectSavedList,
     retry: 2,
-    staleTime: 1000 * 60 * 2,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -34,7 +42,10 @@ export function useSavedCollections(enabled = true) {
     queryKey: ["saved-collections"],
     queryFn: getSavedCollectionsApi,
     enabled,
-    select: (data) => data?.data || [],
+    select: selectSavedList,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
   });
 }
 

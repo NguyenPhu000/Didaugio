@@ -1,7 +1,7 @@
 // Service Worker for Web Push Notifications — DiDauGio
 // Place in web/public/sw.js (served from root)
 
-/* eslint-disable no-restricted-globals */
+
 
 self.addEventListener("push", (event) => {
   let data = {};
@@ -14,8 +14,8 @@ self.addEventListener("push", (event) => {
   const title = data.title || "iPoint Genie";
   const options = {
     body: data.body || "",
-    icon: data.icon || "/logo192.png",
-    badge: "/logo192.png",
+    icon: data.icon || "/icon-192.png",
+    badge: "/icon-192.png",
     data: data.data || {},
     vibrate: [200, 100, 200],
     tag: "didaugio-notification",

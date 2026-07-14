@@ -19,7 +19,7 @@ export const notificationService = {
   },
 
   markAllAsRead: async () => {
-    const response = await api.put(`${BASE_URL}/read-all`);
+    const response = await api.put(`${BASE_URL}/mark-all-read`);
     return response;
   },
 

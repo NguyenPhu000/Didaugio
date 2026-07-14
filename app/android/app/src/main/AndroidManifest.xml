@@ -36,7 +36,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="didaugio"/>
-        <data android:scheme="exp+didaugio-app"/>
+        <data android:scheme="exp+ipointgenie-app"/>
       </intent-filter>
     </activity>
   </application>

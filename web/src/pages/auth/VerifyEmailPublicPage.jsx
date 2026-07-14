@@ -56,7 +56,7 @@ const VerifyEmailPublicPage = () => {
       setMessage(errorMsg);
       toast.error(`❌ ${errorMsg}`);
     }
-  }, [navigate, token, user, setUser]);
+  }, [navigate, token, user, setUser, t]);
 
   useEffect(() => {
     const id = setTimeout(() => {

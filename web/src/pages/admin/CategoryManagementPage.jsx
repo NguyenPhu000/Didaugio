@@ -36,7 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCategoryTree, useDeleteCategory } from "@/hooks/queries/useCategoryQueries";
 import CategoryFormDialog from "@/components/category/CategoryFormDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
-import { CATEGORY_ICON_MAP } from "@/constants/categoryConstants";
+import { MdiCategoryIcon } from "@/components/category/MdiCategoryIcon";
 import TimStatsCard from "@/components/admin/TimStatsCard";
 import { useTranslation } from "react-i18next";
 
@@ -423,16 +423,7 @@ export default function CategoryManagementPage() {
                       </td>
                       <td className="p-4 border-r border-gray-100 text-center">
                         <div className="flex justify-center">
-                          {CATEGORY_ICON_MAP[cat.icon] ? (
-                            (() => {
-                              const Icon = CATEGORY_ICON_MAP[cat.icon];
-                              return (
-                                <div className="h-8 w-8 flex items-center justify-center border border-gray-200 bg-gray-50">
-                                  <Icon className="h-4 w-4 text-black" />
-                                </div>
-                              );
-                            })()
-                          ) : (
+                          {String(cat.icon || "").startsWith("http") ? (
                             <Avatar className="h-8 w-8 rounded-none border border-gray-200">
                               <AvatarImage src={cat.icon} />
                               <AvatarFallback className="rounded-none bg-gray-100 font-mono">
@@ -441,6 +432,10 @@ export default function CategoryManagementPage() {
                                   .toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
+                          ) : (
+                            <div className="h-8 w-8 flex items-center justify-center border border-gray-200 bg-gray-50">
+                              <MdiCategoryIcon category={cat} className="h-4 w-4 text-black" />
+                            </div>
                           )}
                         </div>
                       </td>

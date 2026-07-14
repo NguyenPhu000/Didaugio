@@ -2,6 +2,7 @@ import prisma from "../../config/prismaClient.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
 import tripService, { TRIP_PLACE_SELECT } from "../trip/trip.service.js";
+import { deletePlaceImage, uploadPlaceImage } from "../media/media.service.js";
 
 const toInt = (value, fallback = null) => {
   const number = parseInt(value, 10);
@@ -20,7 +21,7 @@ const approvedPlaceWhere = {
   status: "approved",
 };
 
-const REVIEW_MEDIA_LIMIT = 5;
+const REVIEW_MEDIA_LIMIT = 3;
 const REVIEW_COOLDOWN_MINUTES = Number(
   process.env.REVIEW_COOLDOWN_MINUTES || 10,
 );
@@ -51,6 +52,25 @@ const normalizeReviewMedia = (media = []) =>
         }))
         .filter((item) => item.mediaData)
     : [];
+
+const isInlineReviewImage = (value) =>
+  /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(String(value || ""));
+
+const uploadReviewMedia = async (media) =>
+  Promise.all(
+    media.map(async (item) => {
+      if (!isInlineReviewImage(item.mediaData)) {
+        return { ...item, publicId: null };
+      }
+
+      const uploaded = await uploadPlaceImage(item.mediaData, "didaugio/reviews");
+      return {
+        ...item,
+        mediaData: uploaded.secureUrl,
+        publicId: uploaded.publicId,
+      };
+    }),
+  );
 
 const normalizeReviewMediaResponse = (review) => {
   if (!review) return review;
@@ -120,7 +140,7 @@ async function enforceReviewSpamPolicy(placeId, userId, payload = {}) {
 
   if (existingReview && existingReview.updatedAt > cooldownSince) {
     throw new ServiceError(
-      "Bạn vừa cập nhật đánh giá, vui lòng thử lại sau",
+      "Bạn vừa cập nhật đánh giá, vui lòng thử lại sau ít phút!",
       429,
       "REVIEW_COOLDOWN",
     );
@@ -485,6 +505,30 @@ export const getPlaceReviews = async (placeId, query = {}) => {
   };
 };
 
+export const getMyPlaceReview = async (placeId, userId) => {
+  const review = await prisma.review.findFirst({
+    where: {
+      placeId,
+      userId,
+      deletedAt: null,
+    },
+    include: {
+      media: {
+        orderBy: [{ order: "asc" }],
+        select: {
+          id: true,
+          mediaData: true,
+          mediaType: true,
+          caption: true,
+          order: true,
+        },
+      },
+    },
+  });
+
+  return normalizeReviewMediaResponse(review);
+};
+
 export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
   const rating = toInt(payload.rating);
   if (!rating || rating < 1 || rating > 5) {
@@ -513,12 +557,15 @@ export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
     userId,
     payload.bookingId,
   );
-  const media = normalizeReviewMedia(payload.media);
+  const normalizedMedia = normalizeReviewMedia(payload.media);
   const reviewStatus = spamPolicy.isSuspicious
     ? REVIEW_STATUS.PENDING
     : REVIEW_STATUS.VISIBLE;
 
-  const review = await prisma.$transaction(async (tx) => {
+  let media = [];
+  try {
+    media = await uploadReviewMedia(normalizedMedia);
+    const review = await prisma.$transaction(async (tx) => {
     const savedReview = await tx.review.upsert({
       where: {
         placeId_userId: {
@@ -595,9 +642,18 @@ export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
         },
       },
     });
-  });
+    });
 
-  return normalizeReviewMediaResponse(review);
+    return normalizeReviewMediaResponse(review);
+  } catch (error) {
+    await Promise.allSettled(
+      media
+        .map((item) => item.publicId)
+        .filter(Boolean)
+        .map((publicId) => deletePlaceImage(publicId)),
+    );
+    throw error;
+  }
 };
 
 export const getServices = async (query = {}) => {
@@ -941,6 +997,7 @@ export default {
   searchPlaces,
   getPlaceDetail,
   getPlaceReviews,
+  getMyPlaceReview,
   createOrUpdateReview,
   getServices,
   getMyProfileSummary,

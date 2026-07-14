@@ -125,7 +125,7 @@ const getServiceFromBooking = (booking) => {
 
 // ─── Capacity Indicator ─────────────────────────────────────────────────────────
 
-const CapacityIndicator = memo(function CapacityIndicator({ used, capacity, className }) {
+const CapacityIndicator = memo(({ used, capacity, className }) => {
   if (capacity === null || capacity === undefined) return null;
 
   const percentage = Math.min((used / capacity) * 100, 100);
@@ -155,7 +155,7 @@ const CapacityIndicator = memo(function CapacityIndicator({ used, capacity, clas
 
 // ─── Booking Card ───────────────────────────────────────────────────────────────
 
-const BookingCard = memo(function BookingCard({ booking, onClick, compact = false, t }) {
+const BookingCard = memo(({ booking, onClick, compact = false, t }) => {
   const colors = STATUS_COLORS[booking.status] || STATUS_COLORS[BOOKING_STATUS.PENDING];
 
   return (
@@ -206,7 +206,7 @@ const BookingCard = memo(function BookingCard({ booking, onClick, compact = fals
 
 // ─── Resource Timeline Card (for RESOURCE model) ─────────────────────────────────
 
-const ResourceTimelineCard = memo(function ResourceTimelineCard({ booking, onClick, t }) {
+const ResourceTimelineCard = memo(({ booking, onClick, t }) => {
   const colors = STATUS_COLORS[booking.status] || STATUS_COLORS[BOOKING_STATUS.PENDING];
   const service = getServiceFromBooking(booking);
 
@@ -241,7 +241,7 @@ const ResourceTimelineCard = memo(function ResourceTimelineCard({ booking, onCli
 
 // ─── Empty Cell ────────────────────────────────────────────────────────────────
 
-const EmptyCell = memo(function EmptyCell({ showCapacity }) {
+const EmptyCell = memo(({ showCapacity }) => {
   return (
     <div className="w-full h-full flex items-center justify-center opacity-30">
       <div className="w-4 h-4 rounded-full border-2 border-dashed border-gray-300" />

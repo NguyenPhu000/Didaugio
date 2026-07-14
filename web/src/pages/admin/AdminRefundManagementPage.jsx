@@ -56,7 +56,7 @@ import { cn } from "@/lib/utils";
 // ---------------------------------------------------------------------------
 
 const formatCurrency = (amount) =>
-  new Intl.NumberFormat("vi-VN").format(Number(amount) || 0) + "đ";
+  `${new Intl.NumberFormat("vi-VN").format(Number(amount) || 0)  }đ`;
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "-";

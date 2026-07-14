@@ -150,7 +150,7 @@ import { memo } from "react";
 
 // ─── Status Badge ───────────────────────────────────────────────────────────────
 
-const StatusBadge = memo(function StatusBadge({ status }) {
+const StatusBadge = memo(({ status }) => {
   const { t } = useTranslation();
   const statusConfig = getStatusConfig(t);
   const config = statusConfig[status] || statusConfig.pending;
@@ -228,7 +228,7 @@ function TimeSlotHeader({ slot, count, isExpanded, onToggle }) {
 
 // ─── Payment Method Badge ───────────────────────────────────────────────────────
 
-const PaymentMethodBadge = memo(function PaymentMethodBadge({ payment }) {
+const PaymentMethodBadge = memo(({ payment }) => {
   const { t } = useTranslation();
   if (!payment) {
     return (
@@ -258,7 +258,7 @@ const PaymentMethodBadge = memo(function PaymentMethodBadge({ payment }) {
 
 // ─── Booking Card ─────────────────────────────────────────────────────────────
 
-const BookingCard = memo(function BookingCard({
+const BookingCard = memo(({
   booking,
   selected,
   onSelect,
@@ -271,7 +271,7 @@ const BookingCard = memo(function BookingCard({
   onView,
   actionLoading,
   compact = false,
-}) {
+}) => {
   const { t } = useTranslation();
   const isPending = booking.status === BOOKING_STATUS.PENDING;
   const isConfirmed = booking.status === BOOKING_STATUS.CONFIRMED;

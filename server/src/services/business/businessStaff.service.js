@@ -4,6 +4,18 @@ import ServiceError from "../../utils/serviceError.js";
 import { generateUniqueUsername } from "../../utils/username.js";
 import { assertBusinessLimit } from "../subscription/subscriptionEntitlement.service.js";
 
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+
+const assertStrongPassword = (password) => {
+  if (!password || !PASSWORD_REGEX.test(password)) {
+    throw new ServiceError(
+      "Mat khau phai co it nhat 8 ky tu, gom chu hoa, chu thuong, so va ky tu dac biet",
+      400,
+      "WEAK_PASSWORD",
+    );
+  }
+};
+
 const STAFF_SELECT = {
   id: true,
   email: true,
@@ -85,6 +97,8 @@ export const createStaff = async (businessId, data) => {
     throw new ServiceError("Mật khẩu phải có ít nhất 6 ký tự", 400, "WEAK_PASSWORD");
   }
 
+  assertStrongPassword(password);
+
   // Validate businessRoleId if provided
   let businessRoleId = null;
   if (roleId) {
@@ -131,6 +145,7 @@ export const createStaff = async (businessId, data) => {
         businessId,
         businessRoleId,
         status: USER_STATUS.ACTIVE,
+        emailVerified: true,
       },
       select: { id: true, email: true, username: true },
     });
@@ -153,6 +168,8 @@ export const createStaff = async (businessId, data) => {
  * Update a staff account (fullName, phone, status)
  */
 export const updateStaff = async (businessId, staffId, data) => {
+  assertStrongPassword(newPassword);
+
   const staff = await prisma.user.findFirst({
     where: {
       id: staffId,

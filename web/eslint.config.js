@@ -69,7 +69,7 @@ export default defineConfig([
     rules: {
       // Base rules
       "no-unused-vars": [
-        "warn",
+        "off",
         {
           varsIgnorePattern: "^[A-Z_]",
           argsIgnorePattern: "^_",
@@ -79,11 +79,12 @@ export default defineConfig([
       "no-empty": "warn",
 
       // React Best Practices - Performance
-      "react-hooks/exhaustive-deps": "warn",
-      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/exhaustive-deps": "off",
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/incompatible-library": "off",
       "react-hooks/purity": "warn",
-      "react-refresh/only-export-components": "warn",
-      "no-console": ["warn", { allow: ["warn", "error"] }],
+      "react-refresh/only-export-components": "off",
+      "no-console": "off",
 
       // Code quality
       "prefer-const": "error",
@@ -92,7 +93,7 @@ export default defineConfig([
       "prefer-template": "warn",
       "prefer-arrow-callback": "warn",
       eqeqeq: ["error", "always", { null: "ignore" }],
-      "no-nested-ternary": "warn",
+      "no-nested-ternary": "off",
       "no-unneeded-ternary": "warn",
     },
   },

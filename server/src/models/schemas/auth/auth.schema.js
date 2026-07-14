@@ -157,6 +157,18 @@ export const resendVerificationPublicSchema = z.object({
     .trim(),
 });
 
+export const verifyEmailOtpSchema = z.object({
+  email: z
+    .string({ required_error: "Email khong duoc de trong" })
+    .min(1, "Email khong duoc de trong")
+    .email("Email khong hop le")
+    .toLowerCase()
+    .trim(),
+  otp: z
+    .string({ required_error: "Ma OTP khong duoc de trong" })
+    .regex(/^\d{6}$/, "Ma OTP phai gom 6 chu so"),
+});
+
 export const loginGoogleSchema = z.object({
   idToken: z
     .string({ required_error: "idToken không được để trống" })
@@ -212,6 +224,7 @@ export default {
   forgotPasswordSchema,
   resetPasswordSchema,
   verifyEmailSchema,
+  verifyEmailOtpSchema,
   resendVerificationPublicSchema,
   loginGoogleSchema,
   logoutSchema,

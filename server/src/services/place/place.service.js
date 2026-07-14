@@ -8,6 +8,10 @@ import {
   deleteMapMarkerImage,
 } from "../../utils/cloudinaryHelper.js";
 import { assertBusinessLimit } from "../subscription/subscriptionEntitlement.service.js";
+import {
+  toPublicSpokenGuide,
+  writeSpokenGuide,
+} from "./placeSpokenGuide.service.js";
 
 /**
  * Generate slug từ tên
@@ -101,9 +105,25 @@ const defaultInclude = {
   },
   amenities: true,
   openingHours: true,
+  aiGuides: {
+    where: { locale: "vi-VN" },
+    include: { faqs: { orderBy: { sortOrder: "asc" } } },
+    take: 1,
+  },
   _count: {
     select: { reviews: true, favorites: true, checkins: true },
   },
+};
+
+const attachPrimarySpokenGuide = (place) => {
+  if (!place) return place;
+  const [primaryGuide] = place.aiGuides || [];
+  const { aiGuides: _aiGuides, businessServices, ...rest } = place;
+  return {
+    ...rest,
+    bookingEnabled: Array.isArray(businessServices) && businessServices.length > 0,
+    spokenGuide: toPublicSpokenGuide(primaryGuide),
+  };
 };
 
 /**
@@ -376,6 +396,11 @@ export const getPlaceById = async (id, incrementView = false) => {
       business: {
         select: { id: true, businessName: true, status: true },
       },
+      businessServices: {
+        where: { isActive: true },
+        select: { id: true },
+        take: 1,
+      },
     },
   });
 
@@ -389,7 +414,7 @@ export const getPlaceById = async (id, incrementView = false) => {
     });
   }
 
-  return place;
+  return attachPrimarySpokenGuide(place);
 };
 
 /**
@@ -409,6 +434,11 @@ export const getPlaceBySlug = async (slug, incrementView = false) => {
         orderBy: { dayOfWeek: "asc" },
       },
       amenities: true,
+      businessServices: {
+        where: { isActive: true },
+        select: { id: true },
+        take: 1,
+      },
     },
   });
 
@@ -428,7 +458,7 @@ export const getPlaceBySlug = async (slug, incrementView = false) => {
     });
   }
 
-  return place;
+  return attachPrimarySpokenGuide(place);
 };
 
 /**
@@ -476,6 +506,7 @@ export const createPlace = async (data, userId) => {
     amenities = [],
     status = PLACE_STATUS.PENDING,
     businessId,
+    spokenGuide,
   } = data;
 
   const ownedBusiness = await prisma.business.findUnique({
@@ -663,6 +694,8 @@ export const createPlace = async (data, userId) => {
         });
       }
 
+      await writeSpokenGuide(tx, newPlace.id, spokenGuide);
+
       return newPlace;
     });
 
@@ -711,6 +744,7 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
     openingHours,
     amenities,
     images, // Add images to destructuring
+    spokenGuide,
   } = data;
 
   // Check place exists
@@ -944,6 +978,8 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
         }
       }
     }
+
+    await writeSpokenGuide(tx, id, spokenGuide);
 
     return { id };
   });

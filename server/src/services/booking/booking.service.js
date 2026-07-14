@@ -32,6 +32,10 @@ import {
   validateAndApplyVoucher,
   incrementVoucherUsage,
 } from "../voucher/index.js";
+import {
+  isUniqueConstraintOnIdempotencyKey,
+  normalizeBookingIdempotencyKey,
+} from "./bookingIdempotency.service.js";
 import { createBookingTransaction } from "./bookingTransaction.service.js";
 import {
   settleCompletedLedger,
@@ -276,6 +280,7 @@ const buildExpiredPendingWhere = (cutoff) => ({
 export const expirePendingBookings = async ({
   referenceDate = new Date(),
   limit = EXPIRE_PENDING_BATCH_SIZE,
+  db = prisma,
 } = {}) => {
   const cutoff = resolvePendingExpiryCutoff(referenceDate);
   const take = Math.min(
@@ -284,7 +289,7 @@ export const expirePendingBookings = async ({
   );
 
   try {
-    const expiredBookings = await prisma.$transaction(async (tx) => {
+    const expireInTransaction = async (tx) => {
       const candidates = await tx.booking.findMany({
         where: buildExpiredPendingWhere(cutoff),
         select: {
@@ -332,7 +337,12 @@ export const expirePendingBookings = async ({
       );
 
       return candidates;
-    });
+    };
+
+    const expiredBookings =
+      typeof db.$transaction === "function"
+        ? await db.$transaction(expireInTransaction)
+        : await expireInTransaction(db);
 
     expiredBookings.forEach((booking) => {
       eventEmitter.emit(EVENTS.BOOKING.EXPIRED, {
@@ -887,6 +897,7 @@ export const create = async (payload = {}, userId) => {
   }
 
   const quantity = Math.max(parseInt(payload.quantity, 10) || 1, 1);
+  const idempotencyKey = normalizeBookingIdempotencyKey(payload.idempotencyKey);
   const requestedPlaceId = payload.placeId
     ? parseInt(payload.placeId, 10)
     : null;
@@ -1024,7 +1035,23 @@ export const create = async (payload = {}, userId) => {
 
   const depositPolicy = getDepositConfig(service);
 
-  const bookingResult = await prisma.$transaction(async (tx) => {
+  if (idempotencyKey) {
+    const existingBooking = await prisma.booking.findFirst({
+      where: {
+        userId,
+        idempotencyKey,
+      },
+      include: defaultInclude,
+    });
+
+    if (existingBooking) {
+      return serializeBookingUser(existingBooking);
+    }
+  }
+
+  let bookingResult;
+  try {
+    bookingResult = await prisma.$transaction(async (tx) => {
     const avail = await checkAvailability(tx, {
       serviceId,
       bookingAt,
@@ -1084,6 +1111,7 @@ export const create = async (payload = {}, userId) => {
         finalPrice,
         paymentStatus: PAYMENT_STATUS.UNPAID,
         status: BOOKING_STATUS.PENDING,
+        idempotencyKey,
       },
       include: defaultInclude,
     });
@@ -1106,7 +1134,24 @@ export const create = async (payload = {}, userId) => {
     }
 
     return { booking, linkedTrip };
-  });
+    });
+  } catch (error) {
+    if (idempotencyKey && isUniqueConstraintOnIdempotencyKey(error)) {
+      const existingBooking = await prisma.booking.findFirst({
+        where: {
+          userId,
+          idempotencyKey,
+        },
+        include: defaultInclude,
+      });
+
+      if (existingBooking) {
+        return serializeBookingUser(existingBooking);
+      }
+    }
+
+    throw error;
+  }
 
   const booking = bookingResult.booking;
   const linkedTrip = bookingResult.linkedTrip;

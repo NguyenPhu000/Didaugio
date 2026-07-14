@@ -110,12 +110,7 @@ const DashboardGate = () => {
  * SECURITY NOTE: GUEST (role 6) is NEVER included in any admin role arrays
  */
 const adminRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
-const allStaffRoles = [
-  ROLES.SUPER_ADMIN,
-  ROLES.ADMIN,
-  ROLES.BUSINESS,
-  ROLES.STAFF,
-]; // GUEST excluded
+const dashboardRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
 const placeRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
 const superAdminOnly = [ROLES.SUPER_ADMIN];
 
@@ -150,7 +145,7 @@ const ProtectedShared = ({ children }) => {
 
   return (
     <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF, ROLES.BUSINESS]}>
-      {currentRoleId === ROLES.BUSINESS ? (
+      {currentRoleId === ROLES.BUSINESS || currentRoleId === ROLES.STAFF ? (
         <BusinessLayout>{children}</BusinessLayout>
       ) : (
         <AdminLayout>{children}</AdminLayout>
@@ -203,11 +198,11 @@ const AppRoutes = () => {
 
       {/* ===== Protected routes ===== */}
 
-      {/* Dashboard - Business redirect to business dashboard */}
+      {/* Dashboard - admin only, business/staff are redirected from root/login */}
       <Route
         path={ADMIN_ROUTES.DASHBOARD}
         element={
-          <ProtectedAdmin roles={allStaffRoles}>
+          <ProtectedAdmin roles={dashboardRoles}>
             <DashboardGate />
           </ProtectedAdmin>
         }
@@ -242,7 +237,7 @@ const AppRoutes = () => {
       <Route
         path={ADMIN_ROUTES.PLACES_PENDING}
         element={
-          <ProtectedAdmin roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF]}>
+          <ProtectedAdmin roles={adminRoles}>
             <PlacePendingPage />
           </ProtectedAdmin>
         }

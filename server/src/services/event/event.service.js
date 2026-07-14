@@ -4,6 +4,21 @@ import { ERROR_CODES } from "../../config/messages.js";
 import { deleteImage } from "../../utils/cloudinaryService.js";
 import { uploadPlaceImage } from "../media/media.service.js";
 
+const EVENT_TRIP_PLACE_SELECT = {
+  id: true,
+  name: true,
+  address: true,
+  latitude: true,
+  longitude: true,
+  thumbnail: true,
+  ratingAvg: true,
+  images: {
+    take: 1,
+    orderBy: [{ isCover: "desc" }, { order: "asc" }],
+    select: { secureUrl: true, thumbnailUrl: true, imageData: true },
+  },
+};
+
 // Helper chuyển đổi trang/limit
 const toInt = (value, fallback = null) => {
   const number = parseInt(value, 10);
@@ -303,6 +318,30 @@ export const getEvents = async (filters = {}) => {
         totalCheckIns: true,
         broadcastNotice: true,
         tripId: true,
+        trip: {
+          select: {
+            id: true,
+            totalDays: true,
+            destinations: {
+              orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+              select: {
+                id: true,
+                placeId: true,
+                dayNumber: true,
+                order: true,
+                place: {
+                  select: {
+                    id: true,
+                    name: true,
+                    latitude: true,
+                    longitude: true,
+                    thumbnail: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         createdAt: true,
         _count: {
           select: {
@@ -333,6 +372,132 @@ export const getEvents = async (filters = {}) => {
 };
 
 // 5. Lấy chi tiết sự kiện
+const getEventByIdLegacy = async (eventId, userId = null) => {
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    include: {
+      trip: {
+        include: {
+          destinations: {
+            orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+            include: {
+              place: {
+                select: {
+                  id: true,
+                  name: true,
+                  latitude: true,
+                  longitude: true,
+                  address: true,
+                  thumbnail: true,
+                  ratingAvg: true,
+                },
+              },
+            },
+          },
+        },
+      },
+      _count: {
+        select: {
+          participants: true,
+          moments: true,
+        },
+      },
+      moments: {
+        select: {
+          placeId: true,
+          userId: true,
+        },
+      },
+    },
+  });
+
+  if (!event) {
+    throw new ServiceError(
+      ERROR_CODES.NOT_FOUND,
+      "Không tìm thấy sự kiện",
+      404
+    );
+  }
+
+  // 1. Thống kê active companion counts trên từng chặng (chỉ đếm updatedAt trong 5 phút trở lại)
+  const activeThreshold = new Date(Date.now() - 5 * 60 * 1000);
+  const activeSessions = await prisma.activeSession.findMany({
+    where: {
+      eventId: eventId,
+      updatedAt: { gte: activeThreshold },
+    },
+    select: {
+      placeId: true,
+    },
+  });
+  const companionSummary = buildActiveCompanionSummary(activeSessions);
+
+  // Tạo map đếm người online từng placeId
+  const chặngCompanionCounts = {};
+  activeSessions.forEach((s) => {
+    chặngCompanionCounts[s.placeId] = (chặngCompanionCounts[s.placeId] || 0) + 1;
+  });
+
+  // 2. Gắn số lượng người online vào từng địa điểm trong lịch trình
+  if (event.trip && event.trip.destinations) {
+    event.trip.destinations = event.trip.destinations.map((dest) => ({
+      ...dest,
+      activeCompanionCount: chặngCompanionCounts[dest.placeId] || 0,
+    }));
+  }
+
+  // 3. Tính tổng số lượng companion online trong sự kiện
+  const totalActiveCompanionCount = Object.values(chặngCompanionCounts).reduce((acc, curr) => acc + curr, 0);
+
+  // 4. Check xem user hiện tại đã join chưa
+  if (event.trip && event.trip.destinations) {
+    const checkInSummary = buildEventCheckInSummary({
+      destinations: event.trip.destinations,
+      moments: event.moments,
+      userId,
+    });
+
+    event.trip.destinations = event.trip.destinations.map((dest) => ({
+      ...dest,
+      checkInCount: checkInSummary.byPlace[dest.placeId]?.totalCheckIns || 0,
+      checkedInByMe: checkInSummary.byPlace[dest.placeId]?.checkedInByMe || false,
+    }));
+    event.myCheckedInPlaceIds = checkInSummary.myCheckedInPlaceIds;
+    event.checkInSummary = checkInSummary.personal;
+    event.checkInByPlace = checkInSummary.byPlace;
+  } else {
+    event.myCheckedInPlaceIds = [];
+    event.checkInSummary = {
+      checkedInCount: 0,
+      totalDestinations: 0,
+      progressPercent: 0,
+    };
+    event.checkInByPlace = {};
+  }
+
+  let isJoined = false;
+  if (userId) {
+    const participant = await prisma.eventParticipant.findUnique({
+      where: {
+        eventId_userId: {
+          eventId: eventId,
+          userId: userId,
+        },
+      },
+    });
+    isJoined = !!participant;
+  }
+
+  return {
+    ...event,
+    moments: undefined,
+    totalActiveCompanionCount,
+    activeCompanionSummary: cháº·ngCompanionCounts,
+    isJoined,
+  };
+};
+
+// 6. Tham gia sự kiện + Nhân bản Trip mẫu
 export const getEventById = async (eventId, userId = null) => {
   const event = await prisma.event.findUnique({
     where: { id: eventId },
@@ -363,54 +528,68 @@ export const getEventById = async (eventId, userId = null) => {
           moments: true,
         },
       },
+      moments: {
+        select: {
+          placeId: true,
+          userId: true,
+        },
+      },
     },
   });
 
   if (!event) {
     throw new ServiceError(
       ERROR_CODES.NOT_FOUND,
-      "Không tìm thấy sự kiện",
+      "Khong tim thay su kien",
       404
     );
   }
 
-  // 1. Thống kê active companion counts trên từng chặng (chỉ đếm updatedAt trong 5 phút trở lại)
   const activeThreshold = new Date(Date.now() - 5 * 60 * 1000);
   const activeSessions = await prisma.activeSession.findMany({
     where: {
-      eventId: eventId,
+      eventId,
       updatedAt: { gte: activeThreshold },
     },
     select: {
       placeId: true,
     },
   });
+  const companionSummary = buildActiveCompanionSummary(activeSessions);
 
-  // Tạo map đếm người online từng placeId
-  const chặngCompanionCounts = {};
-  activeSessions.forEach((s) => {
-    chặngCompanionCounts[s.placeId] = (chặngCompanionCounts[s.placeId] || 0) + 1;
-  });
+  if (event.trip?.destinations) {
+    const checkInSummary = buildEventCheckInSummary({
+      destinations: event.trip.destinations,
+      moments: event.moments,
+      userId,
+    });
 
-  // 2. Gắn số lượng người online vào từng địa điểm trong lịch trình
-  if (event.trip && event.trip.destinations) {
     event.trip.destinations = event.trip.destinations.map((dest) => ({
       ...dest,
-      activeCompanionCount: chặngCompanionCounts[dest.placeId] || 0,
+      activeCompanionCount: companionSummary.byPlace[dest.placeId] || 0,
+      checkInCount: checkInSummary.byPlace[dest.placeId]?.totalCheckIns || 0,
+      checkedInByMe: checkInSummary.byPlace[dest.placeId]?.checkedInByMe || false,
     }));
+    event.myCheckedInPlaceIds = checkInSummary.myCheckedInPlaceIds;
+    event.checkInSummary = checkInSummary.personal;
+    event.checkInByPlace = checkInSummary.byPlace;
+  } else {
+    event.myCheckedInPlaceIds = [];
+    event.checkInSummary = {
+      checkedInCount: 0,
+      totalDestinations: 0,
+      progressPercent: 0,
+    };
+    event.checkInByPlace = {};
   }
 
-  // 3. Tính tổng số lượng companion online trong sự kiện
-  const totalActiveCompanionCount = Object.values(chặngCompanionCounts).reduce((acc, curr) => acc + curr, 0);
-
-  // 4. Check xem user hiện tại đã join chưa
   let isJoined = false;
   if (userId) {
     const participant = await prisma.eventParticipant.findUnique({
       where: {
         eventId_userId: {
-          eventId: eventId,
-          userId: userId,
+          eventId,
+          userId,
         },
       },
     });
@@ -419,18 +598,20 @@ export const getEventById = async (eventId, userId = null) => {
 
   return {
     ...event,
-    totalActiveCompanionCount,
+    moments: undefined,
+    totalActiveCompanionCount: companionSummary.total,
+    activeCompanionSummary: companionSummary.byPlace,
     isJoined,
   };
 };
 
-// 6. Tham gia sự kiện + Nhân bản Trip mẫu
 export const joinEvent = async (eventId, userId) => {
   const event = await prisma.event.findUnique({
     where: { id: eventId },
     select: {
       id: true,
       title: true,
+      thumbnail: true,
       tripId: true,
       maxParticipants: true,
       _count: {
@@ -492,18 +673,38 @@ export const joinEvent = async (eventId, userId) => {
       const tripSample = await tx.trip.findUnique({
         where: { id: event.tripId },
         include: {
-          destinations: true,
+          destinations: {
+            orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+            include: { place: { select: EVENT_TRIP_PLACE_SELECT } },
+          },
         },
       });
 
       if (tripSample) {
+        const tripPlanSample = await tx.tripPlan.findFirst({
+          where: {
+            userId: tripSample.userId,
+            metadata: { path: ["legacyTripId"], equals: event.tripId },
+          },
+          include: {
+            stops: {
+              orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
+              include: { place: { select: EVENT_TRIP_PLACE_SELECT } },
+            },
+          },
+        });
+
         // Tạo Trip mới cho User
         clonedTrip = await tx.trip.create({
           data: {
             userId: userId,
             title: `[Sự kiện] ${tripSample.title}`,
             description: tripSample.description || `Lịch trình được sao chép từ sự kiện "${event.title}"`,
-            thumbnail: tripSample.thumbnail,
+            thumbnail: resolveTripCloneThumbnail({
+              event,
+              tripSample,
+              tripPlan: tripPlanSample,
+            }),
             startDate: tripSample.startDate,
             endDate: tripSample.endDate,
             totalDays: tripSample.totalDays,
@@ -518,22 +719,15 @@ export const joinEvent = async (eventId, userId) => {
         });
 
         // Tạo các TripDestination tương ứng
-        if (tripSample.destinations && tripSample.destinations.length > 0) {
+        const cloneRows = buildTripDestinationCloneRows({
+          tripId: clonedTrip.id,
+          destinations: tripSample.destinations,
+          stops: tripPlanSample?.stops,
+        });
+
+        if (cloneRows.length > 0) {
           await tx.tripDestination.createMany({
-            data: tripSample.destinations.map((dest) => ({
-              tripId: clonedTrip.id,
-              placeId: dest.placeId,
-              dayNumber: dest.dayNumber,
-              order: dest.order,
-              startTime: dest.startTime,
-              endTime: dest.endTime,
-              durationMinutes: dest.durationMinutes,
-              note: dest.note,
-              transportToNext: dest.transportToNext,
-              distanceToNext: dest.distanceToNext,
-              estimatedCost: dest.estimatedCost,
-              status: "planned",
-            })),
+            data: cloneRows,
           });
         }
 
@@ -542,6 +736,16 @@ export const joinEvent = async (eventId, userId) => {
           where: { id: event.tripId },
           data: {
             cloneCount: { increment: 1 },
+          },
+        });
+
+        clonedTrip = await tx.trip.findUnique({
+          where: { id: clonedTrip.id },
+          include: {
+            destinations: {
+              orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+              include: { place: { select: EVENT_TRIP_PLACE_SELECT } },
+            },
           },
         });
       }
@@ -559,7 +763,7 @@ export const joinEvent = async (eventId, userId) => {
 };
 
 // 7. Ping vị trí ẩn danh định kỳ trong chặng
-export const pingEvent = async (eventId, placeId, userId) => {
+export const pingEvent = async (eventId, placeId, userId, location = {}) => {
   // Check xem có thuộc sự kiện đó không và user đã tham gia chưa
   const participant = await prisma.eventParticipant.findUnique({
     where: {
@@ -579,6 +783,30 @@ export const pingEvent = async (eventId, placeId, userId) => {
   }
 
   // Thực hiện upsert ActiveSession. Vì @@unique([eventId, userId]), record sẽ tự động update
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: {
+      trip: {
+        select: {
+          destinations: {
+            select: {
+              placeId: true,
+              place: { select: { latitude: true, longitude: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  validateEventCheckInTarget({
+    destinations: event?.trip?.destinations || [],
+    placeId,
+    latitude: location.latitude,
+    longitude: location.longitude,
+    radiusMeters: 500,
+  });
+
   const session = await prisma.activeSession.upsert({
     where: {
       eventId_userId: {
@@ -602,7 +830,7 @@ export const pingEvent = async (eventId, placeId, userId) => {
 
 // 8. Tải ảnh khoảnh khắc 1:1 check-in (Viễn cảnh 1)
 export const createMoment = async (eventId, userId, data) => {
-  const { placeId, imageUrl, imagePublicId } = data;
+  const { placeId, imageUrl, imagePublicId, latitude, longitude } = data;
 
   // Kiểm tra tham gia sự kiện
   const participant = await prisma.eventParticipant.findUnique({
@@ -623,6 +851,29 @@ export const createMoment = async (eventId, userId, data) => {
   }
 
   // Tự động upload ảnh moment nếu gửi base64 từ client
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: {
+      trip: {
+        select: {
+          destinations: {
+            select: {
+              placeId: true,
+              place: { select: { latitude: true, longitude: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  validateEventCheckInTarget({
+    destinations: event?.trip?.destinations || [],
+    placeId,
+    latitude,
+    longitude,
+  });
+
   let finalImageUrl = imageUrl;
   let finalImagePublicId = imagePublicId;
 
@@ -823,4 +1074,230 @@ export const updateBroadcast = async (eventId, broadcastNotice) => {
   });
 
   return updatedEvent;
+};
+
+export const DEFAULT_CHECK_IN_RADIUS_M = 75;
+
+const toNumber = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+};
+
+export const calculateDistanceMeters = (lat1, lng1, lat2, lng2) => {
+  const aLat = toNumber(lat1);
+  const aLng = toNumber(lng1);
+  const bLat = toNumber(lat2);
+  const bLng = toNumber(lng2);
+  if (aLat === null || aLng === null || bLat === null || bLng === null) {
+    return null;
+  }
+
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const earthRadiusM = 6371000;
+  const deltaLat = toRadians(bLat - aLat);
+  const deltaLng = toRadians(bLng - aLng);
+  const calc =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(toRadians(aLat)) *
+      Math.cos(toRadians(bLat)) *
+      Math.sin(deltaLng / 2) *
+      Math.sin(deltaLng / 2);
+  return earthRadiusM * 2 * Math.atan2(Math.sqrt(calc), Math.sqrt(1 - calc));
+};
+
+const normalizePositiveInt = (value) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+export const buildActiveCompanionSummary = (activeSessions = []) => {
+  const byPlace = {};
+
+  activeSessions.forEach((session) => {
+    const placeId = normalizePositiveInt(session?.placeId);
+    if (!placeId) return;
+    byPlace[placeId] = (byPlace[placeId] || 0) + 1;
+  });
+
+  return {
+    byPlace,
+    total: Object.values(byPlace).reduce((acc, curr) => acc + curr, 0),
+  };
+};
+
+const resolvePlaceImage = (place) => {
+  const firstImage = Array.isArray(place?.images) ? place.images[0] : null;
+  return (
+    place?.thumbnail ||
+    firstImage?.secureUrl ||
+    firstImage?.thumbnailUrl ||
+    firstImage?.imageData ||
+    null
+  );
+};
+
+export const resolveTripCloneThumbnail = ({
+  event = null,
+  tripSample = null,
+  tripPlan = null,
+} = {}) => {
+  if (event?.thumbnail) return event.thumbnail;
+  if (tripSample?.thumbnail) return tripSample.thumbnail;
+  if (tripPlan?.coverImage) return tripPlan.coverImage;
+
+  const legacyDestination = Array.isArray(tripSample?.destinations)
+    ? tripSample.destinations.find((dest) => resolvePlaceImage(dest?.place))
+    : null;
+  if (legacyDestination) return resolvePlaceImage(legacyDestination.place);
+
+  const planStop = Array.isArray(tripPlan?.stops)
+    ? tripPlan.stops.find((stop) => resolvePlaceImage(stop?.place))
+    : null;
+  return planStop ? resolvePlaceImage(planStop.place) : null;
+};
+
+const toKm = (meters) => {
+  const value = Number(meters);
+  if (!Number.isFinite(value) || value < 0) return null;
+  return Number((value / 1000).toFixed(2));
+};
+
+export const buildTripDestinationCloneRows = ({
+  tripId,
+  destinations = [],
+  stops = [],
+} = {}) => {
+  const safeTripId = normalizePositiveInt(tripId);
+  if (!safeTripId) return [];
+
+  if (Array.isArray(destinations) && destinations.length > 0) {
+    return destinations.map((dest) => ({
+      tripId: safeTripId,
+      placeId: dest.placeId,
+      dayNumber: dest.dayNumber,
+      order: dest.order,
+      startTime: dest.startTime,
+      endTime: dest.endTime,
+      durationMinutes: dest.durationMinutes,
+      note: dest.note,
+      transportToNext: dest.transportToNext,
+      distanceToNext: dest.distanceToNext,
+      estimatedCost: dest.estimatedCost,
+      status: "planned",
+    }));
+  }
+
+  return (Array.isArray(stops) ? stops : []).map((stop) => ({
+    tripId: safeTripId,
+    placeId: stop.placeId,
+    dayNumber: stop.dayNumber,
+    order: stop.sequence ?? stop.order ?? 1,
+    startTime: stop.arrivalTime ?? stop.startTime ?? null,
+    endTime: stop.departureTime ?? stop.endTime ?? null,
+    durationMinutes: stop.durationMinutes,
+    note: stop.note,
+    transportToNext: stop.transportToNext,
+    distanceToNext:
+      stop.routeDistanceM == null
+        ? stop.distanceToNext ?? null
+        : toKm(stop.routeDistanceM),
+    estimatedCost: stop.estimatedCost,
+    status: "planned",
+  }));
+};
+
+export const buildEventCheckInSummary = ({
+  destinations = [],
+  moments = [],
+  userId = null,
+} = {}) => {
+  const normalizedUserId = normalizePositiveInt(userId);
+  const routePlaceIds = destinations
+    .map((destination) => normalizePositiveInt(destination?.placeId ?? destination?.place?.id))
+    .filter(Boolean);
+  const routePlaceIdSet = new Set(routePlaceIds);
+  const myCheckedInPlaceIdSet = new Set();
+  const counts = {};
+
+  for (const placeId of routePlaceIds) {
+    counts[placeId] = { placeId, totalCheckIns: 0, checkedInByMe: false };
+  }
+
+  for (const moment of moments) {
+    const placeId = normalizePositiveInt(moment?.placeId);
+    if (!placeId || !routePlaceIdSet.has(placeId)) continue;
+    counts[placeId] = counts[placeId] || {
+      placeId,
+      totalCheckIns: 0,
+      checkedInByMe: false,
+    };
+    counts[placeId].totalCheckIns += 1;
+
+    if (normalizedUserId && normalizePositiveInt(moment?.userId) === normalizedUserId) {
+      counts[placeId].checkedInByMe = true;
+      myCheckedInPlaceIdSet.add(placeId);
+    }
+  }
+
+  const myCheckedInPlaceIds = Array.from(myCheckedInPlaceIdSet).sort((a, b) => a - b);
+  const totalDestinations = routePlaceIds.length;
+  const checkedInCount = myCheckedInPlaceIds.length;
+
+  return {
+    myCheckedInPlaceIds,
+    byPlace: counts,
+    personal: {
+      checkedInCount,
+      totalDestinations,
+      progressPercent:
+        totalDestinations > 0
+          ? Math.round((checkedInCount / totalDestinations) * 100)
+          : 0,
+    },
+  };
+};
+
+export const validateEventCheckInTarget = ({
+  destinations = [],
+  placeId,
+  latitude = null,
+  longitude = null,
+  radiusMeters = DEFAULT_CHECK_IN_RADIUS_M,
+} = {}) => {
+  const targetPlaceId = normalizePositiveInt(placeId);
+  const destination = destinations.find(
+    (item) => normalizePositiveInt(item?.placeId ?? item?.place?.id) === targetPlaceId,
+  );
+
+  if (!destination) {
+    throw new ServiceError(
+      "Dia diem check-in khong thuoc su kien",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+
+  const currentLat = toNumber(latitude);
+  const currentLng = toNumber(longitude);
+  if (currentLat === null || currentLng === null) {
+    return { destination, distanceMeters: null, withinRadius: null };
+  }
+
+  const distance = calculateDistanceMeters(
+    currentLat,
+    currentLng,
+    destination?.place?.latitude,
+    destination?.place?.longitude,
+  );
+
+  if (distance !== null && distance > radiusMeters) {
+    throw new ServiceError(
+      `Ban dang qua xa diem check-in (${Math.round(distance)}m)`,
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+
+  return { destination, distanceMeters: distance, withinRadius: distance !== null };
 };

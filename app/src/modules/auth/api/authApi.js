@@ -35,6 +35,12 @@ export const registerApi = ({
     fullName,
   });
 
+export const verifyEmailOtpApi = ({ email, otp }) =>
+  client.post(ENDPOINTS.auth.verifyEmailOtp, { email, otp });
+
+export const resendVerificationPublicApi = (email) =>
+  client.post(ENDPOINTS.auth.resendVerificationPublic, { email });
+
 export const getMeApi = () => client.get(ENDPOINTS.auth.me);
 
 export const logoutApi = (refreshToken) =>

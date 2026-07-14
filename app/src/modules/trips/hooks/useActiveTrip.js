@@ -3,10 +3,12 @@ import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 import { useQuery } from "@tanstack/react-query";
 import {
   getTripDetailApi,
+  getTripSessionApi,
   syncTripSessionApi,
   endTripSessionApi,
 } from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
+import { normalizeServerTripSession } from "./activeTripSession";
 
 const ACTIVE_TRIP_KEY = "ACTIVE_TRIP_ID";
 const VISITED_PREFIX = "visitedDestinations_";
@@ -85,9 +87,44 @@ export function useActiveTrip() {
     const id = await getActiveTripId();
     setActiveTripIdState(id);
     if (id) {
-      setVisitedIds(await getVisitedDestinations(id));
+      const localVisitedIds = await getVisitedDestinations(id);
+      let nextVisitedIds = localVisitedIds;
+      let nextIsPaused = false;
+
       const pausedVal = await safeAsyncStorage.getItem(pausedKey(id));
-      setIsPaused(pausedVal === "true");
+      nextIsPaused = pausedVal === "true";
+
+      try {
+        const sessionRes = await getTripSessionApi(id);
+        const snapshot = normalizeServerTripSession(sessionRes?.data);
+
+        if (snapshot?.shouldClearActiveTrip) {
+          await clearActiveTripId();
+          await resetVisitedDestinations(id);
+          await safeAsyncStorage.removeItem(pausedKey(id));
+          setActiveTripIdState(null);
+          setVisitedIds([]);
+          setIsPaused(false);
+          setIsHydrated(true);
+          return;
+        }
+
+        if (snapshot) {
+          nextVisitedIds = snapshot.visitedIds;
+          nextIsPaused = snapshot.isPaused;
+          await setVisitedDestinations(id, nextVisitedIds);
+          if (nextIsPaused) {
+            await safeAsyncStorage.setItem(pausedKey(id), "true");
+          } else {
+            await safeAsyncStorage.removeItem(pausedKey(id));
+          }
+        }
+      } catch {
+        // Keep the local snapshot when the network is unavailable.
+      }
+
+      setVisitedIds(nextVisitedIds);
+      setIsPaused(nextIsPaused);
     } else {
       setVisitedIds([]);
       setIsPaused(false);

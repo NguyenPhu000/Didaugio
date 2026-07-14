@@ -23,9 +23,9 @@ const resetPasswordSchema = z
   .object({
     newPassword: z
       .string()
-      .min(6, i18n.t("validation.passwordMin", { min: 6 }))
+      .min(8, i18n.t("validation.passwordMin", { min: 8 }))
       .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])/,
         i18n.t("validation.passwordPattern")
       ),
     confirmPassword: z.string().min(1, i18n.t("validation.confirmPasswordRequired")),
@@ -62,7 +62,7 @@ const ResetPasswordPage = () => {
     if (!token) {
       setTokenError(t("auth.resetPassword.tokenExpired"));
     }
-  }, [token]);
+  }, [token, t]);
 
   const onSubmit = async (data) => {
     if (!token) {
@@ -99,7 +99,7 @@ const ResetPasswordPage = () => {
     if (!password) return { strength: 0, label: "", color: "" };
 
     let strength = 0;
-    if (password.length >= 6) strength++;
+    if (password.length >= 8) strength++;
     if (password.length >= 10) strength++;
     if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
     if (/\d/.test(password)) strength++;

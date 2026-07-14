@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { getSocket, connectSocket } from "@/utils/socket";
+import { connectSocket } from "@/utils/socket";
 
 /**
  * Listen to a Socket.IO event. Auto-connects if needed, auto-cleans up on unmount.
@@ -14,7 +14,10 @@ import { getSocket, connectSocket } from "@/utils/socket";
  */
 export function useSocketEvent(event, handler) {
   const handlerRef = useRef(handler);
-  handlerRef.current = handler;
+
+  useEffect(() => {
+    handlerRef.current = handler;
+  }, [handler]);
 
   useEffect(() => {
     // Ensure socket is connected (idempotent — won't reconnect if already connected)

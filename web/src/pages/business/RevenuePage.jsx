@@ -136,9 +136,9 @@ const RevenuePage = memo(() => {
     limit: 10,
   });
 
-  const overview = overviewRes?.data || {};
+  const overview = useMemo(() => overviewRes?.data || {}, [overviewRes?.data]);
   const timeline = timelineRes?.data || [];
-  const byPlace = byPlaceRes?.data || [];
+  const byPlace = useMemo(() => byPlaceRes?.data || [], [byPlaceRes?.data]);
   const transactions = transactionsRes?.data?.transactions || [];
 
   const handleExportCsv = useCallback(() => {
@@ -165,7 +165,7 @@ const RevenuePage = memo(() => {
       filename: slugifyFilename("bao_cao_doanh_thu"),
     });
     toast.success(t("business.revenue.toastExported"));
-  }, [byPlace]);
+  }, [byPlace, t]);
 
   const metricCards = useMemo(() => [
     {
@@ -200,7 +200,7 @@ const RevenuePage = memo(() => {
       trend: overview.refundAmountChange,
       description: t("business.revenue.refundDescription"),
     },
-  ], [overview]);
+  ], [overview, t]);
 
   return (
     <div className="space-y-4 p-4 md:space-y-6 md:p-6 lg:p-8">

@@ -53,8 +53,8 @@ const mockSettingsPayload = {
     timezone: "Asia/Ho_Chi_Minh",
     dateFormat: "DD/MM/YYYY",
     currency: "VND",
-    baseUrl: "https://didaugio.vn",
-    domain: "didaugio.vn",
+    baseUrl: "https://iPointGenie.vn",
+    domain: "iPointGenie.vn",
     maintenanceMode: false,
   },
   mapDefault: {
@@ -158,7 +158,7 @@ describe("SettingsPageContent", () => {
 
     const siteNameInput = await screen.findByDisplayValue("iPoint Genie");
     await user.clear(siteNameInput);
-    await user.type(siteNameInput, "Di Dau Gio Admin");
+    await user.type(siteNameInput, "iPoint Genie Admin");
 
     // Đợi autosave tự động trigger sau 1500ms
     await waitFor(() => {
@@ -166,7 +166,7 @@ describe("SettingsPageContent", () => {
     }, { timeout: 3000 });
 
     const payload = settingsService.updateSettings.mock.calls[0][0];
-    expect(payload.general.siteName).toBe("Di Dau Gio Admin");
+    expect(payload.general.siteName).toBe("iPoint Genie Admin");
   }, 15000);
 
   it.skip("shows error toast when loading settings fails", async () => {

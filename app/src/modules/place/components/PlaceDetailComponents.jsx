@@ -35,13 +35,14 @@ export const OpeningHours = memo(function OpeningHours({ hours, t }) {
             key={day}
             className={cn(
               "flex-row items-center justify-between gap-3 rounded-[16px] px-[14px] py-3",
-              isToday ? "bg-[rgba(0,0,0,0.06)]" : "bg-[#F5F5F7]"
+              isToday ? "bg-blue-50/60" : "bg-[#F5F5F7]"
             )}
+            style={{ borderCurve: "continuous" }}
           >
             <Text
               className="text-[13px]"
               style={{
-                color: isToday ? PALETTE.primaryDark : PALETTE.textMuted,
+                color: isToday ? PALETTE.accent : PALETTE.textMuted,
                 fontFamily: isToday ? TOKENS.font.semibold : TOKENS.font.medium,
               }}
             >
@@ -50,7 +51,7 @@ export const OpeningHours = memo(function OpeningHours({ hours, t }) {
             <Text
               className="text-[13px]"
               style={{
-                color: isToday ? PALETTE.primaryDark : PALETTE.textMuted,
+                color: isToday ? PALETTE.accent : PALETTE.textMuted,
                 fontFamily: isToday ? TOKENS.font.semibold : TOKENS.font.medium,
               }}
             >
@@ -63,11 +64,17 @@ export const OpeningHours = memo(function OpeningHours({ hours, t }) {
   );
 });
 
-export const SectionCard = memo(function SectionCard({ title, actionLabel, onActionPress, children }) {
+export const SectionCard = memo(function SectionCard({
+  title,
+  actionLabel,
+  actionNode,
+  onActionPress,
+  children,
+}) {
   return (
     <View
       className="mt-[14px] rounded-[26px] p-[18px] bg-white"
-      style={SECTION_CARD_SHADOW}
+      style={[SECTION_CARD_SHADOW, { borderCurve: "continuous" }]}
     >
       <View className="flex-row items-center justify-between mb-[14px]">
         <Text
@@ -76,7 +83,7 @@ export const SectionCard = memo(function SectionCard({ title, actionLabel, onAct
         >
           {title}
         </Text>
-        {actionLabel ? (
+        {actionNode || (actionLabel ? (
           <Pressable onPress={onActionPress} hitSlop={8}>
             <Text
               className="text-[13px]"
@@ -85,7 +92,7 @@ export const SectionCard = memo(function SectionCard({ title, actionLabel, onAct
               {actionLabel}
             </Text>
           </Pressable>
-        ) : null}
+        ) : null)}
       </View>
       {children}
     </View>
@@ -94,7 +101,7 @@ export const SectionCard = memo(function SectionCard({ title, actionLabel, onAct
 
 export const StatPill = memo(function StatPill({ icon, label }) {
   return (
-    <View className="flex-row items-center gap-1.5 px-[14px] py-2.5 rounded-full bg-[#F5F5F7] border border-[rgba(0,0,0,0.06)]">
+    <View className="flex-row items-center gap-1.5 px-[14px] py-2 rounded-full bg-[#F5F5F7]">
       <MaterialIconsRounded name={icon} size={15} color={PALETTE.textMuted} />
       <Text
         className="max-w-[120px] text-xs"
@@ -109,12 +116,18 @@ export const StatPill = memo(function StatPill({ icon, label }) {
 
 export function FactCard({ icon, label, value }) {
   return (
-    <View className="flex-row items-center gap-3.5 min-h-[78px] rounded-[22px] px-[14px] py-3 bg-white border border-[rgba(0,0,0,0.06)]">
-      <View className="w-[46px] h-[46px] rounded-[16px] items-center justify-center bg-[rgba(0,0,0,0.06)]">
+    <View
+      className="flex-row items-center gap-3.5 min-h-[78px] rounded-[22px] px-[14px] py-3 bg-[#F5F5F7]"
+      style={{ borderCurve: "continuous" }}
+    >
+      <View
+        className="w-[46px] h-[46px] rounded-[14px] items-center justify-center bg-white"
+        style={{ borderCurve: "continuous" }}
+      >
         <MaterialIconsRounded
           name={icon}
           size={18}
-          color={PALETTE.primaryDark}
+          color={PALETTE.accent}
         />
       </View>
       <View className="flex-1 min-w-0">
@@ -163,11 +176,11 @@ export const AmenityCard = memo(function AmenityCard({ icon, label, tag, onPress
       onPressOut={handlePressOut}
     >
       <Animated.View className="flex-1 items-center justify-start" style={animatedStyle}>
-        <View className="w-[52px] h-[52px] rounded-[26px] items-center justify-center mb-2 bg-[#F5F5F7] border border-[rgba(0,0,0,0.06)]">
+        <View className="w-[52px] h-[52px] rounded-full items-center justify-center mb-2 bg-[#F5F5F7]">
           <MaterialIconsRounded
             name={icon}
             size={22}
-            color={PALETTE.primaryDark}
+            color={PALETTE.accent}
           />
         </View>
         <Text
@@ -207,12 +220,18 @@ export const DetailRow = memo(function DetailRow({ icon, label, value, onPress, 
   };
 
   const content = (
-    <View className="flex-row items-center gap-2.5 rounded-[16px] border border-[rgba(0,0,0,0.06)] bg-[#F5F5F7] px-3 py-[11px]">
-      <View className="w-[34px] h-[34px] rounded-[10px] items-center justify-center bg-white">
+    <View
+      className="flex-row items-center gap-2.5 rounded-[16px] bg-[#F5F5F7] px-3 py-[11px]"
+      style={{ borderCurve: "continuous" }}
+    >
+      <View
+        className="w-[34px] h-[34px] rounded-[10px] items-center justify-center bg-white"
+        style={{ borderCurve: "continuous" }}
+      >
         <MaterialIconsRounded
           name={icon}
           size={17}
-          color={highlight ? PALETTE.primaryDark : PALETTE.textMuted}
+          color={highlight ? PALETTE.accent : PALETTE.textMuted}
         />
       </View>
       <View className="flex-1 min-w-0">
@@ -225,7 +244,7 @@ export const DetailRow = memo(function DetailRow({ icon, label, value, onPress, 
         <Text
           className="text-[13px] leading-[19px]"
           style={{
-            color: highlight ? PALETTE.primaryDark : PALETTE.text,
+            color: highlight ? PALETTE.accent : PALETTE.text,
             fontFamily: TOKENS.font.semibold,
           }}
           numberOfLines={3}

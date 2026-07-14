@@ -62,7 +62,7 @@ function groupPermissionsByModule() {
 /**
  * ModuleHeader — expandable module row with "Select All" per column.
  */
-const ModuleHeader = memo(function ModuleHeader({
+const ModuleHeader = memo(({
   group,
   expanded,
   onToggle,
@@ -70,7 +70,7 @@ const ModuleHeader = memo(function ModuleHeader({
   matrix,
   onSelectAllModule,
   onSelectAllRole,
-}) {
+}) => {
   const modulePerms = group.permissions.map((p) => p.key);
   const allGrantedForRole = useCallback(
     (roleKey) =>
@@ -125,12 +125,12 @@ const ModuleHeader = memo(function ModuleHeader({
 /**
  * PermissionRow — single permission row with checkboxes per role.
  */
-const PermissionRow = memo(function PermissionRow({
+const PermissionRow = memo(({
   perm,
   roles,
   matrix,
   onToggle,
-}) {
+}) => {
   return (
     <tr className="border-b border-muted/40 hover:bg-muted/20 transition-colors">
       <td className="sticky left-0 z-10 bg-background px-3 py-2 pl-10">

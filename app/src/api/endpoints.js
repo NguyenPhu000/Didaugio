@@ -7,6 +7,8 @@ export const ENDPOINTS = {
     me: "/auth/me",
     logout: "/auth/logout",
     ping: "/auth/ping",
+    verifyEmailOtp: "/auth/verify-email-otp",
+    resendVerificationPublic: "/auth/resend-verification-public",
   },
   places: {
     home: "/places/home",
@@ -15,6 +17,7 @@ export const ENDPOINTS = {
     detail: (id) => `/places/${id}`,
     detailBySlug: (slug) => `/places/slug/${slug}`,
     reviews: (id) => `/places/${id}/reviews`,
+    myReview: (id) => `/places/${id}/reviews/me`,
   },
   categories: {
     list: "/categories",

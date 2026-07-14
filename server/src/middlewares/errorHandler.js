@@ -1,16 +1,16 @@
 import { ERROR_CODES } from "../config/messages.js";
 import { ZodError } from "zod";
 import multer from "multer";
+import logger from "../config/logger.js";
 
 const errorHandler = (err, req, res, next) => {
   const statusCode = err.statusCode || 500;
   const isServerError = statusCode >= 500;
 
   if (isServerError) {
-    console.error(`[ERROR] ${err.message}`);
-    console.error(err.stack);
+    logger.error(err.stack || err.message);
   } else {
-    console.warn(
+    logger.warn(
       `[WARN] ${req.method} ${req.originalUrl} -> ${statusCode} ${err.errorCode || "BUSINESS_ERROR"}: ${err.message}`,
     );
   }

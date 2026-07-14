@@ -142,7 +142,10 @@
     "sections": {
       "featured": "Điểm đến nổi bật",
       "culinary": "Ẩm thực nổi bật",
-      "popular": "Phổ biến"
+      "popular": "Phổ biến",
+      "topRated": "Được đánh giá cao",
+      "budgetFriendly": "Đi chơi tiết kiệm",
+      "newAndFresh": "Mới đáng thử"
     },
     "card": {
       "featuredBadge": "Nổi bật",
@@ -231,8 +234,8 @@
     },
     "headerBrand": "iPoint Genie",
     "headerGreeting": "Xin chào, {{name}}",
-    "cmsBrandBadge": "iPoint Genie",
-    "cmsFallbackTitle": "iPoint Genie",
+    "cmsBrandBadge": "Gợi ý",
+    "cmsFallbackTitle": "Khám phá Cần Thơ",
     "cmsFallbackDesc": "Khám phá hàng trăm địa điểm hấp dẫn tại Cần Thơ",
     "heroBadge": "ĐỀ XUẤT CHO BẠN",
     "heroExplore": "Khám phá"
@@ -246,7 +249,8 @@
       "noSaved": "Chưa có địa điểm nào",
       "noResultsDesc": "Thử đổi bộ lọc hoặc khu vực để xem các địa điểm khác bạn đã lưu.",
       "noSavedDesc": "Hãy thử khám phá và lưu các địa điểm yêu thích để dễ truy cập.",
-      "explore": "Khám phá địa điểm"
+      "explore": "Khám phá địa điểm",
+      "clearFilters": "Xóa bộ lọc"
     },
     "alert": {
       "unsaveTitle": "Bỏ lưu địa điểm?",
@@ -679,6 +683,9 @@
       "loginToWriteReview": "Hãy đăng nhập để viết đánh giá địa điểm.",
       "reviewSubmitted": "Đã gửi đánh giá",
       "reviewSubmittedDesc": "Cảm ơn bạn đã chia sẻ trải nghiệm.",
+      "reviewCooldownTitle": "Bạn cần chờ một chút",
+      "reviewCooldownMessage": "Bạn vừa cập nhật đánh giá, vui lòng thử lại sau ít phút!",
+      "reviewSubmitError": "Không thể gửi đánh giá. Vui lòng thử lại.",
       "featuredPlace": "Điểm đến nổi bật",
       "category": "Danh mục",
       "area": "Khu vực",
@@ -689,6 +696,7 @@
       "topRating": "Đánh giá nổi bật",
       "new": "Mới",
       "about": "Giới thiệu",
+      "practicalInfo": "Thông tin địa điểm",
       "tagLabel": "Tag",
       "contactSection": "Liên hệ",
       "addressLabel": "Địa chỉ",
@@ -723,6 +731,13 @@
       },
       "shareExperience": "Chia sẻ trải nghiệm",
       "whatDidYouLike": "Điều gì bạn thích nhất?",
+      "reviewPhotos": "Ảnh trải nghiệm",
+      "addReviewPhoto": "Thêm ảnh",
+      "removeReviewPhoto": "Xóa ảnh",
+      "reviewPhotoPermissionTitle": "Cần quyền thư viện ảnh",
+      "reviewPhotoPermissionMessage": "Cho phép truy cập ảnh để đính kèm vào đánh giá.",
+      "reviewPhotoErrorTitle": "Không thể xử lý ảnh",
+      "reviewPhotoErrorMessage": "Vui lòng chọn ảnh khác hoặc thử lại.",
       "submitReview": "Gửi đánh giá",
       "addedToTrip": "Đã thêm vào chuyến đi",
       "addedToTripDesc": "Đã thêm \"{{placeName}}\" vào \"{{tripName}}\"",

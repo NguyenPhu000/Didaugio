@@ -18,7 +18,7 @@ const getAspectRatioFromId = (id) => {
   for (let i = 0; i < str.length; i++) {
     hash = (hash * 31 + str.charCodeAt(i)) | 0;
   }
-  const ratios = [0.75, 0.85, 1.0, 1.15];
+  const ratios = [0.82, 0.92, 1.02];
   return ratios[Math.abs(hash) % ratios.length];
 };
 
@@ -78,9 +78,9 @@ export const SavedCard = memo(function SavedCard({
       >
         {/* Khung Ảnh Hình Ảnh */}
         <View
-          className="bg-[#F2F2F7] border border-black/5 shadow-sm shadow-black/5"
+          className="bg-[#EEF2F6] border border-white shadow-sm shadow-black/5"
           style={{
-            borderRadius: 18,
+            borderRadius: 20,
             borderCurve: "continuous",
             overflow: "hidden",
           }}
@@ -107,11 +107,15 @@ export const SavedCard = memo(function SavedCard({
             <Pressable
               onPress={handleNotePress}
               hitSlop={10}
-              className="w-[30px] h-[30px] bg-white/90 items-center justify-center active:bg-white shadow-sm shadow-black/10"
-              style={{ borderRadius: 15, borderCurve: "continuous" }}
+              className="w-[34px] h-[34px] items-center justify-center active:bg-white shadow-sm shadow-black/10"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.95)",
+                borderRadius: 17,
+                borderCurve: "continuous",
+              }}
             >
               <Pencil
-                size={13}
+                size={14}
                 color={note ? "#FF9500" : "#636366"}
                 strokeWidth={2.5}
               />
@@ -119,10 +123,14 @@ export const SavedCard = memo(function SavedCard({
             <Pressable
               onPress={handleUnsavePress}
               hitSlop={10}
-              className="w-[30px] h-[30px] bg-white/90 items-center justify-center active:bg-white shadow-sm shadow-black/10"
-              style={{ borderRadius: 15, borderCurve: "continuous" }}
+              className="w-[34px] h-[34px] items-center justify-center active:bg-white shadow-sm shadow-black/10"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.95)",
+                borderRadius: 17,
+                borderCurve: "continuous",
+              }}
             >
-              <Heart size={14} color="#FF3B30" fill="#FF3B30" strokeWidth={0} />
+              <Heart size={15} color="#FF3B30" fill="#FF3B30" strokeWidth={0} />
             </Pressable>
           </View>
 
@@ -130,8 +138,12 @@ export const SavedCard = memo(function SavedCard({
           {note ? (
             <View className="absolute bottom-2 left-2 max-w-[75%]">
               <View
-                className="bg-white/95 px-2.5 py-1.5 shadow-sm shadow-black/10"
-                style={{ borderRadius: 10, borderCurve: "continuous" }}
+                className="px-2.5 py-1.5 shadow-sm shadow-black/10"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.95)",
+                  borderRadius: 12,
+                  borderCurve: "continuous",
+                }}
               >
                 <Text
                   className="text-[11px] text-[#1D1D1F] tracking-tight"
@@ -146,7 +158,7 @@ export const SavedCard = memo(function SavedCard({
         </View>
 
         {/* Thông tin Địa điểm */}
-        <View className="pt-2.5 px-0.5 pb-2">
+        <View className="pt-2.5 px-1 pb-2.5">
           <Text
             className="text-[15px] leading-[20px] tracking-tight"
             style={{
@@ -178,7 +190,7 @@ export const SavedCard = memo(function SavedCard({
               <Text
                 className="text-[12px] tracking-tight"
                 style={{
-                  fontFamily: TOKENS.font.bold,
+                  fontFamily: TOKENS.font.semibold,
                   color: APPLE_THEME.text,
                 }}
               >

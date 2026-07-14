@@ -7,6 +7,7 @@ export {
   forgotPasswordSchema,
   resetPasswordSchema,
   verifyEmailSchema,
+  verifyEmailOtpSchema,
   resendVerificationPublicSchema,
   loginGoogleSchema,
   logoutSchema,

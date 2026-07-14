@@ -9,6 +9,7 @@ import {
   LayoutAnimation,
   useWindowDimensions,
   Alert,
+  Linking,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import * as Location from "expo-location";
@@ -26,9 +27,12 @@ import { useBoundaryData } from "./hooks/useBoundaryData";
 import { useFilterState } from "./hooks/useFilterState";
 import { useMapLocationTracker } from "./hooks/useMapLocationTracker";
 import { useNavigationController } from "./hooks/useNavigationController";
-import { SearchOverlay } from "./components/SearchOverlay";
 import { CheckInButton } from "./components/CheckInButton";
 import MapView from "./components/MapView";
+import MapTopControls from "./components/MapTopControls";
+import MapFabStack from "./components/MapFabStack";
+import MapPlacePreviewCard from "./components/MapPlacePreviewCard";
+import MapStatusPill from "./components/MapStatusPill";
 import RoutePolyline from "./components/RoutePolyline";
 import SnapLine from "./components/SnapLine";
 import ArrivalBanner from "./components/navigation/ArrivalBanner";
@@ -51,24 +55,19 @@ import { buildTripDays } from "../trips/utils/tripHelpers";
 import { useDepartureAlerts } from "../trips/hooks/useDepartureAlerts";
 import { useTripDetail, useUpdateTrip } from "../trips/hooks/useTripDetail";
 import { sendLocalNotification } from "../../lib/local-notifications";
-import FilterGroupBar from "./components/filters/FilterGroupBar";
 import FilterPickerModal from "./components/filters/FilterPickerModal";
 import { useMapRouting } from "./hooks/useMapRouting";
 import { mapRoutingResponse } from "./hooks/routeMapping";
 import { calculateRouteApi } from "../../api/routingApi";
-import { Locate, Layers, X } from "lucide-react-native";
 import {
-  PlacePreviewCard,
   getPlaceRatingValue,
   getPlaceReviewCount,
-} from "../../components/composed/PlacePreviewCard";
+} from "../place/utils/placeDisplay";
 import { trackEvent } from "../../lib/analytics";
 import { resolveMediaUrl } from "../../lib/media-url";
 import { useAuthStore } from "../../stores/authStore";
 import { ContextualBoundaryLayer } from "./components/BoundaryLayer";
 import {
-  CATEGORY_MARKER_STYLES,
-  DEFAULT_CATEGORY_ICON,
   CAN_THO_CENTER,
   MAP_STYLES,
   DEFAULT_MAP_STYLE,
@@ -77,7 +76,7 @@ import { TOKENS } from "../../constants/design-tokens";
 import {
   FLOATING_TAB_CLEARANCE,
 } from "../../../app/(tabs)/_layout";
-import { ALL_AREAS_KEY } from "./constants/filter.constants";
+import { ALL_AREAS_KEY, FILTER_GROUP_OPTIONS } from "./constants/filter.constants";
 import {
   NAVIGATION_EVENT_DEDUP_MS,
   SCREEN_DIM_ACTIVATE_DISTANCE_M,
@@ -127,6 +126,17 @@ const MAP_CANVAS_STYLE = {
 };
 const ARRIVING_SOON_RADIUS_M = 150;
 
+const showLocationPermissionAlert = () => {
+  Alert.alert(
+    "Yeu cau quyen truy cap vi tri",
+    "Vui long cap quyen vi tri trong Cai dat de ung dung co the dan duong thoi gian thuc.",
+    [
+      { text: "Huy", style: "cancel" },
+      { text: "Mo Cai dat", onPress: () => Linking.openSettings() },
+    ],
+  );
+};
+
 function buildLocalDateTime(ymd, hhmm) {
   if (!ymd || !hhmm) return null;
   const [year, month, day] = String(ymd).split("-").map(Number);
@@ -153,13 +163,17 @@ export default function MapScreen() {
   const lastAppliedFocusRef = useRef(null);
   const lastNavigationEventRef = useRef({ signature: null, timestamp: 0 });
   const navigationTickHandlerRef = useRef(null);
-  const pingMutationRef = useRef(pingEventMutation);
+  const pingMutationRef = useRef(null);
 
   const [mapStyle, setMapStyle] = useState(DEFAULT_MAP_STYLE);
   const [layerModalVisible, setLayerModalVisible] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [selectedPlace, setSelectedPlace] = useState(null);
+  // Selecting a place only opens its preview. A route starts explicitly from
+  // the directions action so marker taps never trigger a routing request.
+  const [routingPlace, setRoutingPlace] = useState(null);
+  const [topControlsHeight, setTopControlsHeight] = useState(0);
 
   // States cho Active Trip Mode
   const [nearbyTriggered, setNearbyTriggered] = useState(false);
@@ -256,11 +270,10 @@ export default function MapScreen() {
     handleOpenFilterPicker,
     handleCloseFilterPicker,
     handleSelectFilterOption,
+    handleResetFilters,
   } = useFilterState({
     categories,
     areaOptions,
-    categoryMarkerStyles: CATEGORY_MARKER_STYLES,
-    defaultCategoryIcon: DEFAULT_CATEGORY_ICON,
   });
 
   const isLoading = isPlacesLoading && allPlaces.length === 0;
@@ -347,6 +360,50 @@ export default function MapScreen() {
   );
   const selectedPlaceId = selectedPlace?.id ?? null;
 
+  const searchState = useMemo(
+    () => ({
+      open: searchOpen,
+      text: searchText,
+      inputRef: searchInputRef,
+      currentUserAvatarUri,
+    }),
+    [currentUserAvatarUri, searchOpen, searchText],
+  );
+
+  const searchHandlers = useMemo(
+    () => ({
+      setText: setSearchText,
+      open: openSearch,
+      close: closeSearch,
+      avatarPress: () => router.push("/(tabs)/profile"),
+    }),
+    [closeSearch, openSearch, router],
+  );
+
+  const filterState = useMemo(
+    () => ({
+      activeFilterGroup,
+      activeFilterGroupMeta,
+      activeFilterSummaryLabel,
+    }),
+    [activeFilterGroup, activeFilterGroupMeta, activeFilterSummaryLabel],
+  );
+
+  const filterHandlers = useMemo(
+    () => ({
+      selectFilterGroup: handleSelectFilterGroup,
+      openFilterPicker: handleOpenFilterPicker,
+    }),
+    [handleOpenFilterPicker, handleSelectFilterGroup],
+  );
+
+  const handleTopControlsLayout = useCallback((event) => {
+    const nextHeight = Math.ceil(event.nativeEvent.layout.height);
+    setTopControlsHeight((previous) =>
+      previous === nextHeight ? previous : nextHeight,
+    );
+  }, []);
+
   const activePlace = useMemo(
     () => visiblePlaces.find((p) => p.id === selectedPlaceId) || selectedPlace,
     [visiblePlaces, selectedPlaceId, selectedPlace],
@@ -388,6 +445,18 @@ export default function MapScreen() {
   const tripPreviewId =
     rawTripPreviewId && !isActiveTripMode ? String(rawTripPreviewId) : null;
   const isTripPreviewMode = Boolean(tripPreviewId);
+  const isNormalMapMode = !isTripPreviewMode && !isActiveTripMode;
+  const hasMeasuredTopControls = topControlsHeight > 0 || !isNormalMapMode;
+  const mapFabTopOffset = isNormalMapMode
+    ? (insets.top || 0) + 12 + topControlsHeight + 12
+    : (insets.top || 0) + 120;
+  const mapStatusTopOffset = mapFabTopOffset + 54;
+  const shouldShowMapStatus = isNormalMapMode && hasMeasuredTopControls;
+  const hasActiveFilters =
+    searchText.trim().length > 0 ||
+    activeCategoryId !== null ||
+    activeArea !== ALL_AREAS_KEY ||
+    Object.values(quickFilters).some(Boolean);
   const { data: previewTrip, isLoading: isPreviewTripLoading } =
     useTripDetail(tripPreviewId);
   const updatePreviewTripMutation = useUpdateTrip(tripPreviewId);
@@ -443,9 +512,20 @@ export default function MapScreen() {
     (async () => {
       try {
         const fg = await Location.requestForegroundPermissionsAsync();
-        if (cancelled || fg.status !== "granted") return;
-        await Location.requestBackgroundPermissionsAsync();
+        if (cancelled) return;
+        if (fg.status !== "granted") {
+          showLocationPermissionAlert();
+          return;
+        }
+
+        const bg = await Location.requestBackgroundPermissionsAsync();
+        if (!cancelled && bg.status !== "granted") {
+          showLocationPermissionAlert();
+        }
       } catch {
+        if (!cancelled) {
+          showLocationPermissionAlert();
+        }
         // Bỏ qua lỗi xin quyền — chế độ foreground vẫn hoạt động.
       }
     })();
@@ -1099,21 +1179,21 @@ export default function MapScreen() {
     };
   }, [currentLocation]);
 
-  const routeDestinationFromSelectedPlace = useMemo(() => {
+  const routeDestinationFromRoutingPlace = useMemo(() => {
     if (
-      !activePlace ||
-      !Number.isFinite(activePlace.latitude) ||
-      !Number.isFinite(activePlace.longitude)
+      !routingPlace ||
+      !Number.isFinite(routingPlace.latitude) ||
+      !Number.isFinite(routingPlace.longitude)
     ) {
       return null;
     }
 
     return {
-      lat: Number(activePlace.latitude),
-      lng: Number(activePlace.longitude),
-      name: activePlace.name || MAP_TEXT.common.destinationName,
+      lat: Number(routingPlace.latitude),
+      lng: Number(routingPlace.longitude),
+      name: routingPlace.name || MAP_TEXT.common.destinationName,
     };
-  }, [activePlace]);
+  }, [routingPlace]);
 
   const shouldSuppressSingleRoute = isActiveTripMode;
 
@@ -1122,7 +1202,7 @@ export default function MapScreen() {
     : routeOriginFromCurrentLocation;
   const routeDestination = shouldSuppressSingleRoute
     ? null
-    : routeDestinationFromSelectedPlace;
+    : routeDestinationFromRoutingPlace;
 
   const routeEnabled = Boolean(routeOrigin && routeDestination);
 
@@ -1155,8 +1235,9 @@ export default function MapScreen() {
   const shouldShowPreviewTravelInfo = useMemo(() => {
     if (shouldSuppressSingleRoute) return false;
     if (!routeEnabled || !activePlace) return false;
+    if (String(activePlace.id) !== String(routingPlace?.id)) return false;
     return true;
-  }, [activePlace, routeEnabled, shouldSuppressSingleRoute]);
+  }, [activePlace, routeEnabled, routingPlace?.id, shouldSuppressSingleRoute]);
 
   const previewTravelLoading =
     shouldShowPreviewTravelInfo &&
@@ -1210,6 +1291,7 @@ export default function MapScreen() {
 
   const handleSelectPlace = useCallback((place) => {
     setSelectedPlace(place);
+    setRoutingPlace(null);
     if (place.longitude && place.latitude) {
       const latOffset = 0.0022;
       mapRef.current?.flyTo([Number(place.longitude), Number(place.latitude) - latOffset], 15);
@@ -1251,6 +1333,7 @@ export default function MapScreen() {
       });
 
       setSelectedPlace(place);
+      setRoutingPlace(place);
 
       if (!currentLocation) {
         await handleLocate();
@@ -1267,11 +1350,13 @@ export default function MapScreen() {
 
   const handleClosePreview = useCallback(() => {
     setSelectedPlace(null);
+    setRoutingPlace(null);
   }, []);
 
   const handleMapPress = useCallback((event) => {
     if (event?.nativeEvent?.action === "marker-press") return;
     setSelectedPlace(null);
+    setRoutingPlace(null);
   }, []);
 
   const handleOpenPlaceDetail = useCallback(
@@ -1310,6 +1395,9 @@ export default function MapScreen() {
     const focusPlaceId = Array.isArray(params.focusPlaceId)
       ? params.focusPlaceId[0]
       : params.focusPlaceId;
+    const startRoute = Array.isArray(params.startRoute)
+      ? params.startRoute[0]
+      : params.startRoute;
     const search = Array.isArray(params.search)
       ? params.search[0]
       : params.search;
@@ -1325,11 +1413,11 @@ export default function MapScreen() {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
     const key = `${lat}:${lng}:${focusPlaceId || ""}`;
-    if (lastAppliedFocusRef.current === key) return;
-    lastAppliedFocusRef.current = key;
-
-    const latOffset = focusPlaceId ? 0.0022 : 0;
-    mapRef.current?.flyTo([lng, lat - latOffset], 15);
+    if (lastAppliedFocusRef.current !== key) {
+      lastAppliedFocusRef.current = key;
+      const latOffset = focusPlaceId ? 0.0022 : 0;
+      mapRef.current?.flyTo([lng, lat - latOffset], 15);
+    }
 
     if (!focusPlaceId) return;
     const matchedPlace = (mapPlaces || []).find(
@@ -1339,6 +1427,10 @@ export default function MapScreen() {
     );
     if (matchedPlace) {
       setSelectedPlace(matchedPlace);
+      if (startRoute === "true") {
+        setRoutingPlace(matchedPlace);
+        router.setParams({ startRoute: undefined });
+      }
     }
   }, [activeTrip, params, mapPlaces, router]);
 
@@ -2100,25 +2192,12 @@ export default function MapScreen() {
         pointerEvents="box-none"
       >
         {!isTripPreviewMode && !isActiveTripMode ? (
-          <SearchOverlay
-            searchOpen={searchOpen}
-            searchText={searchText}
-            setSearchText={setSearchText}
-            openSearch={openSearch}
-            closeSearch={closeSearch}
-            searchInputRef={searchInputRef}
-            currentUserAvatarUri={currentUserAvatarUri}
-            onAvatarPress={() => router.push("/(tabs)/profile")}
-          />
-        ) : null}
-
-        {!isTripPreviewMode && !isActiveTripMode ? (
-          <FilterGroupBar
-            activeFilterGroup={activeFilterGroup}
-            onSelectFilterGroup={handleSelectFilterGroup}
-            activeFilterGroupMeta={activeFilterGroupMeta}
-            activeFilterSummaryLabel={activeFilterSummaryLabel}
-            onOpenFilterPicker={handleOpenFilterPicker}
+          <MapTopControls
+            searchState={searchState}
+            searchHandlers={searchHandlers}
+            filterState={filterState}
+            filterHandlers={filterHandlers}
+            onLayout={handleTopControlsLayout}
           />
         ) : null}
 
@@ -2126,6 +2205,7 @@ export default function MapScreen() {
           activeEventId={activeEventId}
           activeNextDestination={activeNextDestination}
           activeDistanceToTarget={activeDistanceToTarget}
+          currentLocation={activeTripLocation}
           isActiveTripMode={isActiveTripMode}
           isTripPaused={activeTrip.isPaused}
           createMomentMutation={createMomentMutation}
@@ -2136,103 +2216,52 @@ export default function MapScreen() {
         />
 
         {/* Floating action buttons — vertical stack */}
-        <View
-          pointerEvents="box-none"
-          style={{
-            position: "absolute",
-            right: 14,
-            top: (insets.top || 0) + 120,
-            zIndex: 50,
-          }}
-        >
-          <View
-            style={{ alignItems: "flex-end", gap: 10 }}
-            pointerEvents="auto"
-          >
-            {/* Locate Button */}
-            <Pressable
-              onPress={handleLocate}
-              className="w-11 h-11 rounded-full items-center justify-center border border-black/[0.04] bg-white/90 shadow-lg shadow-slate-900/5 active:scale-95 transition-all"
-            >
-              <Locate
-                size={20}
-                color="#007AFF"
-              />
-            </Pressable>
+        <MapFabStack
+          visible={hasMeasuredTopControls}
+          topOffset={mapFabTopOffset}
+          mapStyle={mapStyle}
+          mapStyles={MAP_STYLES}
+          layerModalVisible={layerModalVisible}
+          setLayerModalVisible={setLayerModalVisible}
+          setMapStyle={setMapStyle}
+          onLocate={handleLocate}
+          t={t}
+        />
 
-            {/* Layer Button + Popover Row */}
-            <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
-              <Pressable
-                onPress={() => {
-                  LayoutAnimation.configureNext(
-                    LayoutAnimation.Presets.easeInEaseOut,
-                  );
-                  setLayerModalVisible(!layerModalVisible);
-                }}
-                className="w-11 h-11 rounded-full items-center justify-center border border-black/[0.04] bg-white/90 shadow-lg shadow-slate-900/5 active:scale-95 transition-all"
-              >
-                {layerModalVisible ? (
-                  <X size={20} color="#4B5563" />
-                ) : (
-                  <Layers size={20} color="#4B5563" />
-                )}
-              </Pressable>
+        {shouldShowMapStatus && isPlacesLoading ? (
+          <MapStatusPill
+            type="loading"
+            message={MAP_TEXT.web.loadingPlaces}
+            topOffset={mapStatusTopOffset}
+          />
+        ) : null}
 
-              {/* Layer picker popover */}
-              {layerModalVisible && (
-                <View
-                  style={{ padding: 3 }}
-                  className="flex-row rounded-full items-center gap-1 bg-white/90 border border-black/[0.04] shadow-lg shadow-slate-900/5"
-                >
-                  <Pressable
-                    onPress={() => {
-                      LayoutAnimation.configureNext(
-                        LayoutAnimation.Presets.easeInEaseOut,
-                      );
-                      setMapStyle(MAP_STYLES.OSM);
-                      setLayerModalVisible(false);
-                    }}
-                    className={`px-3.5 h-8 rounded-full items-center justify-center transition-all duration-200 ${
-                      mapStyle.key === "osm"
-                        ? "bg-slate-900"
-                        : "bg-transparent active:bg-slate-100"
-                    }`}
-                  >
-                    <Text
-                      className={`text-[13px] font-medium transition-colors duration-200 ${
-                        mapStyle.key === "osm" ? "text-white" : "text-slate-600"
-                      }`}
-                    >
-                      {t("mapScreen.map")}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      LayoutAnimation.configureNext(
-                        LayoutAnimation.Presets.easeInEaseOut,
-                      );
-                      setMapStyle(MAP_STYLES.HYBRID);
-                      setLayerModalVisible(false);
-                    }}
-                    className={`px-3.5 h-8 rounded-full items-center justify-center transition-all duration-200 ${
-                      mapStyle.key === "hybrid"
-                        ? "bg-slate-900"
-                        : "bg-transparent active:bg-slate-100"
-                    }`}
-                  >
-                    <Text
-                      className={`text-[13px] font-medium transition-colors duration-200 ${
-                        mapStyle.key === "hybrid" ? "text-white" : "text-slate-600"
-                      }`}
-                    >
-                      {t("mapScreen.satellite")}
-                    </Text>
-                  </Pressable>
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
+        {shouldShowMapStatus && error ? (
+          <MapStatusPill
+            type="error"
+            message={MAP_TEXT.web.placesLoadError}
+            actionLabel={MAP_TEXT.errors.retry}
+            onAction={refetch}
+            topOffset={mapStatusTopOffset}
+          />
+        ) : null}
+
+        {shouldShowMapStatus &&
+        !isPlacesLoading &&
+        !error &&
+        hasActiveFilters &&
+        visiblePlaces.length === 0 ? (
+          <MapStatusPill
+            type="empty"
+            message={MAP_TEXT.web.noPlacesForFilters}
+            actionLabel={MAP_TEXT.search.cancel}
+            onAction={() => {
+              setSearchText("");
+              handleResetFilters();
+            }}
+            topOffset={mapStatusTopOffset}
+          />
+        ) : null}
       </View>
 
       {activePlace && !isTripPreviewMode && !isActiveTripMode ? (
@@ -2246,12 +2275,11 @@ export default function MapScreen() {
             zIndex: 70,
           }}
         >
-        <PlacePreviewCard
+        <MapPlacePreviewCard
             place={activePlace}
             onClose={handleClosePreview}
             onViewDetail={handleOpenPlaceDetail}
             onStartRoute={handleStartRouteFromPreview}
-            showRouteAction
             travelEtaLabel={
               shouldShowPreviewTravelInfo ? routeEtaLabel : undefined
             }
@@ -2279,9 +2307,12 @@ export default function MapScreen() {
 
       <FilterPickerModal
         visible={!isTripPreviewMode && filterPickerVisible}
+        activeFilterGroup={filterState.activeFilterGroup}
         activeFilterGroupLabel={activeFilterGroupMeta.label}
+        filterGroups={FILTER_GROUP_OPTIONS}
         options={filterPickerOptions}
         onClose={handleCloseFilterPicker}
+        onSelectFilterGroup={filterHandlers.selectFilterGroup}
         onSelectOption={handleSelectFilterOption}
       />
     </View>

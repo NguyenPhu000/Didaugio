@@ -1,9 +1,11 @@
 import logger from "../config/logger.js";
+import prisma from "../config/prismaClient.js";
 import { expirePendingBookings } from "../services/booking/booking.service.js";
 
 /** Mặc định 5 phút — đồng bộ opportunistic expire trong booking.service */
 const DEFAULT_INTERVAL_MS = 5 * 60 * 1000;
 const MIN_INTERVAL_MS = 30_000;
+const PENDING_BOOKING_EXPIRE_LOCK_ID = 1001;
 
 function resolveIntervalMs() {
   const raw = process.env.BOOKING_PENDING_EXPIRE_INTERVAL_MS;
@@ -30,7 +32,21 @@ export function startPendingBookingExpireScheduler() {
 
   const tick = async () => {
     try {
-      const { count } = await expirePendingBookings();
+      const result = await prisma.$transaction(async (tx) => {
+        const lockRows = await tx.$queryRaw`
+          SELECT pg_try_advisory_xact_lock(${PENDING_BOOKING_EXPIRE_LOCK_ID}) AS locked
+        `;
+        const locked = Boolean(lockRows?.[0]?.locked);
+        if (!locked) {
+          return { count: 0, skipped: true };
+        }
+
+        return expirePendingBookings({ db: tx });
+      });
+
+      if (result.skipped) return;
+
+      const { count } = result;
       if (count > 0) {
         logger.info(`[scheduler] expirePendingBookings: ${count} booking(s)`);
       }

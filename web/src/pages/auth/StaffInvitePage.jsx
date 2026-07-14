@@ -17,6 +17,8 @@ import {
   IconEyeOff,
 } from "@tabler/icons-react";
 
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+
 export default function StaffInvitePage() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
@@ -61,7 +63,7 @@ export default function StaffInvitePage() {
     };
 
     validateToken();
-  }, [token]);
+  }, [token, t]);
 
   const validateForm = () => {
     const errors = {};
@@ -72,8 +74,8 @@ export default function StaffInvitePage() {
 
     if (!form.password) {
       errors.password = t("auth.staffInvite.passwordRequired");
-    } else if (form.password.length < 6) {
-      errors.password = t("auth.staffInvite.passwordMin");
+    } else if (!PASSWORD_REGEX.test(form.password)) {
+      errors.password = "Mat khau can it nhat 8 ky tu, gom chu hoa, chu thuong, so va ky tu dac biet.";
     }
 
     if (form.password !== form.confirmPassword) {
@@ -114,8 +116,8 @@ export default function StaffInvitePage() {
   // Loading state
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <Card className="w-full max-w-md">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+        <Card className="w-full max-w-md border-slate-200 shadow-xl">
           <CardContent className="flex flex-col items-center gap-4 py-12">
             <IconLoader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-muted-foreground">Đang kiểm tra lời mời...</p>
@@ -128,8 +130,8 @@ export default function StaffInvitePage() {
   // Error state (token validation failure — no invitation to show form with)
   if (error && !invitation) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <Card className="w-full max-w-md">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+        <Card className="w-full max-w-md border-slate-200 shadow-xl">
           <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
               <IconAlertCircle className="h-8 w-8 text-red-600" />
@@ -150,8 +152,8 @@ export default function StaffInvitePage() {
   // Success state
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <Card className="w-full max-w-md">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+        <Card className="w-full max-w-md border-slate-200 shadow-xl">
           <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
               <IconCheck className="h-8 w-8 text-green-600" />
@@ -177,8 +179,8 @@ export default function StaffInvitePage() {
 
   // Registration form
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+      <Card className="w-full max-w-md border-slate-200 shadow-xl">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <IconBuilding className="h-8 w-8 text-primary" />
@@ -260,7 +262,7 @@ export default function StaffInvitePage() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Ít nhất 6 ký tự"
+                  placeholder="It nhat 8 ky tu, co ky tu dac biet"
                   value={form.password}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, password: e.target.value }))

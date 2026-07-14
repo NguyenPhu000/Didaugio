@@ -27,19 +27,17 @@ COPY nginx-default.conf /etc/nginx/conf.d/default.conf
 # Copy built application from builder
 COPY --from=builder /app/dist /app/dist
 
-# Create non-root user for nginx
-RUN addgroup -g 1001 -S nginx && \
-    adduser -S nginx -u 1001 && \
-    chown -R nginx:nginx /app /var/cache/nginx /var/log/nginx /var/run/nginx
+# Re-configure directory permissions for default nginx user
+RUN chown -R nginx:nginx /app /var/cache/nginx /var/log/nginx /var/run
 
 USER nginx
 
 # Expose port
-EXPOSE 80
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:80/ || exit 1
+    CMD wget --quiet --tries=1 --spider http://localhost:8080/ || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

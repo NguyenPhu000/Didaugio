@@ -24,11 +24,11 @@ import {
   PREMIUM_PRICE_RANGES,
   QUICK_FILTER_OPTIONS,
 } from "./constants/filter.constants";
+import { PlacePreviewCard } from "../../components/composed/PlacePreviewCard";
 import {
-  PlacePreviewCard,
   getPlaceRatingValue,
   getPlaceReviewCount,
-} from "../../components/composed/PlacePreviewCard";
+} from "../place/utils/placeDisplay";
 import { isPlaceOpenNow } from "./utils/placeFilter";
 import { TOKENS } from "../../constants/design-tokens";
 import { cn } from "../../lib/cn";

@@ -11,15 +11,17 @@ import { ROLES } from "@/constants/constants";
 export function usePermission() {
   const user = useAuthStore((state) => state.user);
   const isLoading = useAuthStore((state) => state.isPermissionsLoading ?? false);
+  const permissions = user?.permissions;
+  const currentRoleId = user?.roleId;
 
   const permissionSet = useMemo(() => {
-    if (!user?.permissions) return new Set();
-    return new Set(user.permissions);
-  }, [user?.permissions]);
+    if (!permissions) return new Set();
+    return new Set(permissions);
+  }, [permissions]);
 
   const isWildcard = useMemo(
-    () => user?.roleId === ROLES.SUPER_ADMIN || permissionSet.has("*"),
-    [user?.roleId, permissionSet],
+    () => currentRoleId === ROLES.SUPER_ADMIN || permissionSet.has("*"),
+    [currentRoleId, permissionSet],
   );
 
   const entitlements = useMemo(
@@ -49,10 +51,10 @@ export function usePermission() {
     return permissions.every((p) => permissionSet.has(p));
   };
 
-  const isSuperAdmin = () => user?.roleId === ROLES.SUPER_ADMIN;
-  const isAdmin = () => user?.roleId === ROLES.SUPER_ADMIN || user?.roleId === ROLES.ADMIN;
-  const isBusiness = () => user?.roleId === ROLES.BUSINESS;
-  const isStaff = () => user?.roleId === ROLES.STAFF;
+  const isSuperAdmin = () => currentRoleId === ROLES.SUPER_ADMIN;
+  const isAdmin = () => currentRoleId === ROLES.SUPER_ADMIN || currentRoleId === ROLES.ADMIN;
+  const isBusiness = () => currentRoleId === ROLES.BUSINESS;
+  const isStaff = () => currentRoleId === ROLES.STAFF;
   const hasFeature = (featureKey, sourceEntitlements = entitlements) => {
     if (isWildcard) return true;
     if (!sourceEntitlements?.usable) return false;
@@ -70,11 +72,11 @@ export function usePermission() {
   };
   const canAssignRole = (roleId) => {
     const targetRoleId = Number(roleId);
-    if (user?.roleId === ROLES.SUPER_ADMIN) return targetRoleId !== ROLES.SUPER_ADMIN;
-    if (user?.roleId === ROLES.ADMIN) {
+    if (currentRoleId === ROLES.SUPER_ADMIN) return targetRoleId !== ROLES.SUPER_ADMIN;
+    if (currentRoleId === ROLES.ADMIN) {
       return [ROLES.BUSINESS, ROLES.STAFF, ROLES.USER].includes(targetRoleId);
     }
-    if (user?.roleId === ROLES.BUSINESS) return targetRoleId === ROLES.STAFF;
+    if (currentRoleId === ROLES.BUSINESS) return targetRoleId === ROLES.STAFF;
     return false;
   };
 

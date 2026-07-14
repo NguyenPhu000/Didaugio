@@ -5,16 +5,31 @@ import * as notificationService from "../../services/notification/notification.s
 const REVIEW_NOTIFICATION_ROLE_IDS = [1, 2, 4];
 const PENDING_REVIEW_LIMIT = 100;
 
-const toNotificationDto = (recipient) => ({
-  id: recipient.id,
-  notificationId: recipient.notificationId,
-  title: recipient.notification.title,
-  body: recipient.notification.body,
-  message: recipient.notification.body,
-  metadata: recipient.notification.data || {},
-  readAt: recipient.readAt,
-  createdAt: recipient.createdAt || recipient.notification.createdAt,
+const toNotificationEntity = (metadata = {}) => ({
+  type: metadata.type || "notification",
+  bookingId: metadata.bookingId ?? null,
+  placeId: metadata.placeId ?? null,
+  businessId: metadata.businessId ?? null,
+  reviewId: metadata.reviewId ?? null,
+  documentId: metadata.documentId ?? null,
 });
+
+const toNotificationDto = (recipient) => {
+  const metadata = recipient.notification.data || {};
+  return {
+    id: recipient.id,
+    notificationId: recipient.notificationId,
+    title: recipient.notification.title,
+    body: recipient.notification.body,
+    message: recipient.notification.body,
+    metadata,
+    type: metadata.type || "notification",
+    entity: metadata.entity || toNotificationEntity(metadata),
+    isUnread: !recipient.readAt,
+    readAt: recipient.readAt,
+    createdAt: recipient.createdAt || recipient.notification.createdAt,
+  };
+};
 
 async function getCurrentUserRoleId(userId, fallbackRoleId) {
   const dbUser = await prisma.user.findUnique({

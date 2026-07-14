@@ -1,4 +1,5 @@
 import prisma from "../../config/prismaClient.js";
+import logger from "../../config/logger.js";
 import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import { emitToUser, emitToAll, isUserOnline } from "../../config/socketIO.js";
 import { sendWebPush } from "./webPush.service.js";
@@ -19,6 +20,19 @@ const FIELD_LABELS = {
   bankName: "Ngân hàng",
 };
 
+const logNotificationError = (message, error) => {
+  logger.error(`${message}: ${error?.stack || error?.message || error}`);
+};
+
+const toNotificationEntity = (metadata = {}) => ({
+  type: metadata.type || "notification",
+  bookingId: metadata.bookingId ?? null,
+  placeId: metadata.placeId ?? null,
+  businessId: metadata.businessId ?? null,
+  reviewId: metadata.reviewId ?? null,
+  documentId: metadata.documentId ?? null,
+});
+
 export async function sendExpoPush(tokens, title, body, data = {}) {
   const messages = (Array.isArray(tokens) ? tokens : [tokens])
     .filter(Boolean)
@@ -37,7 +51,7 @@ export async function sendExpoPush(tokens, title, body, data = {}) {
     });
     return response.json();
   } catch (err) {
-    console.error("[ExpoPush] Failed to send push notification:", err.message);
+    logNotificationError("[ExpoPush] Failed to send push notification", err);
   }
 }
 
@@ -69,16 +83,22 @@ const uniqueRecipients = (recipients = []) => {
     });
 };
 
-const toPayload = (notification, recipient) => ({
-  id: recipient.id,
-  notificationId: notification.id,
-  title: notification.title,
-  body: notification.body,
-  message: notification.body,
-  metadata: notification.data || {},
-  readAt: recipient.readAt,
-  createdAt: recipient.createdAt || notification.createdAt,
-});
+const toPayload = (notification, recipient) => {
+  const metadata = notification.data || {};
+  return {
+    id: recipient.id,
+    notificationId: notification.id,
+    title: notification.title,
+    body: notification.body,
+    message: notification.body,
+    metadata,
+    type: metadata.type || "notification",
+    entity: metadata.entity || toNotificationEntity(metadata),
+    isUnread: !recipient.readAt,
+    readAt: recipient.readAt,
+    createdAt: recipient.createdAt || notification.createdAt,
+  };
+};
 
 async function sendPushIfOffline(userId, title, body, data) {
   if (isUserOnline(userId)) return;
@@ -191,7 +211,7 @@ async function createNotification({
   return notification;
 }
 
-async function notifyUser(userId, title, body, data = {}, createdBy = null) {
+export async function notifyUser(userId, title, body, data = {}, createdBy = null) {
   return createNotification({
     title,
     body,
@@ -295,7 +315,7 @@ async function backfillPendingReviewNotifications() {
       recipients: adminRecipients,
       eventKey: `business:pending:${business.id}`,
     }).catch((error) => {
-      console.error("[Notification] Backfill pending business failed:", error);
+      logNotificationError("[Notification] Backfill pending business failed", error);
     });
   }
 
@@ -313,7 +333,7 @@ async function backfillPendingReviewNotifications() {
       recipients: adminRecipients,
       eventKey: `place:pending:${place.id}`,
     }).catch((error) => {
-      console.error("[Notification] Backfill pending place failed:", error);
+      logNotificationError("[Notification] Backfill pending place failed", error);
     });
   }
 }
@@ -334,7 +354,7 @@ eventEmitter.on(EVENTS.BUSINESS.REGISTERED, async ({ businessId, userId, busines
       userId,
     ),
   ]).catch((error) => {
-    console.error("[Notification] Error processing BUSINESS.REGISTERED:", error);
+    logNotificationError("[Notification] Error processing BUSINESS.REGISTERED", error);
   });
 });
 
@@ -346,7 +366,7 @@ eventEmitter.on(EVENTS.BUSINESS.APPROVED, async ({ businessId, approvedBy, owner
     { businessId, type: "business_approved" },
     approvedBy,
   ).catch((error) => {
-    console.error("[Notification] Error processing BUSINESS.APPROVED:", error);
+    logNotificationError("[Notification] Error processing BUSINESS.APPROVED", error);
   });
 });
 
@@ -360,7 +380,7 @@ eventEmitter.on(
       { businessId, type: "business_rejected", reason },
       rejectedBy,
     ).catch((error) => {
-      console.error("[Notification] Error processing BUSINESS.REJECTED:", error);
+      logNotificationError("[Notification] Error processing BUSINESS.REJECTED", error);
     });
   },
 );
@@ -375,7 +395,7 @@ eventEmitter.on(
       { businessId, type: "business_suspended", reason },
       suspendedBy,
     ).catch((error) => {
-      console.error("[Notification] Error processing BUSINESS.SUSPENDED:", error);
+      logNotificationError("[Notification] Error processing BUSINESS.SUSPENDED", error);
     });
   },
 );
@@ -388,7 +408,7 @@ eventEmitter.on(EVENTS.BUSINESS.REACTIVATED, async ({ businessId, reactivatedBy,
     { businessId, type: "business_reactivated" },
     reactivatedBy,
   ).catch((error) => {
-    console.error("[Notification] Error processing BUSINESS.REACTIVATED:", error);
+    logNotificationError("[Notification] Error processing BUSINESS.REACTIVATED", error);
   });
 });
 
@@ -402,7 +422,7 @@ eventEmitter.on(
       { businessId, type: "business_terminated", reason },
       terminatedBy,
     ).catch((error) => {
-      console.error("[Notification] Error processing BUSINESS.TERMINATED:", error);
+      logNotificationError("[Notification] Error processing BUSINESS.TERMINATED", error);
     });
   },
 );
@@ -422,7 +442,7 @@ eventEmitter.on(EVENTS.BUSINESS.DOCUMENT_UPDATED, async ({ businessId, ownerId, 
       { businessId, type: "admin_document_updated", changedFields },
     ),
   ]).catch((error) => {
-    console.error("[Notification] Error processing BUSINESS.DOCUMENT_UPDATED:", error);
+    logNotificationError("[Notification] Error processing BUSINESS.DOCUMENT_UPDATED", error);
   });
 });
 
@@ -433,7 +453,7 @@ eventEmitter.on(EVENTS.BUSINESS.RESUBMITTED, async ({ businessId, ownerId, busin
     { businessId, type: "admin_business_resubmitted" },
     ownerId,
   ).catch((error) => {
-    console.error("[Notification] Error processing BUSINESS.RESUBMITTED:", error);
+    logNotificationError("[Notification] Error processing BUSINESS.RESUBMITTED", error);
   });
 });
 
@@ -444,7 +464,7 @@ eventEmitter.on(EVENTS.BUSINESS.CONTRACT_SIGNED, async ({ businessId, businessNa
     { businessId, contractVersion, type: "admin_business_contract_signed" },
     ownerId,
   ).catch((error) => {
-    console.error("[Notification] Error processing BUSINESS.CONTRACT_SIGNED:", error);
+    logNotificationError("[Notification] Error processing BUSINESS.CONTRACT_SIGNED", error);
   });
 });
 
@@ -461,7 +481,7 @@ eventEmitter.on(EVENTS.PLACE.CREATED, async ({ id, name, createdBy }) => {
       { placeId: id, businessId: place.businessId, type: "admin_place_created" },
       createdBy,
     ).catch((error) => {
-      console.error("[Notification] Error processing PLACE.CREATED:", error);
+      logNotificationError("[Notification] Error processing PLACE.CREATED", error);
     });
   }
 });
@@ -479,7 +499,7 @@ eventEmitter.on(EVENTS.PLACE.UPDATED, async ({ id, updatedBy }) => {
       { placeId: id, businessId: place.businessId, type: "admin_place_updated" },
       updatedBy,
     ).catch((error) => {
-      console.error("[Notification] Error processing PLACE.UPDATED:", error);
+      logNotificationError("[Notification] Error processing PLACE.UPDATED", error);
     });
   }
 });
@@ -490,7 +510,7 @@ eventEmitter.on(EVENTS.PLACE.DELETED, async ({ id }) => {
     `Địa điểm #${id} vừa bị xóa khỏi hệ thống.`,
     { placeId: id, type: "admin_place_deleted" },
   ).catch((error) => {
-    console.error("[Notification] Error processing PLACE.DELETED:", error);
+    logNotificationError("[Notification] Error processing PLACE.DELETED", error);
   });
 });
 
@@ -502,7 +522,7 @@ eventEmitter.on(EVENTS.PLACE.APPROVED, async ({ id, approvedBy, ownerId }) => {
     { placeId: id, type: "place_approved" },
     approvedBy,
   ).catch((error) => {
-    console.error("[Notification] Error processing PLACE.APPROVED:", error);
+    logNotificationError("[Notification] Error processing PLACE.APPROVED", error);
   });
 });
 
@@ -514,7 +534,7 @@ eventEmitter.on(EVENTS.PLACE.REJECTED, async ({ id, rejectedBy, reason, ownerId 
     { placeId: id, type: "place_rejected", reason },
     rejectedBy,
   ).catch((error) => {
-    console.error("[Notification] Error processing PLACE.REJECTED:", error);
+    logNotificationError("[Notification] Error processing PLACE.REJECTED", error);
   });
 });
 
@@ -536,7 +556,7 @@ eventEmitter.on(
         { bookingId, type: "booking_created" },
       ),
     ]).catch((error) => {
-      console.error("[Notification] Error processing BOOKING.CREATED:", error);
+      logNotificationError("[Notification] Error processing BOOKING.CREATED", error);
     });
   },
 );
@@ -558,7 +578,7 @@ eventEmitter.on(EVENTS.BOOKING.PAID, async ({ bookingId, bookingCode, userId, bu
         )
       : Promise.resolve(),
   ]).catch((error) => {
-    console.error("[Notification] Error processing BOOKING.PAID:", error);
+    logNotificationError("[Notification] Error processing BOOKING.PAID", error);
   });
 });
 
@@ -570,7 +590,7 @@ eventEmitter.on(EVENTS.BOOKING.CONFIRMED, async ({ bookingId, bookingCode, confi
     { bookingId, type: "booking_confirmed" },
     confirmedBy,
   ).catch((error) => {
-    console.error("[Notification] Error processing BOOKING.CONFIRMED:", error);
+    logNotificationError("[Notification] Error processing BOOKING.CONFIRMED", error);
   });
 });
 
@@ -616,7 +636,7 @@ eventEmitter.on(
       },
       rescheduledBy,
     ).catch((error) => {
-      console.error("[Notification] Error processing BOOKING.RESCHEDULED:", error);
+      logNotificationError("[Notification] Error processing BOOKING.RESCHEDULED", error);
     });
   },
 );
@@ -631,7 +651,7 @@ eventEmitter.on(
       { bookingId, type: "booking_cancelled", cancelReason },
       cancelledBy,
     ).catch((error) => {
-      console.error("[Notification] Error processing BOOKING.CANCELLED:", error);
+      logNotificationError("[Notification] Error processing BOOKING.CANCELLED", error);
     });
   },
 );
@@ -646,7 +666,7 @@ eventEmitter.on(
       { bookingId, type: "booking_rejected", rejectReason },
       rejectedBy,
     ).catch((error) => {
-      console.error("[Notification] Error processing BOOKING.REJECTED:", error);
+      logNotificationError("[Notification] Error processing BOOKING.REJECTED", error);
     });
   },
 );
@@ -660,7 +680,7 @@ eventEmitter.on(
       `Booking #${bookingCode} đã hết hạn vì quá thời gian xử lý.`,
       { bookingId, type: "booking_expired" },
     ).catch((error) => {
-      console.error("[Notification] Error processing BOOKING.EXPIRED:", error);
+      logNotificationError("[Notification] Error processing BOOKING.EXPIRED", error);
     });
   },
 );
@@ -673,7 +693,7 @@ eventEmitter.on(EVENTS.BOOKING.COMPLETED, async ({ bookingId, bookingCode, compl
     { bookingId, type: "booking_completed" },
     completedBy,
   ).catch((error) => {
-    console.error("[Notification] Error processing BOOKING.COMPLETED:", error);
+    logNotificationError("[Notification] Error processing BOOKING.COMPLETED", error);
   });
 });
 
@@ -685,7 +705,7 @@ eventEmitter.on(EVENTS.BOOKING.NO_SHOW, async ({ bookingId, bookingCode, markedB
     { bookingId, type: "booking_no_show" },
     markedBy,
   ).catch((error) => {
-    console.error("[Notification] Error processing BOOKING.NO_SHOW:", error);
+    logNotificationError("[Notification] Error processing BOOKING.NO_SHOW", error);
   });
 });
 
@@ -697,7 +717,7 @@ eventEmitter.on(EVENTS.REVIEW.REPLIED, async ({ reviewId, replyId, repliedBy, re
     { reviewId, replyId, type: "review_replied" },
     repliedBy,
   ).catch((error) => {
-    console.error("[Notification] Error processing REVIEW.REPLIED:", error);
+    logNotificationError("[Notification] Error processing REVIEW.REPLIED", error);
   });
 });
 
@@ -726,7 +746,7 @@ export async function createAnnouncement({ title, body, imageUrl, createdBy }) {
       targetType: "all",
       targetValue: { userIds: users.map((u) => u.id) },
       data: { type: "announcement" },
-      status: "sent",
+      status: "published",
       sentAt: new Date(),
       createdBy: createdById,
       successCount: users.length,
@@ -845,8 +865,8 @@ export async function getAnnouncements({ page = 1, limit = 20 } = {}) {
 }
 
 export const initNotificationService = () => {
-  console.log("[Notification Service] Initialized and listening for events...");
+  logger.info("[Notification Service] Initialized and listening for events...");
   backfillPendingReviewNotifications().catch((error) => {
-    console.error("[Notification] Backfill pending review notifications failed:", error);
+    logNotificationError("[Notification] Backfill pending review notifications failed", error);
   });
 };

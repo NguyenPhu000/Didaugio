@@ -1,11 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import {
-  ArrowLeft,
-  Check,
-  MapPin,
-} from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import usePlaceStore from "@/stores/placeStore";
 import { usePlaceDetail } from "@/hooks/queries/usePlaceQueries";
 import { Button } from "@/components/ui/Button";
@@ -40,11 +36,11 @@ const PlaceWizardPage = () => {
   const { data: placeRes, isLoading: placeLoading, error: placeError } = usePlaceDetail(
     isEditMode ? parseInt(id) : null
   );
+  const place = placeRes?.data || placeRes;
 
   // Load place into wizard when data arrives
   useEffect(() => {
     if (isEditMode && placeRes) {
-      const place = placeRes?.data || placeRes;
       loadPlaceIntoWizard(place);
     } else if (!isEditMode) {
       resetWizard();
@@ -188,6 +184,7 @@ const PlaceWizardPage = () => {
         <div>
           {StepComponent && <StepComponent isEditMode={isEditMode} />}
         </div>
+
       </div>
     </div>
   );

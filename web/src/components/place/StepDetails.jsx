@@ -33,6 +33,7 @@ import ImageUploader from "./ImageUploader";
 import PriceRangeSlider from "./PriceRangeSlider";
 import TagSelector from "./TagSelector";
 import OpeningHoursEditor from "./OpeningHoursEditor";
+import SpokenGuideEditor from "./SpokenGuideEditor";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -233,6 +234,11 @@ const StepDetails = () => {
                   </p>
                 )}
               </div>
+
+              <SpokenGuideEditor
+                value={wizardData.spokenGuide}
+                onChange={(spokenGuide) => updateWizardData({ spokenGuide })}
+              />
 
               {/* Price Range */}
               <div className="rounded-2xl border border-zinc-200 bg-white p-4">

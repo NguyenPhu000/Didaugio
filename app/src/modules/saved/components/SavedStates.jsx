@@ -5,6 +5,7 @@ import {
   CloudOff,
   RefreshCw,
   FolderX,
+  X,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import Animated, { FadeIn } from "react-native-reanimated";
@@ -53,13 +54,18 @@ export function LoadingState() {
   );
 }
 
-export function EmptyState({ onExplore, activeFilter }) {
+export function EmptyState({ onExplore, activeFilter, onClearFilters }) {
   const { t } = useTranslation();
   const isFiltered = Boolean(activeFilter);
 
   const handleExplore = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onExplore?.();
+  };
+
+  const handleClearFilters = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onClearFilters?.();
   };
 
   return (
@@ -101,10 +107,24 @@ export function EmptyState({ onExplore, activeFilter }) {
           : t("saved.empty.noSavedDesc")}
       </Text>
 
-      {!isFiltered && onExplore ? (
+      {isFiltered && onClearFilters ? (
+        <Pressable
+          onPress={handleClearFilters}
+          className="flex-row items-center gap-1.5 mt-5 px-5 py-3 bg-[#101E2C] active:opacity-80 active:scale-[0.97]"
+          style={{ borderRadius: 14, borderCurve: "continuous" }}
+        >
+          <X size={16} color="#FFFFFF" strokeWidth={2.3} />
+          <Text
+            className="text-[14px] text-white tracking-tight"
+            style={{ fontFamily: TOKENS.font.semibold }}
+          >
+            {t("saved.empty.clearFilters")}
+          </Text>
+        </Pressable>
+      ) : !isFiltered && onExplore ? (
         <Pressable
           onPress={handleExplore}
-          className="flex-row items-center gap-1.5 mt-5 px-5 py-3 bg-[#1D1D1F] active:opacity-80 active:scale-[0.97]"
+          className="flex-row items-center gap-1.5 mt-5 px-5 py-3 bg-[#101E2C] active:opacity-80 active:scale-[0.97]"
           style={{ borderRadius: 14, borderCurve: "continuous" }}
         >
           <Compass size={17} color="#FFFFFF" strokeWidth={2} />

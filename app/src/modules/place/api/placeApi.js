@@ -10,5 +10,8 @@ export const getPlaceDetailBySlugApi = (slug) =>
 export const getPlaceReviewsApi = (id, params) =>
   client.get(ENDPOINTS.places.reviews(id), { params });
 
+export const getMyPlaceReviewApi = (id) =>
+  client.get(ENDPOINTS.places.myReview(id));
+
 export const createReviewApi = (id, payload) =>
   client.post(ENDPOINTS.places.reviews(id), payload);

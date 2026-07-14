@@ -10,8 +10,6 @@ const ROLE_NAME_TO_ID = {
   guest: ROLES.GUEST,
 };
 
-const ADMIN_DASHBOARD_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF];
-
 export const resolveRoleId = (user) => {
   if (user?.roleId) return user.roleId;
 

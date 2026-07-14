@@ -285,6 +285,7 @@ export const acceptInvitation = async (token, staffData) => {
         businessId: invitation.businessId,
         businessRoleId: invitation.roleId,
         status: USER_STATUS.ACTIVE,
+        emailVerified: true,
       },
       select: { id: true, email: true, username: true },
     });

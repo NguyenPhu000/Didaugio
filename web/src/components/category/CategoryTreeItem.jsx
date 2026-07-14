@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { CATEGORY_ICON_MAP } from "@/constants/categoryConstants";
+import { MdiCategoryIcon } from "./MdiCategoryIcon";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -70,24 +70,15 @@ export default function CategoryTreeItem({
         </button>
 
         {/* Category Icon */}
-        {category.icon && (
-          <div
-            className="flex items-center justify-center w-8 h-8 rounded"
-            style={{
-              backgroundColor: `${category.color}20`,
-              color: category.color,
-            }}
-          >
-            {(() => {
-              const IconComponent = CATEGORY_ICON_MAP[category.icon];
-              return IconComponent ? (
-                <IconComponent className="h-4 w-4" />
-              ) : (
-                <span className="text-xs">{category.icon}</span>
-              );
-            })()}
-          </div>
-        )}
+        <div
+          className="flex items-center justify-center w-8 h-8 rounded"
+          style={{
+            backgroundColor: `${category.color}20`,
+            color: category.color,
+          }}
+        >
+          <MdiCategoryIcon category={category} className="h-4 w-4" />
+        </div>
 
         {/* Category Info */}
         <div className="flex-1 cursor-pointer" onClick={handleSelect}>

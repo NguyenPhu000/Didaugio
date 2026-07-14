@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   RefreshControl,
@@ -20,7 +20,9 @@ import {
   Compass,
   Sparkles,
   Grid3x3,
-  MapPin,
+  BookmarkCheck,
+  SlidersHorizontal,
+  X,
 } from "lucide-react-native";
 import {
   useSavePlace,
@@ -34,6 +36,7 @@ import {
 } from "../../src/constants/design-tokens";
 import { SavedCard } from "../../src/modules/saved/components/SavedCard";
 import { NoteEditorModal } from "../../src/modules/saved/components/NoteEditorModal";
+import FilterPickerModal from "../../src/modules/map/components/filters/FilterPickerModal";
 import {
   LoadingState,
   EmptyState,
@@ -70,6 +73,8 @@ export default function SavedScreen() {
 
   const [activeArea, setActiveArea] = useState(ALL_AREAS_KEY);
   const [activeCategory, setActiveCategory] = useState(ALL_CATEGORIES_KEY);
+  const [activeFilterGroup, setActiveFilterGroup] = useState("category");
+  const [filterPickerVisible, setFilterPickerVisible] = useState(false);
   const [noteTarget, setNoteTarget] = useState(null);
   const [noteDraft, setNoteDraft] = useState("");
 
@@ -104,14 +109,42 @@ export default function SavedScreen() {
   const isFiltered =
     activeArea !== ALL_AREAS_KEY || activeCategory !== ALL_CATEGORIES_KEY;
 
-  const handleCategoryPress = useCallback((key) => {
+  useEffect(() => {
+    if (
+      activeCategory !== ALL_CATEGORIES_KEY &&
+      !categoryOptions.some((option) => option.key === activeCategory)
+    ) {
+      setActiveCategory(ALL_CATEGORIES_KEY);
+    }
+  }, [activeCategory, categoryOptions]);
+
+  useEffect(() => {
+    if (
+      activeArea !== ALL_AREAS_KEY &&
+      !areaOptions.some((option) => option.key === activeArea)
+    ) {
+      setActiveArea(ALL_AREAS_KEY);
+    }
+  }, [activeArea, areaOptions]);
+
+  const handleClearFilters = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setActiveCategory(key);
+    setActiveArea(ALL_AREAS_KEY);
+    setActiveCategory(ALL_CATEGORIES_KEY);
+    setFilterPickerVisible(false);
   }, []);
 
-  const handleAreaPress = useCallback((key) => {
+  const handleOpenFilterPicker = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setActiveArea(key);
+    setFilterPickerVisible(true);
+  }, []);
+
+  const handleCloseFilterPicker = useCallback(() => {
+    setFilterPickerVisible(false);
+  }, []);
+
+  const handleSelectFilterGroup = useCallback((groupKey) => {
+    setActiveFilterGroup(groupKey);
   }, []);
 
   const handleOpenNoteEditor = useCallback((entry) => {
@@ -205,6 +238,14 @@ export default function SavedScreen() {
     return { Icon: Grid3x3, color: "#6B7280" };
   };
 
+  const getCategoryKey = useCallback((place) => {
+    const categoryId = place?.category?.id ?? place?.categoryId;
+    const categoryName = place?.category?.name ?? place?.categoryName;
+    return categoryId != null
+      ? `cat:${categoryId}`
+      : `cat-name:${String(categoryName || "").trim().toLowerCase()}`;
+  }, []);
+
   // Build category items with counts
   const catItems = useMemo(() => {
     const items = [
@@ -217,18 +258,12 @@ export default function SavedScreen() {
     categoryOptions.forEach((opt) => {
       const count = savedData.filter((entry) => {
         const place = entry?.place || entry;
-        const cat = place?.category;
-        if (!cat) return false;
-        const catKey =
-          cat.id != null
-            ? `category:${cat.id}`
-            : `category-name:${(cat.name || "").trim().toLowerCase()}`;
-        return catKey === opt.key;
+        return getCategoryKey(place) === opt.key;
       }).length;
       items.push({ ...opt, count });
     });
     return items;
-  }, [savedData, categoryOptions, t]);
+  }, [savedData, categoryOptions, getCategoryKey, t]);
 
   // Build area items with counts
   const areaItems = useMemo(() => {
@@ -254,6 +289,96 @@ export default function SavedScreen() {
     return items;
   }, [savedData, areaOptions, t]);
 
+  const activeCategoryName =
+    catItems.find((item) => item.key === activeCategory)?.name ||
+    t("common.all");
+  const activeAreaName =
+    areaItems.find((item) => item.key === activeArea)?.name || t("common.all");
+  const activeCategoryIconMeta = useMemo(
+    () => getCategoryIcon(activeCategoryName),
+    [activeCategoryName],
+  );
+
+  const filterGroups = useMemo(
+    () => [
+      {
+        key: "category",
+        label: t("map.filters.groupOptions.category"),
+        icon: "apps",
+      },
+      {
+        key: "area",
+        label: t("map.filters.groupOptions.area"),
+        icon: "place",
+      },
+    ],
+    [t],
+  );
+
+  const activeFilterGroupMeta = useMemo(
+    () =>
+      filterGroups.find((group) => group.key === activeFilterGroup) ||
+      filterGroups[0],
+    [activeFilterGroup, filterGroups],
+  );
+
+  const activeFilterSummaryLabel =
+    activeFilterGroup === "area" ? activeAreaName : activeCategoryName;
+
+  const filterPickerOptions = useMemo(() => {
+    if (activeFilterGroup === "area") {
+      return [
+        {
+          key: "area:all",
+          value: ALL_AREAS_KEY,
+          label: t("map.filters.allAreas"),
+          icon: "public",
+          active: activeArea === ALL_AREAS_KEY,
+        },
+        ...areaItems
+          .filter((area) => area.key !== ALL_AREAS_KEY)
+          .map((area) => ({
+            key: `area:${area.key}`,
+            value: area.key,
+            label: `${area.name} (${area.count})`,
+            icon: "place",
+            active: area.key === activeArea,
+          })),
+      ];
+    }
+
+    return [
+      {
+        key: "category:all",
+        value: ALL_CATEGORIES_KEY,
+        label: t("map.filters.allCategories"),
+        icon: "apps",
+        active: activeCategory === ALL_CATEGORIES_KEY,
+      },
+      ...catItems
+        .filter((category) => category.key !== ALL_CATEGORIES_KEY)
+        .map((category) => ({
+          key: `category:${category.key}`,
+          value: category.key,
+          label: `${category.name} (${category.count})`,
+          icon: "category",
+          active: category.key === activeCategory,
+        })),
+    ];
+  }, [activeArea, activeCategory, activeFilterGroup, areaItems, catItems, t]);
+
+  const handleSelectFilterOption = useCallback(
+    (value) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (activeFilterGroup === "area") {
+        setActiveArea(value ?? ALL_AREAS_KEY);
+        return;
+      }
+      setActiveCategory(value ?? ALL_CATEGORIES_KEY);
+    },
+    [activeFilterGroup],
+  );
+
   const renderMasonryCard = useCallback(
     (item) => {
       const place = item?.place || item;
@@ -274,155 +399,200 @@ export default function SavedScreen() {
   const renderHeader = useCallback(() => {
     if (isLoading || isError) return null;
 
-    const showCategories = catItems.length > 1;
-    const showAreas = areaItems.length > 1;
+    const canFilter = catItems.length > 1 || areaItems.length > 1;
+    const FilterIcon =
+      activeFilterGroup === "category"
+        ? activeCategoryIconMeta.Icon
+        : SlidersHorizontal;
+    const filterIconColor =
+      activeFilterGroup === "category" ? activeCategoryIconMeta.color : "#0EA5E9";
 
     return (
-      <View className="pt-4 pb-3.5 px-4">
+      <View className="pt-3 pb-4 px-4">
         {/* Tiêu đề + Badge */}
-        <View className="flex-row items-center justify-between mb-4">
-          <Text
-            className="text-[28px] tracking-tight text-[#0F172A]"
-            style={{ fontFamily: TOKENS.font.heading }}
-          >
-            {t("saved.title")}
-          </Text>
-          {filteredSavedData.length > 0 && (
-            <View className="h-7 px-2.5 rounded-full bg-black/5 items-center justify-center">
-              <Text
-                className="text-[13px] text-[#6B7280]"
-                style={{ fontFamily: TOKENS.font.semibold }}
-              >
-                {filteredSavedData.length}
-              </Text>
+        <View
+          className="bg-[#101E2C] overflow-hidden mb-4"
+          style={{ borderRadius: 30, borderCurve: "continuous" }}
+        >
+          <View
+            className="absolute rounded-full"
+            style={{
+              right: -40,
+              top: -48,
+              width: 160,
+              height: 160,
+              backgroundColor: "rgba(213,228,247,0.2)",
+            }}
+          />
+          <View
+            className="absolute rounded-full"
+            style={{
+              left: -48,
+              bottom: -42,
+              width: 144,
+              height: 144,
+              backgroundColor: "rgba(255,255,255,0.1)",
+            }}
+          />
+          <View className="px-5 pt-5 pb-4">
+            <View className="flex-row items-start justify-between gap-4">
+              <View className="flex-1">
+                <View className="flex-row items-center gap-2 mb-2">
+                  <BookmarkCheck size={17} color="#D5E4F7" strokeWidth={2} />
+                  <Text
+                    className="text-[12px] uppercase tracking-[1.8px]"
+                    style={{
+                      color: "rgba(255,255,255,0.65)",
+                      fontFamily: TOKENS.font.semibold,
+                    }}
+                  >
+                    {t("tabs.saved")}
+                  </Text>
+                </View>
+                <Text
+                  className="text-[30px] leading-[34px] tracking-tight text-white"
+                  style={{ fontFamily: TOKENS.font.heading }}
+                >
+                  {t("saved.title")}
+                </Text>
+              </View>
+
+              <View className="items-end">
+                <Text
+                  className="text-[32px] leading-[36px] text-white"
+                  style={{ fontFamily: TOKENS.font.heading }}
+                >
+                  {filteredSavedData.length}
+                </Text>
+                <Text
+                  className="text-[12px]"
+                  style={{
+                    color: "rgba(255,255,255,0.62)",
+                    fontFamily: TOKENS.font.medium,
+                  }}
+                >
+                  {t("saved.countLabel", { count: filteredSavedData.length })}
+                </Text>
+              </View>
             </View>
-          )}
+
+            <View className="mt-5 flex-row gap-2">
+              <View
+                className="flex-1 px-3 py-2.5 border"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                  borderColor: "rgba(255,255,255,0.1)",
+                  borderRadius: 18,
+                  borderCurve: "continuous",
+                }}
+              >
+                <Text
+                  numberOfLines={1}
+                  className="text-[11px]"
+                  style={{
+                    color: "rgba(255,255,255,0.5)",
+                    fontFamily: TOKENS.font.medium,
+                  }}
+                >
+                  {t("common.filter")}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  className="text-[14px] text-white mt-0.5"
+                  style={{ fontFamily: TOKENS.font.semibold }}
+                >
+                  {activeCategoryName}
+                </Text>
+              </View>
+              <View
+                className="flex-1 px-3 py-2.5 border"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                  borderColor: "rgba(255,255,255,0.1)",
+                  borderRadius: 18,
+                  borderCurve: "continuous",
+                }}
+              >
+                <Text
+                  numberOfLines={1}
+                  className="text-[11px]"
+                  style={{
+                    color: "rgba(255,255,255,0.5)",
+                    fontFamily: TOKENS.font.medium,
+                  }}
+                >
+                  {t("savedDashboard.areas")}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  className="text-[14px] text-white mt-0.5"
+                  style={{ fontFamily: TOKENS.font.semibold }}
+                >
+                  {activeAreaName}
+                </Text>
+              </View>
+            </View>
+          </View>
         </View>
 
-        {/* Category pills */}
-        {showCategories && (
-          <View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerClassName="gap-2.5 pr-1 items-center"
-              className={showAreas ? "mb-2.5" : ""}
+        {canFilter && (
+          <View className="flex-row items-center justify-between mb-3">
+            <Pressable
+              onPress={handleOpenFilterPicker}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`${activeFilterGroupMeta.label}: ${activeFilterSummaryLabel}`}
+              className="flex-1 flex-row items-center gap-3 bg-white border border-[#E3E7EC] px-3.5 py-3 active:opacity-80"
+              style={{
+                borderRadius: 18,
+                borderCurve: "continuous",
+                shadowColor: "#101E2C",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.06,
+                shadowRadius: 14,
+                elevation: 2,
+              }}
             >
-              {catItems.map((item) => {
-                const active = activeCategory === item.key;
-                const isAll = item.key === ALL_CATEGORIES_KEY;
-                const { Icon, color: iconColor } = isAll
-                  ? { Icon: Grid3x3, color: "#6B7280" }
-                  : getCategoryIcon(item.name);
-                return (
-                  <Pressable
-                    key={item.key}
-                    onPress={() => handleCategoryPress(item.key)}
-                    className={`flex-row items-center gap-1.5 px-3.5 py-2 rounded-full border active:scale-[0.97] active:opacity-90 ${
-                      active
-                        ? "bg-[#1C1C1E] border-[#1C1C1E] shadow-sm shadow-black/20"
-                        : "bg-white border-black/5"
-                    }`}
-                  >
-                    <Icon
-                      size={15}
-                      color={active ? "#FFFFFF" : iconColor}
-                      strokeWidth={2.2}
-                    />
-                    <Text
-                      numberOfLines={1}
-                      className={`text-[13px] tracking-tight ${
-                        active ? "text-white" : "text-[#1C1C1E]"
-                      }`}
-                      style={{
-                        fontFamily: active
-                          ? TOKENS.font.semibold
-                          : TOKENS.font.medium,
-                      }}
-                    >
-                      {item.name}
-                    </Text>
-                    <View
-                      className={`rounded-full px-1.5 py-[1px] min-w-[22px] items-center ${
-                        active ? "bg-white/20" : "bg-black/5"
-                      }`}
-                    >
-                      <Text
-                        numberOfLines={1}
-                        className={`text-[11px] ${
-                          active ? "text-white/90" : "text-black/45"
-                        }`}
-                        style={{ fontFamily: TOKENS.font.semibold }}
-                      >
-                        {item.count}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+              <View
+                className="w-9 h-9 rounded-full items-center justify-center"
+                style={{ backgroundColor: "rgba(16,30,44,0.08)" }}
+              >
+                <FilterIcon size={16} color={filterIconColor} strokeWidth={2.2} />
+              </View>
+              <View className="flex-1">
+                <Text
+                  numberOfLines={1}
+                  className="text-[11px] uppercase tracking-[1.3px] text-[#74777C]"
+                  style={{ fontFamily: TOKENS.font.semibold }}
+                >
+                  {activeFilterGroupMeta.label}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  className="mt-0.5 text-[15px] tracking-tight text-[#101E2C]"
+                  style={{ fontFamily: TOKENS.font.semibold }}
+                >
+                  {activeFilterSummaryLabel}
+                </Text>
+              </View>
+            </Pressable>
+
+            {isFiltered ? (
+              <Pressable
+                onPress={handleClearFilters}
+                className="ml-2 w-11 h-11 items-center justify-center active:opacity-80"
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.04)",
+                  borderRadius: 16,
+                  borderCurve: "continuous",
+                }}
+              >
+                <X size={13} color="#54647A" strokeWidth={2.4} />
+              </Pressable>
+            ) : null}
           </View>
         )}
 
-        {/* Area pills */}
-        {showAreas && (
-          <View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerClassName="gap-2.5 pr-1 items-center"
-            >
-              {areaItems.map((item) => {
-                const active = activeArea === item.key;
-                return (
-                  <Pressable
-                    key={item.key}
-                    onPress={() => handleAreaPress(item.key)}
-                    className={`flex-row items-center gap-1.5 px-3.5 py-2 rounded-full border active:scale-[0.97] active:opacity-90 ${
-                      active
-                        ? "bg-[#1C1C1E] border-[#1C1C1E] shadow-sm shadow-black/20"
-                        : "bg-white border-black/5"
-                    }`}
-                  >
-                    <MapPin
-                      size={15}
-                      color={active ? "#FFFFFF" : "#0EA5E9"}
-                      strokeWidth={2.2}
-                    />
-                    <Text
-                      numberOfLines={1}
-                      className={`text-[13px] tracking-tight ${
-                        active ? "text-white" : "text-[#1C1C1E]"
-                      }`}
-                      style={{
-                        fontFamily: active
-                          ? TOKENS.font.semibold
-                          : TOKENS.font.medium,
-                      }}
-                    >
-                      {item.name}
-                    </Text>
-                    <View
-                      className={`rounded-full px-1.5 py-[1px] min-w-[22px] items-center ${
-                        active ? "bg-white/20" : "bg-black/5"
-                      }`}
-                    >
-                      <Text
-                        numberOfLines={1}
-                        className={`text-[11px] ${
-                          active ? "text-white/90" : "text-black/45"
-                        }`}
-                        style={{ fontFamily: TOKENS.font.semibold }}
-                      >
-                        {item.count}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
       </View>
     );
   }, [
@@ -430,12 +600,17 @@ export default function SavedScreen() {
     isError,
     catItems,
     areaItems,
-    activeArea,
-    activeCategory,
+    activeAreaName,
+    activeCategoryName,
+    activeCategoryIconMeta,
+    activeFilterGroup,
+    activeFilterGroupMeta,
+    activeFilterSummaryLabel,
     filteredSavedData.length,
+    isFiltered,
     t,
-    handleAreaPress,
-    handleCategoryPress,
+    handleClearFilters,
+    handleOpenFilterPicker,
   ]);
 
   if (!isLoggedIn) {
@@ -467,6 +642,16 @@ export default function SavedScreen() {
         onChangeText={setNoteDraft}
         onClose={handleCloseNoteEditor}
         onSubmit={handleSaveNote}
+      />
+      <FilterPickerModal
+        visible={filterPickerVisible}
+        activeFilterGroup={activeFilterGroup}
+        activeFilterGroupLabel={activeFilterGroupMeta.label}
+        filterGroups={filterGroups}
+        options={filterPickerOptions}
+        onClose={handleCloseFilterPicker}
+        onSelectFilterGroup={handleSelectFilterGroup}
+        onSelectOption={handleSelectFilterOption}
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -502,7 +687,11 @@ export default function SavedScreen() {
             ) : isError ? (
               <ErrorState onRetry={refetch} />
             ) : (
-              <EmptyState activeFilter={isFiltered} onExplore={handleExplore} />
+              <EmptyState
+                activeFilter={isFiltered}
+                onExplore={handleExplore}
+                onClearFilters={handleClearFilters}
+              />
             )}
           </View>
         )}

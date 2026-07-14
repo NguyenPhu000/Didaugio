@@ -11,13 +11,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
-import { Sparkles, ArrowLeft, Trash2 } from "lucide-react-native";
-import {
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated";
+import { ArrowLeft, Home, MapPinned, MessageCircle, Sparkles, Trash2 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { useGroqChat } from "../../src/modules/ai/hooks/useGroqChat";
@@ -25,7 +19,7 @@ import { useGenieVoice } from "../../src/modules/ai/hooks/useGenieVoice";
 import { useAIContextStore } from "../../src/stores/aiContextStore";
 import { TOKENS } from "../../src/constants/design-tokens";
 
-// Components đã chia nhỏ
+// Split components
 import { MessageBubble } from "../../src/modules/ai/components/chat/MessageBubble";
 import { QuickSuggestions } from "../../src/modules/ai/components/chat/TypingIndicator";
 import { ChatInputBar } from "../../src/modules/ai/components/chat/ChatInputBar";
@@ -65,21 +59,7 @@ export default function GroqChatScreen() {
 
   const [interactivePlans, setInteractivePlans] = useState({});
 
-  // Animation pulsate cho chấm trực tuyến xanh lá
-  const onlinePulse = useSharedValue(1);
-
-  useEffect(() => {
-    onlinePulse.value = withRepeat(
-      withSequence(
-        withTiming(1.35, { duration: 1100 }),
-        withTiming(1.0, { duration: 1100 })
-      ),
-      -1,
-      true
-    );
-  }, [onlinePulse]);
-
-  // Cập nhật local state khi tin nhắn mới chứa hybridPlan
+  // Sync local plan state when new messages include a hybrid plan.
   useEffect(() => {
     conversationMemory.forEach((msg) => {
       if (msg.hybridPlan && msg.id) {
@@ -283,6 +263,10 @@ export default function GroqChatScreen() {
     [router],
   );
 
+  const handleGoHome = useCallback(() => {
+    router.replace("/(tabs)/map");
+  }, [router]);
+
   const handleClear = useCallback(() => {
     if (isSending) return;
     clearConversation();
@@ -311,12 +295,12 @@ export default function GroqChatScreen() {
       >
         <View style={s.rowCenterGap3}>
           <Pressable onPress={() => router.back()} style={s.iconCircle}>
-            <ArrowLeft size={20} color="#FFFFFF" />
+            <ArrowLeft size={20} color="#0F172A" />
           </Pressable>
           
-          <Glow style="breathe" speed={0.8} intensity={0.5} colors={["#10B981", "#34D399", "#6EE7B7"]}>
+          <Glow style="breathe" speed={0.8} intensity={0.45} colors={["#2563EB", "#7C3AED", "#DB2777"]}>
             <LinearGradient
-              colors={["#10B981", "#34D399", "#6EE7B7"]}
+              colors={["#2563EB", "#7C3AED", "#DB2777"]}
               style={s.avatarContainer}
             >
               <Sparkles size={18} color="#FFFFFF" />
@@ -324,17 +308,27 @@ export default function GroqChatScreen() {
           </Glow>
           
           <View>
-            <Text style={s.headerTitle}>Genie (AI)</Text>
+            <Text style={s.headerTitle}>Trợ lý du lịch Genie</Text>
             <View style={s.statusRow}>
               <View style={s.pulseContainer}>
-                <Glow style="pulse" speed={1.2} intensity={0.6} colors={["#10B981", "#34D399"]}>
+                <Glow style="pulse" speed={1.2} intensity={0.5} colors={["#0EA5E9", "#22C55E"]}>
                   <View style={s.onlineDotCore} />
                 </Glow>
               </View>
-              <Text style={s.statusText}>Trực tuyến • Trợ lý du lịch</Text>
+              <Text style={s.statusText}>Đang sẵn sàng gợi ý Cần Thơ</Text>
             </View>
           </View>
         </View>
+
+        <View style={s.headerActions}>
+          <Pressable
+            onPress={handleGoHome}
+            style={s.iconCircle}
+            accessibilityRole="button"
+            accessibilityLabel="Về trang chủ"
+          >
+            <Home size={18} color="#0F172A" />
+          </Pressable>
 
         {hasMessages && (
           <Pressable
@@ -345,6 +339,7 @@ export default function GroqChatScreen() {
             <Trash2 size={18} color="#EF4444" />
           </Pressable>
         )}
+        </View>
       </View>
 
       <ScrollView
@@ -359,34 +354,20 @@ export default function GroqChatScreen() {
       >
         {!hasMessages ? (
           <View style={s.emptyContainer}>
-            <Glow style="breathe" speed={0.72} intensity={0.72} colors={["#10B981", "#34D399", "#6EE7B7"]}>
+            <Glow style="breathe" speed={0.72} intensity={0.62} colors={["#2563EB", "#7C3AED", "#DB2777"]}>
               <LinearGradient
-                colors={["#10B981", "#34D399", "#6EE7B7"]}
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: 40,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 20,
-                }}
+                colors={["#2563EB", "#7C3AED", "#DB2777"]}
+                style={s.heroAvatarRing}
               >
-                <View style={{
-                  width: 72,
-                  height: 72,
-                  borderRadius: 36,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: "#F0FDF4",
-                }}>
-                  <Sparkles size={32} color="#10B981" />
+                <View style={s.heroAvatarInner}>
+                  <MapPinned size={33} color="#2563EB" />
                 </View>
               </LinearGradient>
             </Glow>
 
-            <Text style={s.heroTitle}>Chào bạn, mình là Genie!</Text>
+            <Text style={s.heroTitle}>Chào bạn, mình là Genie</Text>
             <Text style={s.heroSubtitle}>
-              Mình là trợ lý du lịch ảo của bạn. Bạn muốn đi đâu bây giờ? Hãy để iPoint Genie lên lịch trình hoặc gợi ý điểm ăn chơi Cần Thơ nghen.
+              Mình giúp bạn tìm điểm ăn chơi, lên lịch trình và gợi ý tuyến đi hợp lý quanh Cần Thơ.
             </Text>
 
             <QuickSuggestions
@@ -410,13 +391,13 @@ export default function GroqChatScreen() {
         )}
 
         {isLoadingOrSending && (
-          <View style={{ alignItems: "flex-start", gap: 6 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginLeft: 4 }}>
-              <Sparkles size={12} color="#10B981" />
-              <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, letterSpacing: 0.8, textTransform: "uppercase", fontFamily: TOKENS.font.semibold }}>Genie (AI)</Text>
+          <View style={s.thinkingWrap}>
+            <View style={s.thinkingLabelRow}>
+              <MessageCircle size={12} color="#2563EB" />
+              <Text style={s.thinkingLabel}>Genie</Text>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20, backgroundColor: "#2C2C2E", borderTopLeftRadius: 4 }}>
-              <StreamingText text="Đang suy nghĩ..." style={{ color: "#FFFFFF", fontSize: 13, fontFamily: TOKENS.font.medium }} />
+            <View style={s.thinkingBubble}>
+              <StreamingText text="Đang suy nghĩ..." style={s.thinkingText} />
             </View>
           </View>
         )}
@@ -449,7 +430,7 @@ export default function GroqChatScreen() {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#F8FAFC",
   },
   flex1: {
     flex: 1,
@@ -460,15 +441,23 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 14,
-    backgroundColor: "#000000",
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 0.5,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "#E2E8F0",
     zIndex: 10,
+    boxShadow: "0 8px 26px rgba(15, 23, 42, 0.06)",
   },
   rowCenterGap3: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    flex: 1,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginLeft: 10,
   },
   iconCircle: {
     width: 38,
@@ -476,7 +465,7 @@ const s = StyleSheet.create({
     borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "#F1F5F9",
   },
   avatarContainer: {
     width: 38,
@@ -488,7 +477,7 @@ const s = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontFamily: TOKENS.font.semibold,
-    color: "#FFFFFF",
+    color: "#0F172A",
     marginBottom: 1,
   },
   statusRow: {
@@ -513,12 +502,12 @@ const s = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#10B981",
+    backgroundColor: "#22C55E",
     zIndex: 1,
   },
   statusText: {
     fontSize: 11,
-    color: "rgba(255,255,255,0.5)",
+    color: "#64748B",
     fontFamily: TOKENS.font.medium,
   },
   opacity40: {
@@ -528,6 +517,22 @@ const s = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 20,
+  },
+  heroAvatarRing: {
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  heroAvatarInner: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#EFF6FF",
   },
   scrollContentEmpty: {
     paddingHorizontal: 16,
@@ -544,21 +549,57 @@ const s = StyleSheet.create({
   heroTitle: {
     fontSize: 22,
     fontFamily: TOKENS.font.heading,
-    color: "#FFFFFF",
+    color: "#0F172A",
     textAlign: "center",
     marginBottom: 8,
   },
   heroSubtitle: {
     fontSize: 14.5,
     lineHeight: 22,
-    color: "rgba(255,255,255,0.6)",
+    color: "#64748B",
     textAlign: "center",
-    maxWidth: 280,
+    maxWidth: 310,
     marginBottom: 32,
     fontFamily: TOKENS.font.body,
   },
   messageGap: {
     gap: 16,
+  },
+  thinkingWrap: {
+    alignItems: "flex-start",
+    gap: 6,
+  },
+  thinkingLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginLeft: 4,
+  },
+  thinkingLabel: {
+    color: "#64748B",
+    fontSize: 10,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    fontFamily: TOKENS.font.semibold,
+  },
+  thinkingBubble: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "flex-start",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    borderTopLeftRadius: 4,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
+  },
+  thinkingText: {
+    color: "#1F2937",
+    fontSize: 13,
+    fontFamily: TOKENS.font.medium,
   },
   errorBanner: {
     flexDirection: "row",
@@ -569,9 +610,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: "rgba(239,68,68,0.15)",
+    backgroundColor: "#FEF2F2",
     borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.3)",
+    borderColor: "#FECACA",
     width: "100%",
   },
   errorText: {

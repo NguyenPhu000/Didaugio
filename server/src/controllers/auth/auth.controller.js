@@ -197,6 +197,23 @@ export const verifyEmail = async (req, res, next) => {
 };
 
 /**
+ * POST /api/auth/verify-email-otp
+ * Xac thuc email bang OTP
+ */
+export const verifyEmailOtp = async (req, res, next) => {
+  try {
+    const result = await authService.verifyEmailOtp(req.body);
+    res.json({
+      success: true,
+      data: null,
+      message: result.message,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * POST /api/auth/resend-verification
  * Gửi lại email xác thực
  */
@@ -368,6 +385,7 @@ export default {
   forgotPassword,
   resetPassword,
   verifyEmail,
+  verifyEmailOtp,
   resendVerification,
   resendVerificationPublic,
   logout,

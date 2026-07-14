@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { MaterialIconsRounded } from "../../src/components/primitives/MaterialIconsRounded";
@@ -22,6 +22,7 @@ import { LinearGradient } from "expo-linear-gradient";
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { register, isLoading, error, successMessage } = useRegister();
   const { t } = useTranslation();
 
@@ -45,8 +46,14 @@ export default function RegisterScreen() {
   const passwordRef = useRef(null);
   const confirmPasswordRef = useRef(null);
 
-  const handleRegister = () => {
-    register({ fullName, username, email, password, confirmPassword });
+  const handleRegister = async () => {
+    const result = await register({ fullName, username, email, password, confirmPassword });
+    if (result?.email) {
+      router.replace({
+        pathname: "/(auth)/verify-otp",
+        params: { email: result.email },
+      });
+    }
   };
 
   return (

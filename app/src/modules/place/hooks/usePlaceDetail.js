@@ -3,6 +3,7 @@ import {
   getPlaceDetailApi,
   getPlaceDetailBySlugApi,
   getPlaceReviewsApi,
+  getMyPlaceReviewApi,
   createReviewApi,
 } from "../api/placeApi";
 
@@ -49,6 +50,18 @@ export function usePlaceReviews(id, params = {}) {
   });
 }
 
+export function useMyPlaceReview(id, enabled = true) {
+  const parsedId = Number(id);
+  const isValidId = Number.isFinite(parsedId) && parsedId > 0;
+
+  return useQuery({
+    queryKey: ["my-place-review", isValidId ? parsedId : "invalid"],
+    queryFn: () => getMyPlaceReviewApi(parsedId),
+    select: (data) => data?.data || data || null,
+    enabled: Boolean(enabled) && isValidId,
+  });
+}
+
 export function useCreateReview(placeId) {
   const qc = useQueryClient();
   const parsedId = Number(placeId);
@@ -63,6 +76,7 @@ export function useCreateReview(placeId) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["place-reviews", parsedId] });
+      qc.invalidateQueries({ queryKey: ["my-place-review", parsedId] });
       qc.invalidateQueries({ queryKey: ["place"] });
     },
   });

@@ -74,6 +74,12 @@ router.get(
   validateParams(placeIdParamSchema),
   placeController.getPlaceReviews,
 );
+router.get(
+  "/:id/reviews/me",
+  authenticate,
+  validateParams(placeIdParamSchema),
+  placeController.getMyPlaceReview,
+);
 router.post(
   "/:id/reviews",
   reviewCreateLimiter,

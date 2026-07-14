@@ -17,6 +17,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
   verifyEmailSchema,
+  verifyEmailOtpSchema,
   resendVerificationPublicSchema,
 } from "../../models/index.js";
 import * as emailVerificationService from "../activity/emailVerification.service.js";
@@ -47,6 +48,20 @@ const GOOGLE_ALLOWED_ISSUERS = new Set([
   "https://accounts.google.com",
   "accounts.google.com",
 ]);
+
+const getGoogleAllowedAudiences = () => {
+  return Array.from(
+    new Set(
+      [
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_ANDROID_CLIENT_ID,
+        process.env.GOOGLE_IOS_CLIENT_ID,
+      ]
+        .map((value) => String(value || "").trim())
+        .filter(Boolean),
+    ),
+  );
+};
 
 // Account lockout config
 const MAX_FAILED_ATTEMPTS = Number(process.env.AUTH_MAX_FAILED_ATTEMPTS) || 5;
@@ -664,6 +679,22 @@ export const verifyEmail = async (data) => {
   }
 };
 
+export const verifyEmailOtp = async (data) => {
+  const validated = verifyEmailOtpSchema.parse(data);
+
+  try {
+    await emailVerificationService.verifyOtp(validated);
+    return { message: "Xac thuc email thanh cong" };
+  } catch (error) {
+    if (error.statusCode) throw error;
+    throw new ServiceError(
+      error.message || ERROR_MESSAGES.VALIDATION_ERROR,
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+};
+
 export const resendVerificationEmail = async (userId) => {
   try {
     await emailVerificationService.resend(userId);
@@ -766,12 +797,19 @@ export const loginWithGoogle = async (
     throw new ServiceError("id_token is required", 400, "MISSING_ID_TOKEN");
   }
 
+  const configuredAudiences = getGoogleAllowedAudiences();
+  const requestedAudience = String(options.expectedAudience || "").trim();
+  const expectedAudiences = requestedAudience
+    ? [requestedAudience]
+    : configuredAudiences;
   const expectedAudience =
-    options.expectedAudience || process.env.GOOGLE_CLIENT_ID || null;
+    expectedAudiences.length <= 1 ? expectedAudiences[0] || null : expectedAudiences;
   const expectedNonce = options.expectedNonce || null;
 
   // Xác thực id_token với google-auth-library
-  const client = new OAuth2Client(expectedAudience);
+  const client = new OAuth2Client(
+    Array.isArray(expectedAudience) ? expectedAudience[0] : expectedAudience,
+  );
   let tokenInfo;
   
   try {
@@ -799,11 +837,12 @@ export const loginWithGoogle = async (
 
   const audience = String(tokenInfo.aud || "");
   const authorizedParty = String(tokenInfo.azp || "");
-  if (
-    expectedAudience &&
-    audience !== expectedAudience &&
-    authorizedParty !== expectedAudience
-  ) {
+  const audienceAllowed =
+    expectedAudiences.length === 0 ||
+    expectedAudiences.includes(audience) ||
+    expectedAudiences.includes(authorizedParty);
+
+  if (!audienceAllowed) {
     throw new ServiceError(
       "Google token audience không hợp lệ",
       401,
@@ -1073,6 +1112,7 @@ export default {
   forgotPassword,
   resetPassword,
   verifyEmail,
+  verifyEmailOtp,
   resendVerificationEmail,
   resendVerificationEmailPublic,
   getSessions,

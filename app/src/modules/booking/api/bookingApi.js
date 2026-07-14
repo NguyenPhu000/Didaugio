@@ -1,6 +1,16 @@
 import client from "../../../api/client";
 import { ENDPOINTS } from "../../../api/endpoints";
 
+const createIdempotencyKey = () => {
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `booking-${Date.now().toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2, 12)}`;
+};
+
 export const getPlaceServicesApi = (placeId) =>
   client.get(ENDPOINTS.places.services, { params: { placeId } });
 
@@ -40,6 +50,7 @@ export const createBookingApi = (data) => {
 
   const payload = {
     ...data,
+    idempotencyKey: data?.idempotencyKey || createIdempotencyKey(),
   };
   delete payload.serviceId;
 

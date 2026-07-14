@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import useUIStore from "@/stores/uiStore";
-import { CATEGORY_ICON_MAP } from "@/constants/categoryConstants";
+import { MdiCategoryIcon } from "./MdiCategoryIcon";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -43,9 +43,6 @@ function CategorySubItem({
 
   const hasChildren = category.children && category.children.length > 0;
   const childrenCount = category._count?.children || 0;
-  const IconComponent = category.icon
-    ? CATEGORY_ICON_MAP[category.icon]
-    : FolderTree;
 
   return (
     <div className="space-y-1">
@@ -76,7 +73,7 @@ function CategorySubItem({
             color: category.color,
           }}
         >
-          {IconComponent && <IconComponent className="h-3 w-3" />}
+          <MdiCategoryIcon category={category} className="h-3 w-3" />
         </div>
 
         {/* Name */}
@@ -165,11 +162,6 @@ export default function CategoryCard({
   const childrenCount = category._count?.children || 0;
   const placesCount = category._count?.places || 0;
 
-  // Get icon component
-  const IconComponent = category.icon
-    ? CATEGORY_ICON_MAP[category.icon]
-    : FolderTree;
-
   return (
     <Card className="group hover:shadow-xl transition-all duration-300 relative overflow-hidden border-2 hover:border-primary/20">
       {/* Color accent bar */}
@@ -197,7 +189,7 @@ export default function CategoryCard({
               boxShadow: `0 4px 14px ${category.color}30`,
             }}
           >
-            {IconComponent && <IconComponent className="h-7 w-7" />}
+            <MdiCategoryIcon category={category} className="h-7 w-7" />
           </div>
 
           {/* Actions Menu */}

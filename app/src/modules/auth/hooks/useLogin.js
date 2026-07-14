@@ -4,6 +4,7 @@ import i18n from "@/i18n";
 import { loginApi } from "../api/authApi";
 import { useAuthStore } from "../../../stores/authStore";
 import { normalizeAuthSessionResponse } from "../utils/normalizeAuthSession";
+import { assertMobileUserRole } from "../utils/authRoleAccess";
 
 export function useLogin() {
   const router = useRouter();
@@ -57,6 +58,8 @@ export function useLogin() {
             errorMessage || i18n.t("authValidation.noSessionData"),
           );
         }
+
+        assertMobileUserRole(user);
 
         await setSession({
           user,

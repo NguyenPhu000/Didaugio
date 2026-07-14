@@ -18,22 +18,20 @@ const getIconComponent = (iconName) => {
 
 const CategorySelector = memo(({ value, onChange, error }) => {
   const { data: categories = [], isLoading } = useCategories();
-  const [expandedCategories, setExpandedCategories] = useState(new Set());
-
-  // Auto-expand parent of selected category
+  const [manualExpandedCategories, setManualExpandedCategories] = useState(new Set());
   const selectedCategory = categories.find((c) => c.id === value);
-  if (selectedCategory?.parentId && !expandedCategories.has(selectedCategory.parentId)) {
-    setExpandedCategories((prev) => new Set([...prev, selectedCategory.parentId]));
+  const selectedParentId = selectedCategory?.parentId ?? null;
+  const expandedCategories = new Set(manualExpandedCategories);
+  if (selectedParentId) {
+    expandedCategories.add(selectedParentId);
   }
 
   const rootCategories = categories.filter((c) => !c.parentId);
-  const getChildren = useCallback(
-    (parentId) => categories.filter((c) => c.parentId === parentId),
-    [categories]
-  );
+  const getChildren = (parentId) =>
+    categories.filter((c) => c.parentId === parentId);
 
   const toggleExpand = useCallback((categoryId) => {
-    setExpandedCategories((prev) => {
+    setManualExpandedCategories((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(categoryId)) {
         newSet.delete(categoryId);
@@ -44,17 +42,14 @@ const CategorySelector = memo(({ value, onChange, error }) => {
     });
   }, []);
 
-  const handleCategoryClick = useCallback(
-    (category) => {
-      const children = getChildren(category.id);
-      if (children.length > 0) {
-        toggleExpand(category.id);
-      } else {
-        onChange(category.id);
-      }
-    },
-    [getChildren, toggleExpand, onChange]
-  );
+  const handleCategoryClick = (category) => {
+    const children = getChildren(category.id);
+    if (children.length > 0) {
+      toggleExpand(category.id);
+    } else {
+      onChange(category.id);
+    }
+  };
 
   const renderCategory = (category, isChild = false) => {
     const children = getChildren(category.id);

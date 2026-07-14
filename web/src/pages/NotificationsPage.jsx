@@ -1,27 +1,31 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Bell, Check, RefreshCw, ArrowLeft, ExternalLink } from "lucide-react";
+import {
+  ArrowLeft,
+  Bell,
+  CalendarCheck,
+  Check,
+  ExternalLink,
+  FileText,
+  MapPin,
+  RefreshCw,
+  Star,
+  Store,
+} from "lucide-react";
+import { notificationService } from "@/apis/notificationService";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/Separator";
-import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/constants";
+import { queryKeys } from "@/constants/query-keys";
+import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
+import { normalizeNotification } from "@/hooks/useNotifications";
+import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 import { resolveRoleId } from "@/utils/authRouting";
-import api from "@/constants/api";
-import { cn } from "@/lib/utils";
 
 const NOTIFICATION_LIMIT = 50;
-
 const REVIEW_NOTIFICATION_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF];
-
-const normalizeNotification = (notification) => ({
-  ...notification,
-  message: notification.message || notification.body || "",
-  body: notification.body || notification.message || "",
-  metadata: notification.metadata || notification.data || {},
-  readAt: notification.readAt || notification.read_at || null,
-});
 
 function formatTime(value) {
   if (!value) return "";
@@ -53,30 +57,49 @@ function formatRelativeTime(value) {
   return formatTime(value);
 }
 
+const normalizeNotificationsResponse = (response) => {
+  const data = response?.data || response || [];
+  const items = Array.isArray(data) ? data.map(normalizeNotification) : [];
+  return {
+    items,
+    unreadCount:
+      Number(response?.unreadCount) || items.filter((item) => !item.readAt).length,
+  };
+};
+
 const resolveNotificationRoute = (notification, currentRoleId) => {
   const metadata = notification?.metadata || {};
   const type = String(metadata.type || "");
 
   if (REVIEW_NOTIFICATION_ROLES.includes(currentRoleId)) {
     if (type.includes("place") || metadata.placeId) {
-      return { route: ADMIN_ROUTES.PLACES_PENDING, params: { placeId: metadata.placeId } };
+      return {
+        route: ADMIN_ROUTES.PLACES_PENDING,
+        params: { placeId: metadata.placeId },
+      };
     }
     if (type.includes("business") || metadata.businessId) {
-      return { route: ADMIN_ROUTES.BUSINESS_LIST, params: { businessId: metadata.businessId } };
+      return {
+        route: ADMIN_ROUTES.BUSINESS_LIST,
+        params: { businessId: metadata.businessId },
+      };
     }
     if (type.includes("review") || metadata.reviewId) {
-      return { route: ADMIN_ROUTES.REVIEWS_MODERATION, params: { reviewId: metadata.reviewId } };
+      return {
+        route: ADMIN_ROUTES.REVIEWS_MODERATION,
+        params: { reviewId: metadata.reviewId },
+      };
     }
     return { route: ADMIN_ROUTES.DASHBOARD, params: {} };
   }
 
-  if (type.includes("booking") || metadata.bookingId) {
+  if ((type.includes("booking") || metadata.bookingId) && metadata.bookingId) {
     return {
       route: BUSINESS_ROUTES.BOOKING_DETAIL(metadata.bookingId),
       params: { bookingId: metadata.bookingId },
     };
   }
-  if (type.includes("place") || metadata.placeId) {
+  if ((type.includes("place") || metadata.placeId) && metadata.placeId) {
     return {
       route: BUSINESS_ROUTES.PLACES_EDIT(metadata.placeId),
       params: { placeId: metadata.placeId },
@@ -94,225 +117,312 @@ const resolveNotificationRoute = (notification, currentRoleId) => {
   return { route: BUSINESS_ROUTES.DASHBOARD, params: {} };
 };
 
-const getNotificationIcon = (type) => {
+const getIconConfig = (type) => {
   const t = String(type || "");
-  if (t.includes("booking")) return "📅";
-  if (t.includes("place")) return "📍";
-  if (t.includes("business")) return "🏪";
-  if (t.includes("review")) return "⭐";
-  if (t.includes("document")) return "📄";
-  return "🔔";
+  if (t.includes("booking")) return { Icon: CalendarCheck, className: "text-sky-700 bg-sky-50" };
+  if (t.includes("place")) return { Icon: MapPin, className: "text-emerald-700 bg-emerald-50" };
+  if (t.includes("business")) return { Icon: Store, className: "text-amber-700 bg-amber-50" };
+  if (t.includes("review")) return { Icon: Star, className: "text-yellow-700 bg-yellow-50" };
+  if (t.includes("document")) return { Icon: FileText, className: "text-violet-700 bg-violet-50" };
+  return { Icon: Bell, className: "text-slate-700 bg-slate-100" };
 };
 
 const NotificationItem = ({ notification, onMarkRead, onNavigate, currentRoleId }) => {
   const unread = !notification.readAt;
   const { route, params } = resolveNotificationRoute(notification, currentRoleId);
-  const icon = getNotificationIcon(notification.metadata?.type);
+  const { Icon, className } = getIconConfig(notification.metadata?.type);
 
   const handleClick = () => {
-    if (unread) {
-      onMarkRead(notification.id);
-    }
+    if (unread) onMarkRead(notification.id);
     onNavigate(route, params);
   };
 
   return (
     <button
+      type="button"
       onClick={handleClick}
       className={cn(
-        "w-full flex items-start gap-3 px-4 py-3.5 text-left transition-all hover:bg-gray-50 border-b border-gray-100 last:border-0 group",
-        unread && "bg-blue-50/40 hover:bg-blue-50"
+        "group flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3.5 text-left transition hover:bg-slate-50 last:border-0",
+        unread && "bg-sky-50/60 hover:bg-sky-50",
       )}
     >
-      {/* Icon */}
-      <div className="shrink-0 w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-lg shadow-sm mt-0.5">
-        {icon}
-      </div>
+      <span className={cn("mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", className)}>
+        <Icon className="h-5 w-5" />
+      </span>
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <span className={cn(
-            "text-[14px] font-semibold leading-tight line-clamp-1",
-            unread ? "text-gray-900" : "text-gray-700"
-          )}>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-start justify-between gap-3">
+          <span
+            className={cn(
+              "line-clamp-1 text-sm font-semibold leading-5",
+              unread ? "text-slate-950" : "text-slate-700",
+            )}
+          >
             {notification.title || "Thông báo"}
           </span>
-          <div className="shrink-0 flex items-center gap-1.5">
-            {unread && (
-              <span className="h-2 w-2 rounded-full bg-blue-500 mt-1.5" />
-            )}
-            <ExternalLink className="h-3 w-3 text-gray-300 group-hover:text-gray-500 transition-colors" />
-          </div>
-        </div>
-        <p className="text-[13px] text-gray-500 line-clamp-2 leading-relaxed mt-0.5">
+          <span className="flex shrink-0 items-center gap-2 pt-1">
+            {unread && <span className="h-2 w-2 rounded-full bg-sky-600" />}
+            <ExternalLink className="h-3.5 w-3.5 text-slate-300 transition group-hover:text-slate-500" />
+          </span>
+        </span>
+        <span className="mt-1 line-clamp-2 text-[13px] leading-5 text-slate-500">
           {notification.message || notification.body || ""}
-        </p>
-        <div className="flex items-center justify-between mt-1.5">
-          <span className="text-[11px] text-gray-400 font-mono">
+        </span>
+        <span className="mt-2 flex items-center justify-between gap-3">
+          <span className="text-xs text-slate-400">
             {formatRelativeTime(notification.createdAt)}
           </span>
           {unread && (
-            <span className="text-[10px] text-blue-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-              Nhấn để đọc
+            <span className="text-xs font-medium text-sky-700 opacity-0 transition group-hover:opacity-100">
+              Đánh dấu đã đọc
             </span>
           )}
-        </div>
-      </div>
+        </span>
+      </span>
     </button>
   );
 };
 
 const NotificationsPage = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const currentRoleId = resolveRoleId(user);
-
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(
-    searchParams.get("tab") === "read" ? "read" : "unread"
+    searchParams.get("tab") === "read" ? "all" : "unread",
   );
 
-  const fetchNotifications = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await api.get("/notifications", {
-        params: {
-          limit: NOTIFICATION_LIMIT,
-          page: 1,
-          ...(activeTab === "unread" ? { unreadOnly: "true" } : {}),
-        },
+  const queryParams = useMemo(
+    () => ({
+      limit: NOTIFICATION_LIMIT,
+      page: 1,
+      ...(activeTab === "unread" ? { unreadOnly: "true" } : {}),
+    }),
+    [activeTab],
+  );
+
+  const listKey = queryKeys.notifications.list(queryParams);
+
+  const notificationsQuery = useQuery({
+    queryKey: listKey,
+    queryFn: () => notificationService.getNotifications(queryParams),
+    select: normalizeNotificationsResponse,
+    placeholderData: (previous) => previous,
+    staleTime: 20 * 1000,
+  });
+
+  const unreadQuery = useQuery({
+    queryKey: queryKeys.notifications.unreadCount(),
+    queryFn: () => notificationService.getUnreadCount(),
+    select: (response) =>
+      Number(response?.data?.unreadCount ?? response?.unreadCount ?? 0),
+    staleTime: 20 * 1000,
+  });
+
+  const notifications = notificationsQuery.data?.items || [];
+  const unreadCount =
+    unreadQuery.data ?? notificationsQuery.data?.unreadCount ?? 0;
+  const loading = notificationsQuery.isLoading || notificationsQuery.isFetching;
+
+  const invalidateNotifications = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all() });
+  }, [queryClient]);
+
+  const markReadMutation = useMutation({
+    mutationFn: (id) => notificationService.markAsRead(id),
+    onMutate: (id) => {
+      queryClient.setQueryData(listKey, (current) => {
+        const normalized = normalizeNotificationsResponse(current);
+        return {
+          ...(current && typeof current === "object" ? current : {}),
+          data: normalized.items.filter((item) => item.id !== id),
+          unreadCount: Math.max(0, normalized.unreadCount - 1),
+        };
       });
-      const data = response?.data || response || [];
-      const items = Array.isArray(data) ? data : [];
-      const normalized = items.map(normalizeNotification);
-      setNotifications(normalized);
+      queryClient.setQueryData(queryKeys.notifications.unreadCount(), (current) => {
+        const currentCount = Number(current?.data?.unreadCount ?? current ?? unreadCount);
+        return { data: { unreadCount: Math.max(0, currentCount - 1) } };
+      });
+    },
+    onSettled: invalidateNotifications,
+  });
 
-      if (activeTab === "unread") {
-        setUnreadCount(normalized.length);
-      } else {
-        const countResp = await api.get("/notifications/unread-count");
-        setUnreadCount(countResp?.data?.unreadCount ?? 0);
-      }
-    } catch {
-      setNotifications([]);
-    } finally {
-      setLoading(false);
+  const markAllMutation = useMutation({
+    mutationFn: () => notificationService.markAllAsRead(),
+    onMutate: () => {
+      queryClient.setQueryData(listKey, (current) => {
+        const normalized = normalizeNotificationsResponse(current);
+        return {
+          ...(current && typeof current === "object" ? current : {}),
+          data:
+            activeTab === "unread"
+              ? []
+              : normalized.items.map((item) => ({
+                  ...item,
+                  readAt: item.readAt || new Date().toISOString(),
+                })),
+          unreadCount: 0,
+        };
+      });
+      queryClient.setQueryData(queryKeys.notifications.unreadCount(), {
+        data: { unreadCount: 0 },
+      });
+    },
+    onSettled: invalidateNotifications,
+  });
+
+  const handleNavigate = useCallback(
+    (route, params) => {
+      const query = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value) query.set(key, value);
+      });
+      const queryString = query.toString();
+      navigate(`${route}${queryString ? `?${queryString}` : ""}`);
+    },
+    [navigate],
+  );
+
+  const renderContent = () => {
+    if (loading && notifications.length === 0) {
+      return (
+        <div className="divide-y divide-slate-100">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="flex items-start gap-3 px-4 py-4">
+              <Skeleton className="h-10 w-10 rounded-xl" />
+              <div className="flex-1 space-y-2 pt-1">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      );
     }
-  }, [activeTab]);
 
-  useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
-
-  const handleMarkRead = useCallback(async (id) => {
-    try {
-      await api.put(`/notifications/${id}/read`);
-    } catch {
-      // Optimistic UI
+    if (notifications.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center px-8 py-16 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
+            <Bell className="h-8 w-8 text-slate-400" />
+          </div>
+          <p className="mt-4 text-sm font-semibold text-slate-700">
+            {activeTab === "unread" ? "Không có thông báo chưa đọc" : "Không có thông báo"}
+          </p>
+          <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">
+            {activeTab === "unread"
+              ? "Thông báo mới sẽ hiện ở đây và cập nhật ngay khi server gửi."
+              : "Booking, địa điểm, doanh nghiệp và hệ thống sẽ được gom tại đây."}
+          </p>
+          {activeTab === "unread" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setActiveTab("all")}
+              className="mt-3"
+            >
+              Xem tất cả
+            </Button>
+          )}
+        </div>
+      );
     }
-    setNotifications((prev) => prev.filter((item) => item.id !== id));
-    setUnreadCount((prev) => Math.max(0, prev - 1));
-  }, []);
 
-  const handleMarkAllRead = useCallback(async () => {
-    try {
-      await api.put("/notifications/mark-all-read");
-    } catch {
-      // Optimistic UI
-    }
-    setNotifications([]);
-    setUnreadCount(0);
-  }, []);
-
-  const handleNavigate = useCallback((route, params) => {
-    const query = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value) query.set(key, value);
-    });
-    const queryString = query.toString();
-    navigate(`${route}${queryString ? `?${queryString}` : ""}`);
-  }, [navigate]);
+    return (
+      <div className="divide-y divide-slate-100">
+        {notifications.map((notification) => (
+          <NotificationItem
+            key={notification.id}
+            notification={notification}
+            onMarkRead={(id) => markReadMutation.mutate(id)}
+            onNavigate={handleNavigate}
+            currentRoleId={currentRoleId}
+          />
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-slate-50">
+      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto max-w-3xl px-4 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate(-1)}
-                className="h-9 w-9 rounded-full hover:bg-gray-100"
+                className="h-9 w-9 shrink-0 rounded-full"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <div>
-                <h1 className="text-lg font-bold text-gray-900">Thông báo</h1>
-                <p className="text-[12px] text-gray-400">
-                  {unreadCount > 0
-                    ? `${unreadCount} chưa đọc`
-                    : "Không có thông báo mới"}
+              <div className="min-w-0">
+                <h1 className="text-lg font-bold text-slate-950">Thông báo</h1>
+                <p className="text-xs text-slate-500">
+                  {unreadCount > 0 ? `${unreadCount} chưa đọc` : "Đã cập nhật"}
                 </p>
               </div>
             </div>
+
             <div className="flex items-center gap-2">
               {unreadCount > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleMarkAllRead}
-                  className="h-8 text-[12px] border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700"
+                  onClick={() => markAllMutation.mutate()}
+                  disabled={markAllMutation.isPending}
+                  className="h-8 text-xs"
                 >
-                  <Check className="mr-1 h-3 w-3" />
+                  <Check className="mr-1 h-3.5 w-3.5" />
                   Đọc hết
                 </Button>
               )}
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={fetchNotifications}
+                onClick={invalidateNotifications}
                 disabled={loading}
-                className="h-9 w-9 rounded-full hover:bg-gray-100"
+                className="h-9 w-9 rounded-full"
               >
                 <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
               </Button>
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-1 mt-3">
+          <div className="mt-3 flex gap-2">
             <button
+              type="button"
               onClick={() => setActiveTab("unread")}
               className={cn(
-                "flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-medium transition-colors",
+                "flex h-9 items-center gap-2 rounded-full px-4 text-sm font-medium transition",
                 activeTab === "unread"
-                  ? "bg-gray-900 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  ? "bg-slate-950 text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200",
               )}
             >
               Chưa đọc
               {unreadCount > 0 && (
-                <span className={cn(
-                  "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                  activeTab === "unread" ? "bg-white/20" : "bg-red-500 text-white"
-                )}>
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+                    activeTab === "unread" ? "bg-white/20" : "bg-sky-600 text-white",
+                  )}
+                >
                   {unreadCount}
                 </span>
               )}
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("all")}
               className={cn(
-                "flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-medium transition-colors",
+                "h-9 rounded-full px-4 text-sm font-medium transition",
                 activeTab === "all"
-                  ? "bg-gray-900 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  ? "bg-slate-950 text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200",
               )}
             >
               Tất cả
@@ -321,59 +431,11 @@ const NotificationsPage = () => {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 py-4">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          {loading ? (
-            <div className="flex flex-col divide-y divide-gray-100">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-start gap-3 px-4 py-4">
-                  <Skeleton className="h-10 w-10 rounded-full shrink-0" />
-                  <div className="flex-1 space-y-2 pt-1">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-full" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-                <Bell className="h-8 w-8 text-gray-300" />
-              </div>
-              <p className="text-[15px] font-semibold text-gray-400">
-                {activeTab === "unread" ? "Không có thông báo chưa đọc" : "Không có thông báo"}
-              </p>
-              <p className="text-[12px] text-gray-300 text-center px-8">
-                {activeTab === "unread"
-                  ? "Tất cả thông báo đã được đọc. Thông báo mới sẽ xuất hiện ở đây."
-                  : "Khi có thông báo từ booking, địa điểm hoặc hệ thống, bạn sẽ thấy ở đây."}
-              </p>
-              {activeTab === "unread" && unreadCount === 0 && (
-                <button
-                  onClick={() => setActiveTab("all")}
-                  className="mt-2 text-[12px] text-blue-600 hover:underline font-medium"
-                >
-                  Xem tất cả thông báo
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col divide-y divide-gray-100">
-              {notifications.map((notification) => (
-                <NotificationItem
-                  key={notification.id}
-                  notification={notification}
-                  onMarkRead={handleMarkRead}
-                  onNavigate={handleNavigate}
-                  currentRoleId={currentRoleId}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      <main className="mx-auto max-w-3xl px-4 py-4">
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          {renderContent()}
+        </section>
+      </main>
     </div>
   );
 };
