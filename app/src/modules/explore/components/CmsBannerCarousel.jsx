@@ -17,31 +17,29 @@ import Animated, {
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import { BOOKING_APPLE_THEME as APPLE_THEME, TOKENS } from "../../../constants/design-tokens";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
-import { resolveMediaUrl, getOptimizedCloudinaryUrl } from "../../../lib/media-url";
+import {
+  getOptimizedCloudinaryUrl,
+  resolveMediaUrl,
+} from "../../../lib/media-url";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const BANNER_H = 196;
 const AUTO_SCROLL_INTERVAL = 10000;
-
-const FALLBACK_BANNER = {
-  id: "fallback",
-  title: null,
-  description: null,
-  imageUrl: null,
-  linkType: "none",
-  linkValue: null,
-  isFallback: true,
-};
 
 function BannerSlide({ banner, width, onPress }) {
   const { t } = useTranslation();
   const scale = useSharedValue(1);
 
   const rawImage = banner.imageUrl || banner.imageData;
-  const imageUri = rawImage ? getOptimizedCloudinaryUrl(resolveMediaUrl(rawImage), 900) : null;
-  const canNavigate = !banner.isFallback && banner.linkType && banner.linkType !== "none";
+  const imageUri = rawImage
+    ? getOptimizedCloudinaryUrl(resolveMediaUrl(rawImage), 900)
+    : null;
+  const canNavigate = banner.linkType && banner.linkType !== "none";
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -56,10 +54,10 @@ function BannerSlide({ banner, width, onPress }) {
   }, [scale]);
 
   const handlePress = useCallback(() => {
-    if (banner.isFallback) return;
+    if (!canNavigate) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress?.(banner);
-  }, [banner, onPress]);
+  }, [banner, canNavigate, onPress]);
 
   return (
     <AnimatedPressable
@@ -98,20 +96,26 @@ function BannerSlide({ banner, width, onPress }) {
       )}
 
       <LinearGradient
-        colors={["rgba(5,10,20,0.08)", "rgba(5,10,20,0.36)", "rgba(5,10,20,0.86)"]}
+        colors={[
+          "rgba(5,10,20,0.08)",
+          "rgba(5,10,20,0.36)",
+          "rgba(5,10,20,0.86)",
+        ]}
         locations={[0, 0.45, 1]}
         style={StyleSheet.absoluteFillObject}
       />
 
       <View style={styles.topRow}>
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>
-            {banner.isFallback ? "iPOINT GENIE" : "ĐỀ XUẤT"}
-          </Text>
+          <Text style={styles.badgeText}>{t("explore.heroBadge")}</Text>
         </View>
         {canNavigate ? (
           <View style={styles.arrowCircle}>
-            <MaterialIconsRounded name="arrow-forward" size={17} color="#111827" />
+            <MaterialIconsRounded
+              name="arrow-forward"
+              size={17}
+              color="#111827"
+            />
           </View>
         ) : null}
       </View>
@@ -123,12 +127,12 @@ function BannerSlide({ banner, width, onPress }) {
         <Text style={styles.description} numberOfLines={2}>
           {banner.description || t("explore.cmsFallbackDesc")}
         </Text>
-        <View style={styles.ctaPill}>
-          <MaterialIconsRounded name={canNavigate ? "touch-app" : "auto-awesome"} size={14} color="#FFF" />
-          <Text style={styles.ctaText}>
-            {canNavigate ? "Chạm để xem chi tiết" : "Gợi ý nổi bật hôm nay"}
-          </Text>
-        </View>
+        {canNavigate ? (
+          <View style={styles.ctaPill}>
+            <MaterialIconsRounded name="touch-app" size={14} color="#FFF" />
+            <Text style={styles.ctaText}>{t("explore.heroExplore")}</Text>
+          </View>
+        ) : null}
       </View>
     </AnimatedPressable>
   );
@@ -139,7 +143,7 @@ const keyExtractor = (item) => String(item.id);
 function CmsBannerCarouselInner({ banners: rawBanners, onPressBanner }) {
   const { width: screenWidth } = useWindowDimensions();
   const bannerWidth = screenWidth - TAB_SCREEN_PADDING * 2;
-  const banners = rawBanners?.length > 0 ? rawBanners : [FALLBACK_BANNER];
+  const banners = rawBanners?.length > 0 ? rawBanners : [];
 
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef(null);
@@ -181,6 +185,8 @@ function CmsBannerCarouselInner({ banners: rawBanners, onPressBanner }) {
     [bannerWidth],
   );
 
+  if (banners.length === 0) return null;
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -205,10 +211,7 @@ function CmsBannerCarouselInner({ banners: rawBanners, onPressBanner }) {
             return (
               <View
                 key={`dot-${index}`}
-                style={[
-                  styles.dot,
-                  active ? styles.dotActive : styles.dotInactive,
-                ]}
+                style={[styles.dot, active ? styles.dotActive : styles.dotInactive]}
               />
             );
           })}
@@ -243,7 +246,7 @@ const styles = StyleSheet.create({
   badgeText: {
     color: "#FFF",
     fontSize: 10,
-    fontFamily: TOKENS.font.bold,
+    fontFamily: TOKENS.font.heading,
     letterSpacing: 1.2,
   },
   arrowCircle: {

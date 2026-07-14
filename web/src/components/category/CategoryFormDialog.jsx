@@ -23,11 +23,8 @@ import { useCreateCategory, useUpdateCategory } from "@/hooks/queries/useCategor
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslation } from "react-i18next";
-import {
-  CATEGORY_ICON_MAP,
-  CATEGORY_ICON_PRESETS,
-  CATEGORY_COLOR_PRESETS,
-} from "@/constants/categoryConstants";
+import { CATEGORY_ICON_GROUPS } from "@/constants/categoryConstants";
+import { MdiCategoryIcon } from "./MdiCategoryIcon";
 
 /**
  * CATEGORY FORM DIALOG
@@ -142,9 +139,18 @@ export default function CategoryFormDialog({
     }
   };
 
-  const filteredIcons = CATEGORY_ICON_PRESETS.filter((icon) =>
-    icon.toLowerCase().includes(iconSearch.toLowerCase())
-  );
+  const normalizedIconSearch = iconSearch.trim().toLowerCase();
+  const filteredIconGroups = CATEGORY_ICON_GROUPS.map((group) => {
+    const groupMatches = group.label.toLowerCase().includes(normalizedIconSearch);
+    return {
+      ...group,
+      icons: groupMatches
+        ? group.icons
+        : group.icons.filter((icon) =>
+            icon.toLowerCase().includes(normalizedIconSearch),
+          ),
+    };
+  }).filter((group) => group.icons.length > 0);
 
   let dialogTitle = "TẠO DANH MỤC GỐC";
   if (category) {
@@ -231,32 +237,48 @@ export default function CategoryFormDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 max-h-[160px] overflow-y-auto p-2 border border-black bg-gray-50 scrollbar-thin">
-              {filteredIcons.map((iconName) => {
-                const IconComponent = CATEGORY_ICON_MAP[iconName];
-                if (!IconComponent) return null;
+            <div className="max-h-[260px] overflow-y-auto border border-black bg-gray-50 scrollbar-thin">
+              {filteredIconGroups.map((group) => (
+                <div key={group.label} className="border-b border-gray-200 last:border-b-0 p-2">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                      {group.label}
+                    </span>
+                    <span className="font-mono text-[10px] text-gray-400">
+                      {group.icons.length}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
+                    {group.icons.map((iconName) => {
+                      const isSelected = formData.icon === iconName;
 
-                const isSelected = formData.icon === iconName;
-
-                return (
-                  <button
-                    key={iconName}
-                    type="button"
-                    className={`
-                        aspect-square flex items-center justify-center border transition-all
-                        ${
-                          isSelected
-                            ? "bg-black text-white border-black shadow-none scale-90"
-                            : "bg-white text-gray-500 border-gray-200 hover:border-black hover:text-black hover:shadow-hard"
-                        }
-                      `}
-                    onClick={() => handleChange("icon", iconName)}
-                    title={iconName}
-                  >
-                    <IconComponent className="h-5 w-5" />
-                  </button>
-                );
-              })}
+                      return (
+                        <button
+                          key={iconName}
+                          type="button"
+                          className={`
+                              aspect-square flex items-center justify-center border transition-all
+                              ${
+                                isSelected
+                                  ? "bg-black text-white border-black shadow-none scale-90"
+                                  : "bg-white text-gray-500 border-gray-200 hover:border-black hover:text-black hover:shadow-hard"
+                              }
+                            `}
+                          onClick={() => handleChange("icon", iconName)}
+                          title={iconName}
+                        >
+                          <MdiCategoryIcon category={iconName} className="h-5 w-5" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              {filteredIconGroups.length === 0 && (
+                <div className="p-6 text-center font-mono text-xs uppercase text-gray-400">
+                  NO MATCHING ICON
+                </div>
+              )}
             </div>
           </div>
 

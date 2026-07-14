@@ -11,13 +11,15 @@ import {
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import ClusteredMapView from "react-native-map-clustering";
 import { Marker, PROVIDER_DEFAULT, UrlTile } from "react-native-maps";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   CATEGORY_MARKER_STYLES,
   DEFAULT_MAP_STYLE,
   MAP_CONFIGS,
 } from "../config/mapConfig";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
-import { regionToZoom } from "../utils/mapZoom";
+import { getCategoryIconName } from "../../../constants/categoryIcons";
+import { getMarkerDensity, MARKER_DENSITY, regionToZoom } from "../utils/mapZoom";
 
 const CLEAN_NATIVE_MAP_STYLE = [
   { featureType: "poi", stylers: [{ visibility: "off" }] },
@@ -165,7 +167,8 @@ const ClusterMarker = memo(function ClusterMarker({ cluster, onPress }) {
 });
 
 const PlaceMarker = memo(
-  ({ place, isActive, showLabel, onSelectPlace, onLongPressPlace }) => {
+  ({ place, isActive, density, onSelectPlace, onLongPressPlace }) => {
+    const [shouldTrackDetail, setShouldTrackDetail] = useState(true);
     const handlePress = useCallback(() => {
       onSelectPlace?.(place);
     }, [onSelectPlace, place]);
@@ -174,43 +177,108 @@ const PlaceMarker = memo(
       onLongPressPlace?.(place);
     }, [onLongPressPlace, place]);
 
+    const categoryStyle = CATEGORY_MARKER_STYLES[place?.categoryId];
     const markerColor = isActive
       ? "#0F766E"
       : place?.isFeatured
         ? "#F59E0B"
-        : CATEGORY_MARKER_STYLES[place?.categoryId]?.color || "#ef4444";
+        : place?.category?.color || categoryStyle?.color || "#ef4444";
+    const markerBackground =
+      categoryStyle?.bg || "#FFFFFF";
+    const markerIcon = getCategoryIconName(place?.category);
     const coordinate = {
       latitude: place.latitude,
       longitude: place.longitude,
     };
+    const isDetail = density === MARKER_DENSITY.DETAIL;
+    const markerSize = isDetail ? 44 : 32;
     const markerImage = place.markerImageUri
       ? { uri: place.markerImageUri }
       : undefined;
+    const showNativeImage = isDetail && Boolean(markerImage);
+
+    useEffect(() => {
+      setShouldTrackDetail(true);
+      const timerId = setTimeout(() => setShouldTrackDetail(false), 260);
+      return () => clearTimeout(timerId);
+    }, [density, place.markerImageUri]);
 
     return (
       <Marker
         coordinate={coordinate}
         onPress={handlePress}
         onLongPress={handleLongPress}
-        anchor={{ x: 0.5, y: 1 }}
-        image={markerImage}
+        anchor={showNativeImage ? { x: 0.5, y: 1 } : { x: 0.5, y: 0.5 }}
+        image={showNativeImage ? markerImage : undefined}
         pinColor={markerColor}
-        tracksViewChanges={false}
+        // The native image remains the stable image transport. Keep tracking
+        // briefly when its label is mounted so Android snapshots both layers.
+        tracksViewChanges={!showNativeImage || shouldTrackDetail}
       >
-        {showLabel && place?.name ? (
-          <View
-            className="absolute left-full top-1/2 ml-1.5 -translate-y-[7px]"
-            pointerEvents="none"
-          >
-            <Text
-              className="text-[11px] font-semibold tracking-[0.1px] text-black"
-              numberOfLines={1}
-              ellipsizeMode="tail"
+        {showNativeImage ? (
+          place?.name ? (
+            <View
+              className="rounded-full bg-white px-3 py-1.5"
+              pointerEvents="none"
+              style={[styles.markerLabel, styles.nativeMarkerLabel]}
             >
-              {place.name}
-            </Text>
+              <Text
+                className="max-w-[154px] text-[11px] font-semibold tracking-[0.1px] text-slate-950"
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {place.name}
+              </Text>
+            </View>
+          ) : null
+        ) : (
+          <View className="flex-row items-center" pointerEvents="none">
+            <View
+              className="items-center justify-center overflow-hidden border-2 border-white"
+              style={{
+                width: markerSize,
+                height: markerSize,
+                borderRadius: isDetail ? 12 : markerSize / 2,
+                backgroundColor: isDetail ? "#FFFFFF" : markerBackground,
+                shadowColor: markerColor,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: isActive ? 0.32 : 0.2,
+                shadowRadius: isActive ? 10 : 7,
+                elevation: isActive ? 7 : 4,
+              }}
+            >
+              <MaterialCommunityIcons
+                name={markerIcon}
+                size={isDetail ? 20 : 17}
+                color={markerColor}
+              />
+              {isActive ? (
+                <View
+                  className="absolute inset-0 border-2"
+                  style={{
+                    borderColor: "#0F766E",
+                    borderRadius: isDetail ? 10 : markerSize / 2,
+                  }}
+                />
+              ) : null}
+            </View>
+
+            {isDetail && place?.name ? (
+              <View
+                className="ml-2 max-w-[154px] rounded-full bg-white px-3 py-1.5"
+                style={styles.markerLabel}
+              >
+                <Text
+                  className="text-[11px] font-semibold tracking-[0.1px] text-slate-950"
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {place.name}
+                </Text>
+              </View>
+            ) : null}
           </View>
-        ) : null}
+        )}
       </Marker>
     );
   },
@@ -223,7 +291,7 @@ const PlaceMarker = memo(
     prev.place?.longitude === next.place?.longitude &&
     prev.place?.markerImageUri === next.place?.markerImageUri &&
     prev.isActive === next.isActive &&
-    prev.showLabel === next.showLabel,
+    prev.density === next.density,
 );
 
 PlaceMarker.displayName = "PlaceMarker";
@@ -257,7 +325,9 @@ const MapView = memo(
       const regionRef = useRef(INITIAL_REGION);
       const tileErrorTimerRef = useRef(null);
       const [tileError, setTileError] = useState(false);
-      const [showMarkerLabels, setShowMarkerLabels] = useState(false);
+      const [markerDensity, setMarkerDensity] = useState(() =>
+        getMarkerDensity(regionToZoom(INITIAL_REGION, viewportWidth)),
+      );
 
       useImperativeHandle(ref, () => ({
         flyTo: ([lng, lat], zoom = 14) => {
@@ -337,10 +407,10 @@ const MapView = memo(
         (region) => {
           regionRef.current = region;
           const zoomValue = regionToZoom(region, viewportWidth);
-          const nextShowMarkerLabels = zoomValue >= 15;
+          const nextMarkerDensity = getMarkerDensity(zoomValue);
 
-          setShowMarkerLabels((previous) =>
-            previous === nextShowMarkerLabels ? previous : nextShowMarkerLabels,
+          setMarkerDensity((previous) =>
+            previous === nextMarkerDensity ? previous : nextMarkerDensity,
           );
 
           onZoomChange?.(Math.round(zoomValue));
@@ -386,7 +456,7 @@ const MapView = memo(
           radius={60}
           extent={256}
           nodeSize={32}
-          maxZoom={16}
+          maxZoom={12}
           spiralEnabled
           spiderLineColor="rgba(148,163,184,0.65)"
           animationEnabled
@@ -432,7 +502,7 @@ const MapView = memo(
               key={place.id}
               place={place}
               isActive={place.id === selectedPlaceId}
-              showLabel={place.id === selectedPlaceId || showMarkerLabels}
+              density={markerDensity}
               onSelectPlace={onSelectPlace}
               onLongPressPlace={onLongPressPlace}
             />
@@ -464,6 +534,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.14,
     shadowRadius: 6,
     elevation: 6,
+  },
+  markerLabel: {
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  nativeMarkerLabel: {
+    position: "absolute",
+    left: 30,
+    top: -38,
   },
 });
 

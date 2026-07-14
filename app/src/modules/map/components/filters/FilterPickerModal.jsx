@@ -8,29 +8,35 @@ import {
   useRef,
 } from "react";
 import { Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { MAP_TEXT } from "../../constants/mapText.constants";
 
 const FilterPickerModal = memo(
   forwardRef(function FilterPickerModal(
     {
       visible,
+      activeFilterGroup,
       activeFilterGroupLabel,
+      filterGroups,
       options,
       onClose,
+      onSelectFilterGroup,
       onSelectOption,
     },
     ref,
   ) {
+    const { t } = useTranslation();
     const sheetRef = useRef(null);
     const visibleRef = useRef(visible);
     const dismissFromStateRef = useRef(false);
-    const snapPoints = useMemo(() => ["42%", "62%"], []);
+    const snapPoints = useMemo(() => ["64%", "82%"], []);
 
     useImperativeHandle(ref, () => sheetRef.current);
 
@@ -76,8 +82,6 @@ const FilterPickerModal = memo(
     const handleSelectOption = useCallback(
       (value) => {
         onSelectOption(value);
-        dismissFromStateRef.current = true;
-        sheetRef.current?.dismiss();
       },
       [onSelectOption],
     );
@@ -126,11 +130,41 @@ const FilterPickerModal = memo(
           </Pressable>
         </View>
 
+        <View className="flex-row gap-2 px-5 py-3">
+          {filterGroups.map((group) => {
+            const active = group.key === activeFilterGroup;
+            return (
+              <Pressable
+                key={group.key}
+                onPress={() => onSelectFilterGroup(group.key)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                className="h-9 flex-1 flex-row items-center justify-center gap-1 rounded-full"
+                style={{ backgroundColor: active ? "#0F172A" : "#F1F5F9" }}
+              >
+                <MaterialIconsRounded
+                  name={group.icon}
+                  size={15}
+                  color={active ? "#FFFFFF" : "#475569"}
+                />
+                <Text
+                  numberOfLines={1}
+                  className="text-[11px] font-semibold"
+                  style={{ color: active ? "#FFFFFF" : "#475569" }}
+                >
+                  {group.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         <BottomSheetScrollView
+          style={{ flex: 1 }}
           contentContainerStyle={{
             paddingHorizontal: 16,
             paddingTop: 6,
-            paddingBottom: 28,
+            paddingBottom: 14,
           }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -159,11 +193,19 @@ const FilterPickerModal = memo(
                       : "rgba(241, 245, 249, 0.9)",
                   }}
                 >
-                  <MaterialIconsRounded
-                    name={option.icon}
-                    size={18}
-                    color={option.active ? "#0F172A" : "#475569"}
-                  />
+                  {option.iconFamily === "mdi" ? (
+                    <MaterialCommunityIcons
+                      name={option.icon}
+                      size={18}
+                      color={option.active ? "#0F172A" : "#475569"}
+                    />
+                  ) : (
+                    <MaterialIconsRounded
+                      name={option.icon}
+                      size={18}
+                      color={option.active ? "#0F172A" : "#475569"}
+                    />
+                  )}
                 </View>
                 <Text
                   className="flex-1 text-[14px] font-medium text-slate-800"
@@ -179,6 +221,17 @@ const FilterPickerModal = memo(
             </Pressable>
           ))}
         </BottomSheetScrollView>
+
+        <View className="border-t border-slate-100 px-5 pb-5 pt-3">
+          <Pressable
+            onPress={handleClosePress}
+            accessibilityRole="button"
+            className="h-12 items-center justify-center rounded-[16px] bg-slate-950 active:opacity-90"
+            style={{ borderCurve: "continuous" }}
+          >
+            <Text className="text-sm font-bold text-white">{t("common.done")}</Text>
+          </Pressable>
+        </View>
       </BottomSheetModal>
     );
   }),

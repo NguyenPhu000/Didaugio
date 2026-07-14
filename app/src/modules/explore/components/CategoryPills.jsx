@@ -5,7 +5,7 @@ import {
   Pressable,
   Text,
 } from "react-native";
-import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -68,7 +68,7 @@ const PillItem = memo(function PillItem({
           : null,
       ]}
     >
-      <MaterialIconsRounded
+      <MaterialCommunityIcons
         name={icon}
         size={16}
         color={isActive ? APPLE_THEME.white : APPLE_THEME.text}

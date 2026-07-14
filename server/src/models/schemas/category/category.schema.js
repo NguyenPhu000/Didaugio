@@ -1,5 +1,20 @@
 import { z } from "zod";
 import { idSchema } from "../commonSchema.js";
+import { normalizeCategoryIcon } from "../../../config/categoryIcons.js";
+
+const categoryIconSchema = z
+  .string()
+  .trim()
+  .max(50)
+  .transform((value, ctx) => {
+    const icon = normalizeCategoryIcon(value);
+    if (icon) return icon;
+    ctx.addIssue({
+      code: "custom",
+      message: "Icon danh mục không nằm trong bộ Material Design Icons hỗ trợ",
+    });
+    return z.NEVER;
+  });
 
 export const categoryIdParamSchema = z.object({
   id: idSchema,
@@ -41,7 +56,7 @@ export const createCategorySchema = z.object({
     .trim()
     .min(1)
     .max(200),
-  icon: z.string().max(50).optional().nullable(),
+  icon: categoryIconSchema.optional().nullable(),
   color: z.string().max(20).optional().nullable(),
   description: z.string().max(1000).optional().nullable(),
   thumbnail: z.string().max(500).optional().nullable(),
@@ -53,7 +68,7 @@ export const updateCategorySchema = z
   .object({
     name: z.string().trim().min(1).max(200).optional(),
     slug: z.string().trim().min(1).max(200).optional(),
-    icon: z.string().max(50).optional().nullable(),
+    icon: categoryIconSchema.optional().nullable(),
     color: z.string().max(20).optional().nullable(),
     description: z.string().max(1000).optional().nullable(),
     thumbnail: z.string().max(500).optional().nullable(),

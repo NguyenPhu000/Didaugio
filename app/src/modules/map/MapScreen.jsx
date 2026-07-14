@@ -68,8 +68,6 @@ import { resolveMediaUrl } from "../../lib/media-url";
 import { useAuthStore } from "../../stores/authStore";
 import { ContextualBoundaryLayer } from "./components/BoundaryLayer";
 import {
-  CATEGORY_MARKER_STYLES,
-  DEFAULT_CATEGORY_ICON,
   CAN_THO_CENTER,
   MAP_STYLES,
   DEFAULT_MAP_STYLE,
@@ -78,7 +76,7 @@ import { TOKENS } from "../../constants/design-tokens";
 import {
   FLOATING_TAB_CLEARANCE,
 } from "../../../app/(tabs)/_layout";
-import { ALL_AREAS_KEY } from "./constants/filter.constants";
+import { ALL_AREAS_KEY, FILTER_GROUP_OPTIONS } from "./constants/filter.constants";
 import {
   NAVIGATION_EVENT_DEDUP_MS,
   SCREEN_DIM_ACTIVATE_DISTANCE_M,
@@ -172,6 +170,9 @@ export default function MapScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [selectedPlace, setSelectedPlace] = useState(null);
+  // Selecting a place only opens its preview. A route starts explicitly from
+  // the directions action so marker taps never trigger a routing request.
+  const [routingPlace, setRoutingPlace] = useState(null);
   const [topControlsHeight, setTopControlsHeight] = useState(0);
 
   // States cho Active Trip Mode
@@ -273,8 +274,6 @@ export default function MapScreen() {
   } = useFilterState({
     categories,
     areaOptions,
-    categoryMarkerStyles: CATEGORY_MARKER_STYLES,
-    defaultCategoryIcon: DEFAULT_CATEGORY_ICON,
   });
 
   const isLoading = isPlacesLoading && allPlaces.length === 0;
@@ -1180,21 +1179,21 @@ export default function MapScreen() {
     };
   }, [currentLocation]);
 
-  const routeDestinationFromSelectedPlace = useMemo(() => {
+  const routeDestinationFromRoutingPlace = useMemo(() => {
     if (
-      !activePlace ||
-      !Number.isFinite(activePlace.latitude) ||
-      !Number.isFinite(activePlace.longitude)
+      !routingPlace ||
+      !Number.isFinite(routingPlace.latitude) ||
+      !Number.isFinite(routingPlace.longitude)
     ) {
       return null;
     }
 
     return {
-      lat: Number(activePlace.latitude),
-      lng: Number(activePlace.longitude),
-      name: activePlace.name || MAP_TEXT.common.destinationName,
+      lat: Number(routingPlace.latitude),
+      lng: Number(routingPlace.longitude),
+      name: routingPlace.name || MAP_TEXT.common.destinationName,
     };
-  }, [activePlace]);
+  }, [routingPlace]);
 
   const shouldSuppressSingleRoute = isActiveTripMode;
 
@@ -1203,7 +1202,7 @@ export default function MapScreen() {
     : routeOriginFromCurrentLocation;
   const routeDestination = shouldSuppressSingleRoute
     ? null
-    : routeDestinationFromSelectedPlace;
+    : routeDestinationFromRoutingPlace;
 
   const routeEnabled = Boolean(routeOrigin && routeDestination);
 
@@ -1236,8 +1235,9 @@ export default function MapScreen() {
   const shouldShowPreviewTravelInfo = useMemo(() => {
     if (shouldSuppressSingleRoute) return false;
     if (!routeEnabled || !activePlace) return false;
+    if (String(activePlace.id) !== String(routingPlace?.id)) return false;
     return true;
-  }, [activePlace, routeEnabled, shouldSuppressSingleRoute]);
+  }, [activePlace, routeEnabled, routingPlace?.id, shouldSuppressSingleRoute]);
 
   const previewTravelLoading =
     shouldShowPreviewTravelInfo &&
@@ -1291,6 +1291,7 @@ export default function MapScreen() {
 
   const handleSelectPlace = useCallback((place) => {
     setSelectedPlace(place);
+    setRoutingPlace(null);
     if (place.longitude && place.latitude) {
       const latOffset = 0.0022;
       mapRef.current?.flyTo([Number(place.longitude), Number(place.latitude) - latOffset], 15);
@@ -1332,6 +1333,7 @@ export default function MapScreen() {
       });
 
       setSelectedPlace(place);
+      setRoutingPlace(place);
 
       if (!currentLocation) {
         await handleLocate();
@@ -1348,11 +1350,13 @@ export default function MapScreen() {
 
   const handleClosePreview = useCallback(() => {
     setSelectedPlace(null);
+    setRoutingPlace(null);
   }, []);
 
   const handleMapPress = useCallback((event) => {
     if (event?.nativeEvent?.action === "marker-press") return;
     setSelectedPlace(null);
+    setRoutingPlace(null);
   }, []);
 
   const handleOpenPlaceDetail = useCallback(
@@ -1391,6 +1395,9 @@ export default function MapScreen() {
     const focusPlaceId = Array.isArray(params.focusPlaceId)
       ? params.focusPlaceId[0]
       : params.focusPlaceId;
+    const startRoute = Array.isArray(params.startRoute)
+      ? params.startRoute[0]
+      : params.startRoute;
     const search = Array.isArray(params.search)
       ? params.search[0]
       : params.search;
@@ -1406,11 +1413,11 @@ export default function MapScreen() {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
     const key = `${lat}:${lng}:${focusPlaceId || ""}`;
-    if (lastAppliedFocusRef.current === key) return;
-    lastAppliedFocusRef.current = key;
-
-    const latOffset = focusPlaceId ? 0.0022 : 0;
-    mapRef.current?.flyTo([lng, lat - latOffset], 15);
+    if (lastAppliedFocusRef.current !== key) {
+      lastAppliedFocusRef.current = key;
+      const latOffset = focusPlaceId ? 0.0022 : 0;
+      mapRef.current?.flyTo([lng, lat - latOffset], 15);
+    }
 
     if (!focusPlaceId) return;
     const matchedPlace = (mapPlaces || []).find(
@@ -1420,6 +1427,10 @@ export default function MapScreen() {
     );
     if (matchedPlace) {
       setSelectedPlace(matchedPlace);
+      if (startRoute === "true") {
+        setRoutingPlace(matchedPlace);
+        router.setParams({ startRoute: undefined });
+      }
     }
   }, [activeTrip, params, mapPlaces, router]);
 
@@ -2296,9 +2307,12 @@ export default function MapScreen() {
 
       <FilterPickerModal
         visible={!isTripPreviewMode && filterPickerVisible}
+        activeFilterGroup={filterState.activeFilterGroup}
         activeFilterGroupLabel={activeFilterGroupMeta.label}
+        filterGroups={FILTER_GROUP_OPTIONS}
         options={filterPickerOptions}
         onClose={handleCloseFilterPicker}
+        onSelectFilterGroup={filterHandlers.selectFilterGroup}
         onSelectOption={handleSelectFilterOption}
       />
     </View>

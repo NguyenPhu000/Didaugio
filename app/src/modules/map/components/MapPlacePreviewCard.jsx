@@ -1,10 +1,12 @@
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { useTranslation } from "react-i18next";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { CATEGORY_COLORS, TOKENS } from "@/constants/design-tokens";
-import { getCategoryIcon, resolvePlaceImageUri } from "@/lib/media-url";
+import { resolvePlaceImageUri } from "@/lib/media-url";
+import { getCategoryIconName } from "@/constants/categoryIcons";
 import {
   getPlaceRatingValue,
   getPlaceReviewCount,
@@ -31,15 +33,14 @@ const MapPlacePreviewCard = memo(function MapPlacePreviewCard({
 }) {
   const { t } = useTranslation();
   const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [place?.id]);
+
   const handleImageError = useCallback(() => setImgError(true), []);
-
-  const handleViewDetail = useCallback(() => {
-    onViewDetail?.(place);
-  }, [onViewDetail, place]);
-
-  const handleStartRoute = useCallback(() => {
-    onStartRoute?.(place);
-  }, [onStartRoute, place]);
+  const handleViewDetail = useCallback(() => onViewDetail?.(place), [onViewDetail, place]);
+  const handleStartRoute = useCallback(() => onStartRoute?.(place), [onStartRoute, place]);
 
   if (!place) return null;
 
@@ -48,35 +49,27 @@ const MapPlacePreviewCard = memo(function MapPlacePreviewCard({
   const reviewCount = getPlaceReviewCount(place);
   const categoryName = place?.category?.name || "";
   const categorySlug = place?.category?.slug || "";
-  const categoryColor = CATEGORY_COLORS[categorySlug] || CATEGORY_COLORS.default;
-  const categoryIcon = getCategoryIcon(categoryName);
+  const categoryColor = place?.category?.color || CATEGORY_COLORS[categorySlug] || CATEGORY_COLORS.default;
+  const categoryIcon = getCategoryIconName(place?.category);
   const locationLabel =
     place?.address ||
     [place?.ward?.name, place?.district?.name].filter(Boolean).join(", ") ||
     t("place.defaultLocation");
-  const travelLabel = [travelEtaLabel, travelDistanceLabel]
-    .filter(Boolean)
-    .join(" / ");
-  const imageSize = compact ? 74 : 84;
-  const metaParts = [];
-  if (rating > 0) metaParts.push(rating.toFixed(1));
-  metaParts.push(formatReviewCount(reviewCount, t));
-  if (categoryName) metaParts.push(categoryName);
-  const metaLabel = metaParts.join(" / ");
+  const travelLabel = [travelEtaLabel, travelDistanceLabel].filter(Boolean).join(" · ");
+  const imageSize = compact ? 78 : 92;
 
   return (
     <View
-      className="overflow-hidden rounded-[24px] border border-white/70 bg-white/95 p-3 shadow-xl shadow-slate-900/10"
-      style={{ borderCurve: "continuous" }}
+      className="overflow-hidden rounded-[26px] border border-white/80 bg-white"
+      style={[TOKENS.shadow.md, { borderCurve: "continuous" }]}
     >
-      <View className="absolute left-0 top-4 h-16 w-1 rounded-r-full bg-cyan-500" />
-      <View className="flex-row items-center gap-3">
+      <View className="flex-row gap-3 p-3">
         <View
           className="overflow-hidden bg-slate-100"
           style={{
             width: imageSize,
             height: imageSize,
-            borderRadius: compact ? 16 : 18,
+            borderRadius: compact ? 18 : 20,
             borderCurve: "continuous",
           }}
         >
@@ -85,6 +78,7 @@ const MapPlacePreviewCard = memo(function MapPlacePreviewCard({
               source={{ uri: imageUri }}
               style={{ width: "100%", height: "100%" }}
               contentFit="cover"
+              cachePolicy="memory-disk"
               transition={160}
               onError={handleImageError}
             />
@@ -93,67 +87,73 @@ const MapPlacePreviewCard = memo(function MapPlacePreviewCard({
               className="flex-1 items-center justify-center"
               style={{ backgroundColor: `${categoryColor}16` }}
             >
-              <MaterialIconsRounded
-                name={categoryIcon.icon}
-                size={26}
-                color={categoryColor}
-              />
+              <MaterialCommunityIcons name={categoryIcon} size={27} color={categoryColor} />
             </View>
           )}
         </View>
 
-        <View className="min-w-0 flex-1 gap-1">
+        <View className="min-w-0 flex-1">
           <View className="flex-row items-start gap-2">
-            <Text
-              numberOfLines={2}
-              className="flex-1 text-[16px] font-bold leading-[20px] text-slate-950"
-            >
-              {place?.name || t("place.defaultPlace")}
-            </Text>
+            <View className="min-w-0 flex-1 gap-1">
+              {categoryName ? (
+                <View className="flex-row items-center gap-1">
+                  <MaterialCommunityIcons name={categoryIcon} size={12} color={categoryColor} />
+                  <Text
+                    numberOfLines={1}
+                    className="text-[10px] font-bold uppercase tracking-[0.7px]"
+                    style={{ color: categoryColor }}
+                  >
+                    {categoryName}
+                  </Text>
+                </View>
+              ) : null}
+              <Text
+                numberOfLines={2}
+                className="text-[17px] font-bold leading-[20px] text-slate-950"
+                style={{ fontFamily: TOKENS.font.heading }}
+              >
+                {place?.name || t("place.defaultPlace")}
+              </Text>
+            </View>
             <Pressable
               onPress={onClose}
               accessibilityRole="button"
               accessibilityLabel={t("common.close", { defaultValue: "Close" })}
               hitSlop={10}
-              className="h-7 w-7 items-center justify-center rounded-full bg-slate-100"
+              className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 active:bg-slate-200"
             >
-              <MaterialIconsRounded name="close" size={15} color="#475569" />
+              <MaterialIconsRounded name="close" size={16} color="#475569" />
             </Pressable>
           </View>
 
-          <View className="flex-row items-center gap-1.5">
+          <View className="mt-2 flex-row items-center gap-1.5">
             {rating > 0 ? (
-              <MaterialIconsRounded name="star" size={14} color="#F59E0B" />
+              <>
+                <MaterialIconsRounded name="star" size={14} color="#F59E0B" />
+                <Text className="text-[12px] font-bold text-slate-800">{rating.toFixed(1)}</Text>
+                <Text className="text-[12px] text-slate-400">·</Text>
+              </>
             ) : null}
-            <Text
-              numberOfLines={1}
-              className="flex-1 text-[12px] font-semibold text-slate-600"
-            >
-              {metaLabel}
+            <Text numberOfLines={1} className="flex-1 text-[12px] font-medium text-slate-500">
+              {formatReviewCount(reviewCount, t)}
             </Text>
           </View>
 
-          <View className="flex-row items-center gap-1.5">
-            <MaterialIconsRounded name="place" size={14} color="#64748B" />
-            <Text
-              numberOfLines={1}
-              className="flex-1 text-[12px] font-medium text-slate-500"
-            >
+          <View className="mt-1.5 flex-row items-center gap-1.5">
+            <MaterialIconsRounded name="place" size={14} color="#94A3B8" />
+            <Text numberOfLines={1} className="flex-1 text-[12px] font-medium text-slate-500">
               {locationLabel}
             </Text>
           </View>
 
           {travelLoading || travelLabel ? (
-            <View className="mt-1 flex-row items-center gap-1.5 self-start rounded-full bg-cyan-50 px-2.5 py-1">
+            <View className="mt-2 flex-row items-center gap-1.5 self-start rounded-full bg-sky-50 px-2.5 py-1">
               {travelLoading ? (
-                <ActivityIndicator
-                  size="small"
-                  color={TOKENS.color.primary[500]}
-                />
+                <ActivityIndicator size="small" color={TOKENS.color.primary[500]} />
               ) : (
-                <MaterialIconsRounded name="near-me" size={13} color="#0EA5E9" />
+                <MaterialIconsRounded name="near-me" size={13} color="#0284C7" />
               )}
-              <Text className="text-[11.5px] font-bold text-cyan-700">
+              <Text className="text-[11px] font-bold text-sky-700">
                 {travelLoading ? t("place.calculating") : travelLabel}
               </Text>
             </View>
@@ -161,11 +161,12 @@ const MapPlacePreviewCard = memo(function MapPlacePreviewCard({
         </View>
       </View>
 
-      <View className="mt-3 flex-row items-center gap-2">
+      <View className="flex-row items-center gap-2 border-t border-slate-100 px-3 pb-3 pt-2.5">
         <Pressable
           onPress={handleViewDetail}
           accessibilityRole="button"
-          className="h-10 flex-1 flex-row items-center justify-center gap-2 rounded-full bg-slate-950 active:opacity-90"
+          className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-[15px] bg-slate-950 active:opacity-90"
+          style={{ borderCurve: "continuous" }}
         >
           <Text className="text-[13px] font-bold text-white" style={{ fontFamily: TOKENS.font.semibold }}>
             {t("place.viewDetail", { defaultValue: "Xem chi tiết" })}
@@ -175,9 +176,11 @@ const MapPlacePreviewCard = memo(function MapPlacePreviewCard({
         <Pressable
           onPress={handleStartRoute}
           accessibilityRole="button"
-          className="h-10 w-12 items-center justify-center rounded-full bg-slate-100 active:bg-slate-200"
+          accessibilityLabel={t("place.directions")}
+          className="h-11 w-11 items-center justify-center rounded-[15px] bg-slate-100 active:bg-slate-200"
+          style={{ borderCurve: "continuous" }}
         >
-          <MaterialIconsRounded name="directions" size={18} color="#0F172A" />
+          <MaterialIconsRounded name="directions" size={19} color="#0F172A" />
         </Pressable>
       </View>
     </View>

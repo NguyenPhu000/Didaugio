@@ -6,6 +6,7 @@ import {
   View,
 } from "react-native";
 import { Image } from "expo-image";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { Pressable } from "@/components/primitives/Pressable";
 import {
@@ -19,8 +20,8 @@ import {
 } from "../../../lib/media-url";
 import {
   getPlaceLocation,
-  getCategoryIcon,
 } from "../utils/exploreHelpers";
+import { getCategoryIconName } from "../../../constants/categoryIcons";
 
 // Tinh chỉnh lại tỷ lệ: Hẹp hơn một chút và cao hơn để ra dáng ảnh Portrait cao cấp
 const CARD_W = 148;
@@ -125,7 +126,7 @@ function CategoryPlacesSectionInner({
   onPressViewAll,
   icon,
 }) {
-  const categoryIcon = icon || getCategoryIcon(categoryName);
+  const categoryIcon = getCategoryIconName({ name: categoryName, icon });
 
   const renderItem = useCallback(
     ({ item, index }) => {
@@ -152,7 +153,7 @@ function CategoryPlacesSectionInner({
       <View style={styles.headerRow}>
         <View style={styles.headerTitleGroup}>
           <View style={styles.headerIconCircle}>
-            <MaterialIconsRounded
+            <MaterialCommunityIcons
               name={categoryIcon}
               size={16}
               color={APPLE_THEME.focusBlue}

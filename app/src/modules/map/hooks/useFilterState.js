@@ -6,12 +6,11 @@ import {
   QUICK_FILTER_OPTIONS,
 } from "../constants/filter.constants";
 import { MAP_TEXT } from "../constants/mapText.constants";
+import { getCategoryIconName } from "../../../constants/categoryIcons";
 
 export function useFilterState({
   categories,
   areaOptions,
-  categoryMarkerStyles,
-  defaultCategoryIcon,
 }) {
   const [filterPickerVisible, setFilterPickerVisible] = useState(false);
   const [activeFilterGroup, setActiveFilterGroup] = useState("category");
@@ -78,8 +77,8 @@ export function useFilterState({
           key: `category:${category.id}`,
           value: category.id,
           label: category.name,
-          icon:
-            categoryMarkerStyles[category.id]?.icon || defaultCategoryIcon.icon,
+          icon: getCategoryIconName(category),
+          iconFamily: "mdi",
           active: String(activeCategoryId ?? "") === String(category.id),
         })),
       ];
@@ -117,8 +116,6 @@ export function useFilterState({
     activeFilterGroup,
     areaOptions,
     categories,
-    categoryMarkerStyles,
-    defaultCategoryIcon.icon,
     quickFilters,
   ]);
 
@@ -163,20 +160,17 @@ export function useFilterState({
     (value) => {
       if (activeFilterGroup === "category") {
         setActiveCategoryId(value);
-        setFilterPickerVisible(false);
         return;
       }
 
       if (activeFilterGroup === "area") {
         setActiveArea(value ?? ALL_AREAS_KEY);
-        setFilterPickerVisible(false);
         return;
       }
 
       if (typeof value === "string" && value.length > 0) {
         handleQuickFilterToggle(value);
       }
-      setFilterPickerVisible(false);
     },
     [activeFilterGroup, handleQuickFilterToggle],
   );

@@ -25,8 +25,6 @@ const MapTopControls = memo(function MapTopControls({
 
       {!searchState.open ? (
         <FilterGroupBar
-          activeFilterGroup={filterState.activeFilterGroup}
-          onSelectFilterGroup={filterHandlers.selectFilterGroup}
           activeFilterGroupMeta={filterState.activeFilterGroupMeta}
           activeFilterSummaryLabel={filterState.activeFilterSummaryLabel}
           onOpenFilterPicker={filterHandlers.openFilterPicker}

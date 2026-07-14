@@ -142,7 +142,10 @@
     "sections": {
       "featured": "Điểm đến nổi bật",
       "culinary": "Ẩm thực nổi bật",
-      "popular": "Phổ biến"
+      "popular": "Phổ biến",
+      "topRated": "Được đánh giá cao",
+      "budgetFriendly": "Đi chơi tiết kiệm",
+      "newAndFresh": "Mới đáng thử"
     },
     "card": {
       "featuredBadge": "Nổi bật",
@@ -231,8 +234,8 @@
     },
     "headerBrand": "iPoint Genie",
     "headerGreeting": "Xin chào, {{name}}",
-    "cmsBrandBadge": "iPoint Genie",
-    "cmsFallbackTitle": "iPoint Genie",
+    "cmsBrandBadge": "Gợi ý",
+    "cmsFallbackTitle": "Khám phá Cần Thơ",
     "cmsFallbackDesc": "Khám phá hàng trăm địa điểm hấp dẫn tại Cần Thơ",
     "heroBadge": "ĐỀ XUẤT CHO BẠN",
     "heroExplore": "Khám phá"
@@ -246,7 +249,8 @@
       "noSaved": "Chưa có địa điểm nào",
       "noResultsDesc": "Thử đổi bộ lọc hoặc khu vực để xem các địa điểm khác bạn đã lưu.",
       "noSavedDesc": "Hãy thử khám phá và lưu các địa điểm yêu thích để dễ truy cập.",
-      "explore": "Khám phá địa điểm"
+      "explore": "Khám phá địa điểm",
+      "clearFilters": "Xóa bộ lọc"
     },
     "alert": {
       "unsaveTitle": "Bỏ lưu địa điểm?",

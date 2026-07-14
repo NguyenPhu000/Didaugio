@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { regionToZoom, shouldShowMarkerLabelsForRegion } from "./mapZoom";
+import {
+  getMarkerDensity,
+  MARKER_DENSITY,
+  regionToZoom,
+  shouldShowMarkerLabelsForRegion,
+} from "./mapZoom";
 
 describe("mapZoom", () => {
   it("returns 0 for invalid region or viewport", () => {
@@ -18,5 +23,11 @@ describe("mapZoom", () => {
   it("maps region to marker label threshold", () => {
     expect(shouldShowMarkerLabelsForRegion({ longitudeDelta: 0.007 }, 390, 15)).toBe(true);
     expect(shouldShowMarkerLabelsForRegion({ longitudeDelta: 0.08 }, 390, 15)).toBe(false);
+  });
+
+  it("uses category icons until zoom 13, then shows image markers", () => {
+    expect(getMarkerDensity(10)).toBe(MARKER_DENSITY.CATEGORY);
+    expect(getMarkerDensity(12.9)).toBe(MARKER_DENSITY.CATEGORY);
+    expect(getMarkerDensity(13)).toBe(MARKER_DENSITY.DETAIL);
   });
 });

@@ -17,13 +17,7 @@ import { resolveTripCoverUri } from "../../../lib/media-url";
 
 const HERO_COVER_WIDTH = 800;
 
-const STAT_ICON_THEME = {
-  blue: { color: "#1D1D1F" },
-  amber: { color: "#FF9F0A" },
-  green: { color: "#34C759" },
-  teal: { color: "#14B8A6" },
-  red: { color: "#FF3B30" },
-};
+const SUMMARY_TONES = ["#18181B", "#52525B", "#71717A"];
 
 export function TripsDashboard({
   trips,
@@ -59,14 +53,14 @@ export function TripsDashboard({
   );
 
   return (
-    <Box className="px-6 pt-2 pb-6">
+    <Box className="px-5 pt-3 pb-7">
       {/* ── Header ── */}
-      <Box className="flex-row items-center justify-between mt-2.5 mb-4">
+      <Box className="flex-row items-center justify-between mt-1 mb-5">
         <Box className="flex-1 pr-3">
-          <Text className="text-[28px] font-semibold text-ink">
+          <Text className="text-[30px] leading-[35px] font-semibold text-ink">
             {t("tripDashboard.journey")}
           </Text>
-          <Text className="text-[14px] mt-1 text-ink-muted">
+          <Text className="text-[14px] mt-0.5 text-ink-muted">
             {(trips?.length ?? 0) > 0
               ? t("tripDashboard.yourTrips", { count: trips.length })
               : t("tripDashboard.createMemory")}
@@ -76,7 +70,7 @@ export function TripsDashboard({
           onPress={onCreate}
           accessibilityLabel={t("tripDashboard.createTripAccessibility")}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          className="w-11 h-11 rounded-full items-center justify-center bg-ink active:opacity-[0.85]"
+          className="w-12 h-12 rounded-full items-center justify-center bg-[#18181B] active:opacity-[0.85]"
         >
           <MaterialIconsRounded name="add" size={26} color="#FFFFFF" />
         </Pressable>
@@ -86,7 +80,7 @@ export function TripsDashboard({
       {heroTrip ? (
         <Pressable
           onPress={() => onOpenHero(heroTrip.id)}
-          className="h-[176px] rounded-2xl overflow-hidden mb-4 bg-[#1C1C1E]"
+          className="h-[232px] rounded-[26px] overflow-hidden mb-5 bg-[#173B39] active:opacity-95"
           style={SHADOW.hero}
         >
           {imgSrc?.uri ? (
@@ -99,9 +93,10 @@ export function TripsDashboard({
               onError={() => setImgSrc({ uri: null })}
             />
           ) : null}
-          <Box className="absolute inset-0 bg-black/35" pointerEvents="none" />
+          <Box className="absolute inset-0 bg-black/15" pointerEvents="none" />
+          <Box className="absolute bottom-0 left-0 right-0 h-[72%] bg-black/55" pointerEvents="none" />
 
-          <Box className="absolute top-3 left-3 rounded-full overflow-hidden">
+          <Box className="absolute top-4 left-4 rounded-full overflow-hidden">
             <Box className="flex-row items-center px-3 py-1.5 gap-1.5 bg-white/90">
               <Box className="w-1.5 h-1.5 rounded-full bg-success" />
               <Text className="text-[11px] uppercase font-semibold text-ink">
@@ -110,24 +105,24 @@ export function TripsDashboard({
             </Box>
           </Box>
 
-          <Box className="absolute bottom-0 left-0 right-0 p-4 gap-2.5">
+          <Box className="absolute bottom-0 left-0 right-0 p-5 gap-2">
             <Text
-              className="text-white text-[22px] leading-[27px] font-semibold"
+              className="text-white text-[28px] leading-[32px] font-semibold"
               numberOfLines={2}
             >
               {heroTrip.title || t("tripDashboard.newTrip")}
             </Text>
 
-            <Box className="flex-row items-center flex-wrap gap-2">
-              <Box className="flex-row items-center gap-1.5 bg-white/20 px-2.5 py-1.5 rounded-full">
+            <Box className="flex-row items-center gap-2">
+              <Box className="flex-row flex-1 items-center gap-1.5">
                 <MaterialIconsRounded name="event" size={14} color="rgba(255,255,255,0.8)" />
-                <Text className="text-white text-xs font-medium">
+                <Text className="flex-1 text-white text-[13px] font-medium" numberOfLines={1}>
                   {getDateRangeLabel(heroTrip)}
                 </Text>
               </Box>
-              <Box className="flex-row items-center gap-1.5 bg-white/20 px-2.5 py-1.5 rounded-full">
+              <Box className="flex-row items-center gap-1.5">
                 <MaterialIconsRounded name="place" size={14} color="rgba(255,255,255,0.8)" />
-                <Text className="text-white text-xs font-medium">
+                <Text className="text-white text-[13px] font-medium">
                   {t("tripDashboard.destinations", {
                     count: heroTrip.destinations?.length || 0,
                   })}
@@ -136,57 +131,56 @@ export function TripsDashboard({
             </Box>
 
             {heroDaysUntil !== null && heroDaysUntil <= 30 ? (
-              <Box className="self-start">
-                <Box className="flex-row items-center gap-1.5 bg-white/90 rounded-full px-3 py-[5px]">
-                  <MaterialIconsRounded name="schedule" size={14} color="#1D1D1F" />
-                  <Text className="text-ink text-[12px] font-semibold">
-                    {heroDaysUntil === 0
-                      ? t("tripDashboard.startToday")
-                      : heroDaysUntil === 1
-                        ? t("tripDashboard.startTomorrow")
-                        : t("tripDashboard.daysUntil", { count: heroDaysUntil })}
-                  </Text>
-                </Box>
-              </Box>
+              <Text className="text-[12px] font-semibold text-white/80">
+                {heroDaysUntil === 0
+                  ? t("tripDashboard.startToday")
+                  : heroDaysUntil === 1
+                    ? t("tripDashboard.startTomorrow")
+                    : t("tripDashboard.daysUntil", { count: heroDaysUntil })}
+              </Text>
             ) : null}
           </Box>
         </Pressable>
       ) : (
         <Pressable
           onPress={onCreate}
-          className="h-[116px] rounded-2xl overflow-hidden flex-row items-center px-5 mb-5 border border-black/5 bg-white relative active:opacity-[0.95]"
+          className="h-[232px] rounded-[26px] overflow-hidden mb-5 bg-[#18181B] active:opacity-95"
           style={SHADOW.create}
         >
-          <Box className="w-14 h-14 rounded-[18px] bg-ink items-center justify-center mr-4">
-            <MaterialIconsRounded name="add-location-alt" size={28} color="#FFFFFF" />
-          </Box>
-          <Box className="flex-1">
-            <Text className="text-[17px] mb-1 font-semibold text-ink">
+          <Box className="absolute -right-8 -top-10 h-44 w-44 rounded-full bg-white/[0.06]" pointerEvents="none" />
+          <Box className="absolute -left-10 -bottom-16 h-40 w-40 rounded-full bg-white/[0.04]" pointerEvents="none" />
+          <Box className="flex-1 justify-end p-5">
+            <Box className="mb-4 h-11 w-11 items-center justify-center rounded-full bg-white">
+              <MaterialIconsRounded name="add-location-alt" size={21} color="#18181B" />
+            </Box>
+            <Text className="max-w-[260px] text-[28px] leading-[32px] font-semibold text-white">
               {t("tripDashboard.createFirst")}
             </Text>
-            <Text className="text-sm text-ink-muted">
-              {t("tripDashboard.startExploring")}
-            </Text>
-          </Box>
-          <Box className="w-8 h-8 rounded-full bg-black/[0.06] items-center justify-center ml-3">
-            <MaterialIconsRounded name="arrow-forward" size={20} color="#1D1D1F" />
+            <Box className="mt-2 flex-row items-center gap-2">
+              <Text className="flex-1 text-[14px] leading-[20px] text-white/70">
+                {t("tripDashboard.startExploring")}
+              </Text>
+              <Box className="h-10 w-10 items-center justify-center rounded-full bg-white">
+                <MaterialIconsRounded name="arrow-forward" size={20} color="#18181B" />
+              </Box>
+            </Box>
           </Box>
         </Pressable>
       )}
 
       {/* ── Stats Summary Strip (unified card, hairline dividers) ── */}
       <Box
-        className="flex-row items-stretch bg-white rounded-lg border border-black/5 py-3.5 mb-6"
+        className="flex-row items-stretch bg-[#F2F2F3] rounded-[18px] py-3.5 mb-7"
         style={SHADOW.stats}
       >
-        {summary.map((item, idx) => {
-          const theme = STAT_ICON_THEME[item.tone] || STAT_ICON_THEME.blue;
+        {summary.slice(0, 3).map((item, idx) => {
+          const color = SUMMARY_TONES[idx];
           return (
             <Fragment key={item.key}>
               {idx > 0 ? <Box style={DIVIDER_STYLE} /> : null}
               <Box className="flex-1 items-center justify-center gap-1 px-1">
-                <MaterialIconsRounded name={item.icon} size={16} color={theme.color} />
-                <Text className="text-[19px] leading-[23px] font-bold text-ink">
+                <MaterialIconsRounded name={item.icon} size={16} color={color} />
+                <Text className="text-[20px] leading-[23px] font-bold text-ink">
                   {item.value}
                 </Text>
                 <Text
@@ -203,12 +197,12 @@ export function TripsDashboard({
 
       {/* ── Section Header + Apple Custom Segmented Filters ── */}
       <Box className="flex-row items-center justify-between mb-4">
-        <Text className="text-xl font-semibold text-ink">
+        <Text className="text-[20px] font-semibold text-ink">
           {filteredCount > 0
             ? t("tripDashboard.listWithCount", { count: filteredCount })
             : t("tripDashboard.list")}
         </Text>
-        <Box className="flex-row bg-white border border-black/5 p-0.5 rounded-[9px] items-center">
+        <Box className="flex-row bg-[#EEF0EF] p-0.5 rounded-[10px] items-center">
           {filters.map((filter) => {
             const active = activeFilter === filter.key;
             return (
@@ -217,7 +211,7 @@ export function TripsDashboard({
                 onPress={() => onSelectFilter(filter.key)}
                 className={cn(
                   "px-3 py-1 rounded-[7px] items-center justify-center",
-                  active ? "bg-black/[0.06]" : "bg-transparent",
+                  active ? "bg-white" : "bg-transparent",
                 )}
                 style={active ? SHADOW.filter : undefined}
               >
@@ -241,24 +235,24 @@ export function TripsDashboard({
 /* Shadow styles — kept in StyleSheet (complex multi-property shadows not expressible in className) */
 const SHADOW = {
   hero: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.16,
-    shadowRadius: 22,
-    elevation: 8,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 7,
   },
   create: {
-    shadowColor: "#000",
+    shadowColor: "#000000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 10,
     elevation: 2,
   },
   stats: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
     elevation: 2,
   },
   filter: {

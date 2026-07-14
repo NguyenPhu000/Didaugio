@@ -142,7 +142,10 @@
     "sections": {
       "featured": "Featured destinations",
       "culinary": "Culinary highlights",
-      "popular": "Popular"
+      "popular": "Popular",
+      "topRated": "Top rated picks",
+      "budgetFriendly": "Budget-friendly finds",
+      "newAndFresh": "New and fresh"
     },
     "card": {
       "featuredBadge": "Featured",
@@ -231,8 +234,8 @@
     },
     "headerBrand": "iPoint Genie",
     "headerGreeting": "Hello, {{name}}",
-    "cmsBrandBadge": "iPoint Genie",
-    "cmsFallbackTitle": "iPoint Genie",
+    "cmsBrandBadge": "Recommended",
+    "cmsFallbackTitle": "Discover Can Tho",
     "cmsFallbackDesc": "Discover hundreds of fascinating places in Can Tho",
     "heroBadge": "RECOMMENDED FOR YOU",
     "heroExplore": "Explore"
@@ -246,7 +249,8 @@
       "noSaved": "No saved places yet",
       "noResultsDesc": "Try changing filters or area to see other places you've saved.",
       "noSavedDesc": "Try exploring and saving your favorite places for easy access.",
-      "explore": "Explore places"
+      "explore": "Explore places",
+      "clearFilters": "Clear filters"
     },
     "alert": {
       "unsaveTitle": "Unsave this place?",

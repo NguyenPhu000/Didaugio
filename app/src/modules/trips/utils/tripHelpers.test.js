@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import i18n from "../../../i18n";
 import {
   getDisplayStatus,
+  getHeroTrip,
   getTripFilters,
   sortTripsForDashboard,
 } from "./tripHelpers";
@@ -61,5 +62,14 @@ describe("tripHelpers", () => {
 
   it("keeps explicit in-progress trips ongoing", () => {
     expect(getDisplayStatus({ status: "in-progress" })).toBe("ongoing");
+  });
+
+  it("does not use completed or cancelled trips as the dashboard hero", () => {
+    expect(
+      getHeroTrip([
+        { id: "done", status: "completed", startDate: "2026-01-01" },
+        { id: "cancelled", status: "cancelled", startDate: "2026-02-01" },
+      ]),
+    ).toBeNull();
   });
 });

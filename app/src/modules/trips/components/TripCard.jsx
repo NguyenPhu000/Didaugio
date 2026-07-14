@@ -2,7 +2,6 @@ import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
-import { BlurView } from "expo-blur";
 import { Box, Text, Pressable as PrimitivePressable } from "../../../components/primitives";
 import { MaterialIconsRounded } from "../../../components/primitives/MaterialIconsRounded";
 import Animated, {
@@ -65,28 +64,26 @@ function SaveButton({ onPress, isSaved, label }) {
 
 function StatusPill({ status }) {
   return (
-    <BlurView intensity={70} tint="light" className="rounded-full overflow-hidden border border-white/50">
-      <Box className="flex-row items-center gap-1.5 px-3 py-2 bg-white/35">
-        <Box
-          className="w-1.5 h-1.5 rounded-[3px]"
-          style={{ backgroundColor: status.accent || status.text }}
-        />
-        <Text
-          className="text-[11px] font-semibold"
-          style={{ color: status.text }}
-          numberOfLines={1}
-        >
-          {status.label}
-        </Text>
-      </Box>
-    </BlurView>
+    <Box className="flex-row items-center gap-1.5 rounded-full bg-white/92 px-3 py-2">
+      <Box
+        className="w-1.5 h-1.5 rounded-[3px]"
+        style={{ backgroundColor: status.accent || status.text }}
+      />
+      <Text
+        className="text-[11px] font-semibold"
+        style={{ color: status.text }}
+        numberOfLines={1}
+      >
+        {status.label}
+      </Text>
+    </Box>
   );
 }
 
 /* ── Card chính cho tất cả chuyến đi ── */
-function MetaChip({ icon, label }) {
+function MetaRow({ icon, label }) {
   return (
-    <Box className="flex-1 flex-row items-center gap-1.5 rounded-full bg-white/[0.14] border border-white/15 px-3 py-2">
+    <Box className="flex-1 flex-row items-center gap-1.5">
       <MaterialIconsRounded name={icon} size={13} color="#FFFFFF" />
       <Text
         className="flex-1 text-xs font-semibold text-white"
@@ -135,8 +132,8 @@ function ImmersiveCard({
       )}
 
       {/* Overlay gradient mặc định */}
-      <Box className="absolute inset-0 bg-black/15" pointerEvents="none" />
-      <Box className="absolute left-0 right-0 bottom-0 h-[58%] bg-black/38" pointerEvents="none" />
+      <Box className="absolute inset-0 bg-black/12" pointerEvents="none" />
+      <Box className="absolute left-0 right-0 bottom-0 h-[64%] bg-black/58" pointerEvents="none" />
 
       {/* Overlay theo trạng thái (completed/cancelled) */}
       <Box className="absolute top-4 left-4 right-4 flex-row items-center justify-between">
@@ -150,15 +147,10 @@ function ImmersiveCard({
         ) : null}
       </Box>
 
-      <BlurView
-        intensity={34}
-        tint="dark"
-        className="absolute left-4 right-4 bottom-4 rounded-[20px] overflow-hidden border border-white/15"
-      >
-        <Box className="gap-2.5 bg-black/20 px-3.5 py-3">
+      <Box className="absolute bottom-0 left-0 right-0 gap-2.5 px-5 pb-5 pt-12">
           <Box className="gap-1.5">
             <Text
-              className="text-[22px] font-semibold text-white leading-[27px]"
+              className="text-[25px] font-semibold text-white leading-[29px]"
               style={TITLE_TEXT_SHADOW}
               numberOfLines={2}
             >
@@ -180,26 +172,18 @@ function ImmersiveCard({
             ) : null}
           </Box>
 
-          <Box className="h-px bg-white/15" />
-
-          <Box className="gap-1.5">
-            {dateText ? <MetaChip icon="event" label={dateText} /> : null}
-            <Box className="flex-row items-center gap-1.5">
-              <MetaChip
+          <Box className="flex-row items-center gap-2 pt-1">
+              {dateText ? <MetaRow icon="event" label={dateText} /> : null}
+              <MetaRow
                 icon="today"
                 label={t("tripCard.dayCount", { count: trip.totalDays ?? 1 })}
               />
-              <MetaChip
+              <MetaRow
                 icon="place"
                 label={t("tripCard.placeCount", { count: destinationCount })}
               />
-              <Box className="w-10 h-10 rounded-full bg-white items-center justify-center">
-                <MaterialIconsRounded name="arrow-forward" size={20} color="#111827" />
-              </Box>
-            </Box>
           </Box>
-        </Box>
-      </BlurView>
+      </Box>
     </Box>
   );
 }
@@ -275,7 +259,7 @@ export const TripCard = memo(function TripCard({
           }
         }}
         style={[cardAnimStyle, SHADOW_IMMERSIVE]}
-        className="rounded-[28px] overflow-hidden h-[246px] bg-[#F6F7F9] border border-white"
+        className="rounded-[26px] overflow-hidden h-[264px] bg-[#F6F7F9] border border-white"
       >
         <ImmersiveCard
           trip={trip}
@@ -295,11 +279,11 @@ export const TripCard = memo(function TripCard({
 });
 
 const SHADOW_IMMERSIVE = {
-  shadowColor: "#000",
+  shadowColor: "#102A29",
   shadowOffset: { width: 0, height: 14 },
-  shadowOpacity: 0.16,
-  shadowRadius: 24,
-  elevation: 7,
+  shadowOpacity: 0.14,
+  shadowRadius: 22,
+  elevation: 6,
 };
 
 const TITLE_TEXT_SHADOW = {

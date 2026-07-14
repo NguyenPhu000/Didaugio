@@ -34,9 +34,9 @@ import {
 } from "../../src/constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "./_layout";
 import {
-  getCategoryIcon,
   normalizeText,
 } from "../../src/modules/explore/utils/exploreHelpers";
+import { getCategoryIconName } from "../../src/constants/categoryIcons";
 
 import { FeaturedSection } from "../../src/modules/explore/components/FeaturedSection";
 import { ExperienceBentoSection } from "../../src/modules/explore/components/ExperienceBentoSection";
@@ -63,6 +63,24 @@ const FOOD_HINTS = ["ẩm thực", "food", "restaurant", "ăn", "quán", "bánh"
 );
 
 const FLOATING_TAB_CLEARANCE = TAB_BAR_HEIGHT + 84;
+const BUDGET_PRICE_RANGES = new Set(["FREE", "BUDGET", "MODERATE"]);
+
+const getPlaceRatingValue = (place) => {
+  const rating = Number(place?.ratingAvg ?? place?.averageRating ?? 0);
+  return Number.isFinite(rating) ? rating : 0;
+};
+
+const getPlaceReviewCount = (place) => {
+  const reviewCount = Number(place?.reviewCount ?? place?._count?.reviews ?? 0);
+  return Number.isFinite(reviewCount) ? reviewCount : 0;
+};
+
+const getPlaceTimestamp = (place) => {
+  const value = new Date(
+    place?.createdAt || place?.updatedAt || place?.publishedAt || 0,
+  ).getTime();
+  return Number.isFinite(value) ? value : 0;
+};
 
 export default function ExploreScreen() {
   const { t } = useTranslation();
@@ -184,7 +202,7 @@ export default function ExploreScreen() {
           key: String(category.id),
           categoryId: category.id,
           label: category.name,
-          icon: getCategoryIcon(category.name),
+          icon: getCategoryIconName(category),
         })),
     ];
   }, [categories, t]);
@@ -206,7 +224,12 @@ export default function ExploreScreen() {
       const catName = place?.category?.name;
       if (catId != null && catName) {
         if (!categoryMap.has(catId)) {
-          categoryMap.set(catId, { id: catId, name: catName, icon: getCategoryIcon(catName), places: [] });
+          categoryMap.set(catId, {
+            id: catId,
+            name: catName,
+            icon: getCategoryIconName(place.category),
+            places: [],
+          });
         }
         categoryMap.get(catId).places.push(place);
       }
@@ -233,6 +256,49 @@ export default function ExploreScreen() {
     const source = matched.length >= 3 ? matched : allPlaces;
     return source.slice(0, 3);
   }, [allPlaces]);
+
+  const curatedSections = useMemo(() => {
+    if (selectedCategory != null) return [];
+
+    const topRatedPlaces = [...allPlaces]
+      .filter((place) => getPlaceRatingValue(place) >= 4.3)
+      .sort((a, b) => {
+        const ratingDiff = getPlaceRatingValue(b) - getPlaceRatingValue(a);
+        if (ratingDiff !== 0) return ratingDiff;
+        return getPlaceReviewCount(b) - getPlaceReviewCount(a);
+      })
+      .slice(0, 8);
+
+    const budgetPlaces = allPlaces
+      .filter((place) => BUDGET_PRICE_RANGES.has(place?.priceRange))
+      .slice(0, 8);
+
+    const newestPlaces = [...allPlaces]
+      .filter((place) => getPlaceTimestamp(place) > 0)
+      .sort((a, b) => getPlaceTimestamp(b) - getPlaceTimestamp(a))
+      .slice(0, 8);
+
+    return [
+      {
+        id: "top-rated",
+        title: t("explore.sections.topRated"),
+        icon: "star-outline",
+        places: topRatedPlaces,
+      },
+      {
+        id: "budget-friendly",
+        title: t("explore.sections.budgetFriendly"),
+        icon: "cash-multiple",
+        places: budgetPlaces,
+      },
+      {
+        id: "new-and-fresh",
+        title: t("explore.sections.newAndFresh"),
+        icon: "creation",
+        places: newestPlaces,
+      },
+    ].filter((section) => section.places.length >= 3);
+  }, [allPlaces, selectedCategory, t]);
 
   const handlePressPlace = useCallback(
     (place) => {
@@ -361,7 +427,7 @@ export default function ExploreScreen() {
 
           <AnnouncementBanner announcement={announcement} />
 
-          {selectedCategory === null ? (
+          {selectedCategory === null && banners.length > 0 ? (
             <CmsBannerCarousel banners={banners} onPressBanner={handlePressBanner} />
           ) : null}
 
@@ -413,6 +479,18 @@ export default function ExploreScreen() {
             {culinaryPlaces.length >= 3 ? (
               <ExperienceBentoSection places={culinaryPlaces} onPressPlace={handlePressPlace} />
             ) : null}
+
+            {curatedSections.map((section) => (
+              <CategoryPlacesSection
+                key={section.id}
+                categoryName={section.title}
+                categoryId={section.id}
+                places={section.places}
+                icon={section.icon}
+                onPressPlace={handlePressPlace}
+                onPressViewAll={handleOpenSearch}
+              />
+            ))}
 
             {selectedCategory === null && placesByCategory.length > 0 ? (
               <View style={{ marginTop: 16 }}>

@@ -12,6 +12,7 @@
   import Animated, { FadeInDown } from "react-native-reanimated";
   import { useLocalSearchParams, useRouter } from "expo-router";
   import { Image } from "expo-image";
+  import { MaterialCommunityIcons } from "@expo/vector-icons";
   import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
   import BottomSheet from "@gorhom/bottom-sheet";
   import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -42,9 +43,9 @@
   import { useTranslation } from "react-i18next";
   import {
     formatPriceLine,
-    getCategoryIcon,
     getPlaceLocation,
   } from "../../src/modules/explore/utils/exploreHelpers";
+  import { getCategoryIconName } from "../../src/constants/categoryIcons";
   import {
     PALETTE,
     formatReviewCount,
@@ -65,9 +66,11 @@
 
   const MAIN_REVIEW_LIMIT = 2;
   const MAX_GALLERY_IMAGES = 8;
-  const HERO_ASPECT = 0.82;
-  const HERO_MIN = 450;
-  const HERO_MAX = 500;
+  // A compact editorial crop keeps the place recognizable while exposing the
+  // identity and first action above the fold on normal phone screens.
+  const HERO_ASPECT = 0.68;
+  const HERO_MIN = 300;
+  const HERO_MAX = 360;
 
   const ICON_BUTTON_SHADOW = TOKENS.shadow.md;
   const BOTTOM_BAR_SHADOW = TOKENS.shadow.lg;
@@ -321,6 +324,7 @@
             focusLat: String(place.latitude),
             focusLng: String(place.longitude),
             focusPlaceId: String(place.id || ""),
+            startRoute: "true",
           },
         });
         return;
@@ -456,7 +460,7 @@
       () => place?.category?.name || t("place.detail.featuredPlace"),
       [place?.category?.name, t],
     );
-    const categoryIcon = getCategoryIcon(categoryName);
+    const categoryIcon = getCategoryIconName(place?.category);
     const priceLine = useMemo(() => formatPriceLine(place), [place]);
     const priceRangeLabel = useMemo(() => formatPriceRange(place, t), [place, t]);
     const addressLine = useMemo(() => getAddressLine(place), [place]);
@@ -572,83 +576,60 @@
 
             {/* ───── Task 2 Step 2: BlurView Controls ───── */}
             <View
-              className="absolute left-5 right-5 flex-row items-center justify-between"
-              style={{ top: insets.top + 8 }}
+              className="absolute left-4 right-4 flex-row items-center justify-between"
+              style={{ top: insets.top + 10 }}
             >
               <BlurView
-                intensity={30}
+                intensity={45}
                 tint="light"
-                className="w-10 h-10 rounded-full overflow-hidden items-center justify-center"
-                style={ICON_BUTTON_SHADOW}
+                className="h-11 w-11 overflow-hidden rounded-full items-center justify-center"
+                style={[ICON_BUTTON_SHADOW, { backgroundColor: "rgba(255,255,255,0.48)", borderWidth: 1, borderColor: "rgba(255,255,255,0.62)" }]}
               >
                 <Pressable
                   onPress={() => router.back()}
-                  className="w-full h-full items-center justify-center"
+                  className="h-full w-full items-center justify-center active:opacity-70"
                   accessibilityRole="button"
                   accessibilityLabel={t("common.back")}
                 >
                   <MaterialIconsRounded
                     name="arrow-back-ios-new"
-                    size={16}
+                    size={17}
                     color={PALETTE.text}
                   />
                 </Pressable>
               </BlurView>
 
-              <View className="flex-row items-center gap-2">
-                <BlurView
-                  intensity={30}
-                  tint="light"
-                  className="w-10 h-10 rounded-full overflow-hidden items-center justify-center"
-                  style={ICON_BUTTON_SHADOW}
+              <BlurView
+                intensity={45}
+                tint="light"
+                className="h-11 w-11 overflow-hidden rounded-full items-center justify-center"
+                style={[ICON_BUTTON_SHADOW, { backgroundColor: "rgba(255,255,255,0.48)", borderWidth: 1, borderColor: "rgba(255,255,255,0.62)" }]}
+              >
+                <Pressable
+                  onPress={handleAddToTrip}
+                  className="h-full w-full items-center justify-center active:opacity-70"
+                  accessibilityRole="button"
+                  accessibilityLabel={t("place.addLeg")}
                 >
-                  <Pressable
-                    onPress={handleSaveToggle}
-                    className="w-full h-full items-center justify-center"
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      isSavedLocal ? t("place.saved") : t("place.save")
-                    }
-                  >
-                    <MaterialIconsRounded
-                      name={isSavedLocal ? "bookmark" : "bookmark-border"}
-                      size={18}
-                      color={isSavedLocal ? "#FF9F0A" : PALETTE.text}
-                    />
-                  </Pressable>
-                </BlurView>
-                <BlurView
-                  intensity={30}
-                  tint="light"
-                  className="w-10 h-10 rounded-full overflow-hidden items-center justify-center"
-                  style={ICON_BUTTON_SHADOW}
-                >
-                  <Pressable
-                    onPress={handleAddToTrip}
-                    className="w-full h-full items-center justify-center"
-                    accessibilityRole="button"
-                    accessibilityLabel={t("place.addLeg")}
-                  >
-                    <MaterialIconsRounded
-                      name="playlist-add"
-                      size={18}
-                      color={PALETTE.text}
-                    />
-                  </Pressable>
-                </BlurView>
-              </View>
+                  <MaterialIconsRounded
+                    name="playlist-add"
+                    size={19}
+                    color={PALETTE.text}
+                  />
+                </Pressable>
+              </BlurView>
             </View>
 
-            {/* Bottom scrim for image indicators */}
+            {/* Keeps gallery progress legible regardless of photo brightness. */}
             <View
-              className="absolute left-0 right-0 bottom-0 h-16"
-              style={{ backgroundColor: "rgba(0,0,0,0.48)" }}
+              className="absolute left-0 right-0 bottom-0 h-20"
+              style={{ backgroundColor: "rgba(0,0,0,0.42)" }}
               pointerEvents="none"
             />
 
             {/* Image Position Indicator */}
             {galleryImages.length > 1 ? (
-              <View className="absolute bottom-9 self-center flex-row gap-1.5">
+              <View className="absolute bottom-8 self-center flex-row gap-1.5">
                 {galleryImages.map((imageItem, index) => (
                   <View
                     key={imageItem?.id || index}
@@ -665,18 +646,21 @@
           </View>
 
           {/* ───── Task 2 Step 3: Flat Information Below Gallery ───── */}
-          <View className="relative z-10 -mt-6 rounded-t-[28px] bg-white px-5 pt-5 pb-2">
+          <View
+            className="relative z-10 -mt-7 rounded-t-[32px] bg-white px-5 pt-6 pb-3"
+            style={{ borderCurve: "continuous" }}
+          >
             {/* Category label */}
             <View className="flex-row items-center gap-1 mb-1">
-              <MaterialIconsRounded
+              <MaterialCommunityIcons
                 name={categoryIcon}
-                size={13}
-                color={PALETTE.textSoft}
+                size={14}
+                color={PALETTE.accent}
               />
               <Text
                 className="text-[11px] tracking-[0.8px] uppercase"
                 style={{
-                  color: PALETTE.textSoft,
+                  color: PALETTE.accent,
                   fontFamily: TOKENS.font.semibold,
                 }}
               >
@@ -686,7 +670,7 @@
 
             {/* Place name */}
             <Text
-              className="text-[28px] leading-[34px] tracking-[-0.6px]"
+              className="text-[30px] leading-[35px] tracking-[-0.6px]"
               style={{
                 color: PALETTE.text,
                 fontFamily: TOKENS.font.heading,
@@ -769,21 +753,21 @@
               </Text>
             </View>
 
-            {/* Fast Actions: Directions, Save, Call */}
-            <View className="flex-row gap-2.5 mt-5">
+            {/* One primary action, with compact supporting actions. */}
+            <View className="flex-row items-center gap-2.5 mt-5">
               <Pressable
                 onPress={handleNavigate}
-                className="flex-1 h-11 flex-row items-center justify-center gap-2 rounded-[14px] active:opacity-75"
+                className="flex-1 h-12 flex-row items-center justify-center gap-2 rounded-[16px] active:opacity-75"
                 style={{
-                  backgroundColor: "rgba(8,126,139,0.1)",
+                  backgroundColor: PALETTE.primary,
                   borderCurve: "continuous",
                 }}
               >
-                <MaterialIconsRounded name="near-me" size={16} color="#087E8B" />
+                <MaterialIconsRounded name="near-me" size={17} color="#FFFFFF" />
                 <Text
                   className="text-[13px]"
                   style={{
-                    color: "#087E8B",
+                    color: "#FFFFFF",
                     fontFamily: TOKENS.font.semibold,
                   }}
                 >
@@ -793,52 +777,38 @@
 
               <Pressable
                 onPress={handleSaveToggle}
-                className="flex-1 h-11 flex-row items-center justify-center gap-2 rounded-[14px] bg-[#F5F5F7] active:opacity-75"
+                className="h-12 w-12 items-center justify-center rounded-[16px] bg-[#F5F5F7] active:opacity-75"
                 style={{ borderCurve: "continuous" }}
+                accessibilityRole="button"
+                accessibilityLabel={isSavedLocal ? t("place.saved") : t("place.save")}
               >
                 <MaterialIconsRounded
                   name={isSavedLocal ? "bookmark" : "bookmark-border"}
                   size={16}
                   color={isSavedLocal ? "#FF9F0A" : PALETTE.text}
                 />
-                <Text
-                  className="text-[13px]"
-                  style={{
-                    color: PALETTE.text,
-                    fontFamily: TOKENS.font.semibold,
-                  }}
-                >
-                  {isSavedLocal ? t("place.saved") : t("place.save")}
-                </Text>
               </Pressable>
 
               {place?.phone ? (
                 <Pressable
                   onPress={() => handleOpenUrl(`tel:${place.phone}`)}
-                  className="flex-1 h-11 flex-row items-center justify-center gap-2 rounded-[14px] bg-[#F5F5F7] active:opacity-75"
+                  className="h-12 w-12 items-center justify-center rounded-[16px] bg-[#F5F5F7] active:opacity-75"
                   style={{ borderCurve: "continuous" }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("place.detail.quickCall")}
                 >
                   <MaterialIconsRounded
                     name="call"
                     size={16}
                     color={PALETTE.text}
                   />
-                  <Text
-                    className="text-[13px]"
-                    style={{
-                      color: PALETTE.text,
-                      fontFamily: TOKENS.font.semibold,
-                    }}
-                  >
-                    {t("place.detail.quickCall")}
-                  </Text>
                 </Pressable>
               ) : null}
             </View>
           </View>
 
           {/* ───── Content Sections ───── */}
-          <View className="px-5 pt-4 pb-6 gap-7">
+          <View className="px-5 pt-5 pb-7 gap-8">
 
             {/* ───── Task 2 Step 4: Reviews BEFORE Description ───── */}
             <Animated.View entering={FadeInDown.delay(80).duration(400)}>
@@ -870,7 +840,7 @@
 
                 {recentReviews.length === 0 ? (
                   <Text
-                    className="text-sm text-center py-4"
+                    className="text-sm py-2"
                     style={{
                       color: PALETTE.textMuted,
                       fontFamily: TOKENS.font.medium,
@@ -915,7 +885,7 @@
             {/* About + Intro Audio */}
             {place?.description ? (
               <Animated.View entering={FadeInDown.delay(160).duration(400)}>
-                <View className="gap-2">
+                <View className="gap-2.5">
                   <View className="flex-row items-center justify-between">
                     <Text
                       className="text-[17px]"
@@ -936,7 +906,7 @@
                           selected: activeSpeechKey === INTRO_SPEECH_KEY,
                         }}
                         className={cn(
-                          "h-8 w-8 items-center justify-center rounded-full active:scale-95",
+                          "h-9 w-9 items-center justify-center rounded-full active:scale-95",
                           activeSpeechKey === INTRO_SPEECH_KEY
                             ? "bg-[#087E8B]"
                             : "bg-[#ECF8FA]",

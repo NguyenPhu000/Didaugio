@@ -14,8 +14,8 @@ const FAQItem = memo(function FAQItem({ faq, index, isSpeaking, onPress }) {
       accessibilityState={{ selected: isSpeaking }}
       accessibilityLabel={isSpeaking ? `Dừng câu trả lời ${index + 1}` : `Nghe câu trả lời ${index + 1}`}
       className={cn(
-        "min-h-[58px] flex-row items-center gap-3 rounded-[16px] px-4 py-3 active:opacity-85",
-        isSpeaking ? "bg-[#E3F6F8]" : "bg-[#F5F5F7]"
+        "min-h-[62px] flex-row items-center gap-3 rounded-[18px] px-4 py-3 active:opacity-85",
+        isSpeaking ? "border border-[#9CDDE3] bg-[#ECF8FA]" : "bg-[#F5F5F7]"
       )}
       style={{ borderCurve: "continuous" }}
     >
@@ -30,15 +30,8 @@ const FAQItem = memo(function FAQItem({ faq, index, isSpeaking, onPress }) {
       <View
         className={cn(
           "h-9 w-9 items-center justify-center rounded-full",
-          isSpeaking ? "bg-[#087E8B]" : "bg-white"
+          isSpeaking ? "bg-[#087E8B]" : "bg-[#E4F4F6]"
         )}
-        style={!isSpeaking ? {
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.05,
-          shadowRadius: 2,
-          elevation: 1,
-        } : null}
       >
         <MaterialIconsRounded
           name={isSpeaking ? "pause" : "play-arrow"}
@@ -59,7 +52,7 @@ function SpokenGuideSection({ activeSpeechKey, guide, onSpeak }) {
   if (!hasSpokenGuide(guide) || faqs.length === 0) return null;
 
   return (
-    <View className="gap-3 px-3 py-3">
+    <View className="gap-3">
       <Text
         className="text-[12px] uppercase tracking-wider px-1"
         style={{ color: PALETTE.textMuted, fontFamily: TOKENS.font.semibold }}
@@ -67,7 +60,7 @@ function SpokenGuideSection({ activeSpeechKey, guide, onSpeak }) {
         Có thể bạn muốn biết
       </Text>
       
-      <View className="gap-2">
+      <View className="gap-2.5">
         {faqs.map((faq, index) => (
           <FAQItem
             key={faq.id || `${faq.question}-${index}`}
