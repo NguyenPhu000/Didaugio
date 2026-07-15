@@ -10,6 +10,7 @@ import {
 import { ENDPOINTS } from "../../../api/endpoints";
 import apiClient from "../../../api/client";
 import { AI_REQUEST_TIMEOUT } from "../../../constants/api";
+import { VOICE_ERROR_CODES } from "../../../constants/voice-error-codes";
 
 const VOICE_STATUS = Object.freeze({
   IDLE: "idle",
@@ -87,7 +88,7 @@ export function useGenieVoice() {
     const permission = await requestRecordingPermissionsAsync();
     if (!permission.granted) {
       setStatus(VOICE_STATUS.ERROR);
-      setError("VOICE_PERMISSION_DENIED");
+      setError(VOICE_ERROR_CODES.PERMISSION_DENIED);
       return false;
     }
 
@@ -118,7 +119,7 @@ export function useGenieVoice() {
 
     if (!uri) {
       setStatus(VOICE_STATUS.ERROR);
-      setError("VOICE_EMPTY_RECORDING");
+      setError(VOICE_ERROR_CODES.EMPTY_RECORDING);
       stoppingRef.current = false;
       return "";
     }

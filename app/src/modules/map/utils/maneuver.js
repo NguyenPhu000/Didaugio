@@ -99,12 +99,12 @@ export function pickUpcomingStep(steps, location, distanceFn, options = {}) {
     const maneuverPoint = { lat, lng };
     const bearingAfter = Number(step?.maneuver?.bearing_after);
     if (
-      hasPassedManeuver(
-        location,
+      hasPassedManeuver({
+        gpsPoint: location,
         maneuverPoint,
-        Number.isFinite(bearingAfter) ? bearingAfter : null,
+        nextSegmentHeading: Number.isFinite(bearingAfter) ? bearingAfter : null,
         currentHeading,
-      )
+      })
     ) {
       continue;
     }

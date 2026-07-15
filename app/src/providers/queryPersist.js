@@ -1,3 +1,4 @@
+import { logger } from "../lib/logger";
 import safeAsyncStorage from "../utils/safeAsyncStorage";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { QUERY_KEYS } from "../constants/query-keys";
@@ -5,8 +6,7 @@ import {
   REACT_QUERY_PERSIST_BUSTER,
   TRIP_OFFLINE_MAX_AGE_MS,
 } from "../constants/trip-offline-cache";
-
-const PERSIST_STORAGE_KEY = "didaugio-react-query-cache";
+import { OFFLINE_STORAGE_KEYS } from "../constants/storage";
 
 const tripsRootKey = QUERY_KEYS.trips.all()[0];
 
@@ -61,7 +61,7 @@ function slimTrip(trip) {
 
 const basePersister = createAsyncStoragePersister({
   storage: safeAsyncStorage,
-  key: PERSIST_STORAGE_KEY,
+  key: OFFLINE_STORAGE_KEYS.QUERY_PERSIST_CACHE,
   throttleTime: 1000,
 });
 
@@ -99,7 +99,7 @@ export const asyncStoragePersister = {
         try {
           const serialized = JSON.stringify(slimmedQueries);
           if (serialized.length > 1_500_000) {
-            console.warn(
+            logger.warn(
               `[queryPersist] Cache quá lớn (${(serialized.length / 1024 / 1024).toFixed(1)}MB), bỏ qua persist.`
             );
             return;
@@ -119,14 +119,14 @@ export const asyncStoragePersister = {
       }
       return await basePersister.persistClient(persistedClient);
     } catch (err) {
-      console.warn("[queryPersist] Ghi cache thất bại (đĩa đầy hoặc lỗi):", err);
+      logger.warn("[queryPersist] Ghi cache thất bại (đĩa đầy hoặc lỗi):", err);
     }
   },
   restoreClient: async () => {
     try {
       return await basePersister.restoreClient();
     } catch (err) {
-      console.warn("[queryPersist] Đọc cache thất bại:", err);
+      logger.warn("[queryPersist] Đọc cache thất bại:", err);
       return undefined;
     }
   },
@@ -134,7 +134,7 @@ export const asyncStoragePersister = {
     try {
       return await basePersister.removeClient();
     } catch (err) {
-      console.warn("[queryPersist] Xóa cache thất bại:", err);
+      logger.warn("[queryPersist] Xóa cache thất bại:", err);
     }
   },
 };

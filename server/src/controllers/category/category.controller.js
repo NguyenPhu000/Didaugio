@@ -22,7 +22,7 @@ export const getCategories = async (req, res, next) => {
     // Format: tree hoặc flat
     if (format === "tree") {
       const cacheKey = `categories:tree:${isIncludeInactive}`;
-      const cached = cacheGet(cacheKey);
+      const cached = await cacheGet(cacheKey);
       if (cached) {
         setPublicListCache(res, req);
         return res.json(cached);
@@ -38,14 +38,14 @@ export const getCategories = async (req, res, next) => {
         data: tree,
         message: "Lấy cây danh mục thành công",
       };
-      cacheSet(cacheKey, body, TTL.STATIC);
+      await cacheSet(cacheKey, body, TTL.STATIC);
       setPublicListCache(res, req);
       return res.json(body);
     }
 
     // Flat list
     const cacheKey = "categories:list";
-    const cached = cacheGet(cacheKey);
+    const cached = await cacheGet(cacheKey);
     if (cached) {
       setPublicListCache(res, req);
       return res.json(cached);
@@ -64,7 +64,7 @@ export const getCategories = async (req, res, next) => {
       total: categories.length,
       message: "Lấy danh sách danh mục thành công",
     };
-    cacheSet(cacheKey, body, TTL.STATIC);
+    await cacheSet(cacheKey, body, TTL.STATIC);
     setPublicListCache(res, req);
     res.json(body);
   } catch (error) {
@@ -79,7 +79,7 @@ export const getCategoryTree = async (req, res, next) => {
     const isIncludeInactive = includeInactive === "true" || includeInactive === true;
 
     const cacheKey = `categories:tree:${isIncludeInactive}`;
-    const cached = cacheGet(cacheKey);
+    const cached = await cacheGet(cacheKey);
     if (cached) {
       setPublicListCache(res, req);
       return res.json(cached);
@@ -96,7 +96,7 @@ export const getCategoryTree = async (req, res, next) => {
       data: tree,
       message: "Lấy cây danh mục thành công",
     };
-    cacheSet(cacheKey, body, TTL.STATIC);
+    await cacheSet(cacheKey, body, TTL.STATIC);
     setPublicListCache(res, req);
     res.json(body);
   } catch (error) {
@@ -199,7 +199,7 @@ export const createCategory = async (req, res, next) => {
       order: order || 0,
     });
 
-    flushPattern("categories:");
+    await flushPattern("categories:");
 
     res.status(201).json({
       success: true,
@@ -239,7 +239,7 @@ export const updateCategory = async (req, res, next) => {
       isActive,
     });
 
-    flushPattern("categories:");
+    await flushPattern("categories:");
 
     res.json({
       success: true,
@@ -258,7 +258,7 @@ export const deleteCategory = async (req, res, next) => {
 
     const result = await categoryService.deleteCategory(id);
 
-    flushPattern("categories:");
+    await flushPattern("categories:");
 
     res.json({
       success: true,

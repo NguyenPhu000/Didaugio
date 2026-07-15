@@ -1,4 +1,5 @@
 import i18n from "@/i18n";
+export { VOICE_ERROR_CODES } from "./voice-error-codes";
 
 /**
  * Returns translated error messages.

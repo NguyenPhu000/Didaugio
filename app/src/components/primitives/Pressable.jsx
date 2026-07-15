@@ -3,7 +3,9 @@ import { Pressable as RNPressable } from "react-native";
 let Haptics = null;
 try {
   Haptics = require("expo-haptics");
-} catch {}
+} catch {
+  // Haptics is optional, fallback to null in web or non-supported environments
+}
 
 export function Pressable({
   className = "",

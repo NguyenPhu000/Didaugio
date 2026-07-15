@@ -1,0 +1,72 @@
+export const getMockData = (t) => ({
+  banners: [
+    {
+      id: 1,
+      title: t("admin.cms.mockBanner1Title"),
+      subtitle: t("admin.cms.mockBanner1Subtitle"),
+      description: t("admin.cms.mockBanner1Desc"),
+      image: "https://picsum.photos/400/200?random=1",
+      link: "/promo/summer",
+      order: 1,
+      active: true,
+      views: 12500,
+      startDate: "2024-06-01",
+    },
+    {
+      id: 2,
+      title: "Grand Opening",
+      subtitle: t("admin.cms.mockBanner2Subtitle"),
+      description: t("admin.cms.mockBanner2Desc"),
+      image: "https://picsum.photos/400/200?random=2",
+      link: "/new",
+      order: 2,
+      active: true,
+      views: 8200,
+      startDate: "2024-06-15",
+    },
+  ],
+  announcements: [
+    {
+      id: 1,
+      title: t("admin.cms.mockAnnouncementTitle"),
+      subtitle: t("admin.cms.mockAnnouncementSubtitle"),
+      description: t("admin.cms.mockAnnouncementDesc"),
+      type: "warning",
+      order: 1,
+      active: true,
+      startDate: "2024-06-24",
+    },
+  ],
+  featured: [
+    {
+      id: 1,
+      title: t("admin.cms.mockFeaturedTitle"),
+      subtitle: t("admin.cms.mockFeaturedSubtitle"),
+      description: t("admin.cms.mockFeaturedDesc"),
+      order: 1,
+      active: true,
+      startDate: "2024-06-01",
+    },
+  ],
+  pages: [
+    {
+      id: 1,
+      title: t("admin.cms.mockPage1Title"),
+      subtitle: t("admin.cms.mockPage1Subtitle"),
+      description: t("admin.cms.mockPage1Desc"),
+      order: 1,
+      active: true,
+      views: 3500,
+    },
+    {
+      id: 2,
+      title: t("admin.cms.mockPage2Title"),
+      subtitle: "Terms of Service",
+      description: t("admin.cms.mockPage2Desc"),
+      order: 2,
+      active: true,
+      views: 2100,
+    },
+  ],
+});
+

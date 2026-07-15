@@ -112,7 +112,7 @@ export const ReviewComposerSheetContent = memo(function ReviewComposerSheetConte
       setSelectedMedia((current) =>
         [...current, ...compressed].slice(0, REVIEW_MEDIA_LIMIT),
       );
-    } catch (_error) {
+    } catch {
       Alert.alert(
         t("place.detail.reviewPhotoErrorTitle"),
         t("place.detail.reviewPhotoErrorMessage"),

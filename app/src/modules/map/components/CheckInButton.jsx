@@ -1,3 +1,4 @@
+import { logger } from "../../../lib/logger";
 import React from "react";
 import { ActivityIndicator, Alert, Pressable, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -76,7 +77,7 @@ export const CheckInButton = ({
         }
       };
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       Alert.alert(t("mapScreen.imageError"), t("mapScreen.imageErrorDesc"));
       setIsMomentUploading(false);
     }

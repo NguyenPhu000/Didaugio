@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import i18n from "../../../i18n";
 import {
   getDisplayStatus,
+  getDayNumberFromDate,
   getHeroTrip,
   getTripFilters,
   sortTripsForDashboard,
@@ -71,5 +72,15 @@ describe("tripHelpers", () => {
         { id: "cancelled", status: "cancelled", startDate: "2026-02-01" },
       ]),
     ).toBeNull();
+  });
+
+  it("gets a trip day number from named date parameters", () => {
+    expect(
+      getDayNumberFromDate({
+        tripStartYmd: "2026-07-15",
+        targetYmd: "2026-07-17",
+        dayCount: 3,
+      }),
+    ).toBe(3);
   });
 });

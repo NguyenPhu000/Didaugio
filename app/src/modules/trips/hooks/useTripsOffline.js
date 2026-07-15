@@ -1,3 +1,4 @@
+import { logger } from "../../../lib/logger";
 import { useEffect, useRef, useState } from "react";
 import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -5,9 +6,10 @@ import NetInfo from "@react-native-community/netinfo";
 import { getMyTripsApi, createTripApi, deleteTripApi, getTripDetailApi } from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
 import { TRIP_OFFLINE_GC_MS } from "../../../constants/trip-offline-cache";
+import { OFFLINE_STORAGE_KEYS } from "../../../constants/storage";
 import { createRandomId } from "../../../utils/createRandomId";
 
-const TRIPS_CACHE_KEY = "@trips_cache";
+const TRIPS_CACHE_KEY = OFFLINE_STORAGE_KEYS.TRIPS_CACHE;
 const CACHE_VERSION = "v5";
 const CACHE_EXPIRY_MS = TRIP_OFFLINE_GC_MS;
 
@@ -37,11 +39,11 @@ export const persistTripsToStorage = async (trips) => {
         );
         return;
       } catch (retryError) {
-        console.warn("[TripsOffline] Storage full, retry after cleanup also failed:", retryError);
+        logger.warn("[TripsOffline] Storage full, retry after cleanup also failed:", retryError);
         return;
       }
     }
-    console.warn("[TripsOffline] Failed to persist trips:", error);
+    logger.warn("[TripsOffline] Failed to persist trips:", error);
   }
 };
 
@@ -64,7 +66,7 @@ export const loadTripsFromStorage = async () => {
 
     return cacheData;
   } catch (error) {
-    console.warn("[TripsOffline] Failed to load trips from storage:", error);
+    logger.warn("[TripsOffline] Failed to load trips from storage:", error);
     return null;
   }
 };
@@ -73,7 +75,7 @@ export const clearTripsCache = async () => {
   try {
     await safeAsyncStorage.removeItem(getCacheKey(TRIPS_CACHE_KEY));
   } catch (error) {
-    console.warn("[TripsOffline] Failed to clear trips cache:", error);
+    logger.warn("[TripsOffline] Failed to clear trips cache:", error);
   }
 };
 
@@ -218,7 +220,7 @@ export function useTripDetailCached(tripId, enabled = true) {
             }),
           );
         } catch (storageError) {
-          console.warn("[TripsOffline] Failed to cache trip detail:", storageError);
+          logger.warn("[TripsOffline] Failed to cache trip detail:", storageError);
         }
       }
 
@@ -240,7 +242,7 @@ export function useCreateTripCached() {
 
   return {
     mutateAsync: async (tripData) => {
-      const pendingActionsKey = "@pending_trip_actions";
+      const pendingActionsKey = OFFLINE_STORAGE_KEYS.PENDING_TRIP_ACTIONS;
 
       const queuePending = async (type, data) => {
         try {
@@ -251,7 +253,7 @@ export function useCreateTripCached() {
           await safeAsyncStorage.setItem(pendingActionsKey, JSON.stringify(actions));
           return tempId;
         } catch (storageError) {
-          console.warn("[TripsOffline] Failed to queue pending create action:", storageError);
+          logger.warn("[TripsOffline] Failed to queue pending create action:", storageError);
           return createRandomId("temp");
         }
       };
@@ -282,7 +284,7 @@ export function useDeleteTripCached() {
 
   return {
     mutateAsync: async (tripId) => {
-      const pendingActionsKey = "@pending_trip_actions";
+      const pendingActionsKey = OFFLINE_STORAGE_KEYS.PENDING_TRIP_ACTIONS;
 
       const queuePending = async (type, id) => {
         try {
@@ -291,7 +293,7 @@ export function useDeleteTripCached() {
           actions.push({ type, data: { id }, tempId: String(id), timestamp: Date.now() });
           await safeAsyncStorage.setItem(pendingActionsKey, JSON.stringify(actions));
         } catch (storageError) {
-          console.warn("[TripsOffline] Failed to queue pending delete action:", storageError);
+          logger.warn("[TripsOffline] Failed to queue pending delete action:", storageError);
         }
       };
 
@@ -354,7 +356,7 @@ export function useOfflineSync() {
     const flushQueue = async () => {
       isSyncingRef.current = true;
       try {
-        const pendingActionsKey = "@pending_trip_actions";
+        const pendingActionsKey = OFFLINE_STORAGE_KEYS.PENDING_TRIP_ACTIONS;
         const raw = await safeAsyncStorage.getItem(pendingActionsKey);
         if (!raw) {
           isSyncingRef.current = false;
@@ -402,7 +404,7 @@ export function useOfflineSync() {
 
         await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
       } catch (error) {
-        console.warn("[OfflineSync] Sync error:", error);
+        logger.warn("[OfflineSync] Sync error:", error);
       } finally {
         isSyncingRef.current = false;
       }

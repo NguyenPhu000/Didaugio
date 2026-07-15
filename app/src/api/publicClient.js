@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { isCancel } from "axios";
 import { API_BASE_CANDIDATES, REQUEST_TIMEOUT } from "../constants/api";
 
 const buildPublicError = (error) => ({
@@ -27,6 +27,9 @@ export async function getPublicWithFallback(endpoint, config = {}) {
       });
       return response.data;
     } catch (error) {
+      if (isCancel(error) || error?.code === "ERR_CANCELED") {
+        throw error;
+      }
       lastError = error;
     }
   }

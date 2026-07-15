@@ -6,6 +6,7 @@ import { Component } from "react";
 import { Pressable, Text, View } from "react-native";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import i18n from "@/i18n";
+import { logger } from "../lib/logger";
 
 
 export class ErrorBoundary extends Component {
@@ -19,7 +20,7 @@ export class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    console.error("[ErrorBoundary] Caught error:", error, info);
+    logger.error("[ErrorBoundary] Caught error:", error, info);
   }
 
   handleReset = () => {

@@ -148,8 +148,7 @@ client.interceptors.response.use(
             originalRequest.headers = originalRequest.headers || {};
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
             return client(originalRequest);
-          })
-          .catch((err) => Promise.reject(err));
+          });
       }
 
       isRefreshing = true;

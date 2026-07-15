@@ -1,4 +1,6 @@
+import { logger } from "../lib/logger";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { OFFLINE_STORAGE_KEYS } from "../constants/storage";
 
 const CLEANUP_COOLDOWN_MS = 30_000;
 let lastCleanupAttempt = 0;
@@ -9,7 +11,7 @@ const CACHE_KEY_PATTERNS = [
   "query-cache",
   "react-query",
   "REACT_QUERY_OFFLINE_CACHE",
-  "didaugio-react-query-cache",
+  OFFLINE_STORAGE_KEYS.QUERY_PERSIST_CACHE,
 ];
 
 const PRESERVE_KEYS = new Set([
@@ -35,7 +37,7 @@ async function aggressiveCleanup() {
 
     if (keysToRemove.length > 0) {
       await AsyncStorage.multiRemove(keysToRemove);
-      console.log(
+      logger.info(
         `[safeAsyncStorage] Đã xóa ${keysToRemove.length} cache keys:`,
         keysToRemove.slice(0, 5),
       );
@@ -43,7 +45,7 @@ async function aggressiveCleanup() {
 
     diskFullFlag = false;
   } catch (err) {
-    console.warn("[safeAsyncStorage] Cleanup thất bại:", err?.message);
+    logger.warn("[safeAsyncStorage] Cleanup thất bại:", err?.message);
   }
 }
 
@@ -64,7 +66,7 @@ const safeAsyncStorage = {
         diskFullFlag = true;
         await aggressiveCleanup();
       }
-      console.warn(`[safeAsyncStorage] getItem failed for key "${key}":`, error?.message);
+      logger.warn(`[safeAsyncStorage] getItem failed for key "${key}":`, error?.message);
       return null;
     }
   },
@@ -79,7 +81,7 @@ const safeAsyncStorage = {
       await AsyncStorage.setItem(key, value);
     } catch (error) {
       if (!isDiskFullError(error)) {
-        console.warn(`[safeAsyncStorage] setItem failed for key "${key}":`, error?.message);
+        logger.warn(`[safeAsyncStorage] setItem failed for key "${key}":`, error?.message);
         return;
       }
 
@@ -91,7 +93,7 @@ const safeAsyncStorage = {
         diskFullFlag = false;
       } catch (_retryError) {
         diskFullFlag = true;
-        console.warn(
+        logger.warn(
           `[safeAsyncStorage] Retry setItem "${key}" thất bại — bỏ qua persist`,
         );
       }
@@ -102,7 +104,7 @@ const safeAsyncStorage = {
     try {
       await AsyncStorage.removeItem(key);
     } catch (error) {
-      console.warn(`[safeAsyncStorage] removeItem failed for key "${key}":`, error?.message);
+      logger.warn(`[safeAsyncStorage] removeItem failed for key "${key}":`, error?.message);
     }
   },
 
@@ -111,7 +113,7 @@ const safeAsyncStorage = {
       await AsyncStorage.clear();
       diskFullFlag = false;
     } catch (error) {
-      console.warn("[safeAsyncStorage] clear failed:", error?.message);
+      logger.warn("[safeAsyncStorage] clear failed:", error?.message);
     }
   },
 
@@ -119,7 +121,7 @@ const safeAsyncStorage = {
     try {
       return await AsyncStorage.getAllKeys();
     } catch (error) {
-      console.warn("[safeAsyncStorage] getAllKeys failed:", error?.message);
+      logger.warn("[safeAsyncStorage] getAllKeys failed:", error?.message);
       return [];
     }
   },
@@ -128,7 +130,7 @@ const safeAsyncStorage = {
     try {
       return await AsyncStorage.multiGet(keys);
     } catch (error) {
-      console.warn("[safeAsyncStorage] multiGet failed:", error?.message);
+      logger.warn("[safeAsyncStorage] multiGet failed:", error?.message);
       return [];
     }
   },
@@ -143,7 +145,7 @@ const safeAsyncStorage = {
       await AsyncStorage.multiSet(keyValuePairs);
     } catch (error) {
       if (!isDiskFullError(error)) {
-        console.warn("[safeAsyncStorage] multiSet failed:", error?.message);
+        logger.warn("[safeAsyncStorage] multiSet failed:", error?.message);
         return;
       }
 
@@ -155,7 +157,7 @@ const safeAsyncStorage = {
         diskFullFlag = false;
       } catch (_retryError) {
         diskFullFlag = true;
-        console.warn("[safeAsyncStorage] Retry multiSet thất bại — bỏ qua persist");
+        logger.warn("[safeAsyncStorage] Retry multiSet thất bại — bỏ qua persist");
       }
     }
   },
@@ -164,7 +166,7 @@ const safeAsyncStorage = {
     try {
       await AsyncStorage.multiRemove(keys);
     } catch (error) {
-      console.warn("[safeAsyncStorage] multiRemove failed:", error?.message);
+      logger.warn("[safeAsyncStorage] multiRemove failed:", error?.message);
     }
   },
 

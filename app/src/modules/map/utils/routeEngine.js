@@ -92,7 +92,7 @@ function unprojectFromMeters(point, origin) {
   };
 }
 
-export function pointToSegmentDistance(gpsPoint, segmentStart, segmentEnd) {
+export function pointToSegmentDistance({ gpsPoint, segmentStart, segmentEnd }) {
   const gps = normalizeCoordinate(gpsPoint);
   const a = normalizeCoordinate(segmentStart);
   const b = normalizeCoordinate(segmentEnd);
@@ -183,7 +183,11 @@ function evaluateSegment(gps, coords, segmentIndex, gpsHeading) {
   const b = coords[segmentIndex + 1];
   if (!a || !b) return null;
 
-  const snap = pointToSegmentDistance(gps, a, b);
+  const snap = pointToSegmentDistance({
+    gpsPoint: gps,
+    segmentStart: a,
+    segmentEnd: b,
+  });
   const segmentHeading = calculateBearing(a, b);
   const headingDelta = Number.isFinite(gpsHeading)
     ? normalizeHeadingDelta(gpsHeading, segmentHeading)
@@ -232,7 +236,12 @@ function selectBestSegment(gps, coords, segmentIndexes, gpsHeading) {
   return bestSameDirection || bestAnyDirection;
 }
 
-export function snapToRoute(gpsPoint, polylineCoords, lastKnownIndex = null, options = {}) {
+export function snapToRoute({
+  gpsPoint,
+  polylineCoords,
+  lastKnownIndex = null,
+  options = {},
+}) {
   const gps = normalizeCoordinate(gpsPoint);
   const coords = options.spatialIndex?.coords?.length
     ? options.spatialIndex.coords
@@ -289,11 +298,11 @@ export function snapToRoute(gpsPoint, polylineCoords, lastKnownIndex = null, opt
     : null;
 }
 
-export function isOffRoute(
-  distanceToRoute,
+export function isOffRoute({
+  distanceToRouteM,
   thresholdM = ROUTE_ENGINE_THRESHOLDS.OFF_ROUTE_DISTANCE_M,
-) {
-  return Number.isFinite(distanceToRoute) && distanceToRoute > thresholdM;
+}) {
+  return Number.isFinite(distanceToRouteM) && distanceToRouteM > thresholdM;
 }
 
 function cumulativeRouteDistances(coords) {
@@ -304,7 +313,13 @@ function cumulativeRouteDistances(coords) {
   return cumulative;
 }
 
-export function calculateProgress(gpsPoint, polylineCoords, steps = [], speedKmh = 0, lastKnownIndex = null) {
+export function calculateProgress({
+  gpsPoint,
+  polylineCoords,
+  steps = [],
+  speedKmh = 0,
+  lastKnownIndex = null,
+}) {
   const coords = normalizePolyline(polylineCoords);
   if (coords.length < 2) {
     return {
@@ -315,7 +330,11 @@ export function calculateProgress(gpsPoint, polylineCoords, steps = [], speedKmh
     };
   }
 
-  const snap = snapToRoute(gpsPoint, coords, lastKnownIndex);
+  const snap = snapToRoute({
+    gpsPoint,
+    polylineCoords: coords,
+    lastKnownIndex,
+  });
   if (!snap) {
     return {
       percentComplete: 0,
@@ -344,7 +363,12 @@ export function calculateProgress(gpsPoint, polylineCoords, steps = [], speedKmh
   };
 }
 
-export function hasPassedManeuver(gpsPoint, maneuverPoint, nextSegmentHeading, currentHeading) {
+export function hasPassedManeuver({
+  gpsPoint,
+  maneuverPoint,
+  nextSegmentHeading,
+  currentHeading,
+}) {
   const distanceFromManeuver = getDistanceM(gpsPoint, maneuverPoint);
   if (!Number.isFinite(distanceFromManeuver)) return false;
   if (distanceFromManeuver <= ROUTE_ENGINE_THRESHOLDS.MANEUVER_PASSED_DISTANCE_M) {

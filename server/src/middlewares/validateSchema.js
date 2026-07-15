@@ -10,11 +10,12 @@ export const validateSchema = (schema, source = "body") => {
       const validatedData = await schema.parseAsync(req[source]);
 
       // Mutate in-place vì req.query có thể là read-only getter
-      const targetObject = req[source];
-      for (const key in targetObject) {
-        delete targetObject[key];
-      }
-      Object.assign(targetObject, validatedData);
+      Object.defineProperty(req, source, {
+        configurable: true,
+        enumerable: true,
+        value: validatedData,
+        writable: true,
+      });
 
       next();
     } catch (error) {

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { logger } from "../lib/logger";
 
 const API_BASE_URL = "https://34tinhthanh.com/api";
 
@@ -11,7 +12,7 @@ class LocationService {
       const response = await axios.get(`${API_BASE_URL}/provinces`);
       return response.data;
     } catch (error) {
-      console.error("Error fetching provinces:", error);
+      logger.error("Error fetching provinces:", error);
       throw error;
     }
   }
@@ -30,7 +31,7 @@ class LocationService {
       });
       return response.data;
     } catch (error) {
-      console.error(`Error fetching wards for province ${provinceCode}:`, error);
+      logger.error(`Error fetching wards for province ${provinceCode}:`, error);
       throw error;
     }
   }

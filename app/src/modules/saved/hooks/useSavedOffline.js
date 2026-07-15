@@ -6,9 +6,10 @@ import {
   getSavedPlacesApi,
   getSavedCollectionsApi,
 } from "../api/savedApi";
+import { OFFLINE_STORAGE_KEYS } from "../../../constants/storage";
 
-const SAVED_PLACES_CACHE_KEY = "@saved_places_cache";
-const SAVED_COLLECTIONS_CACHE_KEY = "@saved_collections_cache";
+const SAVED_PLACES_CACHE_KEY = OFFLINE_STORAGE_KEYS.SAVED_PLACES_CACHE;
+const SAVED_COLLECTIONS_CACHE_KEY = OFFLINE_STORAGE_KEYS.SAVED_COLLECTIONS_CACHE;
 const CACHE_VERSION = "v1";
 const CACHE_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
 

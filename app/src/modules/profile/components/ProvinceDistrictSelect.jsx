@@ -1,6 +1,7 @@
+import { logger } from "../../../lib/logger";
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { View, Text, Pressable } from "react-native";
-import { locationService } from "../../../apis/locationService";
+import { locationService } from "../../../api/locationService";
 import { BottomSheetPicker } from "../../../components/ui/BottomSheetPicker";
 import { TOKENS } from "../../../constants/design-tokens";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
@@ -24,7 +25,7 @@ export function ProvinceDistrictSelect({
     locationService
       .getAllProvinces()
       .then((data) => setProvinces(data))
-      .catch((err) => console.log(err))
+      .catch((err) => logger.warn(err))
       .finally(() => setIsLoadingProvinces(false));
   }, []);
 
@@ -34,7 +35,7 @@ export function ProvinceDistrictSelect({
       locationService
         .getWardsByProvince(provinceCode)
         .then((data) => setDistricts(data))
-        .catch((err) => console.log(err))
+        .catch((err) => logger.warn(err))
         .finally(() => setIsLoadingDistricts(false));
     } else {
       setDistricts([]);

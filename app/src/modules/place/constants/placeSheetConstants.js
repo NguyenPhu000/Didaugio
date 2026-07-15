@@ -7,7 +7,7 @@
 
 import { REVIEW_MEDIA_LIMIT } from "../utils/reviewMedia";
 
-const ACTIVE_FONT_FAMILY = "Afacad";
+const ACTIVE_FONT_FAMILY = "BeVietnamPro";
 
 const FONT_FAMILIES = {
   BeVietnamPro: {

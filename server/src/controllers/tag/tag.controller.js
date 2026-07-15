@@ -17,7 +17,7 @@ import {
 export const getTags = async (req, res, next) => {
   try {
     const cacheKey = "tags:list";
-    const cached = cacheGet(cacheKey);
+    const cached = await cacheGet(cacheKey);
     if (cached) {
       setPublicListCache(res, req);
       return res.json(cached);
@@ -38,7 +38,7 @@ export const getTags = async (req, res, next) => {
       total: tags.length,
       message: "Lấy danh sách tag thành công",
     };
-    cacheSet(cacheKey, body, TTL.STATIC);
+    await cacheSet(cacheKey, body, TTL.STATIC);
     setPublicListCache(res, req);
     res.json(body);
   } catch (error) {
@@ -50,7 +50,7 @@ export const getTags = async (req, res, next) => {
 export const getPopularTags = async (req, res, next) => {
   try {
     const cacheKey = "tags:popular";
-    const cached = cacheGet(cacheKey);
+    const cached = await cacheGet(cacheKey);
     if (cached) {
       setPublicListCache(res, req);
       return res.json(cached);
@@ -65,7 +65,7 @@ export const getPopularTags = async (req, res, next) => {
       data: tags,
       message: "Lấy danh sách tag phổ biến thành công",
     };
-    cacheSet(cacheKey, body, TTL.STATIC);
+    await cacheSet(cacheKey, body, TTL.STATIC);
     setPublicListCache(res, req);
     res.json(body);
   } catch (error) {
@@ -155,7 +155,7 @@ export const createTag = async (req, res, next) => {
       color,
     });
 
-    flushPattern("tags:");
+    await flushPattern("tags:");
 
     res.status(201).json({
       success: true,
@@ -174,7 +174,7 @@ export const bulkCreateTags = async (req, res, next) => {
 
     const created = await tagService.bulkCreateTags(tags);
 
-    flushPattern("tags:");
+    await flushPattern("tags:");
 
     res.status(201).json({
       success: true,
@@ -201,7 +201,7 @@ export const updateTag = async (req, res, next) => {
       isActive,
     });
 
-    flushPattern("tags:");
+    await flushPattern("tags:");
 
     res.json({
       success: true,
@@ -220,7 +220,7 @@ export const deleteTag = async (req, res, next) => {
 
     const result = await tagService.deleteTag(id);
 
-    flushPattern("tags:");
+    await flushPattern("tags:");
 
     res.json({
       success: true,

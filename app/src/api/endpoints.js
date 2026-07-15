@@ -13,6 +13,9 @@ export const ENDPOINTS = {
   places: {
     home: "/places/home",
     list: "/places",
+    v2List: "/v2/places",
+    v2Map: "/v2/places/map",
+    v2Nearby: "/v2/places/nearby",
     services: "/places/services",
     detail: (id) => `/places/${id}`,
     detailBySlug: (slug) => `/places/slug/${slug}`,

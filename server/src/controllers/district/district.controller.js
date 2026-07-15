@@ -13,7 +13,7 @@ import {
 export const getDistricts = async (req, res, next) => {
   try {
     const cacheKey = "districts:list";
-    const cached = cacheGet(cacheKey);
+    const cached = await cacheGet(cacheKey);
     if (cached) {
       setPublicListCache(res, req);
       return res.json(cached);
@@ -32,7 +32,7 @@ export const getDistricts = async (req, res, next) => {
       total: districts.length,
       message: "Lấy danh sách quận/huyện thành công",
     };
-    cacheSet(cacheKey, body, TTL.STATIC);
+    await cacheSet(cacheKey, body, TTL.STATIC);
     setPublicListCache(res, req);
     res.json(body);
   } catch (error) {
@@ -103,7 +103,7 @@ export const getWardsByDistrict = async (req, res, next) => {
   try {
     const { id } = req.params;
     const cacheKey = `districts:wards:${id}`;
-    const cached = cacheGet(cacheKey);
+    const cached = await cacheGet(cacheKey);
     if (cached) {
       setPublicListCache(res, req);
       return res.json(cached);
@@ -123,7 +123,7 @@ export const getWardsByDistrict = async (req, res, next) => {
       total: wards.length,
       message: "Lấy danh sách phường/xã theo quận/huyện thành công",
     };
-    cacheSet(cacheKey, body, TTL.STATIC);
+    await cacheSet(cacheKey, body, TTL.STATIC);
     setPublicListCache(res, req);
     res.json(body);
   } catch (error) {

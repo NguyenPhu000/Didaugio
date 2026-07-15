@@ -12,6 +12,9 @@ import { initNotificationService } from "./services/notification/notification.se
 import { initSocketIO } from "./config/socketIO.js";
 import { validateEnv } from "./config/validateEnv.js";
 import { registerApiRoutes, registerRateLimiters } from "./routes/index.js";
+import { registerHealthRoutes } from "./health/health.routes.js";
+import { getRedisClient } from "./config/redisClient.js";
+import { registerMetrics } from "./observability/metrics.js";
 import { startPendingBookingExpireScheduler } from "./schedulers/pendingBookingExpire.scheduler.js";
 import { startTripAutoCompleteScheduler } from "./schedulers/tripAutoComplete.scheduler.js";
 import { startSubscriptionRenewalReminderScheduler } from "./schedulers/subscriptionRenewalReminder.scheduler.js";
@@ -20,6 +23,7 @@ import { startSubscriptionPastDueScheduler } from "./schedulers/subscriptionPast
 import { startSubscriptionFeatureLockScheduler } from "./schedulers/subscriptionFeatureLock.scheduler.js";
 import { startSubscriptionStatsScheduler } from "./schedulers/subscriptionStats.scheduler.js";
 import { startDomainJobScheduler } from "./schedulers/domainJob.scheduler.js";
+import { createSchedulerLeader } from "./schedulers/schedulerLeader.js";
 import { initContractGenerationListener } from "./services/contract/contractGenerationListener.js";
 
 const require = createRequire(import.meta.url);
@@ -95,6 +99,11 @@ const isOriginAllowed = (origin) => {
 };
 
 app.disable("x-powered-by");
+registerMetrics(app, {
+  enabled: String(process.env.METRICS_ENABLED || "false") === "true",
+  collectRuntimeMetrics: String(process.env.METRICS_ENABLED || "false") === "true",
+  prisma,
+});
 app.use(compression());
 
 const shouldCaptureRawBody = (req) => {
@@ -167,6 +176,13 @@ app.use(
   }),
 );
 
+const redis = getRedisClient();
+registerHealthRoutes(app, {
+  prisma,
+  redis,
+  routingUrl: process.env.OSRM_URL || "http://localhost:5000",
+});
+
 registerRateLimiters(app);
 registerApiRoutes(app);
 
@@ -199,18 +215,24 @@ initContractGenerationListener();
 
 const httpServer = createServer(app);
 const io = initSocketIO(httpServer, allowedOriginPatterns);
+const schedulerLeader = createSchedulerLeader({
+  redis,
+  starters: [
+    startPendingBookingExpireScheduler,
+    startTripAutoCompleteScheduler,
+    startSubscriptionRenewalReminderScheduler,
+    startSubscriptionGracePeriodScheduler,
+    startSubscriptionPastDueScheduler,
+    startSubscriptionFeatureLockScheduler,
+    startSubscriptionStatsScheduler,
+    startDomainJobScheduler,
+  ],
+});
 
 httpServer.listen(PORT, () => {
   logger.info(`Server is running on http://localhost:${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
-  startPendingBookingExpireScheduler();
-  startTripAutoCompleteScheduler();
-  startSubscriptionRenewalReminderScheduler();
-  startSubscriptionGracePeriodScheduler();
-  startSubscriptionPastDueScheduler();
-  startSubscriptionFeatureLockScheduler();
-  startSubscriptionStatsScheduler();
-  startDomainJobScheduler();
+  schedulerLeader.start();
 });
 
 export default app;

@@ -46,6 +46,7 @@ import cmsRoutes from "./cms/cms.route.js";
 import bannerRoutes from "./banner/banner.route.js";
 import paymentRoutes from "./payment/payment.route.js";
 import documentRoutes from "./document/document.route.js";
+import placeV2Routes from "./v2/place.route.js";
 import { businessRouter as subscriptionRoutes, adminRouter as adminSubscriptionRoutes } from "./subscription/subscription.route.js";
 import {
   authLimiter,
@@ -92,6 +93,7 @@ export const registerRateLimiters = (app) => {
 };
 
 export const registerApiRoutes = (app) => {
+  app.use("/api/v2/places", placeV2Routes);
   // Public routes (no auth required)
   app.use("/api/staff/invite", staffInvitePublicRoutes);
 

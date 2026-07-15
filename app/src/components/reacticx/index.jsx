@@ -7,7 +7,12 @@ import { InputBar } from "./input-bar";
 import { EmptyChipGrid } from "./empty-chat-options";
 import { ChatHeader } from "./header";
 
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+const isNewArchitectureEnabled = global?.nativeFabricUIManager != null;
+if (
+  Platform.OS === "android" &&
+  !isNewArchitectureEnabled &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 

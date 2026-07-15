@@ -1,3 +1,5 @@
+import { logger } from "./logger";
+
 const MAX_PAYLOAD_SIZE = 4096;
 
 const safeSerialize = (value) => {
@@ -30,7 +32,7 @@ export const trackEvent = (eventName, payload = {}) => {
   }
 
   if (__DEV__) {
-    console.log(`[analytics:fallback] ${eventName} ${safeSerialize(payload)}`);
+    logger.debug(`[analytics:fallback] ${eventName} ${safeSerialize(payload)}`);
   }
 
   return false;

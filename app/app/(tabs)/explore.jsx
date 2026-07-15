@@ -195,7 +195,7 @@ export default function ExploreScreen() {
   const categoryTabs = useMemo(() => {
     const normalizedCategories = Array.isArray(categories) ? categories : [];
     return [
-      { key: "all", categoryId: null, label: t("explore.categories.all"), icon: "travel-explore" },
+      { key: "all", categoryId: null, label: t("explore.categories.all"), icon: "compass-outline" },
       ...normalizedCategories
         .filter((category) => category?.id != null && category?.name)
         .map((category) => ({

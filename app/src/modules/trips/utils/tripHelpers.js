@@ -438,7 +438,7 @@ export function buildTripDays(trip) {
 /**
  * Determine which day number a date falls on within a trip.
  */
-export function getDayNumberFromDate(tripStartYmd, targetYmd, dayCount) {
+export function getDayNumberFromDate({ tripStartYmd, targetYmd, dayCount }) {
   if (!tripStartYmd || !targetYmd) return null;
   const start = new Date(`${tripStartYmd}T12:00:00`);
   const target = new Date(`${targetYmd}T12:00:00`);
@@ -513,11 +513,11 @@ export function buildTripDetailBookings({
       const linkedTripId = booking?.linkedTrip?.id != null ? String(booking.linkedTrip.id) : null;
       const linkedDayNumber = Number(booking?.linkedTrip?.dayNumber);
 
-      const fallbackDayNumber = getDayNumberFromDate(
+      const fallbackDayNumber = getDayNumberFromDate({
         tripStartYmd,
-        String(booking?.useDate || "").slice(0, 10),
+        targetYmd: String(booking?.useDate || "").slice(0, 10),
         dayCount,
-      );
+      });
 
       const dayNumber =
         Number.isInteger(linkedDayNumber) && linkedDayNumber > 0

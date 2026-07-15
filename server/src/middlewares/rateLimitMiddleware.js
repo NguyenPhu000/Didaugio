@@ -1,6 +1,14 @@
 import rateLimit from "express-rate-limit";
+import RedisStore from "rate-limit-redis";
+import { getRedisClient } from "../config/redisClient.js";
 
 const isProduction = process.env.NODE_ENV === "production";
+const redisClient = getRedisClient();
+
+export const buildRateLimitStoreOptions = (client, namespace) => ({
+  prefix: `rl:${namespace}:`,
+  sendCommand: (...args) => client.sendCommand(args),
+});
 
 /**
  * Factory function to create rate limiters with standardized config.
@@ -17,6 +25,7 @@ const createLimiter = ({
   envKey,
   devDefault,
   prodDefault,
+  namespace = envKey?.toLowerCase() || "api",
   windowMs = 60 * 1000,
   message,
 }) => {
@@ -25,11 +34,16 @@ const createLimiter = ({
   const fallback = isProduction ? prodDefault : devDefault;
   const max = Number.isFinite(maxFromEnv) ? maxFromEnv : fallback;
 
+  const store = redisClient
+    ? new RedisStore(buildRateLimitStoreOptions(redisClient, namespace))
+    : undefined;
+
   return rateLimit({
     windowMs,
     max,
     standardHeaders: true,
     legacyHeaders: false,
+    store,
     message: {
       success: false,
       data: null,
@@ -64,12 +78,14 @@ export const recoveryLimiter = createLimiter({
 });
 
 export const apiLimiter = createLimiter({
+  namespace: "api",
   devDefault: 5000,
   prodDefault: 100,
   message: "Qua nhieu yeu cau, vui long thu lai sau",
 });
 
 export const businessApiLimiter = createLimiter({
+  namespace: "business",
   devDefault: 200,
   prodDefault: 200,
   message: "Qua nhieu yeu cau, vui long thu lai sau",
@@ -84,24 +100,28 @@ export const reviewCreateLimiter = createLimiter({
 });
 
 export const routingLimiter = createLimiter({
+  namespace: "routing",
   devDefault: 1200,
   prodDefault: 180,
   message: "Qua nhieu yeu cau dinh tuyen, vui long thu lai sau",
 });
 
 export const aiNavigateLimiter = createLimiter({
+  namespace: "ai-navigate",
   devDefault: 240,
   prodDefault: 60,
   message: "Qua nhieu yeu cau AI dieu huong, vui long thu lai sau",
 });
 
 export const navigationLimiter = createLimiter({
+  namespace: "navigation",
   devDefault: 360,
   prodDefault: 90,
   message: "Qua nhieu yeu cau navigation, vui long thu lai sau",
 });
 
 export const navigationTelemetryLimiter = createLimiter({
+  namespace: "navigation-telemetry",
   devDefault: 1200,
   prodDefault: 240,
   message: "Qua nhieu yeu cau telemetry dieu huong, vui long thu lai sau",

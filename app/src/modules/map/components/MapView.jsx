@@ -307,6 +307,7 @@ const MapView = memo(
         onPressMap,
         onLongPressMap,
         onZoomChange,
+        onRegionChangeComplete,
         style,
         tileUrls,
         mapType = "standard",
@@ -414,8 +415,9 @@ const MapView = memo(
           );
 
           onZoomChange?.(Math.round(zoomValue));
+          onRegionChangeComplete?.(region);
         },
-        [onZoomChange, viewportWidth],
+        [onRegionChangeComplete, onZoomChange, viewportWidth],
       );
 
       const handleTileError = useCallback(() => {

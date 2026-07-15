@@ -261,6 +261,42 @@ export const nearbyPlacesQuerySchema = z.object({
   categoryId: z.coerce.number().int().positive().optional(),
 });
 
+const v2PlaceFiltersSchema = z.object({
+  search: z.string().trim().max(200).optional(),
+  categoryId: z.coerce.number().int().positive().optional(),
+  districtId: z.coerce.number().int().positive().optional(),
+  wardId: z.coerce.number().int().positive().optional(),
+  priceRange: z.enum(["all", ...PRICE_RANGE_VALUES]).optional(),
+  minRating: z.coerce.number().min(0).max(5).optional(),
+  isFeatured: z.coerce.boolean().optional(),
+  sortBy: z.enum(["newest", "oldest", "rating", "popular", "views", "name"]).default("newest"),
+});
+
+export const placeV2ListQuerySchema = v2PlaceFiltersSchema.extend({
+  cursor: z.string().min(16).max(2048).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const placeV2MapQuerySchema = z.object({
+  west: z.coerce.number().min(104).max(107),
+  south: z.coerce.number().min(8).max(11),
+  east: z.coerce.number().min(104).max(107),
+  north: z.coerce.number().min(8).max(11),
+  zoom: z.coerce.number().min(1).max(22),
+  limit: z.coerce.number().int().min(1).max(200).default(100),
+}).superRefine((value, context) => {
+  if (value.west >= value.east) context.addIssue({ code: z.ZodIssueCode.custom, path: ["west"], message: "west must be smaller than east" });
+  if (value.south >= value.north) context.addIssue({ code: z.ZodIssueCode.custom, path: ["south"], message: "south must be smaller than north" });
+});
+
+export const placeV2NearbyQuerySchema = z.object({
+  latitude: z.coerce.number().min(8).max(11),
+  longitude: z.coerce.number().min(104).max(107),
+  radiusMeters: z.coerce.number().int().min(100).max(50_000).default(5_000),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  categoryId: z.coerce.number().int().positive().optional(),
+});
+
 export const approvePlaceSchema = z.object({
   status: z.enum(["approved", "rejected"], {
     required_error: "Trạng thái không được để trống",

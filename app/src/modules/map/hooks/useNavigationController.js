@@ -341,14 +341,19 @@ export function useNavigationController({
       const route = routeRef.current;
       if (!route.coordinates?.length || route.coordinates.length < 2) return;
 
-      const snap = snapToRoute(location, route.coordinates, segmentIndexRef.current, {
-        spatialIndex: route.spatialIndex,
-        heading: location.heading,
+      const snap = snapToRoute({
+        gpsPoint: location,
+        polylineCoords: route.coordinates,
+        lastKnownIndex: segmentIndexRef.current,
+        options: {
+          spatialIndex: route.spatialIndex,
+          heading: location.heading,
+        },
       });
       if (!snap) return;
 
       segmentIndexRef.current = snap.segmentIndex;
-      const offRoute = checkIsOffRoute(snap.distanceToRoute);
+      const offRoute = checkIsOffRoute({ distanceToRouteM: snap.distanceToRoute });
       const distanceToDest = destinationRef.current
         ? getDistanceM(location, destinationRef.current)
         : null;
@@ -365,13 +370,13 @@ export function useNavigationController({
           })
         : null;
       const speedKmh = Number(location.speedKmh ?? location.speed ?? 0);
-      const progress = calculateProgress(
-        location,
-        route.coordinates,
-        route.steps,
+      const progress = calculateProgress({
+        gpsPoint: location,
+        polylineCoords: route.coordinates,
+        steps: route.steps,
         speedKmh,
-        snap.segmentIndex,
-      );
+        lastKnownIndex: snap.segmentIndex,
+      });
 
       if (offRoute) {
         offRouteCountRef.current += 1;
@@ -504,8 +509,13 @@ export function useNavigationController({
         longitude: aLng + (bLng - aLng) * fraction,
       };
 
-      const snap = snapToRoute(estimated, route.coordinates, segIdx, {
-        spatialIndex: route.spatialIndex,
+      const snap = snapToRoute({
+        gpsPoint: estimated,
+        polylineCoords: route.coordinates,
+        lastKnownIndex: segIdx,
+        options: {
+          spatialIndex: route.spatialIndex,
+        },
       });
       if (snap?.snappedPoint) {
         setEstimatedPosition(toMapCoordinate(snap.snappedPoint));

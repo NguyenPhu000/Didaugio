@@ -26,7 +26,12 @@ import { useBoundaryData } from "../../map/hooks/useBoundaryData";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import { getPlaceLocation, normalizeText } from "../utils/exploreHelpers";
 
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+const isNewArchitectureEnabled = global?.nativeFabricUIManager != null;
+if (
+  Platform.OS === "android" &&
+  !isNewArchitectureEnabled &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 

@@ -92,7 +92,7 @@ export const TripSelectorSheet = memo(function TripSelectorSheet({
         t("place.detail.addedToTripDesc", { placeName, tripName: selectedTrip.name }),
       );
       onClose?.();
-    } catch (_err) {
+    } catch {
       Alert.alert(
         t("place.detail.somethingWentWrong"),
         t("place.detail.addToTripError"),

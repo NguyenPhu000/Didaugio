@@ -1,3 +1,4 @@
+import { logger } from "../../../lib/logger";
 import { useCallback, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import safeAsyncStorage from "../../../utils/safeAsyncStorage";
@@ -79,7 +80,7 @@ export function usePollPaymentStatus() {
   const startPolling = useCallback(
     async (paymentId, bookingId, options = {}) => {
       if (!bookingId) {
-        console.warn("[usePayment] startPolling called without bookingId");
+        logger.warn("[usePayment] startPolling called without bookingId");
         return;
       }
 
@@ -99,7 +100,7 @@ export function usePollPaymentStatus() {
       try {
         await safeAsyncStorage.setItem(PENDING_PAYMENT_BOOKING_KEY, String(bookingId));
       } catch (err) {
-        console.warn("[usePayment] safeAsyncStorage write failed:", err);
+        logger.warn("[usePayment] safeAsyncStorage write failed:", err);
         // Continue polling even if storage fails
       }
 
@@ -187,7 +188,7 @@ export function usePollPaymentStatus() {
             );
           }
         } catch (err) {
-          console.warn("[usePayment] Poll error:", err);
+          logger.warn("[usePayment] Poll error:", err);
           if (pollCountRef.current >= maxPolls) {
             stopPolling();
             invalidatePaymentState(bookingId, paymentId);

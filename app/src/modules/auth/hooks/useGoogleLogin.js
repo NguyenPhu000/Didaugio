@@ -6,6 +6,7 @@ import * as Linking from "expo-linking";
 import * as Google from "expo-auth-session/providers/google";
 import { makeRedirectUri } from "expo-auth-session";
 import i18n from "@/i18n";
+import { logger } from "../../../lib/logger";
 import { useAuthStore } from "../../../stores/authStore";
 import { loginGoogleApi } from "../api/authApi";
 import { normalizeAuthSessionResponse } from "../utils/normalizeAuthSession";
@@ -22,7 +23,7 @@ try {
   const GoogleModule = require("@react-native-google-signin/google-signin");
   GoogleSignin = GoogleModule.GoogleSignin;
   statusCodes = { ...statusCodes, ...GoogleModule.statusCodes };
-} catch (_e) {
+} catch {
   // Bỏ qua lỗi trên môi trường Expo Go hoặc môi trường thiếu liên kết native
 }
 WebBrowser.maybeCompleteAuthSession();
@@ -35,7 +36,7 @@ const CALLBACK_TIMEOUT_MS = 30000;
 
 const debugLog = (label, payload) => {
   if (!AUTH_DEBUG) return;
-  console.log(`[GoogleAuth] ${label}`, payload);
+  logger.debug(`[GoogleAuth] ${label}`, payload);
 };
 
 const parseIdTokenFromUrl = (url) => {
@@ -136,7 +137,7 @@ export function useGoogleLogin() {
     if (isExpoGo || !googleConfig.webClientId) return;
 
     if (!GoogleSignin) {
-      console.warn("GoogleSignin native module is not available. Skipping configuration.");
+      logger.warn("GoogleSignin native module is not available. Skipping configuration.");
       return;
     }
 
