@@ -17,7 +17,10 @@ import {
   formatRouteEta,
 } from "../utils/routeFormat";
 import { MAP_TEXT } from "../constants/mapText.constants";
-import { buildGpsIntervals, buildUserHeadingState } from "./useMapActiveTripNavigationUtils";
+import {
+  buildGpsIntervals,
+  buildNativeUserLocationVisibility,
+} from "./useMapActiveTripNavigationUtils";
 
 export function useMapActiveTripNavigation({
   activeNextDestination,
@@ -27,7 +30,7 @@ export function useMapActiveTripNavigation({
   currentLocation,
   isActiveTripMode,
   isTripPreviewMode,
-  mapHeading,
+  mapHasForegroundPermission,
   mapRef,
   nearbyTriggered,
   resolveTravelMode,
@@ -53,7 +56,7 @@ export function useMapActiveTripNavigation({
 
   const {
     currentLocation: activeTripLocation,
-    heading: activeTripHeading,
+    hasForegroundPermission: activeTripHasForegroundPermission,
     locateNow: locateActiveTripNow,
   } = useMapLocationTracker({
     watchEnabled: isActiveTripMode && !activeTrip.isPaused,
@@ -62,18 +65,12 @@ export function useMapActiveTripNavigation({
     onLocationUpdate: handleActiveLocationUpdate,
   });
 
-  const userMapLocation = isActiveTripMode
-    ? activeTripLocation
-    : currentLocation;
-  const liveUserHeading = isActiveTripMode ? activeTripHeading : mapHeading;
-  const {
-    shouldShowUserHeadingHat,
-    userHeading,
-    userHeadingOpacity,
-  } = buildUserHeadingState({
+  const hasForegroundPermission = isActiveTripMode
+    ? activeTripHasForegroundPermission
+    : mapHasForegroundPermission;
+  const shouldShowNativeUserLocation = buildNativeUserLocationVisibility({
+    hasForegroundPermission,
     isTripPreviewMode,
-    liveUserHeading,
-    userMapLocation,
   });
 
   useEffect(() => {
@@ -337,12 +334,8 @@ export function useMapActiveTripNavigation({
     activeUpcomingStep,
     broadcastNotice,
     isActiveRouteFetching,
-    liveUserHeading,
     locateActiveTripNow,
     navigationController,
-    shouldShowUserHeadingHat,
-    userHeading,
-    userHeadingOpacity,
-    userMapLocation,
+    shouldShowNativeUserLocation,
   };
 }

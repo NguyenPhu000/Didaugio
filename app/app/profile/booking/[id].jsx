@@ -32,7 +32,6 @@ import { useSavePlace } from "../../../src/modules/saved/hooks/useSaved";
 import { useOffline } from "../../../src/hooks/useOffline";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
-import { formatShortDate, formatDateTimeLocale } from "../../../src/utils/dateFormat";
 
 
 const QR_CACHE_KEY = "@booking_qr_cache";
@@ -51,28 +50,6 @@ const formatCurrency = (value) => {
   const amount = Number(value || 0);
   const locale = i18n.language === "vi" ? "vi-VN" : "en-US";
   return `${amount.toLocaleString(locale)}đ`;
-};
-
-const formatDateTime = (booking, notDeterminedLabel) => {
-  if (booking?.useDate || booking?.useTime) {
-    const date = formatShortDate(booking?.useDate) || "--/--/----";
-    return `${date} • ${booking?.useTime || "--:--"}`;
-  }
-
-  if (booking?.bookingAt) {
-    const at = new Date(booking.bookingAt);
-    if (!Number.isNaN(at.getTime())) {
-      return formatDateTimeLocale(at, {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    }
-  }
-
-  return notDeterminedLabel || "Not determined";
 };
 
 export default function BookingDetailScreen() {

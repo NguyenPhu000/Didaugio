@@ -11,12 +11,14 @@ const HEADING_FREEZE_SPEED_KMH = 3;
 
 export function useMapLocationTracker({
   watchEnabled = false,
+  watchHeadingEnabled = watchEnabled,
   timeInterval = 5000,
   distanceInterval = 12,
   onLocationUpdate,
 } = {}) {
   const [currentLocation, setCurrentLocation] = useState(null);
   const [heading, setHeading] = useState(null);
+  const [hasForegroundPermission, setHasForegroundPermission] = useState(false);
   const currentLocationSharedValue = useSharedValue(null);
   const currentLocationRef = useRef(null);
   const lastPublishedAtRef = useRef(0);
@@ -87,7 +89,7 @@ export function useMapLocationTracker({
 
   // Compass heading watcher — updates heading continuously
   useEffect(() => {
-    if (!watchEnabled) return undefined;
+    if (!watchHeadingEnabled) return undefined;
 
     let subscriber = null;
     let active = true;
@@ -96,6 +98,7 @@ export function useMapLocationTracker({
       try {
         const { status } = await Location.getForegroundPermissionsAsync();
         if (!active || status !== "granted") return;
+        setHasForegroundPermission(true);
 
         const sub = await Location.watchHeadingAsync((headingData) => {
           if (!active) return;
@@ -153,7 +156,7 @@ export function useMapLocationTracker({
       active = false;
       subscriber?.remove?.();
     };
-  }, [currentLocationSharedValue, watchEnabled]);
+  }, [currentLocationSharedValue, watchHeadingEnabled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -162,6 +165,7 @@ export function useMapLocationTracker({
       try {
         const { status } = await Location.getForegroundPermissionsAsync();
         if (status !== "granted") return;
+        setHasForegroundPermission(true);
 
         const lastKnown = await Location.getLastKnownPositionAsync({
           maxAge: LAST_KNOWN_MAX_AGE_MS,
@@ -209,6 +213,7 @@ export function useMapLocationTracker({
           permission = await Location.requestForegroundPermissionsAsync();
         }
         if (!active || permission.status !== "granted") return;
+        setHasForegroundPermission(true);
 
         const sub = await Location.watchPositionAsync(
           {
@@ -248,6 +253,7 @@ export function useMapLocationTracker({
   const locateNow = useCallback(async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
+      setHasForegroundPermission(status === "granted");
       if (status !== "granted") return null;
 
       // Return last known instantly
@@ -309,6 +315,7 @@ export function useMapLocationTracker({
   return {
     currentLocation,
     heading,
+    hasForegroundPermission,
     currentLocationRef,
     currentLocationSharedValue,
     setCurrentLocation,

@@ -6,6 +6,7 @@ import safeAsyncStorage from "../src/utils/safeAsyncStorage";
 import { Stack, useRouter, useSegments, usePathname } from "expo-router";
 import { PENDING_PAYMENT_BOOKING_KEY } from "../src/modules/booking/hooks/usePayment";
 import * as SplashScreen from "expo-splash-screen";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -114,6 +115,23 @@ export default function RootLayout() {
   });
 
   const [timeoutReady, setTimeoutReady] = useState(false);
+  const [videoFinished, setVideoFinished] = useState(false);
+
+  const player = useVideoPlayer(require("../assets/splash.mp4"), (p) => {
+    p.loop = false;
+    p.muted = true;
+    p.play();
+  });
+
+  useEffect(() => {
+    if (!player) return;
+    const subscription = player.addListener("playToEnd", () => {
+      setVideoFinished(true);
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, [player]);
 
   // Phanh cứu hộ chống đứng màn hình Splash Screen (2.5 giây)
   useEffect(() => {
@@ -140,7 +158,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (isReady) {
-      SplashScreen.hideAsync();
+      SplashScreen.hideAsync().catch(() => {});
     }
   }, [isReady]);
 
@@ -289,7 +307,7 @@ export default function RootLayout() {
         <KeyboardProvider>
           <AppProvider>
             <I18nInitializer>
-              {isReady ? (
+              {isReady && (
                 <>
                   <OfflineSyncManager />
                   <PaymentRecoveryListener />
@@ -346,7 +364,30 @@ export default function RootLayout() {
                     </BottomSheetModalProvider>
                   </View>
                 </>
-              ) : null}
+              )}
+
+              {/* Lớp phủ Video Splash Screen đè lên trên cùng */}
+              {isReady && !videoFinished && (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: "#020617",
+                    zIndex: 99999,
+                  }}
+                >
+                  <VideoView
+                    style={{ flex: 1 }}
+                    player={player}
+                    allowsFullscreen={false}
+                    showsPlaybackControls={false}
+                    resizeMode="cover"
+                  />
+                </View>
+              )}
             </I18nInitializer>
           </AppProvider>
         </KeyboardProvider>

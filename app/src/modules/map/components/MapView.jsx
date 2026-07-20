@@ -315,7 +315,6 @@ const MapView = memo(
         mapPadding,
         courseUpEnabled = false,
         showsUserLocation = false,
-        showsUserHeadingIndicator = false,
         showsMyLocationButton = false,
         children,
       },
@@ -466,7 +465,6 @@ const MapView = memo(
           mapType={shouldUseTiles ? "none" : mapType}
           customMapStyle={customMapStyle}
           showsUserLocation={showsUserLocation}
-          showsUserHeadingIndicator={showsUserHeadingIndicator}
           showsMyLocationButton={showsMyLocationButton}
           userLocationUpdateInterval={3000}
           userLocationFastestInterval={2000}

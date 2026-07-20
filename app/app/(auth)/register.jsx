@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,7 +14,6 @@ import { StatusBar } from "expo-status-bar";
 import { Link, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { MaterialIconsRounded } from "../../src/components/primitives/MaterialIconsRounded";
 import { useRegister } from "../../src/modules/auth/hooks/useRegister";
 import { cn } from "../../src/lib/cn";
 import { useTranslation } from "react-i18next";
@@ -85,15 +85,19 @@ export default function RegisterScreen() {
           {/* Brand header */}
           <View className="items-center mb-6">
             <View 
-              className="w-16 h-16 rounded-[18px] bg-white items-center justify-center mb-3 shadow-md elevation-2"
+              className="w-24 h-24 rounded-full overflow-hidden mb-3 shadow-md elevation-2"
               style={Platform.OS === "ios" ? {
                 shadowColor: "#000000",
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.1,
-                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
               } : null}
             >
-              <MaterialIconsRounded name="travel-explore" size={32} color="#007AFF" />
+              <Image 
+                source={require("../../assets/icon.png")} 
+                className="w-full h-full"
+                resizeMode="cover" 
+              />
             </View>
             <Text className="text-[28px] font-extrabold text-white tracking-[-0.5px]">{t("common.appName")}</Text>
             <Text className="text-sm text-white/60 mt-1 font-medium">{t("auth.register.subtitle")}</Text>

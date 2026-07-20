@@ -207,14 +207,6 @@ export default function MapScreen() {
     mapRef.current?.flyTo([CAN_THO_CENTER.lng, CAN_THO_CENTER.lat], 12);
   }, []);
 
-  const {
-    currentLocation,
-    heading: mapHeading,
-    locateNow,
-  } = useMapLocationTracker({
-    watchEnabled: false,
-  });
-
   // ─── Active Trip Mode ───────────────────────────────────────────────────────
   const activeTrip = useActiveTrip();
   const {
@@ -242,6 +234,14 @@ export default function MapScreen() {
     tripPreviewId,
   });
   const { isActiveTripMode, isTripPreviewMode, isNormalMapMode } = tripView;
+  const {
+    currentLocation,
+    hasForegroundPermission: mapHasForegroundPermission,
+    locateNow,
+  } = useMapLocationTracker({
+    watchEnabled: isNormalMapMode,
+    watchHeadingEnabled: false,
+  });
   const hasMeasuredTopControls = topControlsHeight > 0 || !isNormalMapMode;
   const mapFabTopOffset = isNormalMapMode
     ? (insets.top || 0) + 12 + topControlsHeight + 12
@@ -281,10 +281,7 @@ export default function MapScreen() {
     isActiveRouteFetching,
     locateActiveTripNow,
     navigationController,
-    shouldShowUserHeadingHat,
-    userHeading,
-    userHeadingOpacity,
-    userMapLocation,
+    shouldShowNativeUserLocation,
   } = useMapActiveTripNavigation({
     activeNextDestination,
     activeTargetPoint,
@@ -293,7 +290,7 @@ export default function MapScreen() {
     currentLocation,
     isActiveTripMode,
     isTripPreviewMode,
-    mapHeading,
+    mapHasForegroundPermission,
     mapRef,
     nearbyTriggered,
     resolveTravelMode: mapTransportToMode,
@@ -712,10 +709,7 @@ export default function MapScreen() {
         routeCoordinates={routeCoordinates}
         routeSource={routeSource}
         setMapRegion={setMapRegion}
-        shouldShowUserHeadingHat={shouldShowUserHeadingHat}
-        userHeading={userHeading}
-        userHeadingOpacity={userHeadingOpacity}
-        userMapLocation={userMapLocation}
+        shouldShowNativeUserLocation={shouldShowNativeUserLocation}
         visiblePlaces={visiblePlaces}
       />
 

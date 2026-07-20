@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -14,7 +15,6 @@ import { Link, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { GoogleLogo } from "../../src/components/primitives/GoogleLogo";
-import { MaterialIconsRounded } from "../../src/components/primitives/MaterialIconsRounded";
 import { LinearGradient } from "expo-linear-gradient";
 import { useGoogleLogin } from "../../src/modules/auth/hooks/useGoogleLogin";
 import { useAuth } from "../../src/modules/auth/hooks/useAuth";
@@ -77,15 +77,19 @@ export default function LoginScreen() {
           {/* Brand header */}
           <View className="items-center mb-8">
             <View 
-              className="w-16 h-16 rounded-[18px] bg-white items-center justify-center mb-4 shadow-md elevation-2"
+              className="w-24 h-24 rounded-full overflow-hidden mb-4 shadow-md elevation-2"
               style={Platform.OS === "ios" ? {
                 shadowColor: "#000000",
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.1,
-                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
               } : null}
             >
-              <MaterialIconsRounded name="travel-explore" size={32} color="#007AFF" />
+              <Image 
+                source={require("../../assets/icon.png")} 
+                className="w-full h-full"
+                resizeMode="cover" 
+              />
             </View>
             <Text className="text-[28px] font-extrabold text-white tracking-[-0.5px]">{t("common.appName")}</Text>
             <Text className="text-sm text-white/60 mt-1 font-medium">{t("auth.login.brandTagline")}</Text>

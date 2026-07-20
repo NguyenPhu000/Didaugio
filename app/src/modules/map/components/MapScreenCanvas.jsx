@@ -8,7 +8,6 @@ import { ContextualBoundaryLayer } from "./BoundaryLayer";
 import MapView from "./MapView";
 import RoutePolyline from "./RoutePolyline";
 import SnapLine from "./SnapLine";
-import { getUserHeadingMarkerRotation } from "../utils/userHeadingMarker";
 
 export function MapScreenCanvas({
   activeArea,
@@ -38,10 +37,7 @@ export function MapScreenCanvas({
   routeCoordinates,
   routeSource,
   setMapRegion,
-  shouldShowUserHeadingHat,
-  userHeading,
-  userHeadingOpacity,
-  userMapLocation,
+  shouldShowNativeUserLocation,
   visiblePlaces,
 }) {
   const courseUpEnabled = isActiveTripMode && !activeTrip.isPaused;
@@ -101,8 +97,7 @@ export function MapScreenCanvas({
         useNativeCleanStyle={mapStyle.useNativeCleanStyle === true}
         mapPadding={activeMapPadding}
         courseUpEnabled={courseUpEnabled}
-        showsUserLocation={!isTripPreviewMode}
-        showsUserHeadingIndicator={false}
+        showsUserLocation={shouldShowNativeUserLocation}
         showsMyLocationButton={false}
         style={mapCanvasStyle}
       >
@@ -111,37 +106,6 @@ export function MapScreenCanvas({
           activeArea={activeArea}
           allAreasKey={allAreasKey}
         />
-
-        {shouldShowUserHeadingHat ? (
-          <Marker
-            coordinate={userMapLocation}
-            anchor={{ x: 0.5, y: 0.56 }}
-            rotation={getUserHeadingMarkerRotation({
-              heading: userHeading,
-              courseUpEnabled,
-            })}
-            tracksViewChanges
-            zIndex={1205}
-          >
-            <View className="h-[64px] w-[64px] items-center justify-center">
-              <View
-                className="absolute h-[64px] w-[64px] items-center justify-start pt-1"
-                style={{ opacity: userHeadingOpacity }}
-              >
-                <MaterialIconsRounded
-                  name="navigation"
-                  size={44}
-                  color="#1A73E8"
-                  style={{
-                    textShadowColor: "rgba(255,255,255,0.96)",
-                    textShadowOffset: { width: 0, height: 0 },
-                    textShadowRadius: 3,
-                  }}
-                />
-              </View>
-            </View>
-          </Marker>
-        ) : null}
 
         {isTripPreviewMode && previewSegments.length > 0
           ? previewSegments.map((segment) => (

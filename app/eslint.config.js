@@ -23,6 +23,7 @@ module.exports = defineConfig([
         typescript: {
           project: "./jsconfig.json",
         },
+        node: true,
       },
     },
   }
