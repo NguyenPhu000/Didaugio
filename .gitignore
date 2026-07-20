@@ -176,3 +176,4 @@ server/test/validateSchema.test.js
 .superpowers/brainstorm/codex-map-focus-20260720/content/ward-focus-v1.html
 .superpowers/brainstorm/codex-map-focus-20260720/content/ward-focus-v2.html
 .superpowers/brainstorm/codex-map-focus-20260720/state/server-info
+/.worktrees/
