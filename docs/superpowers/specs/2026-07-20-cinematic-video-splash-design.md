@@ -37,13 +37,15 @@ The root layout owns only application readiness and whether the splash is mounte
 
 ## Startup Flow
 
-1. Keep the native splash visible while fonts and persisted stores hydrate.
-2. Match the native splash background to the video's near-black opening color.
-3. Mount the application behind `CinematicSplash` once readiness is reached.
-4. Hide the native splash, revealing the already-prepared video layer.
-5. When playback completes or the fail-safe fires, `CinematicSplash` performs its exit transition and calls `onFinish` once.
+1. Start font loading and persisted-store hydration as soon as the JavaScript root mounts.
+2. Keep the native splash visible only until hydration is ready or the `1,200ms` bootstrap deadline is reached, whichever happens first.
+3. Match the native splash background to the video's near-black opening color.
+4. Prepare `CinematicSplash` while the native splash is visible, then hide the native layer and start the user-visible video timeline immediately.
+5. Continue any unfinished font or store hydration behind the video instead of extending the pre-video wait.
+6. Mount the application behind `CinematicSplash` as soon as application readiness resolves. The existing fallback state remains usable if the bootstrap deadline wins the race.
+7. When playback completes or the fail-safe fires, `CinematicSplash` performs its exit transition and calls `onFinish` once.
 
-The video may begin preparing before application readiness, but the eight-second user-visible timeline starts only after the native splash is hidden.
+The video may begin preparing before application readiness, but the eight-second user-visible timeline starts only after the native splash is hidden. The native phase therefore has a hard upper bound of `1,200ms`; hydration does not add an unbounded delay before the eight-second video.
 
 ## Motion and Performance
 
@@ -58,7 +60,7 @@ The video may begin preparing before application readiness, but the eight-second
 
 - If playback reports an error, show the existing static `splash.png` artwork on the same dark background and finish through the normal fade.
 - If the end event is never received, complete at nine seconds.
-- If fonts or persisted stores exceed the existing readiness timeout, preserve the current application fallback behavior.
+- If fonts or persisted stores exceed `1,200ms`, start the video and preserve the current application fallback behavior while hydration finishes in the background.
 - Cleanup player listeners and timers on unmount.
 
 ## Expo Compatibility
@@ -70,6 +72,7 @@ The application is on Expo SDK 54. Do not add `@expo/ui`: its universal UI layer
 - Unit-test phase timing, completion idempotency, error fallback, and fail-safe behavior using extracted pure helpers where appropriate.
 - Existing app tests and lint must continue to pass.
 - Native splash and video background visually match with no white flash.
+- Native splash duration is at most `1,200ms`, including slow persisted-store hydration.
 - Video plays for its full normal duration.
 - Text remains inside top and bottom safe areas on supported phone sizes.
 - Playback controls never appear and the video remains muted.
