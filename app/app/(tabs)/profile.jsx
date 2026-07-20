@@ -462,15 +462,14 @@ function LoggedInProfileScreen({ insets, storedUser }) {
       try {
         // Lấy tên tỉnh
         const provinces = await locationService.getAllProvinces();
-        const province = provinces.find((p) => p.province_code === pCode);
-        const provinceName = province ? province.name : "";
+        const province = provinces.find((p) => p.code === pCode);
+        const provinceName = province?.fullName || province?.name || "";
 
         let districtName = "";
         if (dCode) {
-          // Lấy tên huyện
-          const districts = await locationService.getWardsByProvince(pCode);
-          const district = districts.find((d) => d.ward_code === dCode);
-          districtName = district ? district.ward_name : "";
+          const wards = await locationService.getWardsByProvince(pCode);
+          const ward = wards.find((item) => item.wardCode === dCode);
+          districtName = ward?.fullName || ward?.name || "";
         }
 
         const parts = [];

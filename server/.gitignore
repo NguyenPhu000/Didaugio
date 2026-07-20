@@ -17,6 +17,10 @@ prisma/migrations/*
 !prisma/migrations/20260712000000_add_review_media_public_id/migration.sql
 !prisma/migrations/20260714000000_add_subscription_limits_and_place_telemetry/
 !prisma/migrations/20260714000000_add_subscription_limits_and_place_telemetry/migration.sql
+!prisma/migrations/20260720150000_two_tier_admin_expand/
+!prisma/migrations/20260720150000_two_tier_admin_expand/migration.sql
+!prisma/migrations/20260720151000_place_canonical_location_expand/
+!prisma/migrations/20260720151000_place_canonical_location_expand/migration.sql
 tests
 storage/sensitive/*
 !storage/sensitive/.gitkeep

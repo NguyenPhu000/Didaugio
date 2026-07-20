@@ -176,3 +176,36 @@ server/test/validateSchema.test.js
 .superpowers/brainstorm/codex-map-focus-20260720/content/ward-focus-v1.html
 .superpowers/brainstorm/codex-map-focus-20260720/content/ward-focus-v2.html
 .superpowers/brainstorm/codex-map-focus-20260720/state/server-info
+
+# Codex multi-province worktree and vendored-source cache
+/.worktrees/
+/.source-cache/
+
+# Version-control the two-tier migration tests and evidence files.
+!server/test/
+!server/test/twoTier*.test.js
+!server/test/fixtures/
+!server/test/fixtures/administrative/
+!server/test/fixtures/administrative/*.json
+!server/resources/
+!server/resources/administrative/
+!server/resources/administrative/README.md
+!server/src/scripts/importVietnamAdministrativeDataset.js
+!server/src/scripts/auditVietnamAdministrativeDataset.js
+!server/src/scripts/backfillPlaceAdministrativeLocation.js
+!server/src/scripts/auditPlaceAdministrativeLocation.js
+!server/prisma/migrations/
+!server/prisma/migrations/20260720150000_two_tier_admin_expand/
+!server/prisma/migrations/20260720150000_two_tier_admin_expand/migration.sql
+!server/prisma/migrations/20260720151000_place_canonical_location_expand/
+!server/prisma/migrations/20260720151000_place_canonical_location_expand/migration.sql
+!docs/
+docs/*
+!docs/architecture/
+docs/architecture/*
+!docs/architecture/administrative-data-source.md
+!docs/releases/
+docs/releases/*
+!docs/releases/two-tier-*.md
+/.npm-cache/
+/app/.npm-cache/

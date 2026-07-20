@@ -1,31 +1,19 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft,
   ArrowRight,
   MapPin,
   Globe,
   Type,
   Loader2,
-  CheckCircle2,
   AlertCircle,
 } from "lucide-react";
 import usePlaceStore from "@/stores/placeStore";
-import { useDistricts, useWards } from "@/hooks/queries/useDistrictQueries";
 import { useCheckSlugExists } from "@/hooks/queries/usePlaceQueries";
-import {
-  Button,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui";
+import { Button, Input, Label } from "@/components/ui";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import ProvinceWardSelect from "@/components/common/ProvinceWardSelect";
 import CategorySelector from "./CategorySelector";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -40,24 +28,11 @@ const StepBasicInfo = () => {
   const { wizardData, updateWizardData, nextStep, loading } =
     usePlaceStore();
 
-  // TanStack Query for districts and wards
-  const { data: districtsRes, isLoading: loadingDistricts } = useDistricts();
-  const districts = districtsRes?.data || districtsRes || [];
-  const { data: wardsRes, isLoading: loadingWards } = useWards(wizardData.districtId);
-  const wards = wardsRes?.data || wardsRes || [];
-
   const { mutateAsync: checkSlug } = useCheckSlugExists();
 
   const [errors, setErrors] = useState({});
   const [checkingSlug, setCheckingSlug] = useState(false);
   const [slugError, setSlugError] = useState(null);
-
-  // Reset ward when district changes
-  useEffect(() => {
-    if (!wizardData.districtId && wizardData.wardId !== null) {
-      updateWizardData({ wardId: null });
-    }
-  }, [wizardData.districtId, wizardData.wardId, updateWizardData]);
 
   const generateSlug = (name) => {
     return name
@@ -120,8 +95,8 @@ const StepBasicInfo = () => {
       newErrors.categoryId = t("admin.placeWizard.basicInfo.selectCategory");
     }
 
-    if (!wizardData.districtId) {
-      newErrors.districtId = t("admin.placeWizard.basicInfo.selectDistrict");
+    if (!wizardData.provinceCode) {
+      newErrors.provinceCode = "Vui lòng chọn tỉnh/thành phố";
     }
 
     if (!wizardData.address?.trim()) {
@@ -273,92 +248,20 @@ const StepBasicInfo = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="district" className="text-sm font-medium">
-                  {t("admin.placeWizard.basicInfo.district")} <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={
-                    wizardData.districtId
-                      ? wizardData.districtId.toString()
-                      : ""
-                  }
-                  onValueChange={(val) =>
-                    updateWizardData({ districtId: parseInt(val) })
-                  }
-                  disabled={loadingDistricts}
-                >
-                  <SelectTrigger
-                    className={cn(
-                      "h-11",
-                      errors.districtId && "border-destructive focus-visible:ring-destructive"
-                    )}
-                  >
-                    {loadingDistricts ? (
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm">{t("common.loading")}</span>
-                      </div>
-                    ) : (
-                      <SelectValue placeholder={t("admin.placeWizard.basicInfo.selectDistrict")} />
-                    )}
-                  </SelectTrigger>
-                  <SelectContent>
-                    {districts.map((district) => (
-                      <SelectItem
-                        key={district.id}
-                        value={district.id.toString()}
-                      >
-                        {district.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.districtId && (
-                  <p className="text-sm text-destructive flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {errors.districtId}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="ward" className="text-sm font-medium">
-                  {t("admin.placeWizard.basicInfo.ward")} ({t("common.optional").toLowerCase()})
-                </Label>
-                <Select
-                  value={
-                    wizardData.wardId ? wizardData.wardId.toString() : ""
-                  }
-                  onValueChange={(val) =>
-                    updateWizardData({ wardId: parseInt(val) })
-                  }
-                  disabled={!wizardData.districtId || loadingWards}
-                >
-                  <SelectTrigger className="h-11">
-                    {loadingWards ? (
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm">{t("common.loading")}</span>
-                      </div>
-                    ) : (
-                      <SelectValue placeholder={t("admin.placeWizard.basicInfo.selectWard")} />
-                    )}
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px]">
-                    {wards.map((ward) => (
-                      <SelectItem
-                        key={ward.id}
-                        value={ward.id.toString()}
-                      >
-                        {ward.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            <ProvinceWardSelect
+              provinceCode={wizardData.provinceCode}
+              wardCode={wizardData.wardCode}
+              errors={errors}
+              onProvinceChange={(provinceCode) =>
+                updateWizardData({
+                  provinceCode,
+                  wardCode: "",
+                  districtId: null,
+                  wardId: null,
+                })
+              }
+              onWardChange={(wardCode) => updateWizardData({ wardCode })}
+            />
 
             <div className="space-y-2">
               <Label htmlFor="address" className="text-sm font-medium">

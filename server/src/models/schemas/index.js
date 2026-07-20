@@ -52,3 +52,4 @@ export * from "./trip/trip.schema.js";
 export * from "./event/event.schema.js";
 export * from "./banner/banner.schema.js";
 export * from "./payment/payment.schema.js";
+export * from "./location/location.schema.js";

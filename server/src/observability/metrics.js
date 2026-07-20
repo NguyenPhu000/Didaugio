@@ -1,9 +1,11 @@
-import { Counter, Gauge, Registry, collectDefaultMetrics } from "prom-client";
+import { Counter, Gauge, collectDefaultMetrics } from "prom-client";
 import { createHttpMetrics } from "./httpMetrics.js";
 import { instrumentPrisma } from "./dbMetrics.js";
 import { getStats as getCacheStats } from "../services/cache/cache.service.js";
+import { registerAdministrativeCollectors } from "./administrativeMetrics.js";
+import { metricsRegistry } from "./registry.js";
 
-export const metricsRegistry = new Registry();
+export { metricsRegistry } from "./registry.js";
 export const cursorValidationErrors = new Counter({
   name: "place_cursor_validation_errors_total",
   help: "Rejected place cursor tokens",
@@ -27,6 +29,7 @@ export function registerMetrics(
   }
 
   if (enabled && prisma) instrumentPrisma(prisma, { registry });
+  if (enabled && prisma) registerAdministrativeCollectors({ registry, prisma });
 
   if (enabled) {
     new Gauge({

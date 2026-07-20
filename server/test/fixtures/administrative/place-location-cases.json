@@ -1,0 +1,22 @@
+[
+  {
+    "name": "can-tho-exact-one-ward",
+    "expected": "mapped",
+    "rule": "exactly_one_active_ward_covers_point"
+  },
+  {
+    "name": "boundary-overlap",
+    "expected": "multiple_matches",
+    "rule": "never_choose_first_or_nearest"
+  },
+  {
+    "name": "outside-active-boundaries",
+    "expected": "zero_match",
+    "rule": "queue_for_review"
+  },
+  {
+    "name": "invalid-coordinate",
+    "expected": "invalid_coordinate",
+    "rule": "queue_for_review"
+  }
+]

@@ -20,12 +20,6 @@ export const INTERVALS = {
   ANIMATION: 3000,
 };
 
-export const CACHE_TTL = {
-  LOCATION: 7 * 24 * 60 * 60 * 1000,
-};
-
 export const STORAGE_KEYS = {
   AUTH: "auth-storage",
 };
-
-export const CAN_THO_PROVINCE_CODE = "92";

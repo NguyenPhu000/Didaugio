@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "sourceRepo": "https://github.com/ThangLeQuoc/vietnamese-provinces-database",
+  "sourceRef": "refs/tags/v3.1.0",
+  "sourceCommit": "21419f261aba49dc475e66290f83d4b6d3af4546",
+  "releaseName": "v3.1.0",
+  "retrievedAt": "2026-07-20T14:26:01.3672126Z",
+  "license": "MIT",
+  "decreeCoverage": [
+    "30/2026/QH16",
+    "237/NQ-UBTVQH16"
+  ],
+  "effectiveFrom": "2026-04-30",
+  "hierarchy": [
+    "province",
+    "ward"
+  ],
+  "expected": {
+    "provinceCount": 34,
+    "wardCount": 3321,
+    "wardTypeCounts": {
+      "ward": 697,
+      "commune": 2611,
+      "special_region": 13
+    },
+    "canTho": {
+      "provinceCode": "92",
+      "wardCount": 103
+    }
+  },
+  "artifacts": [
+    {
+      "path": "json/full_json_generated_data_vn_units.json",
+      "sha256": "fabde81a8c52942d828ae67e55d2548c9ae42b04102b943e44b254b13191bb57",
+      "bytes": 1538602,
+      "purpose": "canonical administrative source"
+    },
+    {
+      "path": "postgresql/postgres_ImportData_vn_units.sql",
+      "sha256": "9b9933d48f0d11602a2ceeb13989f773c23a22d07018394a6fab5dd79c912638",
+      "purpose": "source cross-check only"
+    },
+    {
+      "path": "postgresql/gis/postgresql_ImportData_gis.sql",
+      "sha256": "e90f07bd4e832f95d9a0fe176a0d08ff37f9ecb5bc984f69f92ce952906382de",
+      "bytes": 152699397,
+      "purpose": "spatial backfill and coordinate verification only"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "da35460aefb8f98ec4b1cb9057f0015ecf2e3991d806ab98c0b034e4b1f1feef",
+      "purpose": "license evidence"
+    }
+  ],
+  "releasePolicy": "manual_review_only"
+}

@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui";
 import { ROLES } from "@/constants/constants";
-import ProvinceDistrictSelect from "@/components/common/ProvinceDistrictSelect";
+import ProvinceWardSelect from "@/components/common/ProvinceWardSelect";
 import { userFormSchema } from "@/schemas/user";
 import { formatDateForInput } from "@/utils/dateUtils";
 import {
@@ -386,15 +386,15 @@ const UserFormModal = ({
                     />
                   </Field>
 
-                  {/* Province / District */}
-                  <ProvinceDistrictSelect
+                  {/* Province / Ward (districtCode is retained only as a profile compatibility field) */}
+                  <ProvinceWardSelect
                     provinceCode={provinceCode}
-                    districtCode={districtCode}
+                    wardCode={districtCode}
                     onProvinceChange={(code) => setValue("provinceCode", code)}
-                    onDistrictChange={(code) => setValue("districtCode", code)}
+                    onWardChange={(code) => setValue("districtCode", code)}
                     errors={{
                       provinceCode: errors.provinceCode?.message,
-                      districtCode: errors.districtCode?.message,
+                      wardCode: errors.districtCode?.message,
                     }}
                   />
 

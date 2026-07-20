@@ -26,7 +26,7 @@ import {
 } from "../../src/modules/profile/hooks/useProfile";
 import { resolveMediaUrl } from "../../src/lib/media-url";
 import { BottomSheetPicker } from "../../src/components/ui/BottomSheetPicker";
-import { ProvinceDistrictSelect } from "../../src/modules/profile/components/ProvinceDistrictSelect";
+import { ProvinceWardSelect } from "../../src/modules/profile/components/ProvinceWardSelect";
 import { useTranslation } from "react-i18next";
 
 const MAX_AVATAR_BYTES = 200 * 1024;
@@ -552,11 +552,11 @@ export default function EditProfileScreen() {
 
             <View>
               <FieldLabel text={t("editProfile.fields.region")} />
-              <ProvinceDistrictSelect
+              <ProvinceWardSelect
                 provinceCode={provinceCode}
-                districtCode={districtCode}
+                wardCode={districtCode}
                 onProvinceChange={setProvinceCode}
-                onDistrictChange={setDistrictCode}
+                onWardChange={setDistrictCode}
               />
             </View>
 

@@ -429,6 +429,100 @@ model WardCantho {
   @@map("wards_cantho")
 }
 
+model AdministrativeDatasetRelease {
+  id               Int                                    @id @default(autoincrement())
+  sourceRepo       String                                 @map("source_repo")
+  sourceRef        String                                 @map("source_ref")
+  sourceCommit     String                                 @map("source_commit")
+  releaseName      String                                 @map("release_name")
+  manifestChecksum String                                 @map("manifest_checksum")
+  importedAt       DateTime                               @default(now()) @map("imported_at")
+  activatedAt      DateTime?                              @map("activated_at")
+  isActive         Boolean                                @default(false) @map("is_active")
+  provinceRecords  ProvinceDatasetRecord[]
+  wardRecords      AdministrativeWardDatasetRecord[]
+  placeExceptions  PlaceAdministrativeLocationException[]
+
+  @@unique([sourceRepo, sourceCommit])
+  @@map("administrative_dataset_releases")
+}
+
+model Province {
+  code      String                  @id @db.VarChar(20)
+  createdAt DateTime                @default(now()) @map("created_at")
+  records   ProvinceDatasetRecord[]
+  places    Place[]
+
+  @@map("provinces")
+}
+
+model AdministrativeWard {
+  code      String                            @id @db.VarChar(20)
+  createdAt DateTime                          @default(now()) @map("created_at")
+  records   AdministrativeWardDatasetRecord[]
+  places    Place[]
+
+  @@map("administrative_wards")
+}
+
+model ProvinceDatasetRecord {
+  datasetReleaseId   Int                          @map("dataset_release_id")
+  provinceCode       String                       @map("province_code") @db.VarChar(20)
+  name               String
+  nameEn             String?                      @map("name_en")
+  fullName           String                       @map("full_name")
+  fullNameEn         String?                      @map("full_name_en")
+  codeName           String?                      @map("code_name")
+  searchName         String                       @map("search_name")
+  administrativeType String                       @map("administrative_type") @db.VarChar(40)
+  isActive           Boolean                      @default(true) @map("is_active")
+  datasetRelease     AdministrativeDatasetRelease @relation(fields: [datasetReleaseId], references: [id], onDelete: Cascade)
+  province           Province                     @relation(fields: [provinceCode], references: [code])
+
+  @@id([datasetReleaseId, provinceCode])
+  @@index([datasetReleaseId, isActive])
+  @@map("province_dataset_records")
+}
+
+model AdministrativeWardDatasetRecord {
+  datasetReleaseId   Int                          @map("dataset_release_id")
+  wardCode           String                       @map("ward_code") @db.VarChar(20)
+  provinceCode       String                       @map("province_code") @db.VarChar(20)
+  name               String
+  nameEn             String?                      @map("name_en")
+  fullName           String?                      @map("full_name")
+  fullNameEn         String?                      @map("full_name_en")
+  codeName           String?                      @map("code_name")
+  searchName         String                       @map("search_name")
+  administrativeType String                       @map("administrative_type") @db.VarChar(40)
+  isActive           Boolean                      @default(true) @map("is_active")
+  datasetRelease     AdministrativeDatasetRelease @relation(fields: [datasetReleaseId], references: [id], onDelete: Cascade)
+  ward               AdministrativeWard           @relation(fields: [wardCode], references: [code])
+
+  @@id([datasetReleaseId, wardCode])
+  @@index([datasetReleaseId, provinceCode, isActive], map: "ward_records_release_province_active_idx")
+  @@map("administrative_ward_dataset_records")
+}
+
+model PlaceAdministrativeLocationException {
+  id                 Int                          @id @default(autoincrement())
+  placeId            Int                          @map("place_id")
+  datasetReleaseId   Int                          @map("dataset_release_id")
+  reason             String                       @db.VarChar(40)
+  candidateWardCodes String[]                     @default([]) @map("candidate_ward_codes") @db.VarChar(20)
+  suggestedWards     Json                         @default("[]") @map("suggested_wards")
+  status             String                       @default("open") @db.VarChar(20)
+  resolutionNote     String?                      @map("resolution_note")
+  createdAt          DateTime                     @default(now()) @map("created_at")
+  updatedAt          DateTime                     @updatedAt @map("updated_at")
+  place              Place                        @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  datasetRelease     AdministrativeDatasetRelease @relation(fields: [datasetReleaseId], references: [id], onDelete: Cascade)
+
+  @@unique([placeId, datasetReleaseId])
+  @@index([datasetReleaseId, status])
+  @@map("place_administrative_location_exceptions")
+}
+
 model Category {
   id           Int           @id @default(autoincrement())
   name         String        @unique
@@ -484,65 +578,71 @@ model CategoryTag {
 }
 
 model Place {
-  id               Int                @id @default(autoincrement())
-  businessId       Int?               @map("business_id")
-  categoryId       Int                @map("category_id")
-  districtId       Int                @map("district_id")
-  wardId           Int?               @map("ward_id")
-  name             String
-  slug             String             @unique
-  description      String?
-  shortDescription String?            @map("short_description")
-  address          String
-  latitude         Decimal            @db.Decimal(10, 7)
-  longitude        Decimal            @db.Decimal(10, 7)
-  phone            String?
-  email            String?
-  website          String?
-  facebook         String?
-  priceRange       String?            @map("price_range")
-  priceFrom        Int?               @map("price_from")
-  priceTo          Int?               @map("price_to")
-  thumbnail        String?
-  ratingAvg        Decimal            @default(0.0) @map("rating_avg") @db.Decimal(2, 1)
-  ratingCount      Int                @default(0) @map("rating_count")
-  viewCount        Int                @default(0) @map("view_count")
-  favoriteCount    Int                @default(0) @map("favorite_count")
-  checkinCount     Int                @default(0) @map("checkin_count")
-  isVerified       Boolean            @default(false) @map("is_verified")
-  isFeatured       Boolean            @default(false) @map("is_featured")
-  status           String             @default("pending")
-  isSeeded         Boolean            @default(false) @map("is_seeded")
-  rejectionReason  String?            @map("rejection_reason")
-  approvedBy       Int?               @map("approved_by")
-  approvedAt       DateTime?          @map("approved_at")
-  createdBy        Int                @map("created_by")
-  createdAt        DateTime           @default(now()) @map("created_at")
-  updatedAt        DateTime           @updatedAt @map("updated_at")
-  deletedAt        DateTime?          @map("deleted_at")
-  markerUrl        String?            @map("marker_url")
-  businessServices BusinessService[]
-  resources        PlaceResource[]
-  favorites        Favorite[]
-  amenities        PlaceAmenity[]
-  images           PlaceImage[]
-  openingHours     PlaceOpeningHour[]
-  tagLinks         PlaceTagLink[]
-  approvedByUser   User?              @relation("ApprovedBy", fields: [approvedBy], references: [id])
-  business         Business?          @relation(fields: [businessId], references: [id])
-  category         Category           @relation(fields: [categoryId], references: [id])
-  createdByUser    User               @relation("CreatedBy", fields: [createdBy], references: [id])
-  district         DistrictCantho     @relation(fields: [districtId], references: [id])
-  ward             WardCantho?        @relation(fields: [wardId], references: [id])
-  reviews          Review[]
-  tripDestinations TripDestination[]
-  tripStops        TripStop[]
-  checkins         UserCheckin[]
-  aiGuides         PlaceAiGuide[]
-  telemetries      PlaceTelemetry[]
+  id                               Int                                    @id @default(autoincrement())
+  businessId                       Int?                                   @map("business_id")
+  categoryId                       Int                                    @map("category_id")
+  districtId                       Int?                                   @map("district_id")
+  wardId                           Int?                                   @map("ward_id")
+  provinceCode                     String?                                @map("province_code") @db.VarChar(20)
+  administrativeWardCode           String?                                @map("administrative_ward_code") @db.VarChar(20)
+  name                             String
+  slug                             String                                 @unique
+  description                      String?
+  shortDescription                 String?                                @map("short_description")
+  address                          String
+  latitude                         Decimal                                @db.Decimal(10, 7)
+  longitude                        Decimal                                @db.Decimal(10, 7)
+  phone                            String?
+  email                            String?
+  website                          String?
+  facebook                         String?
+  priceRange                       String?                                @map("price_range")
+  priceFrom                        Int?                                   @map("price_from")
+  priceTo                          Int?                                   @map("price_to")
+  thumbnail                        String?
+  ratingAvg                        Decimal                                @default(0.0) @map("rating_avg") @db.Decimal(2, 1)
+  ratingCount                      Int                                    @default(0) @map("rating_count")
+  viewCount                        Int                                    @default(0) @map("view_count")
+  favoriteCount                    Int                                    @default(0) @map("favorite_count")
+  checkinCount                     Int                                    @default(0) @map("checkin_count")
+  isVerified                       Boolean                                @default(false) @map("is_verified")
+  isFeatured                       Boolean                                @default(false) @map("is_featured")
+  status                           String                                 @default("pending")
+  isSeeded                         Boolean                                @default(false) @map("is_seeded")
+  rejectionReason                  String?                                @map("rejection_reason")
+  approvedBy                       Int?                                   @map("approved_by")
+  approvedAt                       DateTime?                              @map("approved_at")
+  createdBy                        Int                                    @map("created_by")
+  createdAt                        DateTime                               @default(now()) @map("created_at")
+  updatedAt                        DateTime                               @updatedAt @map("updated_at")
+  deletedAt                        DateTime?                              @map("deleted_at")
+  markerUrl                        String?                                @map("marker_url")
+  businessServices                 BusinessService[]
+  resources                        PlaceResource[]
+  favorites                        Favorite[]
+  amenities                        PlaceAmenity[]
+  images                           PlaceImage[]
+  openingHours                     PlaceOpeningHour[]
+  tagLinks                         PlaceTagLink[]
+  approvedByUser                   User?                                  @relation("ApprovedBy", fields: [approvedBy], references: [id])
+  business                         Business?                              @relation(fields: [businessId], references: [id])
+  category                         Category                               @relation(fields: [categoryId], references: [id])
+  createdByUser                    User                                   @relation("CreatedBy", fields: [createdBy], references: [id])
+  district                         DistrictCantho?                        @relation(fields: [districtId], references: [id])
+  ward                             WardCantho?                            @relation(fields: [wardId], references: [id])
+  province                         Province?                              @relation(fields: [provinceCode], references: [code])
+  administrativeWard               AdministrativeWard?                    @relation(fields: [administrativeWardCode], references: [code])
+  administrativeLocationExceptions PlaceAdministrativeLocationException[]
+  reviews                          Review[]
+  tripDestinations                 TripDestination[]
+  tripStops                        TripStop[]
+  checkins                         UserCheckin[]
+  aiGuides                         PlaceAiGuide[]
+  telemetries                      PlaceTelemetry[]
 
   @@index([categoryId])
   @@index([districtId])
+  @@index([provinceCode, administrativeWardCode], map: "places_canonical_location_idx")
   @@index([status])
   @@index([status, categoryId, districtId])
   @@index([isSeeded])
@@ -1402,22 +1502,22 @@ model PaymentWebhookLog {
 }
 
 model Payout {
-  id            Int       @id @default(autoincrement())
-  businessId    Int       @map("business_id")
+  id            Int               @id @default(autoincrement())
+  businessId    Int               @map("business_id")
   amount        Int
-  status        String    @default("pending") // pending, approved, transferred, rejected
-  bankName      String?   @map("bank_name")
-  bankAccount   String?   @map("bank_account")
-  bankOwner     String?   @map("bank_owner")
+  status        String            @default("pending") // pending, approved, transferred, rejected
+  bankName      String?           @map("bank_name")
+  bankAccount   String?           @map("bank_account")
+  bankOwner     String?           @map("bank_owner")
   note          String?
-  rejectReason  String?   @map("reject_reason")
-  requestedAt   DateTime  @default(now()) @map("requested_at")
-  reviewedAt    DateTime? @map("reviewed_at")
-  reviewedBy    Int?      @map("reviewed_by")
-  transferredAt DateTime? @map("transferred_at")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  business      Business           @relation(fields: [businessId], references: [id])
+  rejectReason  String?           @map("reject_reason")
+  requestedAt   DateTime          @default(now()) @map("requested_at")
+  reviewedAt    DateTime?         @map("reviewed_at")
+  reviewedBy    Int?              @map("reviewed_by")
+  transferredAt DateTime?         @map("transferred_at")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  business      Business          @relation(fields: [businessId], references: [id])
   ledgerEntries FinancialLedger[]
 
   @@index([businessId])
@@ -1439,12 +1539,12 @@ model PartnerWallet {
 }
 
 model PlatformWallet {
-  id            Int      @id @default(autoincrement())
-  balance       Int      @default(0)
-  totalEarned   Int      @default(0) @map("total_earned")
-  totalPaidOut  Int      @default(0) @map("total_paid_out")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id           Int      @id @default(autoincrement())
+  balance      Int      @default(0)
+  totalEarned  Int      @default(0) @map("total_earned")
+  totalPaidOut Int      @default(0) @map("total_paid_out")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("platform_wallets")
 }
@@ -1469,21 +1569,21 @@ model FinancialLedger {
 // ─── Subscription System ─────────────────────────────────────────────────────
 
 model SubscriptionPlan {
-  id              Int      @id @default(autoincrement())
-  name            String   @unique
-  slug            String   @unique
-  description     String?
-  priceMonthly    Int      @map("price_monthly")   // VND
-  priceYearly     Int?     @map("price_yearly")    // VND, null = không hỗ trợ yearly
-  maxPlaces       Int      @default(5)             @map("max_places")
-  maxServices     Int      @default(5)             @map("max_services")
-  maxBookings     Int      @default(100)           @map("max_bookings_per_month")
-  maxStaff        Int      @default(2)             @map("max_staff")
-  features        Json     @default("[]")          // ["analytics", "priority_support", ...]
-  isActive        Boolean  @default(true)          @map("is_active")
-  sortOrder       Int      @default(0)             @map("sort_order")
-  createdAt       DateTime @default(now())          @map("created_at")
-  updatedAt       DateTime @updatedAt               @map("updated_at")
+  id           Int      @id @default(autoincrement())
+  name         String   @unique
+  slug         String   @unique
+  description  String?
+  priceMonthly Int      @map("price_monthly") // VND
+  priceYearly  Int?     @map("price_yearly") // VND, null = không hỗ trợ yearly
+  maxPlaces    Int      @default(5) @map("max_places")
+  maxServices  Int      @default(5) @map("max_services")
+  maxBookings  Int      @default(100) @map("max_bookings_per_month")
+  maxStaff     Int      @default(2) @map("max_staff")
+  features     Json     @default("[]") // ["analytics", "priority_support", ...]
+  isActive     Boolean  @default(true) @map("is_active")
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   subscriptions Subscription[]
 
@@ -1491,23 +1591,23 @@ model SubscriptionPlan {
 }
 
 model Subscription {
-  id              Int      @id @default(autoincrement())
-  businessId      Int      @unique                  @map("business_id")
-  planId          Int                               @map("plan_id")
-  status          String   @default("active")        // active, grace, past_due, canceled, paused
-  billingCycle    String   @default("monthly")       @map("billing_cycle") // monthly, yearly
-  currentPeriodStart DateTime @map("current_period_start")
-  currentPeriodEnd   DateTime @map("current_period_end")
+  id                 Int       @id @default(autoincrement())
+  businessId         Int       @unique @map("business_id")
+  planId             Int       @map("plan_id")
+  status             String    @default("active") // active, grace, past_due, canceled, paused
+  billingCycle       String    @default("monthly") @map("billing_cycle") // monthly, yearly
+  currentPeriodStart DateTime  @map("current_period_start")
+  currentPeriodEnd   DateTime  @map("current_period_end")
   gracePeriodEnd     DateTime? @map("grace_period_end")
   canceledAt         DateTime? @map("canceled_at")
   cancelReason       String?   @map("cancel_reason")
   trialEndsAt        DateTime? @map("trial_ends_at")
-  metadata           Json?     // { autoRenew: true, reminderSent: true, ... }
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt      @map("updated_at")
+  metadata           Json? // { autoRenew: true, reminderSent: true, ... }
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
-  business Business          @relation(fields: [businessId], references: [id])
-  plan     SubscriptionPlan  @relation(fields: [planId], references: [id])
+  business Business              @relation(fields: [businessId], references: [id])
+  plan     SubscriptionPlan      @relation(fields: [planId], references: [id])
   invoices SubscriptionInvoice[]
 
   @@index([status])
@@ -1516,23 +1616,23 @@ model Subscription {
 }
 
 model SubscriptionInvoice {
-  id              Int      @id @default(autoincrement())
-  subscriptionId  Int                               @map("subscription_id")
-  invoiceNumber   String   @unique                    @map("invoice_number") // DDG-INV-202606-001
-  amount          Int                                 // VND
-  currency        String   @default("VND")
-  status          String   @default("pending")        // pending, paid, overdue, canceled
-  paymentMethod   String?  @map("payment_method")     // sepay_qr, bank_transfer
-  transactionRef  String?  @unique @map("transaction_ref") // DDG-INV-xxx dùng làm nội dung CK
-  qrUrl           String?  @map("qr_url")
-  paidAt          DateTime? @map("paid_at")
-  dueDate         DateTime  @map("due_date")
-  periodStart     DateTime  @map("period_start")
-  periodEnd       DateTime  @map("period_end")
-  notes           String?
-  metadata        Json?                               // { type, previousPlanId, targetPlanId, ... }
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt      @map("updated_at")
+  id             Int       @id @default(autoincrement())
+  subscriptionId Int       @map("subscription_id")
+  invoiceNumber  String    @unique @map("invoice_number") // DDG-INV-202606-001
+  amount         Int // VND
+  currency       String    @default("VND")
+  status         String    @default("pending") // pending, paid, overdue, canceled
+  paymentMethod  String?   @map("payment_method") // sepay_qr, bank_transfer
+  transactionRef String?   @unique @map("transaction_ref") // DDG-INV-xxx dùng làm nội dung CK
+  qrUrl          String?   @map("qr_url")
+  paidAt         DateTime? @map("paid_at")
+  dueDate        DateTime  @map("due_date")
+  periodStart    DateTime  @map("period_start")
+  periodEnd      DateTime  @map("period_end")
+  notes          String?
+  metadata       Json? // { type, previousPlanId, targetPlanId, ... }
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   subscription Subscription @relation(fields: [subscriptionId], references: [id])
 
@@ -1543,19 +1643,19 @@ model SubscriptionInvoice {
 }
 
 model SubscriptionStats {
-  id              Int      @id @default(autoincrement())
-  snapshotDate    DateTime @unique @map("snapshot_date") @db.Date
-  mrr             Int      @default(0)      // Monthly Recurring Revenue (VND)
-  arr             Int      @default(0)      // Annual Recurring Revenue (VND)
-  activeCount     Int      @default(0)      @map("active_count")
-  trialCount      Int      @default(0)      @map("trial_count")
-  graceCount      Int      @default(0)      @map("grace_count")
-  pastDueCount    Int      @default(0)      @map("past_due_count")
-  canceledCount   Int      @default(0)      @map("canceled_count")
-  churnRate       Decimal  @default(0)      @map("churn_rate") @db.Decimal(5, 2)
-  newCount        Int      @default(0)      @map("new_count")
-  revenueTotal    Int      @default(0)      @map("revenue_total") // Tổng đã thu thực tế
-  createdAt       DateTime @default(now())   @map("created_at")
+  id            Int      @id @default(autoincrement())
+  snapshotDate  DateTime @unique @map("snapshot_date") @db.Date
+  mrr           Int      @default(0) // Monthly Recurring Revenue (VND)
+  arr           Int      @default(0) // Annual Recurring Revenue (VND)
+  activeCount   Int      @default(0) @map("active_count")
+  trialCount    Int      @default(0) @map("trial_count")
+  graceCount    Int      @default(0) @map("grace_count")
+  pastDueCount  Int      @default(0) @map("past_due_count")
+  canceledCount Int      @default(0) @map("canceled_count")
+  churnRate     Decimal  @default(0) @map("churn_rate") @db.Decimal(5, 2)
+  newCount      Int      @default(0) @map("new_count")
+  revenueTotal  Int      @default(0) @map("revenue_total") // Tổng đã thu thực tế
+  createdAt     DateTime @default(now()) @map("created_at")
 
   @@map("subscription_stats")
 }

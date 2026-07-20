@@ -18,6 +18,12 @@ export const QUERY_KEYS = {
   categories: {
     all: () => ["categories"],
   },
+  locations: {
+    all: () => ["locations"],
+    provinces: () => ["locations", "provinces"],
+    wards: (provinceCode, datasetReleaseId) => ["locations", "wards", provinceCode, datasetReleaseId],
+    search: (provinceCode, query, datasetReleaseId) => ["locations", "search", provinceCode, query, datasetReleaseId],
+  },
   bookings: {
     all: () => ["bookings"],
     list: () => ["bookings", "list"],

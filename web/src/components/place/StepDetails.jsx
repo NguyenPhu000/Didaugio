@@ -135,6 +135,7 @@ const StepDetails = () => {
     const lng = wizardData.longitude;
 
     if (!lat || !lng) return;
+    if (wizardData.provinceCode) return;
     if (wizardData.districtId) return;
 
     if (
@@ -159,7 +160,7 @@ const StepDetails = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [wizardData.latitude, wizardData.longitude, wizardData.districtId, toast, t]);
+  }, [wizardData.latitude, wizardData.longitude, wizardData.provinceCode, wizardData.districtId, toast, t]);
 
   const handleNext = () => {
     if (validate()) {
