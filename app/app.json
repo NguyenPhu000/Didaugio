@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#02030A"
     },
     "assetBundlePatterns": ["**/*"],
     "plugins": [
@@ -35,7 +35,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#02030A",
           "resizeMode": "contain"
         }
       ],
@@ -78,8 +78,8 @@
     },
     "androidStatusBar": {
       "translucent": false,
-      "backgroundColor": "#ffffff",
-      "barStyle": "dark-content"
+      "backgroundColor": "#02030A",
+      "barStyle": "light-content"
     },
     "ios": {
       "bundleIdentifier": "vn.ipointgenie.app",

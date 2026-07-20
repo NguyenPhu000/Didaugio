@@ -13,16 +13,14 @@ import { BottomSheetView } from "@gorhom/bottom-sheet";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useTrips } from "../../trips/hooks/useTrips";
 import { addDestinationApi } from "../../trips/api/tripsApi";
-import { resolveMediaUrl } from "../../../lib/media-url";
+import { getTripSelectorItemViewModel } from "../utils/tripSelectorDisplay";
 import { PALETTE, TOKENS } from "../constants/placeSheetConstants";
 
 const STEP_SELECT = 1;
 const STEP_CONFIRM = 2;
 
 function TripListItem({ trip, selected, onPress }) {
-  const thumbnail = resolveMediaUrl(
-    trip?.coverImage || trip?.destinations?.[0]?.place?.images?.[0]?.imageData,
-  );
+  const { title, thumbnail, destinationCount } = getTripSelectorItemViewModel(trip);
 
   return (
     <Pressable
@@ -42,10 +40,10 @@ function TripListItem({ trip, selected, onPress }) {
       )}
       <View style={styles.tripMeta}>
         <Text style={styles.tripName} numberOfLines={1}>
-          {trip.name}
+          {title}
         </Text>
         <Text style={styles.tripInfo}>
-          {trip.destinations?.length || 0} điểm đến
+          {destinationCount} điểm đến
         </Text>
       </View>
       {selected && (
@@ -66,6 +64,9 @@ export const TripSelectorSheet = memo(function TripSelectorSheet({
   const [step, setStep] = useState(STEP_SELECT);
   const [selectedTrip, setSelectedTrip] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
+  const selectedTripTitle = selectedTrip
+    ? getTripSelectorItemViewModel(selectedTrip).title
+    : "";
 
   const handleSelectTrip = useCallback(
     (trip) => {
@@ -89,7 +90,7 @@ export const TripSelectorSheet = memo(function TripSelectorSheet({
       await addDestinationApi(selectedTrip.id, { placeId });
       Alert.alert(
         t("place.detail.addedToTrip"),
-        t("place.detail.addedToTripDesc", { placeName, tripName: selectedTrip.name }),
+        t("place.detail.addedToTripDesc", { placeName, tripName: selectedTripTitle }),
       );
       onClose?.();
     } catch {
@@ -100,7 +101,7 @@ export const TripSelectorSheet = memo(function TripSelectorSheet({
     } finally {
       setIsAdding(false);
     }
-  }, [selectedTrip, placeId, placeName, t, onClose]);
+  }, [selectedTrip, selectedTripTitle, placeId, placeName, t, onClose]);
 
   const emptyMessage = useMemo(
     () =>
@@ -118,7 +119,7 @@ export const TripSelectorSheet = memo(function TripSelectorSheet({
           {t("place.detail.addToTripTitle")}
         </Text>
         <Text style={styles.confirmText}>
-          {t("place.detail.addPlaceConfirm", { placeName, tripName: selectedTrip.name })}
+          {t("place.detail.addPlaceConfirm", { placeName, tripName: selectedTripTitle })}
         </Text>
         <Pressable
           onPress={handleAdd}

@@ -68,7 +68,16 @@ export const options = {
   },
 };
 
-const requestParams = { tags: { suite: "high-load-read-only" } };
+function requestParams(endpoint) {
+  const vu = Math.max(1, Number(__VU));
+  const thirdOctet = Math.floor((vu - 1) / 254);
+  const fourthOctet = ((vu - 1) % 254) + 1;
+
+  return {
+    headers: { "X-Forwarded-For": `198.18.${thirdOctet}.${fourthOctet}` },
+    tags: { suite: "high-load-read-only", endpoint },
+  };
+}
 
 function assertSuccess(response, trend) {
   trend.add(response.timings.duration);
@@ -83,7 +92,7 @@ function assertSuccess(response, trend) {
 export function filteredPlaces() {
   const response = http.get(
     `${baseUrl}/api/v2/places?limit=25&sortBy=newest&categoryId=1`,
-    { ...requestParams, tags: { ...requestParams.tags, endpoint: "filtered-places" } },
+    requestParams("filtered-places"),
   );
   assertSuccess(response, filteredPlacesDuration);
   sleep(0.05);
@@ -92,7 +101,7 @@ export function filteredPlaces() {
 export function mapMarkers() {
   const response = http.get(
     `${baseUrl}/api/v2/places/map?west=105.70&south=9.95&east=105.90&north=10.15&zoom=12&limit=100`,
-    { ...requestParams, tags: { ...requestParams.tags, endpoint: "map" } },
+    requestParams("map"),
   );
   assertSuccess(response, mapDuration);
   sleep(0.05);
@@ -101,7 +110,7 @@ export function mapMarkers() {
 export function nearbyPlaces() {
   const response = http.get(
     `${baseUrl}/api/v2/places/nearby?latitude=10.034&longitude=105.787&radiusMeters=5000&limit=25`,
-    { ...requestParams, tags: { ...requestParams.tags, endpoint: "nearby" } },
+    requestParams("nearby"),
   );
   assertSuccess(response, nearbyDuration);
   sleep(0.05);
@@ -110,7 +119,7 @@ export function nearbyPlaces() {
 export function bookingRead() {
   const response = http.get(
     `${baseUrl}/api/bookings/availability/${encodeURIComponent(serviceId)}?date=${encodeURIComponent(bookingDate)}`,
-    { ...requestParams, tags: { ...requestParams.tags, endpoint: "booking-read" } },
+    requestParams("booking-read"),
   );
   assertSuccess(response, bookingReadDuration);
   sleep(0.05);

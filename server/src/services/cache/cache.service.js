@@ -15,7 +15,6 @@ const TTL_PLACES_SEC = parseInt(process.env.CACHE_TTL_PLACES_SEC || "300", 10);
 const TTL_STATIC_SEC = parseInt(process.env.CACHE_TTL_STATIC_SEC || "1800", 10);
 const CHECK_PERIOD_SEC = 120;
 const CACHE_NAMESPACE = process.env.CACHE_NAMESPACE || "didaugio:v1";
-const redis = getRedisClient();
 const redisStats = { hits: 0, misses: 0, errors: 0 };
 
 const cache = new NodeCache({
@@ -48,6 +47,7 @@ export function buildKey(prefix, params = {}) {
 
 export async function get(key) {
   const resolvedKey = namespaceKey(key);
+  const redis = getRedisClient();
   if (redis) {
     try {
       const value = await redis.get(resolvedKey);
@@ -67,6 +67,7 @@ export async function get(key) {
 
 export async function set(key, value, ttlSec = TTL_PLACES_SEC) {
   const resolvedKey = namespaceKey(key);
+  const redis = getRedisClient();
   if (redis) {
     try {
       await redis.set(resolvedKey, JSON.stringify(value), { EX: ttlSec });
@@ -94,6 +95,7 @@ export const TTL = {
  */
 export async function flushPattern(prefix) {
   const resolvedPrefix = namespaceKey(prefix);
+  const redis = getRedisClient();
   if (redis) {
     try {
       let deleted = 0;
@@ -116,6 +118,7 @@ export async function flushPattern(prefix) {
 
 /** Flush everything. */
 export async function flushAll() {
+  const redis = getRedisClient();
   if (redis) await flushPattern("");
   const count = cache.keys().length;
   cache.flushAll();
@@ -127,7 +130,10 @@ export async function flushAll() {
 /* ── Stats (for health endpoint) ─────────────────────────── */
 
 export function getStats() {
-  return { ...cache.getStats(), redis: { ...redisStats, configured: Boolean(redis) } };
+  return {
+    ...cache.getStats(),
+    redis: { ...redisStats, configured: Boolean(process.env.REDIS_URL) },
+  };
 }
 
 export default {

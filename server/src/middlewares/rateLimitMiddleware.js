@@ -3,8 +3,6 @@ import RedisStore from "rate-limit-redis";
 import { getRedisClient } from "../config/redisClient.js";
 
 const isProduction = process.env.NODE_ENV === "production";
-const redisClient = getRedisClient();
-
 export const buildRateLimitStoreOptions = (client, namespace) => ({
   prefix: `rl:${namespace}:`,
   sendCommand: (...args) => client.sendCommand(args),
@@ -34,23 +32,31 @@ const createLimiter = ({
   const fallback = isProduction ? prodDefault : devDefault;
   const max = Number.isFinite(maxFromEnv) ? maxFromEnv : fallback;
 
-  const store = redisClient
-    ? new RedisStore(buildRateLimitStoreOptions(redisClient, namespace))
-    : undefined;
+  let limiter;
+  return (req, res, next) => {
+    if (!limiter) {
+      const redisClient = getRedisClient();
+      const store = redisClient
+        ? new RedisStore(buildRateLimitStoreOptions(redisClient, namespace))
+        : undefined;
 
-  return rateLimit({
-    windowMs,
-    max,
-    standardHeaders: true,
-    legacyHeaders: false,
-    store,
-    message: {
-      success: false,
-      data: null,
-      message,
-      errorCode: "RATE_LIMIT_EXCEEDED",
-    },
-  });
+      limiter = rateLimit({
+        windowMs,
+        max,
+        standardHeaders: true,
+        legacyHeaders: false,
+        store,
+        message: {
+          success: false,
+          data: null,
+          message,
+          errorCode: "RATE_LIMIT_EXCEEDED",
+        },
+      });
+    }
+
+    return limiter(req, res, next);
+  };
 };
 
 export const authLimiter = createLimiter({

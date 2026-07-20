@@ -6,7 +6,6 @@ import safeAsyncStorage from "../src/utils/safeAsyncStorage";
 import { Stack, useRouter, useSegments, usePathname } from "expo-router";
 import { PENDING_PAYMENT_BOOKING_KEY } from "../src/modules/booking/hooks/usePayment";
 import * as SplashScreen from "expo-splash-screen";
-import { useVideoPlayer, VideoView } from "expo-video";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -37,6 +36,8 @@ import { useOfflineSync } from "../src/modules/trips/hooks/useTripsOffline";
 import { useAlertStore } from "../src/stores/alertStore";
 import { GlobalAlert } from "../src/components/composed/GlobalAlert";
 import { isMobileUserRole } from "../src/modules/auth/utils/authRoleAccess";
+import CinematicSplash from "../src/components/splash/CinematicSplash";
+import { SPLASH_TIMING } from "../src/components/splash/cinematicSplashTiming";
 
 // Tat strict mode canh bao doc/ghi shared value truc tiep trong render cycle vi mot so thu vien ben thu ba (nhu bottom-sheet, draggable-flatlist) chua cap nhat tuong thich.
 configureReanimatedLogger({
@@ -114,30 +115,15 @@ export default function RootLayout() {
     Afacad_700Bold,
   });
 
-  const [timeoutReady, setTimeoutReady] = useState(false);
-  const [videoFinished, setVideoFinished] = useState(false);
+  const [bootstrapDeadlineReached, setBootstrapDeadlineReached] = useState(false);
+  const [nativeSplashHidden, setNativeSplashHidden] = useState(false);
+  const [splashFinished, setSplashFinished] = useState(false);
 
-  const player = useVideoPlayer(require("../assets/splash.mp4"), (p) => {
-    p.loop = false;
-    p.muted = true;
-    p.play();
-  });
-
-  useEffect(() => {
-    if (!player) return;
-    const subscription = player.addListener("playToEnd", () => {
-      setVideoFinished(true);
-    });
-    return () => {
-      subscription.remove();
-    };
-  }, [player]);
-
-  // Phanh cứu hộ chống đứng màn hình Splash Screen (2.5 giây)
+  // Giới hạn phần chờ hydration trước video để tránh "màn chờ trước màn chờ".
   useEffect(() => {
     const timer = setTimeout(() => {
-      setTimeoutReady(true);
-    }, 2500);
+      setBootstrapDeadlineReached(true);
+    }, SPLASH_TIMING.BOOTSTRAP_DEADLINE_MS);
     return () => clearTimeout(timer);
   }, []);
 
@@ -154,13 +140,23 @@ export default function RootLayout() {
   // Luồng tính toán trạng thái Sẵn Sàng cuối cùng
   const isStoreReady = isAuthHydrated && isUiHydrated;
   const isFontReady = fontsLoaded || fontError;
-  const isReady = (isStoreReady && isFontReady) || timeoutReady;
+  const isReady =
+    (isStoreReady && isFontReady) || bootstrapDeadlineReached;
 
   useEffect(() => {
-    if (isReady) {
-      SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [isReady]);
+    if (!isReady || nativeSplashHidden) return undefined;
+
+    let active = true;
+    SplashScreen.hideAsync()
+      .catch(() => {})
+      .finally(() => {
+        if (active) setNativeSplashHidden(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isReady, nativeSplashHidden]);
 
   useEffect(() => {
     const originalAlert = Alert.alert;
@@ -259,7 +255,7 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (!isStoreReady && !timeoutReady) return;
+    if (!isStoreReady && !bootstrapDeadlineReached) return;
 
     const rootSegment = segments[0];
     const childSegment = segments[1];
@@ -298,11 +294,15 @@ export default function RootLayout() {
     if (isLoggedIn && !inOnboarding && !hasOnboarded && accessToken) {
       router.replace("/onboarding");
     }
-  }, [isStoreReady, timeoutReady, accessToken, user, clearSession, isGuest, segments, hasOnboarded, router]);
+  }, [isStoreReady, bootstrapDeadlineReached, accessToken, user, clearSession, isGuest, segments, hasOnboarded, router]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="dark" translucent backgroundColor="transparent" />
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#02030A" }}>
+      <StatusBar
+        style={splashFinished ? "dark" : "light"}
+        translucent
+        backgroundColor="transparent"
+      />
       <SafeAreaProvider>
         <KeyboardProvider>
           <AppProvider>
@@ -366,28 +366,12 @@ export default function RootLayout() {
                 </>
               )}
 
-              {/* Lớp phủ Video Splash Screen đè lên trên cùng */}
-              {isReady && !videoFinished && (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: "#020617",
-                    zIndex: 99999,
-                  }}
-                >
-                  <VideoView
-                    style={{ flex: 1 }}
-                    player={player}
-                    allowsFullscreen={false}
-                    showsPlaybackControls={false}
-                    resizeMode="cover"
-                  />
-                </View>
-              )}
+              {!splashFinished ? (
+                <CinematicSplash
+                  active={nativeSplashHidden}
+                  onFinish={() => setSplashFinished(true)}
+                />
+              ) : null}
             </I18nInitializer>
           </AppProvider>
         </KeyboardProvider>

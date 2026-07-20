@@ -39,6 +39,7 @@ const markerSelect = {
 };
 
 const numberValue = (value) => (value == null ? null : Number(value));
+const isHttpUrl = (value) => /^https?:\/\//i.test(String(value || ""));
 
 export function normalizeSpatialError(error) {
   const message = String(error?.meta?.message || error?.message || "").toLowerCase();
@@ -85,7 +86,7 @@ export function toPlaceMarkerDto(place) {
     ratingAvg: numberValue(place.ratingAvg) ?? 0,
     isFeatured: place.isFeatured,
     markerUrl: place.markerUrl || null,
-    thumbnail: place.thumbnail || null,
+    ...(isHttpUrl(place.thumbnail) ? { thumbnail: place.thumbnail } : {}),
     category: place.category,
   };
 }

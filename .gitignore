@@ -133,6 +133,7 @@ scratch
 sonar_comparison.md
 .scannerwork
 .sonarlint
+/server/.backups/
 .superpowers/sdd/progress.md
 .superpowers/sdd/task-1-brief.md
 .superpowers/sdd/task-1-report.md
@@ -168,3 +169,10 @@ server/test/redisClient.test.js
 server/test/schedulerLeader.test.js
 server/test/spatialError.test.js
 server/test/validateSchema.test.js
+.superpowers/brainstorm/.last-port
+.superpowers/brainstorm/.last-token
+.superpowers/brainstorm/636-1784556270/state/server-instance-id
+.superpowers/brainstorm/636-1784556270/state/server.pid
+.superpowers/brainstorm/codex-map-focus-20260720/content/ward-focus-v1.html
+.superpowers/brainstorm/codex-map-focus-20260720/content/ward-focus-v2.html
+.superpowers/brainstorm/codex-map-focus-20260720/state/server-info

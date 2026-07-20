@@ -149,26 +149,66 @@ export function getCategoryPlaceholder() {
   return null;
 }
 
+function pickImageValue(source) {
+  if (typeof source === "string") return source;
+  if (!source || typeof source !== "object") return null;
+
+  return (
+    source.secureUrl ||
+    source.secure_url ||
+    source.thumbnailUrl ||
+    source.thumbnail_url ||
+    source.imageUrl ||
+    source.image_url ||
+    source.imageData ||
+    source.image_data ||
+    source.mediaData ||
+    source.media_data ||
+    source.url ||
+    source.uri ||
+    null
+  );
+}
+
+function pickPlaceImageValue(place) {
+  if (!place || typeof place !== "object") return null;
+
+  const firstImage = Array.isArray(place.images) ? place.images[0] : null;
+
+  return (
+    pickImageValue(firstImage) ||
+    place.markerImageUri ||
+    place.marker_image_uri ||
+    place.markerUrl ||
+    place.marker_url ||
+    place.secureUrl ||
+    place.secure_url ||
+    place.thumbnailUrl ||
+    place.thumbnail_url ||
+    place.thumbnail ||
+    place.imageUrl ||
+    place.image_url ||
+    place.imageData ||
+    place.image_data ||
+    place.mediaData ||
+    place.media_data ||
+    place.image ||
+    place.coverImage ||
+    place.cover_image ||
+    place.coverUrl ||
+    place.cover_url ||
+    place.photoUrl ||
+    place.photo_url ||
+    place.url ||
+    place.uri ||
+    null
+  );
+}
+
 export function resolvePlaceImageUri(place) {
   if (!place) return getCategoryPlaceholder();
-  
-  const firstImage = place?.images?.[0];
-  const firstImageUrl = typeof firstImage === "string" ? firstImage : null;
 
-  const raw =
-    firstImageUrl ||
-    firstImage?.secureUrl ||
-    firstImage?.thumbnailUrl ||
-    firstImage?.imageData ||
-    firstImage?.image_data ||
-    firstImage?.url ||
-    place?.thumbnailUrl ||
-    place?.thumbnail ||
-    place?.imageUrl ||
-    place?.image ||
-    null;
-
-  const resolved = resolveMediaUrl(raw);
+  const resolved = resolveMediaUrl(pickPlaceImageValue(place));
   if (resolved) return resolved;
   return getCategoryPlaceholder();
 }
@@ -180,7 +220,15 @@ export function resolvePlaceImageUri(place) {
 export function resolveTripCoverUri(trip, width = 400) {
   if (!trip || typeof trip !== "object") return null;
 
-  const tripThumb = resolveMediaUrl(trip.thumbnail);
+  const tripThumb = resolveMediaUrl(
+    trip.thumbnail ||
+      trip.thumbnailUrl ||
+      trip.thumbnail_url ||
+      trip.coverImage ||
+      trip.cover_image ||
+      trip.imageUrl ||
+      trip.image_url,
+  );
   if (tripThumb) {
     if (tripThumb.startsWith("data:")) return tripThumb;
     if (tripThumb.includes("res.cloudinary.com")) {
@@ -193,16 +241,7 @@ export function resolveTripCoverUri(trip, width = 400) {
   for (const dest of destinations) {
     const place = dest?.place;
     if (!place) continue;
-    const firstImage = place?.images?.[0];
-    const raw =
-      firstImage?.secureUrl ||
-      firstImage?.thumbnailUrl ||
-      firstImage?.imageData ||
-      firstImage?.url ||
-      place?.thumbnailUrl ||
-      place?.thumbnail ||
-      null;
-    const resolved = resolveMediaUrl(raw);
+    const resolved = resolveMediaUrl(pickPlaceImageValue(place));
     if (resolved) {
       if (resolved.includes("res.cloudinary.com")) {
         return getOptimizedCloudinaryUrl(resolved, width) || resolved;
