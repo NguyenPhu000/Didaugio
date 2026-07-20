@@ -42,3 +42,15 @@ test("an audited immutable release can be activated without re-importing it", as
   assert.match(script, /ADMIN_DATA_ACTIVATION_APPROVED/);
   assert.match(script, /Existing release .* is incomplete and cannot be activated/);
 });
+
+test("canonical GIS import repairs invalid upstream polygons before enforcing constraints", async () => {
+  const script = await readFile(
+    new URL("../src/scripts/importVietnamAdministrativeDataset.js", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    script,
+    /ST_Multi\(ST_CollectionExtract\(ST_MakeValid\(geom\),\s*3\)\)/,
+  );
+  assert.match(script, /repaired_geometry_count/);
+});

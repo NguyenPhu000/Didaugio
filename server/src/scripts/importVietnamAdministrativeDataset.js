@@ -200,22 +200,59 @@ const main = async () => {
       throw new Error(`GIS count mismatch: ${JSON.stringify(gisCounts)}`);
     }
 
+    const geometryRepairAudit = await client.query(
+      `WITH source AS (
+         SELECT geom FROM vn_admin_source.province_boundaries WHERE dataset_release_id = $1
+         UNION ALL
+         SELECT geom FROM vn_admin_source.ward_boundaries WHERE dataset_release_id = $1
+       ), inspected AS (
+         SELECT geom,
+           ST_Multi(ST_CollectionExtract(ST_MakeValid(geom), 3)) AS repaired
+         FROM source
+       )
+       SELECT
+         count(*) FILTER (WHERE NOT ST_IsValid(geom))::int AS repaired_geometry_count,
+         count(*) FILTER (
+           WHERE NOT ST_IsValid(repaired)
+              OR ST_IsEmpty(repaired)
+              OR ST_GeometryType(repaired) <> 'ST_MultiPolygon'
+         )::int AS unrepairable_geometry_count
+       FROM inspected`,
+      [datasetReleaseId],
+    );
+    const geometryAudit = geometryRepairAudit.rows[0];
+    if (geometryAudit.unrepairable_geometry_count !== 0) {
+      throw new Error(
+        `GIS contains ${geometryAudit.unrepairable_geometry_count} geometries that cannot be safely repaired`,
+      );
+    }
+
     await client.query(
       `INSERT INTO province_boundaries(dataset_release_id, province_code, area_km2, bbox, geom)
-       SELECT dataset_release_id, province_code, area_km2, bbox, geom
+       SELECT dataset_release_id, province_code, area_km2, bbox,
+         CASE WHEN ST_IsValid(geom) THEN geom
+              ELSE ST_Multi(ST_CollectionExtract(ST_MakeValid(geom), 3)) END
        FROM vn_admin_source.province_boundaries WHERE dataset_release_id = $1`,
       [datasetReleaseId],
     );
     await client.query(
       `INSERT INTO administrative_ward_boundaries(dataset_release_id, ward_code, area_km2, bbox, geom)
-       SELECT dataset_release_id, ward_code, area_km2, bbox, geom
+       SELECT dataset_release_id, ward_code, area_km2, bbox,
+         CASE WHEN ST_IsValid(geom) THEN geom
+              ELSE ST_Multi(ST_CollectionExtract(ST_MakeValid(geom), 3)) END
        FROM vn_admin_source.ward_boundaries WHERE dataset_release_id = $1`,
       [datasetReleaseId],
     );
 
     if (activateRequested) await activateRelease(client, datasetReleaseId);
     await client.query("COMMIT");
-    console.log(JSON.stringify({ datasetReleaseId, release: manifest.releaseName, typeCounts, gisCounts }, null, 2));
+    console.log(JSON.stringify({
+      datasetReleaseId,
+      release: manifest.releaseName,
+      typeCounts,
+      gisCounts,
+      repaired_geometry_count: geometryAudit.repaired_geometry_count,
+    }, null, 2));
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;

@@ -8,6 +8,15 @@ import {
   parseUpstreamGisInsert,
 } from "../src/services/location/administrativeDataset.domain.js";
 import { makeLocationService } from "../src/services/location/location.service.js";
+import { computeAdministrativeManifestChecksum } from "../src/services/location/administrativeSource.js";
+
+const isolatedCache = {
+  get: async () => null,
+  set: async () => undefined,
+  buildKey: (...parts) => parts.join(":"),
+  TTL: { STATIC: 60 },
+};
+const noOpCacheMetrics = { inc: () => undefined };
 
 const source = [
   {
@@ -61,6 +70,15 @@ const source = [
     ],
   },
 ];
+
+test("manifest checksum is stable across LF and CRLF checkouts", () => {
+  const lf = "{\n  \"schemaVersion\": 1,\n  \"releaseName\": \"v3.1.0\"\n}\n";
+  const crlf = lf.replaceAll("\n", "\r\n");
+  assert.equal(
+    computeAdministrativeManifestChecksum(lf),
+    computeAdministrativeManifestChecksum(crlf),
+  );
+});
 
 test("preserves official codes as strings, including leading zeroes", () => {
   const dataset = normalizeSourceDataset(source);
@@ -142,19 +160,22 @@ test("parses upstream GIS INSERT data without executing upstream SQL", () => {
 
 test("location service scopes ward reads and normalized search to one province", async () => {
   const calls = [];
-  const service = makeLocationService({
-    getActiveRelease: async () => ({ id: 7, releaseName: "v3.1.0" }),
-    listProvinces: async () => [],
-    listWards: async (releaseId, provinceCode) => {
-      calls.push(["wards", releaseId, provinceCode]);
-      return [{ code: "31117", provinceCode }];
+  const service = makeLocationService(
+    {
+      getActiveRelease: async () => ({ id: 7, releaseName: "v3.1.0" }),
+      listProvinces: async () => [],
+      listWards: async (releaseId, provinceCode) => {
+        calls.push(["wards", releaseId, provinceCode]);
+        return [{ code: "31117", provinceCode }];
+      },
+      search: async (releaseId, provinceCode, query) => {
+        calls.push(["search", releaseId, provinceCode, query]);
+        return [];
+      },
+      lookupCoordinate: async () => ({ wards: [], provinces: [] }),
     },
-    search: async (releaseId, provinceCode, query) => {
-      calls.push(["search", releaseId, provinceCode, query]);
-      return [];
-    },
-    lookupCoordinate: async () => ({ wards: [], provinces: [] }),
-  });
+    { cache: isolatedCache, cacheMetrics: noOpCacheMetrics },
+  );
 
   const wards = await service.listWards("92");
   await service.search({ provinceCode: "92", query: "Phường Ninh Kiều" });

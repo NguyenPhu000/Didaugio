@@ -18,9 +18,14 @@ export const loadAdministrativeManifest = async (manifestPath) => {
   const raw = await readFile(manifestPath, "utf8");
   return {
     manifest: JSON.parse(raw),
-    manifestChecksum: createHash("sha256").update(raw).digest("hex"),
+    manifestChecksum: computeAdministrativeManifestChecksum(raw),
   };
 };
+
+export const computeAdministrativeManifestChecksum = (raw) =>
+  createHash("sha256")
+    .update(JSON.stringify(JSON.parse(raw)))
+    .digest("hex");
 
 export const verifyAdministrativeArtifacts = async ({ manifest, sourceDir }) => {
   const verified = [];
