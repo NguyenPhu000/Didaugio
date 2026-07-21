@@ -4,19 +4,23 @@ import { createPaymentRefundOrchestrator, createPaymentSePayRefundWebhookHandler
 
 const PAYMENT = { id: 11, booking_id: 21, status: "paid", amount: 100, currency: "VND", transaction_ref: "REFUND-11", refund_amount: 0 };
 
-function createHarness({ valid = true, amount = 100, attempts = [{ id: 1, paymentId: 11, status: "pending", gateway: "SEPAY_BANK", amount: 100, currency: "VND", externalRefundId: null }] } = {}) {
+function createHarness({ valid = true, amount = 100, referenceCode = "R-901", attempts = [{ id: 1, paymentId: 11, status: "pending", gateway: "SEPAY_BANK", amount: 100, currency: "VND", externalRefundId: null, metadata: { transferReference: "R-901" } }] } = {}) {
   const payment = { ...PAYMENT };
   const calls = { verify: 0, log: 0, payment: 0, booking: 0, ledger: 0, wallet: 0, processed: 0, errors: 0 };
+  const callback = { referenceCode };
   const tx = {
     $queryRaw: async (parts) => String(parts.raw || parts).includes("FROM payments") ? [{ ...payment }] : [],
     refundAttempt: {
       findFirst: async ({ where }) => attempts.find((item) =>
         (where.externalRefundId ? item.gateway === where.gateway && item.externalRefundId === where.externalRefundId :
-          item.paymentId === where.paymentId && item.status === where.status && item.gateway === where.gateway && item.amount === where.amount && item.currency === where.currency)) || null,
+          item.paymentId === where.paymentId && item.status === where.status && item.gateway === where.gateway && item.amount === where.amount && item.currency === where.currency &&
+          (!where.metadata || item.metadata?.transferReference === where.metadata.equals))) || null,
       findUnique: async ({ where }) => attempts.find((item) =>
         (where.id && item.id === where.id) || (where.idempotencyKey && item.idempotencyKey === where.idempotencyKey),
       ) || null,
-      aggregate: async () => ({ _sum: { amount: attempts.filter((item) => item.status === "succeeded").reduce((sum, item) => sum + item.amount, 0) } }),
+      aggregate: async ({ where }) => ({ _sum: { amount: attempts.filter((item) =>
+        where.status?.in ? where.status.in.includes(item.status) : item.status === where.status,
+      ).reduce((sum, item) => sum + item.amount, 0) } }),
       create: async ({ data }) => { const attempt = { id: attempts.length + 1, ...data }; attempts.push(attempt); return attempt; },
       update: async ({ where: { id }, data }) => Object.assign(attempts.find((item) => item.id === id), data),
     },
@@ -41,7 +45,7 @@ function createHarness({ valid = true, amount = 100, attempts = [{ id: 1, paymen
     sepayService: { buildIpnSuccess: () => ({ success: true }), buildIpnError: (message) => ({ success: false, message }) },
     sepayWebhookService: {
       verifyWebhookSignature: () => { calls.verify += 1; return valid ? { valid: true } : { valid: false, error: "bad-signature" }; },
-      parseRefundWebhook: () => ({ valid: true, data: { sepayTransactionId: 901, code: PAYMENT.transaction_ref, payoutId: null, transferAmount: amount, gateway: "VCB", transactionDate: "2027-01-01", referenceCode: "R-901" } }),
+      parseRefundWebhook: () => ({ valid: true, data: { sepayTransactionId: 901, code: PAYMENT.transaction_ref, payoutId: null, transferAmount: amount, gateway: "VCB", transactionDate: "2027-01-01", referenceCode: callback.referenceCode } }),
     },
     webhookLogService: {
       logWebhook: async () => { calls.log += 1; return { id: 101 }; },
@@ -49,7 +53,7 @@ function createHarness({ valid = true, amount = 100, attempts = [{ id: 1, paymen
       markError: async () => { calls.errors += 1; },
     },
   });
-  return { handlers, attempts, calls, payment, prisma };
+  return { handlers, attempts, calls, payment, prisma, callback };
 }
 
 test("SePay refund rejects an invalid HMAC before any database audit", async () => {
@@ -76,19 +80,35 @@ test("SePay refund finalizes a pending attempt once and treats exact replay as a
 });
 
 test("protected SePay initiation persists the gateway attempt before its actual webhook finalizes it", async () => {
-  const { handlers, attempts, calls, payment, prisma } = createHarness({ attempts: [] });
+  const { handlers, attempts, calls, payment, prisma, callback } = createHarness({ attempts: [] });
   const initiation = await createPaymentRefundOrchestrator({ db: prisma }).initiateSePayBankRefund(
     PAYMENT.id,
     { amount: 100, reason: "Customer cancellation", idempotencyKey: "sepay-init-11", actorUserId: 7 },
   );
   assert.equal(initiation.status, "pending");
-  assert.match(initiation.transferReference, /^SEPAY-REFUND-REFUND-11-/);
+  assert.match(initiation.transferReference, /^SEPAY-REFUND-11-[a-f0-9]{24}$/);
   assert.deepEqual(attempts[0] && { source: attempts[0].source, gateway: attempts[0].gateway, amount: attempts[0].amount, currency: attempts[0].currency }, { source: "gateway", gateway: "SEPAY_BANK", amount: 100, currency: "VND" });
   assert.equal(calls.ledger, 0);
+  callback.referenceCode = initiation.transferReference;
   await handlers.processSePayRefundWebhook({ code: PAYMENT.transaction_ref }, {}, "{}");
   assert.equal(attempts[0].status, "succeeded");
   assert.equal(calls.ledger, 1);
   assert.equal(payment.status, "fully_refunded");
+});
+
+test("same-amount SePay attempts are identified by their persisted transfer reference", async () => {
+  const attempts = [
+    { id: 1, paymentId: 11, status: "pending", gateway: "SEPAY_BANK", amount: 100, currency: "VND", externalRefundId: null, metadata: { transferReference: "SEPAY-REFUND-A" } },
+    { id: 2, paymentId: 11, status: "pending", gateway: "SEPAY_BANK", amount: 100, currency: "VND", externalRefundId: null, metadata: { transferReference: "SEPAY-REFUND-B" } },
+  ];
+  const { handlers, calls, callback } = createHarness({ attempts, referenceCode: "SEPAY-REFUND-B" });
+  await handlers.processSePayRefundWebhook({ code: PAYMENT.transaction_ref }, {}, "{}");
+  assert.equal(attempts[0].status, "pending");
+  assert.equal(attempts[1].status, "succeeded");
+  assert.equal(calls.ledger, 1);
+  callback.referenceCode = "SEPAY-REFUND-WRONG";
+  await handlers.processSePayRefundWebhook({ code: PAYMENT.transaction_ref }, {}, "{}");
+  assert.equal(calls.ledger, 1);
 });
 
 test("SePay refund rejects a reused external reference with a conflicting amount", async () => {

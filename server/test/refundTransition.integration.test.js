@@ -9,6 +9,7 @@ import { Client } from "pg";
 import "dotenv/config";
 import { createPaymentTransition } from "../src/services/payment/paymentTransition.service.js";
 import { createRefundTransition } from "../src/services/payment/refundTransition.service.js";
+import { createPaymentRefundOrchestrator } from "../src/services/payment/payment.service.js";
 import { settleCompletedLedger } from "../src/services/booking/financialCore.service.js";
 import {
   buildAdminDatabaseUrl,
@@ -74,6 +75,26 @@ for (const run of ["a", "b"]) {
       try {
         const { payment, booking, user, business } = await seed(prisma);
         const transition = createRefundTransition({ prisma });
+
+        const gatewayFixture = await seed(prisma);
+        const gatewayRefunds = createPaymentRefundOrchestrator({ db: prisma });
+        const gatewayIntents = await Promise.allSettled([
+          gatewayRefunds.initiateSePayBankRefund(gatewayFixture.payment.id, {
+            amount: 100_000, reason: "Gateway refund A", idempotencyKey: `sepay-reserve-${run}-a`, actorUserId: gatewayFixture.user.id,
+          }),
+          gatewayRefunds.initiateSePayBankRefund(gatewayFixture.payment.id, {
+            amount: 100_000, reason: "Gateway refund B", idempotencyKey: `sepay-reserve-${run}-b`, actorUserId: gatewayFixture.user.id,
+          }),
+        ]);
+        assert.equal(gatewayIntents.filter((item) => item.status === "fulfilled").length, 1);
+        assert.equal(gatewayIntents.filter((item) => item.status === "rejected").length, 1);
+        assert.equal(gatewayIntents.find((item) => item.status === "rejected").reason.errorCode, "REFUND_EXCEEDS_COLLECTED");
+        const gatewayAttempts = await prisma.refundAttempt.findMany({ where: { paymentId: gatewayFixture.payment.id } });
+        assert.equal(gatewayAttempts.length, 1);
+        assert.equal(gatewayAttempts[0].status, "pending");
+        assert.equal(gatewayAttempts[0].amount, 100_000);
+        const platformBeforeManualRefund = await prisma.platformWallet.findFirstOrThrow();
+
         const first = await transition.createRefundIntent({ paymentId: payment.id, source: "manual", amount: 60_000, currency: "VND", idempotencyKey: `refund-${run}-1`, actorUserId: user.id, reason: "Customer cancellation" });
         const second = await transition.createRefundIntent({ paymentId: payment.id, source: "manual", amount: 50_000, currency: "VND", idempotencyKey: `refund-${run}-2`, actorUserId: user.id, reason: "Second concurrent refund" });
         const settled = await Promise.allSettled([
@@ -97,7 +118,7 @@ for (const run of ["a", "b"]) {
         const commissionDebit = Math.floor((refundedAmount * 10_000) / 100_000);
         assert.equal(wallet.frozenBalance, 90_000 - (refundedAmount - commissionDebit));
         assert.equal(wallet.balance, 0);
-        assert.equal(platform.balance, 10_000 - commissionDebit);
+        assert.equal(platform.balance, platformBeforeManualRefund.balance - commissionDebit);
         assert.equal(await prisma.financialLedger.count({ where: { bookingId: booking.id, type: "REFUND" } }), 1);
 
         // A separately settled booking must debit available balance, not frozen balance.

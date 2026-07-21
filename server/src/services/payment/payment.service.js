@@ -100,6 +100,8 @@ export function createPaymentRefundOrchestrator({ db = prisma, refundTransitionF
     if (!Number.isInteger(normalizedPaymentId) || normalizedPaymentId <= 0) {
       throw new ServiceError("Payment ID không hợp lệ", 400, ERROR_CODES.VALIDATION_ERROR);
     }
+    const normalizedIdempotencyKey = String(idempotencyKey || "").trim();
+    if (!normalizedIdempotencyKey) throw new ServiceError("Idempotency key không hợp lệ", 400, ERROR_CODES.VALIDATION_ERROR);
     return db.$transaction(async (tx) => {
       const rows = await tx.$queryRaw`
         SELECT id, status, currency, transaction_ref
@@ -110,23 +112,48 @@ export function createPaymentRefundOrchestrator({ db = prisma, refundTransitionF
       if (![PAYMENT_STATUS.PAID, PAYMENT_STATUS.PARTIALLY_REFUNDED].includes(payment.status)) {
         throw new ServiceError("Chỉ có thể tạo lệnh hoàn SePay cho giao dịch đã thanh toán", 422, ERROR_CODES.VALIDATION_ERROR);
       }
-      const [collections, refunds] = await Promise.all([
+      // Keep references opaque, deterministic, and short enough for bank transfer fields.
+      const transferReference = `SEPAY-REFUND-${payment.id}-${crypto.createHash("sha256").update(normalizedIdempotencyKey).digest("hex").slice(0, 24)}`;
+      const existing = await tx.refundAttempt.findUnique({ where: { idempotencyKey: normalizedIdempotencyKey } });
+      if (existing) {
+        if (existing.metadata?.transferReference !== transferReference) {
+          throw new ServiceError("Refund transfer reference conflicts with an existing attempt", 409, "REFUND_DUPLICATE");
+        }
+        const replay = await transition.createRefundIntentInTransaction(tx, {
+          paymentId: payment.id,
+          amount: Number(existing.amount),
+          currency: payment.currency,
+          source: "gateway",
+          gateway: "SEPAY_BANK",
+          idempotencyKey: normalizedIdempotencyKey,
+          actorUserId,
+          reason,
+          metadata: { channel: "sepay_bank_refund_initiation", transferReference },
+        });
+        return { ...replay, transferReference };
+      }
+      const conflictingReference = await tx.refundAttempt.findFirst({
+        where: { metadata: { path: ["transferReference"], equals: transferReference } },
+      });
+      if (conflictingReference) {
+        throw new ServiceError("Refund transfer reference conflicts with an existing attempt", 409, "REFUND_DUPLICATE");
+      }
+      const [collections, reserved] = await Promise.all([
         tx.paymentReceipt.aggregate({ where: { paymentId: payment.id, status: "succeeded" }, _sum: { amount: true } }),
-        tx.refundAttempt.aggregate({ where: { paymentId: payment.id, status: "succeeded" }, _sum: { amount: true } }),
+        tx.refundAttempt.aggregate({ where: { paymentId: payment.id, status: { in: ["pending", "succeeded"] } }, _sum: { amount: true } }),
       ]);
-      const available = Number(collections?._sum?.amount || 0) - Number(refunds?._sum?.amount || 0);
+      const available = Number(collections?._sum?.amount || 0) - Number(reserved?._sum?.amount || 0);
       const canonicalAmount = amount === undefined ? available : Number(amount);
       if (!Number.isSafeInteger(canonicalAmount) || canonicalAmount <= 0 || canonicalAmount > available) {
         throw new ServiceError("Số tiền hoàn vượt quá số tiền đã thu", 422, "REFUND_EXCEEDS_COLLECTED");
       }
-      const transferReference = `SEPAY-REFUND-${payment.transaction_ref}-${idempotencyKey}`;
       const intent = await transition.createRefundIntentInTransaction(tx, {
         paymentId: payment.id,
         amount: canonicalAmount,
         currency: payment.currency,
         source: "gateway",
         gateway: "SEPAY_BANK",
-        idempotencyKey,
+        idempotencyKey: normalizedIdempotencyKey,
         actorUserId,
         reason,
         metadata: { channel: "sepay_bank_refund_initiation", transferReference },
@@ -1354,15 +1381,26 @@ async function processSePayRefundWebhookWithDependencies(body, headers = {}, raw
 
         if (paymentRows?.length) {
           const payment = paymentRows[0];
+          const callbackReference = String(referenceCode || "").trim();
           const replay = await tx.refundAttempt.findFirst({
             where: { gateway: "SEPAY_BANK", externalRefundId: String(sepayTransactionId) },
           });
           if (replay && (replay.paymentId !== payment.id || replay.amount !== Number(transferAmount))) {
             return { type: "AMOUNT_MISMATCH", transactionRef: code };
           }
+          if (replay && replay.metadata?.transferReference !== callbackReference) {
+            return { type: "AMOUNT_MISMATCH", transactionRef: code };
+          }
           if (replay?.status === "succeeded") return { type: "ALREADY_PROCESSED", transactionRef: code };
           const attempt = await tx.refundAttempt.findFirst({
-            where: { paymentId: payment.id, status: "pending", gateway: "SEPAY_BANK", amount: Number(transferAmount), currency: "VND" },
+            where: {
+              paymentId: payment.id,
+              status: "pending",
+              gateway: "SEPAY_BANK",
+              amount: Number(transferAmount),
+              currency: "VND",
+              metadata: { path: ["transferReference"], equals: callbackReference },
+            },
           });
           if (!attempt) return { type: "AMOUNT_MISMATCH", transactionRef: code };
           return { type: "REFUND_PENDING", transactionRef: code, refundAttemptId: attempt.id };
