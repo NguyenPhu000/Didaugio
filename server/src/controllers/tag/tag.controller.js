@@ -145,12 +145,12 @@ export const getTagBySlug = async (req, res, next) => {
 // POST /api/tags - Tạo tag mới
 export const createTag = async (req, res, next) => {
   try {
-    const { name, slug, tagType, icon, color } = req.body;
+    const { name, slug, tagGroupId, icon, color } = req.body;
 
     const tag = await tagService.createTag({
       name,
       slug,
-      tagType,
+      tagGroupId,
       icon,
       color,
     });
@@ -190,12 +190,12 @@ export const bulkCreateTags = async (req, res, next) => {
 export const updateTag = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, slug, tagType, icon, color, isActive } = req.body;
+    const { name, slug, tagGroupId, icon, color, isActive } = req.body;
 
     const tag = await tagService.updateTag(id, {
       name,
       slug,
-      tagType,
+      tagGroupId,
       icon,
       color,
       isActive,
