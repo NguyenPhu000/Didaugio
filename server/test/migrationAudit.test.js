@@ -129,6 +129,36 @@ test("migration audit preserves primary and cleanup failures", async () => {
   );
 });
 
+test("migration audit preserves drift validation and cleanup failures in lifecycle order", async () => {
+  let driftFailure;
+  const cleanupFailure = new Error("cleanup failed after invalid drift");
+
+  await assert.rejects(
+    runMigrationAudit({
+      create: async () => undefined,
+      deploy: async () => undefined,
+      diff: async () => 'DROP TABLE "unexpected_managed_table";',
+      validate: (driftSql) => {
+        try {
+          return assertOnlyAllowedRawSqlDrift(driftSql);
+        } catch (error) {
+          driftFailure = error;
+          throw error;
+        }
+      },
+      cleanup: async () => {
+        throw cleanupFailure;
+      },
+    }),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.match(driftFailure.message, /managed schema drift/iu);
+      assert.deepEqual(error.errors, [driftFailure, cleanupFailure]);
+      return true;
+    },
+  );
+});
+
 test("migration audit accepts only its dedicated database prefix", () => {
   assert.equal(
     assertSafeAuditDatabaseName(`${AUDIT_DB_PREFIX}clean_123`),

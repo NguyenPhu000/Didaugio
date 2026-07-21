@@ -154,7 +154,13 @@ export function buildPrismaCommands({ schemaPath }) {
   };
 }
 
-export async function runMigrationAudit({ create, deploy, diff, cleanup }) {
+export async function runMigrationAudit({
+  create,
+  deploy,
+  diff,
+  validate = (driftSql) => driftSql,
+  cleanup,
+}) {
   let driftSql;
   let primaryFailure;
   let ownsDatabase = false;
@@ -163,6 +169,7 @@ export async function runMigrationAudit({ create, deploy, diff, cleanup }) {
     ownsDatabase = true;
     await deploy();
     driftSql = await diff();
+    driftSql = await validate(driftSql);
   } catch (error) {
     primaryFailure = error;
   }

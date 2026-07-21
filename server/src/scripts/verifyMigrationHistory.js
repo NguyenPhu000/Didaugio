@@ -57,8 +57,9 @@ await runMigrationAudit({
     ),
   deploy: () => runPrisma(commands.deploy),
   diff: () => runPrisma(commands.diff, { capture: true }),
+  validate: assertOnlyAllowedRawSqlDrift,
   cleanup: () =>
     withAdminClient((client) =>
       dropOwnedAuditDatabase(client, databaseName),
     ),
-}).then(assertOnlyAllowedRawSqlDrift);
+});
