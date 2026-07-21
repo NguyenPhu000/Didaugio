@@ -240,8 +240,11 @@ test("capacity availability exposes a Vietnam-local minute key and canonical sta
 
 test("capacity availability keeps slots available when literal overbooking is enabled", async () => {
   const restores = [];
+  let serviceQuery;
   try {
-    restores.push(replaceMethod(prisma.businessService, "findUnique", async () => ({
+    restores.push(replaceMethod(prisma.businessService, "findUnique", async (args) => {
+      serviceQuery = args;
+      return {
       id: 7,
       businessId: 11,
       placeId: 13,
@@ -250,13 +253,15 @@ test("capacity availability keeps slots available when literal overbooking is en
       slotDurationMinutes: 60,
       bufferMinutes: 0,
       allowOverbooking: true,
-    })));
+      };
+    }));
     restores.push(replaceMethod(prisma.businessBlockedDate, "findFirst", async () => null));
     restores.push(replaceMethod(prisma.booking, "findMany", async () => [
       { bookingAt: new Date("2026-07-22T02:00:00.000Z"), quantity: 3 },
     ]));
 
     const result = await getAvailableSlots(7, "2026-07-22");
+    assert.equal(serviceQuery.select.allowOverbooking, true);
     assert.deepEqual(result.slots.find((slot) => slot.time === "09:00"), {
       time: "09:00",
       startTime: "2026-07-22T02:00:00.000Z",

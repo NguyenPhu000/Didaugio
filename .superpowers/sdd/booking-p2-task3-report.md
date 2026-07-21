@@ -31,3 +31,9 @@ Resource occupancy dates are serialized by Express as ISO strings; the direct se
 - Added regressions for preserving the blocked resource contract, policy duration fallback, literal capacity overbooking, and rejecting non-string/repeated date query values before database access.
 - Repaired the public response to use the policy's resolved duration/buffer, preserve resource shape on blocked days, and keep capacity slots selectable only when literal `allowOverbooking` is enabled.
 - Focused rerun: server 30/30; app 5/5; scoped ESLint passed.
+
+## Re-review follow-up: Prisma projection wiring
+
+- Removed the duplicated transactional `allowOverbooking` projection and added it to the public availability projection where the flag is consumed.
+- The overbooking regression now captures the real `findUnique` arguments and asserts `select.allowOverbooking === true`, so a mock cannot hide a missing Prisma field.
+- Focused rerun: server 30/30; app 5/5; scoped ESLint and Node syntax checks passed.

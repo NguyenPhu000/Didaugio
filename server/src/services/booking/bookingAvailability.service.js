@@ -124,7 +124,6 @@ export async function checkAvailability(tx, payload) {
       durationMinutes: true,
       bufferMinutes: true,
       allowOverbooking: true,
-      allowOverbooking: true,
     },
   });
   if (!svc) {
@@ -319,6 +318,7 @@ export async function getAvailableSlots(serviceId, dateStr) {
       slotDurationMinutes: true,
       durationMinutes: true,
       bufferMinutes: true,
+      allowOverbooking: true,
       businessId: true,
       placeId: true,
     },
