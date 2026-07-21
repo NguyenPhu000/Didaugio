@@ -2,13 +2,13 @@
 
 ## Goal
 
-Redesign the web place creation and editing wizard at `/admin/places/new` and `/admin/places/:id/edit` into a premium, cinematic administrative workspace without reducing form clarity or changing existing business behavior.
+Redesign the web place creation and editing wizard at `/admin/places/new` and `/admin/places/:id/edit` into the approved premium `Ivory Workspace` administrative workspace without reducing form clarity or changing existing business behavior.
 
-The visual system is light ivory with black typography and black icons. The redesign covers all three wizard steps so the experience remains coherent from entry through preview and save.
+The approved reference is a light ivory paper workspace inside the existing admin sidebar and topbar: black typography and icons, a horizontal stepper panel, white work panels, and a black action button. The redesign covers all three wizard steps so the experience remains coherent from entry through preview and save.
 
 ## Scope
 
-- Redesign the shared wizard shell in `PlaceWizardPage`.
+- Redesign the shared wizard workspace in `PlaceWizardPage`; preserve `AdminLayout` and `AdminHeader` rather than rebuilding the global sidebar or topbar.
 - Redesign the first-step information and address workspace in `StepBasicInfo`.
 - Extend the same visual language to `StepDetails` and `StepPreview`.
 - Preserve the province selector and searchable ward/commune combobox behavior.
@@ -48,25 +48,22 @@ All interface icons use black or graphite. Colored decorative icons are removed.
 
 ### Wizard header
 
-- Sticky ivory header with a subtle translucent surface and hairline border.
-- Back action on the left using a black arrow icon.
-- Large page title and short supporting copy.
-- Current step indicator on the right as `01 / 03`.
-- A thin black progress track communicates completion.
+- The existing `AdminHeader` remains the global header and sidebar trigger.
+- The wizard workspace begins with a compact page title row: back action on the left, title `Thêm địa điểm mới`, and current-step indicator `01 / 03` on the right.
+- The title row uses an ivory surface and a bottom hairline rather than duplicating global navigation.
 
 ### Step navigation
 
-- Horizontal editorial step navigation below the title.
-- Each step displays a two-digit number, title, and short description.
-- The active step uses a black surface with white text.
-- Completed steps remain visually strong and clickable.
-- Future steps remain quiet but legible.
-- Mobile web collapses the navigation without changing the native mobile app.
+- Horizontal editorial step navigation sits inside one large white panel below the title row.
+- Each step displays a circled two-digit number, title, and concise description, with hairline connectors between steps.
+- The active number is a black circle with white ink; completed steps remain visually strong and clickable; future steps are quiet but legible.
+- Mobile web collapses the descriptions without changing the native mobile app.
 
 ### Form workspace
 
-- A wide, breathable two-column workspace on large screens and one column on smaller screens.
 - Step one groups category and basic information on the left, location and address on the right.
+- Step two uses a large left content panel and a right media-preview panel, matching the approved reference.
+- Step three uses a large review panel and a narrow metadata rail.
 - Sections use a small black icon, title, and concise helper text.
 - The ward selector remains one searchable combobox; search is inside the dropdown.
 - The primary action sits in a deliberate black action bar or footer region with clear hierarchy.
@@ -132,3 +129,4 @@ Each reference represents one wizard step. The images guide layout, spacing, typ
 - No redesign of unrelated admin pages.
 - No decorative colored icon system.
 - No full-screen photography that competes with form readability.
+- No changes to `AdminLayout`, `AdminHeader`, sidebar menu labels, or global account controls as part of this wizard-only redesign.

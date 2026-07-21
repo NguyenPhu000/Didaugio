@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Redesign the web place create/edit wizard as an ivory, monochrome, cinematic workspace while preserving every existing form, validation, store, API, and administrative-location behavior.
+**Goal:** Redesign the web place create/edit wizard as the approved ivory, monochrome `Ivory Workspace` while preserving every existing form, validation, store, API, and administrative-location behavior.
 
-**Architecture:** Keep `PlaceWizardPage` responsible for the shell and step navigation, and keep each existing step responsible for its own data and validation. Add a small wizard presentation layer for reusable surfaces and restrained GSAP entrance transitions; apply it incrementally to the three existing steps without changing data contracts.
+**Architecture:** Keep `AdminLayout` and `AdminHeader` unchanged; `PlaceWizardPage` owns only the page-title row, horizontal stepper panel, and wizard content workspace. Keep each existing step responsible for its own data and validation. Add a small wizard presentation layer for reusable surfaces and restrained GSAP entrance transitions; apply it incrementally to the three existing steps without changing data contracts.
 
 **Tech Stack:** React 19, Vite 7, Tailwind CSS 3, Zustand, React Router, Lucide React, GSAP with `@gsap/react`, Vitest, Testing Library.
 
@@ -14,6 +14,7 @@
 - Canvas uses warm ivory `#F4F0E8`; primary surface uses `#FFFEFB`; primary ink uses `#11110F`.
 - Decorative icons are black or graphite. Semantic error icons may remain red.
 - No colored gradients, full-screen photography, new place fields, backend changes, database changes, or API changes.
+- Do not modify `web/src/layouts/AdminLayout.jsx`, `web/src/layouts/sidebar/AdminHeader.jsx`, or global sidebar navigation as part of this redesign.
 - Preserve create and edit routes, Zustand wizard state, validation, administrative province/ward loading, and form submission.
 - The ward search matches display names only and ignores Vietnamese diacritics.
 - Respect `prefers-reduced-motion`.
@@ -45,15 +46,15 @@ Adapt the selected motion to a form workspace: short image/preview scale-fade an
 
 - [ ] **Step 2: Generate step 1 reference**
 
-Generate one 16:9 horizontal web UI reference showing the header, three-step navigation, category panel, basic fields, searchable location controls, address field, and black primary action.
+Generate one 16:9 horizontal web UI reference inside an existing ivory admin shell: compact title row, a single horizontal stepper panel, category panel, basic fields, searchable location controls, address field, and black primary action. Do not generate a duplicate global sidebar or account header as a new component.
 
 - [ ] **Step 3: Generate step 2 reference**
 
-Generate one 16:9 horizontal web UI reference showing the same shell with editorial tabs for description, media, location, and contact; all icons black.
+Generate one 16:9 horizontal web UI reference showing the same shell with editorial tabs for description, media, location, and contact; a large left content panel and a right media-preview panel; all icons black.
 
 - [ ] **Step 4: Generate step 3 reference**
 
-Generate one 16:9 horizontal web UI reference showing the same shell with a place-review composition, image preview, metadata rail, and decisive black save action.
+Generate one 16:9 horizontal web UI reference showing the same shell with a place-review composition, image preview, narrow metadata rail, and decisive black save action.
 
 - [ ] **Step 5: Review references against constraints**
 
@@ -175,7 +176,7 @@ git commit -m "feat(web): add ivory place wizard surfaces"
 
 **Interfaces:**
 - Consumes: `WizardPanel`, `useWizardEntrance`, Zustand wizard step state, existing translations.
-- Produces: the ivory canvas, sticky editorial header, black progress bar, and responsive three-step navigation.
+- Produces: the ivory workspace title row, horizontal stepper panel, and responsive three-step navigation beneath the unchanged global admin header.
 
 - [ ] **Step 1: Write the failing shell contract test**
 
@@ -208,13 +209,13 @@ Expected: FAIL because the canvas test ID and accessible step buttons do not exi
 
 - [ ] **Step 3: Implement the shell redesign**
 
-Apply these exact layout contracts:
+Apply these exact layout contracts without rendering another global header:
 
 ```jsx
 <main ref={pageRef} data-testid="place-wizard-canvas" className="min-h-screen overflow-x-hidden bg-[#F4F0E8] text-[#11110F]">
-  <header data-wizard-reveal className="sticky top-0 z-40 border-b border-black/10 bg-[#F4F0E8]/92 backdrop-blur-xl">
+  <div data-wizard-reveal className="border-b border-black/10 bg-[#F4F0E8]/92 px-4 py-5 sm:px-6">
     {/* max-w-7xl, back action, editorial title, 01 / 03 */}
-  </header>
+  </div>
   <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
     <nav data-wizard-reveal aria-label="Place creation progress" className="grid grid-cols-1 gap-2 md:grid-cols-3">
       {/* active black/white; completed and future ivory/ink */}
@@ -360,7 +361,7 @@ Expected: FAIL on existing primary/cyan/gradient classes.
 
 - [ ] **Step 3: Redesign step two**
 
-Keep the four existing tabs and every child editor. Apply ivory tab rail, black active tab, black icons, `WizardPanel` surfaces, and `WizardActions`. Preserve map lazy loading, lookup behavior, validation, and back/next handlers.
+Keep the four existing tabs and every child editor. Apply ivory tab rail, black active tab, black icons, `WizardPanel` surfaces, and `WizardActions`. Use a large content panel plus a separate right media-preview panel in the desktop image tab, matching the approved reference. Preserve map lazy loading, lookup behavior, validation, and back/next handlers.
 
 - [ ] **Step 4: Redesign step three**
 
