@@ -16,6 +16,10 @@ const verifyMigrationHistorySource = fs.readFileSync(
   new URL("../src/scripts/verifyMigrationHistory.js", import.meta.url),
   "utf8",
 );
+const reconciliationIntegrationSource = fs.readFileSync(
+  new URL("./migrationReconciliation.integration.test.js", import.meta.url),
+  "utf8",
+);
 
 test("migration audit uses deploy and emits a reviewable drift script", () => {
   const commands = buildPrismaCommands({
@@ -162,5 +166,25 @@ test("spawn result guard surfaces timeouts and nonzero exits", () => {
   assert.equal(
     migrationAudit.assertSuccessfulSpawn({ status: 0, stdout: "ok" }, "Prisma"),
     "ok",
+  );
+});
+
+test("PostgreSQL clients share bounded connection and operation timeouts", () => {
+  assert.equal(migrationAudit.PG_CONNECTION_TIMEOUT_MS, 10_000);
+  assert.equal(migrationAudit.PG_OPERATION_TIMEOUT_MS, 120_000);
+  assert.equal(typeof migrationAudit.buildPgClientConfig, "function");
+  assert.deepEqual(
+    migrationAudit.buildPgClientConfig("postgresql://localhost/task4"),
+    {
+      connectionString: "postgresql://localhost/task4",
+      connectionTimeoutMillis: 10_000,
+      query_timeout: 120_000,
+      statement_timeout: 120_000,
+    },
+  );
+  assert.match(verifyMigrationHistorySource, /buildPgClientConfig\(adminUrl\.toString\(\)\)/u);
+  assert.equal(
+    (reconciliationIntegrationSource.match(/new Client\(buildPgClientConfig\(/gu) ?? []).length,
+    2,
   );
 });

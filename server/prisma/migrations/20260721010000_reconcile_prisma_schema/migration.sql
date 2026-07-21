@@ -918,14 +918,25 @@ DECLARE
   actual_access_method TEXT;
   actual_column_names TEXT[];
   actual_column_options SMALLINT[];
+  actual_opclasses TEXT[];
+  actual_opclass_defaults BOOLEAN[];
+  actual_collations OID[];
+  expected_collations OID[];
   expected_table_name TEXT;
   expected_column_names TEXT[];
   expected_column_options SMALLINT[];
+  expected_columns_sql TEXT;
+  expected_canonical_definition TEXT;
+  actual_canonical_definition TEXT;
   actual_is_unique BOOLEAN;
   actual_is_valid BOOLEAN;
   actual_is_ready BOOLEAN;
   actual_is_live BOOLEAN;
+  actual_is_immediate BOOLEAN;
+  actual_is_primary BOOLEAN;
+  actual_is_exclusion BOOLEAN;
   actual_nulls_not_distinct BOOLEAN;
+  actual_constraint_backing_count INTEGER;
   actual_key_count INTEGER;
   actual_attribute_count INTEGER;
   actual_predicate TEXT;
@@ -1033,7 +1044,10 @@ BEGIN
         catalog_index.indisvalid,
         catalog_index.indisready,
         catalog_index.indislive,
-        catalog_index.indnullsnotdistinct,
+        catalog_index.indimmediate,
+        catalog_index.indisprimary,
+        catalog_index.indisexclusion,
+        COALESCE((to_jsonb(catalog_index)->>'indnullsnotdistinct')::BOOLEAN, false),
         catalog_index.indnkeyatts,
         catalog_index.indnatts,
         pg_get_expr(catalog_index.indpred, catalog_index.indrelid),
@@ -1050,7 +1064,27 @@ BEGIN
           SELECT option_value::SMALLINT
           FROM unnest(catalog_index.indoption) WITH ORDINALITY AS index_option(option_value, position)
           ORDER BY index_option.position
-        )
+        ),
+        ARRAY(
+          SELECT operator_class.opcname
+          FROM unnest(catalog_index.indclass) WITH ORDINALITY AS index_class(operator_class_oid, position)
+          JOIN pg_opclass operator_class ON operator_class.oid = index_class.operator_class_oid
+          ORDER BY index_class.position
+        ),
+        ARRAY(
+          SELECT operator_class.opcdefault
+          FROM unnest(catalog_index.indclass) WITH ORDINALITY AS index_class(operator_class_oid, position)
+          JOIN pg_opclass operator_class ON operator_class.oid = index_class.operator_class_oid
+          ORDER BY index_class.position
+        ),
+        ARRAY(
+          SELECT collation_oid::OID
+          FROM unnest(catalog_index.indcollation) WITH ORDINALITY AS index_collation(collation_oid, position)
+          ORDER BY index_collation.position
+        ),
+        pg_get_indexdef(catalog_index.indexrelid),
+        (SELECT COUNT(*)::INTEGER FROM pg_constraint constraint_backing
+         WHERE constraint_backing.conindid = catalog_index.indexrelid)
       INTO
         actual_table_name,
         actual_access_method,
@@ -1058,13 +1092,21 @@ BEGIN
         actual_is_valid,
         actual_is_ready,
         actual_is_live,
+        actual_is_immediate,
+        actual_is_primary,
+        actual_is_exclusion,
         actual_nulls_not_distinct,
         actual_key_count,
         actual_attribute_count,
         actual_predicate,
         actual_expressions,
         actual_column_names,
-        actual_column_options
+        actual_column_options,
+        actual_opclasses,
+        actual_opclass_defaults,
+        actual_collations,
+        actual_canonical_definition,
+        actual_constraint_backing_count
       FROM pg_index catalog_index
       JOIN pg_class catalog_index_relation
         ON catalog_index_relation.oid = catalog_index.indexrelid
@@ -1091,16 +1133,48 @@ BEGIN
         'g'
       ) WITH ORDINALITY AS matched(captures, position);
 
+      SELECT
+        string_agg(
+          format('%I%s', column_name, CASE WHEN column_option = 3 THEN ' DESC' ELSE '' END),
+          ', ' ORDER BY position
+        )
+      INTO expected_columns_sql
+      FROM unnest(expected_column_names, expected_column_options)
+        WITH ORDINALITY AS expected_column(column_name, column_option, position);
+      expected_canonical_definition := format(
+        'CREATE %sINDEX %I ON public.%I USING btree (%s)',
+        CASE WHEN starts_with(expected.definition, 'CREATE UNIQUE INDEX ') THEN 'UNIQUE ' ELSE '' END,
+        expected.index_name,
+        expected_table_name,
+        expected_columns_sql
+      );
+
+      SELECT array_agg(attribute.attcollation ORDER BY expected_column.position)
+      INTO expected_collations
+      FROM unnest(expected_column_names) WITH ORDINALITY AS expected_column(column_name, position)
+      JOIN pg_attribute attribute
+        ON attribute.attrelid = to_regclass(format('public.%I', expected_table_name))
+       AND attribute.attname = expected_column.column_name
+       AND NOT attribute.attisdropped;
+
       IF actual_table_name <> expected_table_name
          OR actual_access_method <> 'btree'
+         OR actual_canonical_definition IS DISTINCT FROM expected_canonical_definition
          OR actual_is_unique <> starts_with(expected.definition, 'CREATE UNIQUE INDEX ')
+         OR NOT actual_is_immediate
+         OR actual_is_primary
+         OR actual_is_exclusion
          OR actual_nulls_not_distinct
+         OR actual_constraint_backing_count <> 0
          OR actual_key_count <> cardinality(expected_column_names)
          OR actual_attribute_count <> actual_key_count
          OR actual_predicate IS NOT NULL
          OR actual_expressions IS NOT NULL
          OR actual_column_names IS DISTINCT FROM expected_column_names
-         OR actual_column_options IS DISTINCT FROM expected_column_options THEN
+         OR actual_column_options IS DISTINCT FROM expected_column_options
+         OR false = ANY(actual_opclass_defaults)
+         OR cardinality(actual_opclasses) <> cardinality(expected_column_names)
+         OR actual_collations IS DISTINCT FROM expected_collations THEN
         RAISE EXCEPTION 'Existing index % is incompatible: expected %, found %',
           expected.index_name, expected.definition, pg_get_indexdef(existing_index_oid);
       END IF;
@@ -1363,6 +1437,22 @@ DECLARE
   actual_deferrable BOOLEAN;
   actual_deferred BOOLEAN;
   actual_validated BOOLEAN;
+  actual_enforced BOOLEAN;
+  actual_pfeqop OID[];
+  actual_ppeqop OID[];
+  actual_ffeqop OID[];
+  actual_supporting_index_oid OID;
+  supporting_index_is_valid BOOLEAN;
+  supporting_index_is_ready BOOLEAN;
+  supporting_index_is_live BOOLEAN;
+  supporting_index_is_unique BOOLEAN;
+  supporting_index_is_immediate BOOLEAN;
+  supporting_index_relation_oid OID;
+  supporting_index_keys SMALLINT[];
+  supporting_index_predicate TEXT;
+  equality_operator_is_supported BOOLEAN;
+  enforcement_trigger_count INTEGER;
+  enforcement_triggers_enabled BOOLEAN;
 BEGIN
   FOR fk IN
     SELECT * FROM (VALUES
@@ -1476,17 +1566,22 @@ BEGIN
       END;
 
       SELECT
-        contype,
-        conrelid,
-        confrelid,
-        conkey,
-        confkey,
-        confdeltype,
-        confupdtype,
-        confmatchtype,
-        condeferrable,
-        condeferred,
-        convalidated
+        constraint_catalog.contype,
+        constraint_catalog.conrelid,
+        constraint_catalog.confrelid,
+        constraint_catalog.conkey,
+        constraint_catalog.confkey,
+        constraint_catalog.confdeltype,
+        constraint_catalog.confupdtype,
+        constraint_catalog.confmatchtype,
+        constraint_catalog.condeferrable,
+        constraint_catalog.condeferred,
+        constraint_catalog.convalidated,
+        COALESCE((to_jsonb(constraint_catalog)->>'conenforced')::BOOLEAN, true),
+        constraint_catalog.conpfeqop,
+        constraint_catalog.conppeqop,
+        constraint_catalog.conffeqop,
+        constraint_catalog.conindid
       INTO
         actual_constraint_type,
         actual_source_relation_oid,
@@ -1498,9 +1593,61 @@ BEGIN
         actual_match_type,
         actual_deferrable,
         actual_deferred,
-        actual_validated
-      FROM pg_constraint
-      WHERE oid = existing_constraint_oid;
+        actual_validated,
+        actual_enforced,
+        actual_pfeqop,
+        actual_ppeqop,
+        actual_ffeqop,
+        actual_supporting_index_oid
+      FROM pg_constraint constraint_catalog
+      WHERE constraint_catalog.oid = existing_constraint_oid;
+
+      SELECT
+        supporting_index.indisvalid,
+        supporting_index.indisready,
+        supporting_index.indislive,
+        supporting_index.indisunique,
+        supporting_index.indimmediate,
+        supporting_index.indrelid,
+        ARRAY(
+          SELECT supporting_key::SMALLINT
+          FROM unnest(supporting_index.indkey) WITH ORDINALITY AS key_position(supporting_key, position)
+          ORDER BY key_position.position
+        ),
+        pg_get_expr(supporting_index.indpred, supporting_index.indrelid)
+      INTO
+        supporting_index_is_valid,
+        supporting_index_is_ready,
+        supporting_index_is_live,
+        supporting_index_is_unique,
+        supporting_index_is_immediate,
+        supporting_index_relation_oid,
+        supporting_index_keys,
+        supporting_index_predicate
+      FROM pg_index supporting_index
+      WHERE supporting_index.indexrelid = actual_supporting_index_oid;
+
+      SELECT EXISTS (
+        SELECT 1
+        FROM pg_index supporting_index
+        JOIN LATERAL unnest(supporting_index.indclass)
+          WITH ORDINALITY AS supporting_class(operator_class_oid, position)
+          ON supporting_class.position = 1
+        JOIN pg_opclass operator_class ON operator_class.oid = supporting_class.operator_class_oid
+        JOIN pg_amop equality_operator
+          ON equality_operator.amopfamily = operator_class.opcfamily
+         AND equality_operator.amopstrategy = 3
+         AND equality_operator.amopopr = actual_pfeqop[1]
+        WHERE supporting_index.indexrelid = actual_supporting_index_oid
+      ) INTO equality_operator_is_supported;
+
+      SELECT
+        COUNT(*)::INTEGER,
+        COALESCE(bool_and(enforcement_trigger.tgenabled = 'O'), false)
+      INTO enforcement_trigger_count, enforcement_triggers_enabled
+      FROM pg_trigger enforcement_trigger
+      WHERE enforcement_trigger.tgconstraint = existing_constraint_oid
+        AND enforcement_trigger.tgisinternal;
 
       IF expected_source_attnum IS NULL
          OR expected_referenced_attnum IS NULL
@@ -1514,9 +1661,35 @@ BEGIN
          OR actual_match_type <> 's'
          OR actual_deferrable
          OR actual_deferred
-         OR NOT actual_validated THEN
+         OR NOT actual_validated
+         OR NOT actual_enforced
+         OR cardinality(actual_pfeqop) <> 1
+         OR actual_pfeqop IS DISTINCT FROM actual_ppeqop
+         OR actual_pfeqop IS DISTINCT FROM actual_ffeqop
+         OR actual_supporting_index_oid = 0
+         OR NOT COALESCE(supporting_index_is_valid, false)
+         OR NOT COALESCE(supporting_index_is_ready, false)
+         OR NOT COALESCE(supporting_index_is_live, false)
+         OR NOT COALESCE(supporting_index_is_unique, false)
+         OR NOT COALESCE(supporting_index_is_immediate, false)
+         OR supporting_index_relation_oid IS DISTINCT FROM referenced_relation_oid
+         OR supporting_index_keys[1:cardinality(actual_referenced_keys)]
+              IS DISTINCT FROM actual_referenced_keys
+         OR supporting_index_predicate IS NOT NULL
+         OR NOT equality_operator_is_supported THEN
         RAISE EXCEPTION 'Existing constraint %.% is incompatible: expected %, found %',
           fk.table_name, fk.constraint_name, fk.definition, actual_definition;
+      END IF;
+
+      IF enforcement_trigger_count < 4 OR NOT enforcement_triggers_enabled THEN
+        RAISE EXCEPTION 'Existing constraint %.% is not enforced: expected enabled internal triggers, found % enabled of %',
+          fk.table_name,
+          fk.constraint_name,
+          (SELECT COUNT(*) FROM pg_trigger enforcement_trigger
+           WHERE enforcement_trigger.tgconstraint = existing_constraint_oid
+             AND enforcement_trigger.tgisinternal
+             AND enforcement_trigger.tgenabled = 'O'),
+          enforcement_trigger_count;
       END IF;
     END IF;
   END LOOP;
@@ -1528,34 +1701,85 @@ DO $$
 DECLARE
   rename RECORD;
   historical_index_oid OID;
+  target_index_oid OID;
   historical_table_name TEXT;
+  target_table_name TEXT;
   historical_definition TEXT;
+  target_definition TEXT;
   historical_is_valid BOOLEAN;
   historical_is_ready BOOLEAN;
   historical_is_live BOOLEAN;
+  target_is_valid BOOLEAN;
+  target_is_ready BOOLEAN;
+  target_is_live BOOLEAN;
+  historical_material_is_compatible BOOLEAN;
+  target_material_is_compatible BOOLEAN;
 BEGIN
   FOR rename IN
     SELECT * FROM (VALUES
-      ('place_admin_location_exceptions_release_status_idx', 'place_administrative_location_exceptions_dataset_release_id_idx', 'place_administrative_location_exceptions', 'CREATE INDEX place_admin_location_exceptions_release_status_idx ON public.place_administrative_location_exceptions USING btree (dataset_release_id, status)'),
-      ('place_administrative_location_e_place_id_dataset_release_id_key', 'place_administrative_location_exceptions_place_id_dataset_r_key', 'place_administrative_location_exceptions', 'CREATE UNIQUE INDEX place_administrative_location_e_place_id_dataset_release_id_key ON public.place_administrative_location_exceptions USING btree (place_id, dataset_release_id)'),
-      ('province_records_release_active_idx', 'province_dataset_records_dataset_release_id_is_active_idx', 'province_dataset_records', 'CREATE INDEX province_records_release_active_idx ON public.province_dataset_records USING btree (dataset_release_id, is_active)')
-    ) AS renames(old_name, new_name, table_name, definition)
+      ('place_admin_location_exceptions_release_status_idx', 'place_administrative_location_exceptions_dataset_release_id_idx', 'place_administrative_location_exceptions', 'CREATE INDEX place_admin_location_exceptions_release_status_idx ON public.place_administrative_location_exceptions USING btree (dataset_release_id, status)', 'CREATE INDEX place_administrative_location_exceptions_dataset_release_id_idx ON public.place_administrative_location_exceptions USING btree (dataset_release_id, status)', false, false),
+      ('place_administrative_location_e_place_id_dataset_release_id_key', 'place_administrative_location_exceptions_place_id_dataset_r_key', 'place_administrative_location_exceptions', 'CREATE UNIQUE INDEX place_administrative_location_e_place_id_dataset_release_id_key ON public.place_administrative_location_exceptions USING btree (place_id, dataset_release_id)', 'CREATE UNIQUE INDEX place_administrative_location_exceptions_place_id_dataset_r_key ON public.place_administrative_location_exceptions USING btree (place_id, dataset_release_id)', true, true),
+      ('province_records_release_active_idx', 'province_dataset_records_dataset_release_id_is_active_idx', 'province_dataset_records', 'CREATE INDEX province_records_release_active_idx ON public.province_dataset_records USING btree (dataset_release_id, is_active)', 'CREATE INDEX province_dataset_records_dataset_release_id_is_active_idx ON public.province_dataset_records USING btree (dataset_release_id, is_active)', false, false)
+    ) AS renames(old_name, new_name, table_name, old_definition, target_definition, old_constraint_backed, target_constraint_backing_allowed)
   LOOP
     historical_index_oid := NULL;
+    target_index_oid := NULL;
     SELECT
       index_relation.oid,
       table_relation.relname,
       pg_get_indexdef(index_relation.oid),
       catalog_index.indisvalid,
       catalog_index.indisready,
-      catalog_index.indislive
+      catalog_index.indislive,
+      COALESCE(
+        index_relation.relkind = 'i'
+        AND catalog_index.indimmediate
+        AND NOT catalog_index.indisprimary
+        AND NOT catalog_index.indisexclusion
+        AND NOT COALESCE((to_jsonb(catalog_index)->>'indnullsnotdistinct')::BOOLEAN, false)
+        AND catalog_index.indnkeyatts = catalog_index.indnatts
+        AND catalog_index.indpred IS NULL
+        AND catalog_index.indexprs IS NULL
+        AND (SELECT COUNT(*) FROM pg_constraint constraint_backing
+             WHERE constraint_backing.conindid = index_relation.oid)
+            = CASE WHEN rename.old_constraint_backed THEN 1 ELSE 0 END
+        AND NOT EXISTS (
+          SELECT 1 FROM pg_constraint constraint_backing
+          WHERE constraint_backing.conindid = index_relation.oid
+            AND (constraint_backing.contype <> 'u'
+                 OR constraint_backing.condeferrable
+                 OR constraint_backing.condeferred
+                 OR NOT constraint_backing.convalidated)
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM unnest(catalog_index.indclass) AS index_class(operator_class_oid)
+          JOIN pg_opclass operator_class ON operator_class.oid = index_class.operator_class_oid
+          WHERE NOT operator_class.opcdefault
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM unnest(catalog_index.indoption) AS index_option(option_value)
+          WHERE index_option.option_value <> 0
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM unnest(catalog_index.indkey::SMALLINT[], catalog_index.indcollation::OID[])
+            AS key_semantics(attnum, collation_oid)
+          JOIN pg_attribute attribute
+            ON attribute.attrelid = catalog_index.indrelid
+           AND attribute.attnum = key_semantics.attnum
+          WHERE key_semantics.collation_oid <> attribute.attcollation
+        ),
+        false
+      )
     INTO
       historical_index_oid,
       historical_table_name,
       historical_definition,
       historical_is_valid,
       historical_is_ready,
-      historical_is_live
+      historical_is_live,
+      historical_material_is_compatible
     FROM pg_class index_relation
     JOIN pg_namespace namespace ON namespace.oid = index_relation.relnamespace
     LEFT JOIN pg_index catalog_index ON catalog_index.indexrelid = index_relation.oid
@@ -1563,28 +1787,98 @@ BEGIN
     WHERE namespace.nspname = 'public'
       AND index_relation.relname = rename.old_name;
 
-    IF historical_index_oid IS NOT NULL THEN
-      IF historical_table_name IS DISTINCT FROM rename.table_name
-         OR historical_definition IS DISTINCT FROM rename.definition
-         OR NOT COALESCE(historical_is_valid, false)
+    SELECT
+      index_relation.oid,
+      table_relation.relname,
+      pg_get_indexdef(index_relation.oid),
+      catalog_index.indisvalid,
+      catalog_index.indisready,
+      catalog_index.indislive,
+      COALESCE(
+        index_relation.relkind = 'i'
+        AND catalog_index.indimmediate
+        AND NOT catalog_index.indisprimary
+        AND NOT catalog_index.indisexclusion
+        AND NOT COALESCE((to_jsonb(catalog_index)->>'indnullsnotdistinct')::BOOLEAN, false)
+        AND catalog_index.indnkeyatts = catalog_index.indnatts
+        AND catalog_index.indpred IS NULL
+        AND catalog_index.indexprs IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM pg_constraint constraint_backing
+          WHERE constraint_backing.conindid = index_relation.oid
+            AND (NOT rename.target_constraint_backing_allowed
+                 OR constraint_backing.contype <> 'u'
+                 OR constraint_backing.condeferrable
+                 OR constraint_backing.condeferred
+                 OR NOT constraint_backing.convalidated)
+        )
+        AND (SELECT COUNT(*) FROM pg_constraint constraint_backing
+             WHERE constraint_backing.conindid = index_relation.oid) <= 1
+        AND NOT EXISTS (
+          SELECT 1
+          FROM unnest(catalog_index.indclass) AS index_class(operator_class_oid)
+          JOIN pg_opclass operator_class ON operator_class.oid = index_class.operator_class_oid
+          WHERE NOT operator_class.opcdefault
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM unnest(catalog_index.indoption) AS index_option(option_value)
+          WHERE index_option.option_value <> 0
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM unnest(catalog_index.indkey::SMALLINT[], catalog_index.indcollation::OID[])
+            AS key_semantics(attnum, collation_oid)
+          JOIN pg_attribute attribute
+            ON attribute.attrelid = catalog_index.indrelid
+           AND attribute.attnum = key_semantics.attnum
+          WHERE key_semantics.collation_oid <> attribute.attcollation
+        ),
+        false
+      )
+    INTO
+      target_index_oid,
+      target_table_name,
+      target_definition,
+      target_is_valid,
+      target_is_ready,
+      target_is_live,
+      target_material_is_compatible
+    FROM pg_class index_relation
+    JOIN pg_namespace namespace ON namespace.oid = index_relation.relnamespace
+    LEFT JOIN pg_index catalog_index ON catalog_index.indexrelid = index_relation.oid
+    LEFT JOIN pg_class table_relation ON table_relation.oid = catalog_index.indrelid
+    WHERE namespace.nspname = 'public'
+      AND index_relation.relname = rename.new_name;
+
+    IF historical_index_oid IS NOT NULL AND target_index_oid IS NOT NULL THEN
+      RAISE EXCEPTION 'Both historical index % and target % exist', rename.old_name, rename.new_name;
+    ELSIF historical_index_oid IS NOT NULL THEN
+      IF NOT COALESCE(historical_is_valid, false)
          OR NOT COALESCE(historical_is_ready, false)
          OR NOT COALESCE(historical_is_live, false) THEN
-        RAISE EXCEPTION 'Historical index % is incompatible: expected %, found %',
-          rename.old_name, rename.definition, historical_definition;
+        RAISE EXCEPTION 'Historical index % is unhealthy', rename.old_name;
       END IF;
-
-      IF EXISTS (
-        SELECT 1
-      FROM pg_class index_relation
-      JOIN pg_namespace namespace ON namespace.oid = index_relation.relnamespace
-      WHERE namespace.nspname = 'public'
-        AND index_relation.relkind = 'i'
-        AND index_relation.relname = rename.new_name
-      ) THEN
-        RAISE EXCEPTION 'Cannot rename index % to % because both names already exist',
-          rename.old_name, rename.new_name;
+      IF historical_table_name IS DISTINCT FROM rename.table_name
+         OR historical_definition IS DISTINCT FROM rename.old_definition
+         OR NOT historical_material_is_compatible THEN
+        RAISE EXCEPTION 'Historical index % is incompatible: expected %, found %',
+          rename.old_name, rename.old_definition, historical_definition;
       END IF;
       EXECUTE format('ALTER INDEX public.%I RENAME TO %I', rename.old_name, rename.new_name);
+    ELSIF target_index_oid IS NOT NULL THEN
+      IF NOT COALESCE(target_is_valid, false)
+         OR NOT COALESCE(target_is_ready, false)
+         OR NOT COALESCE(target_is_live, false) THEN
+        RAISE EXCEPTION 'Historical target index % is unhealthy', rename.new_name;
+      END IF;
+      IF target_table_name IS DISTINCT FROM rename.table_name
+         OR target_definition IS DISTINCT FROM rename.target_definition
+         OR NOT target_material_is_compatible THEN
+        RAISE EXCEPTION 'Historical target index % is incompatible: expected %, found %',
+          rename.new_name, rename.target_definition, target_definition;
+      END IF;
+    ELSE
+      RAISE EXCEPTION 'Historical index % and target % are both missing', rename.old_name, rename.new_name;
     END IF;
   END LOOP;
 END $$;

@@ -10,6 +10,7 @@ import {
   assertSafeAuditDatabaseName,
   assertSuccessfulSpawn,
   buildDatabaseUrl,
+  buildPgClientConfig,
   buildPrismaCommands,
   quoteIdentifier,
   runMigrationAudit,
@@ -41,7 +42,7 @@ function runPrisma(args, { capture = false } = {}) {
 }
 
 const withAdminClient = async (operation) => {
-  const client = new Client({ connectionString: adminUrl.toString() });
+  const client = new Client(buildPgClientConfig(adminUrl.toString()));
   try {
     await client.connect();
     return await operation(client);

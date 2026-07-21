@@ -15,6 +15,7 @@ import {
   assertSafeAuditDatabaseName,
   assertSuccessfulSpawn,
   buildDatabaseUrl,
+  buildPgClientConfig,
   quoteIdentifier,
 } from "../src/scripts/lib/migrationAudit.js";
 
@@ -53,7 +54,7 @@ async function withAuditDatabase(label, run) {
   const auditUrl = buildDatabaseUrl(sourceUrl, databaseName);
   const adminUrl = new URL(sourceUrl);
   adminUrl.pathname = "/postgres";
-  const admin = new Client({ connectionString: adminUrl.toString() });
+  const admin = new Client(buildPgClientConfig(adminUrl.toString()));
   let adminConnected = false;
   let audit;
   let result;
@@ -64,7 +65,7 @@ async function withAuditDatabase(label, run) {
     adminConnected = true;
     await admin.query(`CREATE DATABASE ${quoteIdentifier(databaseName)}`);
     runPrisma(auditUrl, ["db", "push", `--schema=${schemaPath}`, "--skip-generate"]);
-    audit = new Client({ connectionString: auditUrl });
+    audit = new Client(buildPgClientConfig(auditUrl));
     await audit.connect();
     result = await run(audit);
   } catch (error) {
@@ -456,6 +457,199 @@ test(
       await assert.rejects(
         client.query(migrationSql),
         /Historical index province_records_release_active_idx is incompatible/iu,
+      );
+      await client.query("ROLLBACK");
+    });
+  },
+);
+
+test(
+  "accepts exact standalone indexes and rejects alternate index semantics",
+  { skip: databaseSkip },
+  async () => {
+    const scenarios = [
+      {
+        label: "exact_standalone",
+        setup: (client) => client.query(`
+          DROP INDEX "users_status_idx";
+          CREATE INDEX "users_status_idx" ON "users"("status")
+        `),
+        expected: null,
+      },
+      {
+        label: "pattern_opclass",
+        setup: (client) => client.query(`
+          DROP INDEX "users_username_key";
+          CREATE UNIQUE INDEX "users_username_key" ON "users"("username" text_pattern_ops)
+        `),
+        expected: /Existing index users_username_key is incompatible/iu,
+      },
+      {
+        label: "explicit_collation",
+        setup: (client) => client.query(`
+          DROP INDEX "users_username_key";
+          CREATE UNIQUE INDEX "users_username_key" ON "users"("username" COLLATE "C")
+        `),
+        expected: /Existing index users_username_key is incompatible/iu,
+      },
+      {
+        label: "constraint_backed",
+        setup: async (client) => {
+          await client.query(`DROP INDEX "users_username_key"`);
+          await client.query(`
+            ALTER TABLE "users" ADD CONSTRAINT "users_username_key"
+            UNIQUE ("username") DEFERRABLE INITIALLY IMMEDIATE
+          `);
+        },
+        expected: /Existing index users_username_key is incompatible/iu,
+      },
+    ];
+
+    for (const scenario of scenarios) {
+      await withAuditDatabase(scenario.label, async (client) => {
+        await scenario.setup(client);
+        if (scenario.expected) {
+          await assert.rejects(client.query(migrationSql), scenario.expected);
+          await client.query("ROLLBACK");
+        } else {
+          await client.query(migrationSql);
+        }
+      });
+    }
+  },
+);
+
+test(
+  "handles every historical index rename state and rejects semantic near misses",
+  { skip: databaseSkip },
+  async (t) => {
+    const oldName = "province_records_release_active_idx";
+    const targetName = "province_dataset_records_dataset_release_id_is_active_idx";
+    const scenarios = [
+      {
+        label: "rename_target_only",
+        setup: async () => undefined,
+        expected: null,
+      },
+      {
+        label: "rename_old_only",
+        setup: (client) => client.query(`
+          DROP INDEX "${targetName}";
+          CREATE INDEX "${oldName}"
+          ON "province_dataset_records"("dataset_release_id", "is_active")
+        `),
+        expected: null,
+        verify: async (client) => {
+          const result = await client.query(
+            `SELECT to_regclass('public.${oldName}') AS old_index,
+                    to_regclass('public.${targetName}') AS target_index`,
+          );
+          assert.equal(result.rows[0].old_index, null);
+          assert.equal(result.rows[0].target_index, targetName);
+        },
+      },
+      {
+        label: "rename_missing",
+        setup: (client) => client.query(`DROP INDEX "${targetName}"`),
+        expected: /Historical index .* and target .* are both missing/iu,
+      },
+      {
+        label: "rename_wrong_target_table",
+        setup: (client) => client.query(`
+          DROP INDEX "${targetName}";
+          CREATE INDEX "${targetName}" ON "users"("status")
+        `),
+        expected: /Historical target index .* is incompatible/iu,
+      },
+      {
+        label: "rename_alternate_opclass",
+        setup: (client) => client.query(`
+          DROP INDEX "place_administrative_location_exceptions_dataset_release_id_idx";
+          CREATE INDEX "place_administrative_location_exceptions_dataset_release_id_idx"
+          ON "place_administrative_location_exceptions"("dataset_release_id", "status" text_pattern_ops)
+        `),
+        expected: /Historical target index .* is incompatible/iu,
+      },
+      {
+        label: "rename_alternate_collation",
+        setup: (client) => client.query(`
+          DROP INDEX "place_administrative_location_exceptions_dataset_release_id_idx";
+          CREATE INDEX "place_administrative_location_exceptions_dataset_release_id_idx"
+          ON "place_administrative_location_exceptions"("dataset_release_id", "status" COLLATE "C")
+        `),
+        expected: /Historical target index .* is incompatible/iu,
+      },
+      {
+        label: "rename_both",
+        setup: (client) => client.query(`
+          CREATE INDEX "${oldName}"
+          ON "province_dataset_records"("dataset_release_id", "is_active")
+        `),
+        expected: /both historical index .* and target .* exist/iu,
+      },
+    ];
+
+    for (const scenario of scenarios) {
+      await withAuditDatabase(scenario.label, async (client) => {
+        await scenario.setup(client);
+        if (scenario.expected) {
+          await assert.rejects(client.query(migrationSql), scenario.expected);
+          await client.query("ROLLBACK");
+        } else {
+          await client.query(migrationSql);
+          await scenario.verify?.(client);
+        }
+      });
+    }
+
+    await withAuditDatabase("rename_unhealthy", async (client) => {
+      const target = "place_administrative_location_exceptions_place_id_dataset_r_key";
+      await client.query(`DROP INDEX "${target}"`);
+      await withForeignKeysDisabled(client, async () => {
+        await client.query(`INSERT INTO "categories" ("id", "name", "slug")
+          VALUES (910001, 'Historical fixture', 'historical-fixture')`);
+        await client.query(`INSERT INTO "administrative_dataset_releases"
+          ("id", "source_repo", "source_ref", "source_commit", "release_name", "manifest_checksum")
+          VALUES (910001, 'fixture/repo', 'fixture-ref', 'fixture-commit', 'fixture-release', 'fixture-checksum')`);
+        await client.query(`INSERT INTO "places"
+          ("id", "category_id", "name", "slug", "address", "latitude", "longitude", "created_by", "updated_at")
+          VALUES (910001, 910001, 'Historical fixture', 'historical-fixture', 'fixture', 10, 106, 910001, NOW())`);
+        await client.query(`
+          INSERT INTO "place_administrative_location_exceptions"
+            ("place_id", "dataset_release_id", "reason", "candidate_ward_codes", "suggested_wards", "updated_at")
+          VALUES
+            (910001, 910001, 'zero_match', '{}', '[]', NOW()),
+            (910001, 910001, 'zero_match', '{}', '[]', NOW())
+        `);
+      });
+      await assert.rejects(
+        client.query(`CREATE UNIQUE INDEX CONCURRENTLY "${target}"
+          ON "place_administrative_location_exceptions"("place_id", "dataset_release_id")`),
+        /could not create unique index|duplicate key/iu,
+      );
+      await client.query(`DELETE FROM "place_administrative_location_exceptions"
+        WHERE "id" = (SELECT MAX("id") FROM "place_administrative_location_exceptions")`);
+      const health = await client.query(`SELECT indisvalid, indisready, indislive
+        FROM pg_index WHERE indexrelid = $1::regclass`, [`public.${target}`]);
+      t.diagnostic(`historical unhealthy index flags: ${JSON.stringify(health.rows[0])}`);
+      await assert.rejects(
+        client.query(migrationSql),
+        /Historical target index .* is unhealthy/iu,
+      );
+      await client.query("ROLLBACK");
+    });
+  },
+);
+
+test(
+  "rejects foreign keys whose internal enforcement triggers are disabled",
+  { skip: databaseSkip },
+  async () => {
+    await withAuditDatabase("disabled_fk_triggers", async (client) => {
+      await client.query(`ALTER TABLE "bookings" DISABLE TRIGGER ALL`);
+      await assert.rejects(
+        client.query(migrationSql),
+        /Existing constraint .* is not enforced/iu,
       );
       await client.query("ROLLBACK");
     });

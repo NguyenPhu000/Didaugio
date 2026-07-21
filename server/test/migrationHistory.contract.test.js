@@ -2,6 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import {
+  lexPostgresTopLevel,
+  splitTopLevelStatements,
+} from "./helpers/postgresSqlLexer.js";
 
 const migrationsRoot = path.resolve("prisma/migrations");
 const reconciliationPath = path.join(
@@ -22,234 +26,25 @@ function assertTableAddsColumn(table, column) {
   );
 }
 
-function splitTopLevelStatements(sql) {
-  const statements = [];
-  let statement = "";
-  let index = 0;
-  let state = "code";
-  let blockCommentDepth = 0;
-  let dollarTag = "";
-
-  while (index < sql.length) {
-    const current = sql[index];
-    const next = sql[index + 1];
-
-    if (state === "line-comment") {
-      if (current === "\n") {
-        statement += current;
-        state = "code";
-      }
-      index += 1;
-      continue;
-    }
-    if (state === "block-comment") {
-      if (current === "/" && next === "*") {
-        blockCommentDepth += 1;
-        index += 2;
-      } else if (current === "*" && next === "/") {
-        blockCommentDepth -= 1;
-        index += 2;
-        if (blockCommentDepth === 0) state = "code";
-      } else {
-        index += 1;
-      }
-      continue;
-    }
-    if (state === "single-quote") {
-      statement += current;
-      if (current === "'" && next === "'") {
-        statement += next;
-        index += 2;
-      } else {
-        index += 1;
-        if (current === "'") state = "code";
-      }
-      continue;
-    }
-    if (state === "double-quote") {
-      statement += current;
-      if (current === '"' && next === '"') {
-        statement += next;
-        index += 2;
-      } else {
-        index += 1;
-        if (current === '"') state = "code";
-      }
-      continue;
-    }
-    if (state === "dollar-quote") {
-      if (sql.startsWith(dollarTag, index)) {
-        statement += dollarTag;
-        index += dollarTag.length;
-        state = "code";
-      } else {
-        statement += current;
-        index += 1;
-      }
-      continue;
-    }
-
-    if (current === "-" && next === "-") {
-      state = "line-comment";
-      index += 2;
-    } else if (current === "/" && next === "*") {
-      state = "block-comment";
-      blockCommentDepth = 1;
-      index += 2;
-    } else if (current === "'") {
-      statement += current;
-      state = "single-quote";
-      index += 1;
-    } else if (current === '"') {
-      statement += current;
-      state = "double-quote";
-      index += 1;
-    } else if (current === "$") {
-      const match = sql.slice(index).match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/u);
-      if (match) {
-        dollarTag = match[0];
-        statement += dollarTag;
-        state = "dollar-quote";
-        index += dollarTag.length;
-      } else {
-        statement += current;
-        index += 1;
-      }
-    } else if (current === ";") {
-      if (statement.trim()) statements.push(statement.trim());
-      statement = "";
-      index += 1;
-    } else {
-      statement += current;
-      index += 1;
-    }
-  }
-
-  if (state !== "code" && state !== "line-comment") {
-    throw new Error(`Unterminated SQL ${state}`);
-  }
-  if (statement.trim()) statements.push(statement.trim());
-  return statements;
-}
-
 function assertSafeTopLevelMigration(sql) {
   const statements = splitTopLevelStatements(String(sql));
-  const transactionControl = /^(?:BEGIN(?:\s+(?:WORK|TRANSACTION))?|START\s+TRANSACTION|COMMIT(?:\s+(?:WORK|TRANSACTION))?(?:\s+AND(?:\s+NO)?\s+CHAIN)?|END(?:\s+(?:WORK|TRANSACTION))?(?:\s+AND(?:\s+NO)?\s+CHAIN)?|ROLLBACK|ABORT|PREPARE\s+TRANSACTION)\b/iu;
-  if (statements[0] !== "BEGIN" || statements.at(-1) !== "COMMIT") {
+  const words = (statement) => statement
+    .filter((token) => token.type === "word")
+    .map((token) => token.value);
+  const first = words(statements[0] ?? []);
+  const last = words(statements.at(-1) ?? []);
+  if (first.length !== 1 || first[0] !== "BEGIN" || last.length !== 1 || last[0] !== "COMMIT") {
     throw new Error("Migration transaction must be exactly one top-level BEGIN/COMMIT pair");
   }
-  if (statements.slice(1, -1).some((statement) => transactionControl.test(statement))) {
+  const transactionStarts = new Set([
+    "BEGIN", "START", "COMMIT", "END", "ROLLBACK", "ABORT", "PREPARE",
+  ]);
+  if (statements.slice(1, -1).some((statement) => transactionStarts.has(words(statement)[0]))) {
     throw new Error("Nested or alternate top-level transaction control is forbidden");
   }
 }
 
-function executableSql(sql) {
-  let output = "";
-  let index = 0;
-  let state = "code";
-  let blockCommentDepth = 0;
-  let dollarTag = "";
-  while (index < sql.length) {
-    const current = sql[index];
-    const next = sql[index + 1];
-    if (state === "line-comment") {
-      if (current === "\n") {
-        output += "\n";
-        state = "code";
-      }
-      index += 1;
-    } else if (state === "block-comment") {
-      if (current === "/" && next === "*") {
-        blockCommentDepth += 1;
-        index += 2;
-      } else if (current === "*" && next === "/") {
-        blockCommentDepth -= 1;
-        index += 2;
-        if (blockCommentDepth === 0) state = "code";
-      } else index += 1;
-    } else if (state === "single-quote") {
-      if (current === "'" && next === "'") index += 2;
-      else {
-        index += 1;
-        if (current === "'") state = "code";
-      }
-    } else if (state === "double-quote") {
-      output += current;
-      if (current === '"' && next === '"') {
-        output += next;
-        index += 2;
-      } else {
-        index += 1;
-        if (current === '"') state = "code";
-      }
-    } else if (state === "dollar-quote") {
-      if (sql.startsWith(dollarTag, index)) {
-        index += dollarTag.length;
-        state = "code";
-      } else {
-        output += current;
-        index += 1;
-      }
-    } else if (current === "-" && next === "-") {
-      state = "line-comment";
-      index += 2;
-    } else if (current === "/" && next === "*") {
-      state = "block-comment";
-      blockCommentDepth = 1;
-      index += 2;
-    } else if (current === "'") {
-      state = "single-quote";
-      output += " ";
-      index += 1;
-    } else if (current === '"') {
-      state = "double-quote";
-      output += current;
-      index += 1;
-    } else if (current === "$") {
-      const match = sql.slice(index).match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/u);
-      if (match) {
-        dollarTag = match[0];
-        state = "dollar-quote";
-        index += dollarTag.length;
-      } else {
-        output += current;
-        index += 1;
-      }
-    } else {
-      output += current;
-      index += 1;
-    }
-  }
-  return output;
-}
-
-function splitAlterOperations(body) {
-  const operations = [];
-  let start = 0;
-  let depth = 0;
-  let quoted = false;
-  for (let index = 0; index < body.length; index += 1) {
-    const current = body[index];
-    if (current === '"') {
-      if (quoted && body[index + 1] === '"') index += 1;
-      else quoted = !quoted;
-    } else if (!quoted && current === "(") depth += 1;
-    else if (!quoted && current === ")") depth -= 1;
-    else if (!quoted && depth === 0 && current === ",") {
-      operations.push(body.slice(start, index).trim());
-      start = index + 1;
-    }
-  }
-  operations.push(body.slice(start).trim());
-  return operations;
-}
-
 function assertSafeDestructiveOperations(sql) {
-  const executable = executableSql(String(sql));
-  if (/\b(?:TRUNCATE|DELETE\s+FROM|DROP\s+(?:SCHEMA|TABLE|TYPE|COLUMN|FUNCTION|PROCEDURE|EXTENSION|INDEX))\b/iu.test(executable)) {
-    throw new Error("Unapproved destructive statement");
-  }
-
   const allowedConstraints = new Set([
     "administrative_ward_dataset_records:administrative_ward_dataset_r_dataset_release_id_province__fkey",
     "administrative_ward_dataset_records:administrative_ward_dataset_records_dataset_release_id_fkey",
@@ -269,32 +64,85 @@ function assertSafeDestructiveOperations(sql) {
     "bookings:status:DROP DEFAULT",
   ]);
 
-  let recognizedDrops = 0;
-  for (const match of executable.matchAll(/ALTER\s+TABLE\s+(?:"public"\.)?"([^"]+)"([\s\S]*?);/giu)) {
-    const table = match[1];
-    for (const operation of splitAlterOperations(match[2])) {
-      if (!/\bDROP\b/iu.test(operation)) continue;
-      let destructive = operation.match(/^DROP\s+CONSTRAINT\s+IF\s+EXISTS\s+"([^"]+)"$/iu);
-      if (destructive) {
-        if (!allowedConstraints.has(`${table}:${destructive[1]}`)) {
+  const isWord = (token, value) => token?.type === "word" && token.value === value;
+  const identifier = (token) => token?.type === "identifier" ? token.value : null;
+  const splitOperations = (tokens) => {
+    const operations = [];
+    let operation = [];
+    let depth = 0;
+    for (const token of tokens) {
+      if (token.type === "symbol" && token.value === "(") depth += 1;
+      if (token.type === "symbol" && token.value === ")") depth -= 1;
+      if (token.type === "symbol" && token.value === "," && depth === 0) {
+        operations.push(operation);
+        operation = [];
+      } else operation.push(token);
+    }
+    operations.push(operation);
+    return operations;
+  };
+
+  for (const statement of splitTopLevelStatements(String(sql))) {
+    for (let index = 0; index < statement.length; index += 1) {
+      if (isWord(statement[index], "TRUNCATE")
+          || (isWord(statement[index], "DELETE") && isWord(statement[index + 1], "FROM"))
+          || (isWord(statement[index], "DROP") && [
+            "SCHEMA", "TABLE", "TYPE", "COLUMN", "FUNCTION", "PROCEDURE", "EXTENSION", "INDEX",
+          ].some((value) => isWord(statement[index + 1], value)))) {
+        throw new Error("Unapproved destructive statement");
+      }
+    }
+
+    const dropCount = statement.filter((token) => isWord(token, "DROP")).length;
+    if (dropCount === 0) continue;
+    if (!isWord(statement[0], "ALTER") || !isWord(statement[1], "TABLE")) {
+      throw new Error("Unscoped destructive operation");
+    }
+
+    let tableIndex = 2;
+    if ((identifier(statement[tableIndex]) === "public" || statement[tableIndex]?.raw === "public")
+        && statement[tableIndex + 1]?.value === ".") tableIndex += 2;
+    const table = identifier(statement[tableIndex]);
+    if (!table) throw new Error("Unscoped destructive table operation");
+
+    let recognizedDrops = 0;
+    for (const operation of splitOperations(statement.slice(tableIndex + 1))) {
+      if (!operation.some((token) => isWord(token, "DROP"))) continue;
+      if (operation.length === 5
+          && isWord(operation[0], "DROP")
+          && isWord(operation[1], "CONSTRAINT")
+          && isWord(operation[2], "IF")
+          && isWord(operation[3], "EXISTS")
+          && identifier(operation[4])) {
+        if (!allowedConstraints.has(`${table}:${identifier(operation[4])}`)) {
           throw new Error("Unapproved destructive constraint operation");
         }
         recognizedDrops += 1;
         continue;
       }
-      destructive = operation.match(/^ALTER\s+COLUMN\s+"([^"]+)"\s+(DROP\s+(?:DEFAULT|NOT\s+NULL))$/iu);
-      if (!destructive || !allowedColumns.has(`${table}:${destructive[1]}:${destructive[2].toUpperCase()}`)) {
+      const column = identifier(operation[2]);
+      const action = operation.slice(3).map((token) => token.value).join(" ");
+      if (!isWord(operation[0], "ALTER")
+          || !isWord(operation[1], "COLUMN")
+          || !column
+          || !allowedColumns.has(`${table}:${column}:${action}`)) {
         throw new Error("Unapproved destructive column operation");
       }
       recognizedDrops += 1;
     }
-  }
-
-  const totalDrops = (executable.match(/\bDROP\b/giu) ?? []).length;
-  if (recognizedDrops !== totalDrops) {
-    throw new Error("Unscoped destructive operation");
+    if (recognizedDrops !== dropCount) throw new Error("Unscoped destructive operation");
   }
 }
+
+test("shared PostgreSQL lexer preserves boundaries while masking nested comments and literals", () => {
+  const source = `COMMIT/* outer /* nested */ outer */WORK; SELECT 'DROP/**/TABLE', "DELETE/**/FROM"; DO $x$ DROP TABLE users; $x$;`;
+  const { maskedSql, tokens } = lexPostgresTopLevel(source);
+  assert.equal(maskedSql.length, source.length);
+  assert.deepEqual(
+    tokens.filter((token) => token.type === "word").map((token) => token.value),
+    ["COMMIT", "WORK", "SELECT", "DO"],
+  );
+});
 
 test("subscription baseline exists before subscription telemetry alters it", () => {
   const names = fs.readdirSync(migrationsRoot).sort();
@@ -494,6 +342,21 @@ test("reconciliation validates same-name indexes and constraints before acceptin
     sql,
     /namespace\.nspname = 'public'[\s\S]*relation\.relname = fk\.table_name[\s\S]*c\.conname = fk\.constraint_name/iu,
   );
+  for (const catalogField of [
+    "indclass",
+    "indcollation",
+    "indimmediate",
+    "indisprimary",
+    "indisexclusion",
+    "conindid",
+    "conpfeqop",
+    "conppeqop",
+    "conffeqop",
+    "tgenabled",
+  ]) assert.ok(sql.includes(catalogField), `missing catalog semantic: ${catalogField}`);
+  assert.doesNotMatch(sql, /\w+\.indnullsnotdistinct\b/u);
+  assert.match(sql, /to_jsonb\([^)]*\)\s*->>\s*'indnullsnotdistinct'/iu);
+  assert.match(sql, /to_jsonb\([^)]*\)\s*->>\s*'conenforced'/iu);
 });
 
 test("SQL-aware transaction contract rejects every top-level alias and ignores quoted text", () => {
@@ -507,6 +370,12 @@ test("SQL-aware transaction contract rejects every top-level alias and ignores q
     reconciliationSql.replace("\nCOMMIT;", "\nROLLBACK;\nCOMMIT;"),
     reconciliationSql.replace("\nCOMMIT;", "\nABORT;\nCOMMIT;"),
     reconciliationSql.replace("\nCOMMIT;", "\nPREPARE TRANSACTION 'task4';\nCOMMIT;"),
+    reconciliationSql.replace(/\nCOMMIT;\s*$/u, "\nCOMMIT/**/WORK;"),
+    reconciliationSql.replace("\nCOMMIT;", "\nSTART/**/TRANSACTION;\nCOMMIT;"),
+    reconciliationSql.replace(
+      /\nCOMMIT;\s*$/u,
+      "\nCOMMIT/* outer /* nested */ still outer */WORK;",
+    ),
   ];
   for (const mutation of unsafeMutations) {
     assert.throws(() => assertSafeTopLevelMigration(mutation), /transaction/iu);
@@ -547,10 +416,28 @@ test("destructive contract is table/column scoped and rejects trailing bypasses"
     reconciliationSql.replace("\nCOMMIT;", '\nDROP TABLE "users";\nCOMMIT;'),
     reconciliationSql.replace("\nCOMMIT;", '\nTRUNCATE "users";\nCOMMIT;'),
     reconciliationSql.replace("\nCOMMIT;", '\nDELETE FROM "users";\nCOMMIT;'),
+    reconciliationSql.replace("\nCOMMIT;", '\nDROP/**/TABLE "users";\nCOMMIT;'),
+    reconciliationSql.replace("\nCOMMIT;", '\nDELETE/**/FROM "users";\nCOMMIT;'),
+    reconciliationSql.replace(
+      "\nCOMMIT;",
+      '\nDROP/* outer /* nested */ still outer */TABLE "users";\nCOMMIT;',
+    ),
   ];
   for (const mutation of unsafeMutations) {
     assert.throws(() => assertSafeDestructiveOperations(mutation), /destructive/iu);
   }
 
   assert.doesNotThrow(() => assertSafeDestructiveOperations(reconciliationSql));
+  const literalControls = reconciliationSql.replace(
+    "\nCOMMIT;",
+    `
+SELECT 'DROP/**/TABLE users; DELETE/**/FROM users' AS "DROP/**/TABLE";
+DO $ignored$
+BEGIN
+  RAISE NOTICE 'DROP TABLE users; DELETE FROM users;';
+END
+$ignored$;
+COMMIT;`,
+  );
+  assert.doesNotThrow(() => assertSafeDestructiveOperations(literalControls));
 });

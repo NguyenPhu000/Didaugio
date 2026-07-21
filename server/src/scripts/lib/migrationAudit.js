@@ -1,5 +1,7 @@
 export const AUDIT_DB_PREFIX = "didaugio_codex_migration_";
 export const PRISMA_SPAWN_TIMEOUT_MS = 120_000;
+export const PG_CONNECTION_TIMEOUT_MS = 10_000;
+export const PG_OPERATION_TIMEOUT_MS = 120_000;
 const SAFE_AUDIT_DB_RE = /^didaugio_codex_migration_[a-z0-9_]+$/u;
 
 export function assertSuccessfulSpawn(result, label) {
@@ -20,6 +22,15 @@ export function assertSuccessfulSpawn(result, label) {
     );
   }
   return String(result.stdout ?? "");
+}
+
+export function buildPgClientConfig(connectionString) {
+  return {
+    connectionString,
+    connectionTimeoutMillis: PG_CONNECTION_TIMEOUT_MS,
+    query_timeout: PG_OPERATION_TIMEOUT_MS,
+    statement_timeout: PG_OPERATION_TIMEOUT_MS,
+  };
 }
 
 export function assertSafeAuditDatabaseName(name) {
