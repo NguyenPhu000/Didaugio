@@ -1,5 +1,26 @@
 export const AUDIT_DB_PREFIX = "didaugio_codex_migration_";
+export const PRISMA_SPAWN_TIMEOUT_MS = 120_000;
 const SAFE_AUDIT_DB_RE = /^didaugio_codex_migration_[a-z0-9_]+$/u;
+
+export function assertSuccessfulSpawn(result, label) {
+  if (result.error?.code === "ETIMEDOUT") {
+    throw new Error(`${label} timed out after ${PRISMA_SPAWN_TIMEOUT_MS}ms`, {
+      cause: result.error,
+    });
+  }
+  if (result.error) {
+    throw new Error(`${label} failed to start: ${result.error.message}`, {
+      cause: result.error,
+    });
+  }
+  if (result.status !== 0) {
+    const detail = String(result.stderr ?? "").trim();
+    throw new Error(
+      `${label} exited with ${String(result.status)}${detail ? `: ${detail}` : ""}`,
+    );
+  }
+  return String(result.stdout ?? "");
+}
 
 export function assertSafeAuditDatabaseName(name) {
   if (!SAFE_AUDIT_DB_RE.test(String(name))) {

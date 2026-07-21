@@ -11,12 +11,17 @@ import { Client } from "pg";
 
 import {
   AUDIT_DB_PREFIX,
+  PRISMA_SPAWN_TIMEOUT_MS,
   assertSafeAuditDatabaseName,
+  assertSuccessfulSpawn,
   buildDatabaseUrl,
   quoteIdentifier,
 } from "../src/scripts/lib/migrationAudit.js";
 
 const sourceUrl = process.env.DATABASE_URL;
+const databaseSkip = sourceUrl
+  ? false
+  : "DATABASE_URL is required for reconciliation integration tests";
 const serverRoot = fileURLToPath(new URL("..", import.meta.url));
 const schemaPath = path.join(serverRoot, "prisma", "schema.prisma");
 const prismaCli = createRequire(import.meta.url).resolve("prisma/build/index.js");
@@ -35,12 +40,9 @@ function runPrisma(databaseUrl, args) {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
     shell: false,
+    timeout: PRISMA_SPAWN_TIMEOUT_MS,
   });
-  if (result.status !== 0) {
-    throw new Error(
-      `Prisma ${args.join(" ")} failed with ${result.status}: ${result.stderr}`,
-    );
-  }
+  assertSuccessfulSpawn(result, `Prisma ${args.join(" ")}`);
 }
 
 async function withAuditDatabase(label, run) {
@@ -134,9 +136,42 @@ async function insertBooking(
   );
 }
 
+async function snapshotCanonicalState(client) {
+  const [booking, categories, roles] = await Promise.all([
+    client.query(`
+      SELECT "admin_earned", "business_earned", "commission_rate"
+      FROM "bookings" WHERE "booking_code" = 'TASK4-CANONICAL'
+    `),
+    client.query(`
+      SELECT "id", "level" FROM "categories"
+      WHERE "id" BETWEEN 620001 AND 620003 ORDER BY "id"
+    `),
+    client.query(`
+      SELECT "name", "is_protected" FROM "roles"
+      WHERE "id" IN (610001, 610002) ORDER BY "id"
+    `),
+  ]);
+  return {
+    booking: booking.rows,
+    categories: categories.rows,
+    roles: roles.rows,
+  };
+}
+
+async function getConstraintSnapshot(client, table, constraint) {
+  const result = await client.query(
+    `SELECT c.oid::int AS "oid", pg_get_constraintdef(c.oid, true) AS "definition"
+     FROM pg_constraint c
+     WHERE c.conrelid = $1::regclass AND c.conname = $2`,
+    [`public.${table}`, constraint],
+  );
+  assert.equal(result.rowCount, 1, `missing ${table}.${constraint}`);
+  return result.rows[0];
+}
+
 test(
   "canonicalizes booking finance, category levels, and role protection idempotently",
-  { skip: !sourceUrl },
+  { skip: databaseSkip },
   async () => {
     await withAuditDatabase("canonical", async (client) => {
       await client.query(`
@@ -163,45 +198,41 @@ test(
       });
 
       await client.query(migrationSql);
+      const afterFirst = await snapshotCanonicalState(client);
       await client.query(migrationSql);
+      const afterSecond = await snapshotCanonicalState(client);
 
-      const booking = await client.query(`
-        SELECT "admin_earned", "business_earned", "commission_rate"
-        FROM "bookings" WHERE "booking_code" = 'TASK4-CANONICAL'
-      `);
-      assert.deepEqual(booking.rows, [{
-        admin_earned: 125,
-        business_earned: 875,
-        commission_rate: 13,
-      }]);
-
-      const categories = await client.query(`
-        SELECT "id", "level" FROM "categories"
-        WHERE "id" BETWEEN 620001 AND 620003 ORDER BY "id"
-      `);
-      assert.deepEqual(categories.rows, [
-        { id: 620001, level: 1 },
-        { id: 620002, level: 2 },
-        { id: 620003, level: 3 },
-      ]);
-
-      const roles = await client.query(`
-        SELECT "name", "is_protected" FROM "roles"
-        WHERE "id" IN (610001, 610002) ORDER BY "id"
-      `);
-      assert.deepEqual(roles.rows, [
-        { name: "system-audit", is_protected: true },
-        { name: "custom-audit", is_protected: false },
-      ]);
+      assert.deepEqual(afterSecond, afterFirst, "second application must be idempotent");
+      assert.deepEqual(afterFirst, {
+        booking: [{
+          admin_earned: 125,
+          business_earned: 875,
+          commission_rate: 13,
+        }],
+        categories: [
+          { id: 620001, level: 1 },
+          { id: 620002, level: 2 },
+          { id: 620003, level: 3 },
+        ],
+        roles: [
+          { name: "system-audit", is_protected: true },
+          { name: "custom-audit", is_protected: false },
+        ],
+      });
     });
   },
 );
 
 test(
   "rejects invalid booking sources even when target finance fields are non-null",
-  { skip: !sourceUrl },
+  { skip: databaseSkip },
   async () => {
     await withAuditDatabase("invalid_finance", async (client) => {
+      await client.query(`
+        INSERT INTO "roles" (
+          "id", "name", "display_name", "is_system", "is_protected"
+        ) VALUES (610011, 'rollback-system', 'Rollback System', true, false)
+      `);
       await insertBooking(client, {
         code: "TASK4-INVALID-FINANCE",
         finalPrice: 100,
@@ -223,13 +254,17 @@ test(
         business_earned: 0,
         commission_rate: 10,
       }]);
+      const role = await client.query(`
+        SELECT "is_system", "is_protected" FROM "roles" WHERE "id" = 610011
+      `);
+      assert.deepEqual(role.rows, [{ is_system: true, is_protected: false }]);
     });
   },
 );
 
 test(
   "rejects category cycles, orphans, and hierarchies deeper than three atomically",
-  { skip: !sourceUrl },
+  { skip: databaseSkip },
   async () => {
     const scenarios = [
       {
@@ -270,6 +305,11 @@ test(
 
     for (const scenario of scenarios) {
       await withAuditDatabase(scenario.label, async (client) => {
+        const constraintBefore = await getConstraintSnapshot(
+          client,
+          "places",
+          "places_district_id_fkey",
+        );
         await scenario.seed(client);
         await assert.rejects(client.query(migrationSql), scenario.expected);
         await client.query("ROLLBACK");
@@ -277,6 +317,12 @@ test(
           `SELECT DISTINCT "level" FROM "categories" ORDER BY "level"`,
         );
         assert.deepEqual(levels.rows, [{ level: 1 }]);
+        const constraintAfter = await getConstraintSnapshot(
+          client,
+          "places",
+          "places_district_id_fkey",
+        );
+        assert.deepEqual(constraintAfter, constraintBefore);
       });
     }
   },
@@ -284,7 +330,7 @@ test(
 
 test(
   "rejects an existing same-name index with an incompatible definition",
-  { skip: !sourceUrl },
+  { skip: databaseSkip },
   async () => {
     await withAuditDatabase("wrong_index", async (client) => {
       await client.query(`DROP INDEX "users_status_idx"`);
@@ -300,7 +346,7 @@ test(
 
 test(
   "rejects an existing same-name constraint with an incompatible definition",
-  { skip: !sourceUrl },
+  { skip: databaseSkip },
   async () => {
     await withAuditDatabase("wrong_constraint", async (client) => {
       await client.query(`ALTER TABLE "bookings" DROP CONSTRAINT "bookings_business_id_fkey"`);
@@ -313,6 +359,103 @@ test(
       await assert.rejects(
         client.query(migrationSql),
         /Existing constraint bookings\.bookings_business_id_fkey is incompatible/iu,
+      );
+      await client.query("ROLLBACK");
+    });
+  },
+);
+
+test(
+  "rejects a same-name index on a differently cased quoted column",
+  { skip: databaseSkip },
+  async () => {
+    await withAuditDatabase("quoted_index", async (client) => {
+      await client.query(`DROP INDEX "users_status_idx"`);
+      await client.query(`ALTER TABLE "users" ADD COLUMN "Status" TEXT`);
+      await client.query(`CREATE INDEX "users_status_idx" ON "users"("Status")`);
+      await assert.rejects(
+        client.query(migrationSql),
+        /Existing index users_status_idx is incompatible/iu,
+      );
+      await client.query("ROLLBACK");
+    });
+  },
+);
+
+test(
+  "rejects an expected-definition index whose PostgreSQL health flags are false",
+  { skip: databaseSkip },
+  async (t) => {
+    await withAuditDatabase("unhealthy_index", async (client) => {
+      await client.query(`DROP INDEX "users_username_key"`);
+      await withForeignKeysDisabled(client, () => client.query(`
+        INSERT INTO "users" (
+          "email", "username", "password", "role_id", "updated_at"
+        ) VALUES
+          ('unhealthy-one@example.invalid', 'duplicate-for-index', 'x', 900001, NOW()),
+          ('unhealthy-two@example.invalid', 'duplicate-for-index', 'x', 900001, NOW())
+      `));
+      await assert.rejects(
+        client.query(`CREATE UNIQUE INDEX CONCURRENTLY "users_username_key" ON "users"("username")`),
+        /could not create unique index|duplicate key/iu,
+      );
+      await client.query(`DELETE FROM "users" WHERE "email" = 'unhealthy-two@example.invalid'`);
+
+      const health = await client.query(`
+        SELECT index_state.indisvalid, index_state.indisready, index_state.indislive
+        FROM pg_index index_state
+        WHERE index_state.indexrelid = 'public.users_username_key'::regclass
+      `);
+      assert.equal(health.rowCount, 1, "failed concurrent build must leave an index");
+      assert.ok(
+        !health.rows[0].indisvalid
+          || !health.rows[0].indisready
+          || !health.rows[0].indislive,
+        "safe unhealthy-index fixture did not produce a false health flag",
+      );
+      t.diagnostic(`unhealthy index flags: ${JSON.stringify(health.rows[0])}`);
+
+      await assert.rejects(
+        client.query(migrationSql),
+        /Existing index users_username_key is unhealthy/iu,
+      );
+      await client.query("ROLLBACK");
+    });
+  },
+);
+
+test(
+  "rejects a same-name foreign key on a differently cased quoted column",
+  { skip: databaseSkip },
+  async () => {
+    await withAuditDatabase("quoted_constraint", async (client) => {
+      await client.query(`ALTER TABLE "bookings" DROP CONSTRAINT "bookings_business_id_fkey"`);
+      await client.query(`ALTER TABLE "bookings" ADD COLUMN "Business_Id" INTEGER`);
+      await client.query(`
+        ALTER TABLE "bookings"
+        ADD CONSTRAINT "bookings_business_id_fkey"
+        FOREIGN KEY ("Business_Id") REFERENCES "businesses"("id")
+        ON DELETE RESTRICT ON UPDATE CASCADE
+      `);
+      await assert.rejects(
+        client.query(migrationSql),
+        /Existing constraint bookings\.bookings_business_id_fkey is incompatible/iu,
+      );
+      await client.query("ROLLBACK");
+    });
+  },
+);
+
+test(
+  "rejects a historical rename source on the wrong table or definition",
+  { skip: databaseSkip },
+  async () => {
+    await withAuditDatabase("wrong_rename", async (client) => {
+      await client.query(`DROP INDEX "province_dataset_records_dataset_release_id_is_active_idx"`);
+      await client.query(`CREATE INDEX "province_records_release_active_idx" ON "users"("status")`);
+      await assert.rejects(
+        client.query(migrationSql),
+        /Historical index province_records_release_active_idx is incompatible/iu,
       );
       await client.query("ROLLBACK");
     });

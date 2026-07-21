@@ -5,8 +5,10 @@ import { createRequire } from "node:module";
 import { Client } from "pg";
 import {
   AUDIT_DB_PREFIX,
+  PRISMA_SPAWN_TIMEOUT_MS,
   assertOnlyAllowedRawSqlDrift,
   assertSafeAuditDatabaseName,
+  assertSuccessfulSpawn,
   buildDatabaseUrl,
   buildPrismaCommands,
   quoteIdentifier,
@@ -29,12 +31,13 @@ function runPrisma(args, { capture = false } = {}) {
   const result = spawnSync(process.execPath, [prismaCli, ...args.slice(1)], {
     cwd: process.cwd(),
     env: { ...process.env, DATABASE_URL: auditUrl },
-    encoding: capture ? "utf8" : undefined,
-    stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit",
+    encoding: "utf8",
+    stdio: ["ignore", capture ? "pipe" : "inherit", "pipe"],
     shell: false,
+    timeout: PRISMA_SPAWN_TIMEOUT_MS,
   });
-  if (result.status !== 0) throw new Error(`Prisma CLI exited with ${result.status}`);
-  return capture ? result.stdout : "";
+  const stdout = assertSuccessfulSpawn(result, `Prisma ${args.join(" ")}`);
+  return capture ? stdout : "";
 }
 
 const withAdminClient = async (operation) => {

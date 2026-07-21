@@ -914,8 +914,22 @@ DECLARE
   expected RECORD;
   existing_index_oid OID;
   existing_index_kind TEXT;
-  actual_normalized TEXT;
-  expected_normalized TEXT;
+  actual_table_name TEXT;
+  actual_access_method TEXT;
+  actual_column_names TEXT[];
+  actual_column_options SMALLINT[];
+  expected_table_name TEXT;
+  expected_column_names TEXT[];
+  expected_column_options SMALLINT[];
+  actual_is_unique BOOLEAN;
+  actual_is_valid BOOLEAN;
+  actual_is_ready BOOLEAN;
+  actual_is_live BOOLEAN;
+  actual_nulls_not_distinct BOOLEAN;
+  actual_key_count INTEGER;
+  actual_attribute_count INTEGER;
+  actual_predicate TEXT;
+  actual_expressions TEXT;
 BEGIN
   FOR expected IN
     SELECT * FROM (VALUES
@@ -1012,35 +1026,81 @@ BEGIN
           expected.index_name, existing_index_kind;
       END IF;
 
-      actual_normalized := regexp_replace(
-        replace(
-          replace(
-            replace(lower(pg_get_indexdef(existing_index_oid)), '"', ''),
-            'public.',
-            ''
-          ),
-          ' using btree ',
-          ' '
+      SELECT
+        table_relation.relname,
+        access_method.amname,
+        catalog_index.indisunique,
+        catalog_index.indisvalid,
+        catalog_index.indisready,
+        catalog_index.indislive,
+        catalog_index.indnullsnotdistinct,
+        catalog_index.indnkeyatts,
+        catalog_index.indnatts,
+        pg_get_expr(catalog_index.indpred, catalog_index.indrelid),
+        pg_get_expr(catalog_index.indexprs, catalog_index.indrelid),
+        ARRAY(
+          SELECT attribute.attname
+          FROM unnest(catalog_index.indkey) WITH ORDINALITY AS key_column(attnum, position)
+          LEFT JOIN pg_attribute attribute
+            ON attribute.attrelid = catalog_index.indrelid
+           AND attribute.attnum = key_column.attnum
+          ORDER BY key_column.position
         ),
-        '\s+',
-        '',
+        ARRAY(
+          SELECT option_value::SMALLINT
+          FROM unnest(catalog_index.indoption) WITH ORDINALITY AS index_option(option_value, position)
+          ORDER BY index_option.position
+        )
+      INTO
+        actual_table_name,
+        actual_access_method,
+        actual_is_unique,
+        actual_is_valid,
+        actual_is_ready,
+        actual_is_live,
+        actual_nulls_not_distinct,
+        actual_key_count,
+        actual_attribute_count,
+        actual_predicate,
+        actual_expressions,
+        actual_column_names,
+        actual_column_options
+      FROM pg_index catalog_index
+      JOIN pg_class catalog_index_relation
+        ON catalog_index_relation.oid = catalog_index.indexrelid
+      JOIN pg_class table_relation ON table_relation.oid = catalog_index.indrelid
+      JOIN pg_am access_method ON access_method.oid = catalog_index_relation.relam
+      WHERE catalog_index.indexrelid = existing_index_oid;
+
+      IF NOT actual_is_valid OR NOT actual_is_ready OR NOT actual_is_live THEN
+        RAISE EXCEPTION 'Existing index % is unhealthy: valid %, ready %, live %',
+          expected.index_name, actual_is_valid, actual_is_ready, actual_is_live;
+      END IF;
+
+      expected_table_name := substring(expected.definition FROM ' ON "([^"]+)"');
+      SELECT
+        array_agg(captures[1] ORDER BY matched.position),
+        array_agg(
+          CASE WHEN captures[2] = ' DESC' THEN 3 ELSE 0 END::SMALLINT
+          ORDER BY matched.position
+        )
+      INTO expected_column_names, expected_column_options
+      FROM regexp_matches(
+        substring(expected.definition FROM '\((.*)\)$'),
+        '"([^"]+)"( DESC)?',
         'g'
-      );
-      expected_normalized := regexp_replace(
-        replace(
-          replace(
-            replace(lower(expected.definition), '"', ''),
-            'public.',
-            ''
-          ),
-          ' using btree ',
-          ' '
-        ),
-        '\s+',
-        '',
-        'g'
-      );
-      IF actual_normalized <> expected_normalized THEN
+      ) WITH ORDINALITY AS matched(captures, position);
+
+      IF actual_table_name <> expected_table_name
+         OR actual_access_method <> 'btree'
+         OR actual_is_unique <> starts_with(expected.definition, 'CREATE UNIQUE INDEX ')
+         OR actual_nulls_not_distinct
+         OR actual_key_count <> cardinality(expected_column_names)
+         OR actual_attribute_count <> actual_key_count
+         OR actual_predicate IS NOT NULL
+         OR actual_expressions IS NOT NULL
+         OR actual_column_names IS DISTINCT FROM expected_column_names
+         OR actual_column_options IS DISTINCT FROM expected_column_options THEN
         RAISE EXCEPTION 'Existing index % is incompatible: expected %, found %',
           expected.index_name, expected.definition, pg_get_indexdef(existing_index_oid);
       END IF;
@@ -1283,14 +1343,26 @@ DECLARE
   fk RECORD;
   existing_constraint_oid OID;
   actual_definition TEXT;
-  actual_normalized TEXT;
-  expected_normalized TEXT;
-  actual_core TEXT;
-  expected_core TEXT;
-  actual_delete_action TEXT;
-  expected_delete_action TEXT;
-  actual_update_action TEXT;
-  expected_update_action TEXT;
+  source_relation_oid OID;
+  referenced_relation_oid OID;
+  expected_source_column TEXT;
+  expected_referenced_table TEXT;
+  expected_referenced_column TEXT;
+  expected_source_attnum SMALLINT;
+  expected_referenced_attnum SMALLINT;
+  expected_delete_action "char";
+  expected_update_action "char";
+  actual_constraint_type "char";
+  actual_source_relation_oid OID;
+  actual_referenced_relation_oid OID;
+  actual_source_keys SMALLINT[];
+  actual_referenced_keys SMALLINT[];
+  actual_delete_action "char";
+  actual_update_action "char";
+  actual_match_type "char";
+  actual_deferrable BOOLEAN;
+  actual_deferred BOOLEAN;
+  actual_validated BOOLEAN;
 BEGIN
   FOR fk IN
     SELECT * FROM (VALUES
@@ -1367,46 +1439,82 @@ BEGIN
       );
     ELSE
       actual_definition := pg_get_constraintdef(existing_constraint_oid, true);
-      actual_normalized := btrim(regexp_replace(
-        replace(replace(lower(actual_definition), '"', ''), 'public.', ''),
-        '\s+',
-        ' ',
-        'g'
-      ));
-      expected_normalized := btrim(regexp_replace(
-        replace(replace(lower(fk.definition), '"', ''), 'public.', ''),
-        '\s+',
-        ' ',
-        'g'
-      ));
-      actual_delete_action := substring(
-        actual_normalized FROM 'on delete (cascade|set null|restrict|no action|set default)'
-      );
-      expected_delete_action := substring(
-        expected_normalized FROM 'on delete (cascade|set null|restrict|no action|set default)'
-      );
-      actual_update_action := substring(
-        actual_normalized FROM 'on update (cascade|set null|restrict|no action|set default)'
-      );
-      expected_update_action := substring(
-        expected_normalized FROM 'on update (cascade|set null|restrict|no action|set default)'
-      );
-      actual_core := btrim(regexp_replace(
-        actual_normalized,
-        '\s+on (delete|update) (cascade|set null|restrict|no action|set default)',
-        '',
-        'g'
-      ));
-      expected_core := btrim(regexp_replace(
-        expected_normalized,
-        '\s+on (delete|update) (cascade|set null|restrict|no action|set default)',
-        '',
-        'g'
-      ));
+      expected_source_column := substring(fk.definition FROM 'FOREIGN KEY \("([^"]+)"\)');
+      expected_referenced_table := substring(fk.definition FROM 'REFERENCES "([^"]+)"');
+      expected_referenced_column := substring(fk.definition FROM 'REFERENCES "[^"]+"\("([^"]+)"\)');
+      source_relation_oid := to_regclass(format('public.%I', fk.table_name));
+      referenced_relation_oid := to_regclass(format('public.%I', expected_referenced_table));
 
-      IF actual_core <> expected_core
-         OR actual_delete_action IS DISTINCT FROM expected_delete_action
-         OR actual_update_action IS DISTINCT FROM expected_update_action THEN
+      SELECT attnum INTO expected_source_attnum
+      FROM pg_attribute
+      WHERE attrelid = source_relation_oid
+        AND attname = expected_source_column
+        AND NOT attisdropped;
+      SELECT attnum INTO expected_referenced_attnum
+      FROM pg_attribute
+      WHERE attrelid = referenced_relation_oid
+        AND attname = expected_referenced_column
+        AND NOT attisdropped;
+
+      expected_delete_action := CASE substring(
+        fk.definition FROM 'ON DELETE (CASCADE|SET NULL|RESTRICT|NO ACTION|SET DEFAULT)'
+      )
+        WHEN 'CASCADE' THEN 'c'
+        WHEN 'SET NULL' THEN 'n'
+        WHEN 'RESTRICT' THEN 'r'
+        WHEN 'SET DEFAULT' THEN 'd'
+        ELSE 'a'
+      END;
+      expected_update_action := CASE substring(
+        fk.definition FROM 'ON UPDATE (CASCADE|SET NULL|RESTRICT|NO ACTION|SET DEFAULT)'
+      )
+        WHEN 'CASCADE' THEN 'c'
+        WHEN 'SET NULL' THEN 'n'
+        WHEN 'RESTRICT' THEN 'r'
+        WHEN 'SET DEFAULT' THEN 'd'
+        ELSE 'a'
+      END;
+
+      SELECT
+        contype,
+        conrelid,
+        confrelid,
+        conkey,
+        confkey,
+        confdeltype,
+        confupdtype,
+        confmatchtype,
+        condeferrable,
+        condeferred,
+        convalidated
+      INTO
+        actual_constraint_type,
+        actual_source_relation_oid,
+        actual_referenced_relation_oid,
+        actual_source_keys,
+        actual_referenced_keys,
+        actual_delete_action,
+        actual_update_action,
+        actual_match_type,
+        actual_deferrable,
+        actual_deferred,
+        actual_validated
+      FROM pg_constraint
+      WHERE oid = existing_constraint_oid;
+
+      IF expected_source_attnum IS NULL
+         OR expected_referenced_attnum IS NULL
+         OR actual_constraint_type <> 'f'
+         OR actual_source_relation_oid <> source_relation_oid
+         OR actual_referenced_relation_oid <> referenced_relation_oid
+         OR actual_source_keys IS DISTINCT FROM ARRAY[expected_source_attnum]::SMALLINT[]
+         OR actual_referenced_keys IS DISTINCT FROM ARRAY[expected_referenced_attnum]::SMALLINT[]
+         OR actual_delete_action <> expected_delete_action
+         OR actual_update_action <> expected_update_action
+         OR actual_match_type <> 's'
+         OR actual_deferrable
+         OR actual_deferred
+         OR NOT actual_validated THEN
         RAISE EXCEPTION 'Existing constraint %.% is incompatible: expected %, found %',
           fk.table_name, fk.constraint_name, fk.definition, actual_definition;
       END IF;
@@ -1419,29 +1527,59 @@ END $$;
 DO $$
 DECLARE
   rename RECORD;
+  historical_index_oid OID;
+  historical_table_name TEXT;
+  historical_definition TEXT;
+  historical_is_valid BOOLEAN;
+  historical_is_ready BOOLEAN;
+  historical_is_live BOOLEAN;
 BEGIN
   FOR rename IN
     SELECT * FROM (VALUES
-      ('place_admin_location_exceptions_release_status_idx', 'place_administrative_location_exceptions_dataset_release_id_idx'),
-      ('place_administrative_location_e_place_id_dataset_release_id_key', 'place_administrative_location_exceptions_place_id_dataset_r_key'),
-      ('province_records_release_active_idx', 'province_dataset_records_dataset_release_id_is_active_idx')
-    ) AS renames(old_name, new_name)
+      ('place_admin_location_exceptions_release_status_idx', 'place_administrative_location_exceptions_dataset_release_id_idx', 'place_administrative_location_exceptions', 'CREATE INDEX place_admin_location_exceptions_release_status_idx ON public.place_administrative_location_exceptions USING btree (dataset_release_id, status)'),
+      ('place_administrative_location_e_place_id_dataset_release_id_key', 'place_administrative_location_exceptions_place_id_dataset_r_key', 'place_administrative_location_exceptions', 'CREATE UNIQUE INDEX place_administrative_location_e_place_id_dataset_release_id_key ON public.place_administrative_location_exceptions USING btree (place_id, dataset_release_id)'),
+      ('province_records_release_active_idx', 'province_dataset_records_dataset_release_id_is_active_idx', 'province_dataset_records', 'CREATE INDEX province_records_release_active_idx ON public.province_dataset_records USING btree (dataset_release_id, is_active)')
+    ) AS renames(old_name, new_name, table_name, definition)
   LOOP
-    IF EXISTS (
-      SELECT 1
+    historical_index_oid := NULL;
+    SELECT
+      index_relation.oid,
+      table_relation.relname,
+      pg_get_indexdef(index_relation.oid),
+      catalog_index.indisvalid,
+      catalog_index.indisready,
+      catalog_index.indislive
+    INTO
+      historical_index_oid,
+      historical_table_name,
+      historical_definition,
+      historical_is_valid,
+      historical_is_ready,
+      historical_is_live
+    FROM pg_class index_relation
+    JOIN pg_namespace namespace ON namespace.oid = index_relation.relnamespace
+    LEFT JOIN pg_index catalog_index ON catalog_index.indexrelid = index_relation.oid
+    LEFT JOIN pg_class table_relation ON table_relation.oid = catalog_index.indrelid
+    WHERE namespace.nspname = 'public'
+      AND index_relation.relname = rename.old_name;
+
+    IF historical_index_oid IS NOT NULL THEN
+      IF historical_table_name IS DISTINCT FROM rename.table_name
+         OR historical_definition IS DISTINCT FROM rename.definition
+         OR NOT COALESCE(historical_is_valid, false)
+         OR NOT COALESCE(historical_is_ready, false)
+         OR NOT COALESCE(historical_is_live, false) THEN
+        RAISE EXCEPTION 'Historical index % is incompatible: expected %, found %',
+          rename.old_name, rename.definition, historical_definition;
+      END IF;
+
+      IF EXISTS (
+        SELECT 1
       FROM pg_class index_relation
       JOIN pg_namespace namespace ON namespace.oid = index_relation.relnamespace
       WHERE namespace.nspname = 'public'
         AND index_relation.relkind = 'i'
-        AND index_relation.relname = rename.old_name
-    ) THEN
-      IF EXISTS (
-        SELECT 1
-        FROM pg_class index_relation
-        JOIN pg_namespace namespace ON namespace.oid = index_relation.relnamespace
-        WHERE namespace.nspname = 'public'
-          AND index_relation.relkind = 'i'
-          AND index_relation.relname = rename.new_name
+        AND index_relation.relname = rename.new_name
       ) THEN
         RAISE EXCEPTION 'Cannot rename index % to % because both names already exist',
           rename.old_name, rename.new_name;

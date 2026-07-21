@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import * as migrationAudit from "../src/scripts/lib/migrationAudit.js";
 import {
   AUDIT_DB_PREFIX,
   assertSafeAuditDatabaseName,
@@ -9,6 +11,11 @@ import {
   assertOnlyAllowedRawSqlDrift,
   runMigrationAudit,
 } from "../src/scripts/lib/migrationAudit.js";
+
+const verifyMigrationHistorySource = fs.readFileSync(
+  new URL("../src/scripts/verifyMigrationHistory.js", import.meta.url),
+  "utf8",
+);
 
 test("migration audit uses deploy and emits a reviewable drift script", () => {
   const commands = buildPrismaCommands({
@@ -125,5 +132,35 @@ test("drift guard permits only exact residual statements for preserved raw objec
   assert.throws(
     () => assertOnlyAllowedRawSqlDrift('ALTER TABLE "bookings" DROP COLUMN "resource_id";'),
     /managed schema drift/i,
+  );
+});
+
+test("Prisma child processes use the shared 120 second safety bound", () => {
+  assert.equal(migrationAudit.PRISMA_SPAWN_TIMEOUT_MS, 120_000);
+  assert.match(
+    verifyMigrationHistorySource,
+    /timeout:\s*PRISMA_SPAWN_TIMEOUT_MS/u,
+  );
+});
+
+test("spawn result guard surfaces timeouts and nonzero exits", () => {
+  assert.equal(typeof migrationAudit.assertSuccessfulSpawn, "function");
+  assert.throws(
+    () => migrationAudit.assertSuccessfulSpawn(
+      { error: Object.assign(new Error("timed out"), { code: "ETIMEDOUT" }) },
+      "Prisma db push",
+    ),
+    /Prisma db push timed out after 120000ms/iu,
+  );
+  assert.throws(
+    () => migrationAudit.assertSuccessfulSpawn(
+      { status: 1, stderr: "schema failure" },
+      "Prisma migrate deploy",
+    ),
+    /Prisma migrate deploy exited with 1: schema failure/iu,
+  );
+  assert.equal(
+    migrationAudit.assertSuccessfulSpawn({ status: 0, stdout: "ok" }, "Prisma"),
+    "ok",
   );
 });
