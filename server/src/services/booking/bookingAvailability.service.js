@@ -6,6 +6,13 @@ import {
   startOfMinuteUtc,
 } from "../../utils/bookingTimeSlot.js";
 import ServiceError from "../../utils/serviceError.js";
+import {
+  allowsCapacityOverbooking,
+  buildBlockingBookingWhere,
+  normalizeRequestedResourceId,
+  resolveBookingModel,
+  resolveOccupiedInterval,
+} from "./bookingPolicy.js";
 
 const ACTIVE_STATUSES = [BOOKING_STATUS.PENDING, BOOKING_STATUS.CONFIRMED];
 
@@ -22,7 +29,7 @@ export async function lockBookingRow(tx, bookingId) {
  * Check resource overlap for RESOURCE booking model (tables, rooms, seats).
  * Two bookings overlap if: existing.startTime < new.endTime AND existing.endTime > new.startTime.
  * @param {import("@prisma/client").Prisma.TransactionClient} tx
- * @param {{ serviceId: number, startTime: Date, endTime: Date, resourceId?: number, excludeBookingId?: number }} payload
+ * @param {{ serviceId: number, startTime: Date, endTime: Date, resourceId: number, excludeBookingId?: number }} payload
  */
 export async function checkResourceOverlap(tx, payload) {
   const { serviceId, startTime, endTime, resourceId, excludeBookingId } = payload;
@@ -31,16 +38,13 @@ export async function checkResourceOverlap(tx, payload) {
     return { ok: true, overlappingBookings: [] };
   }
 
-  const where = {
+  const where = buildBlockingBookingWhere({
     serviceId,
-    status: { in: ACTIVE_STATUSES },
-    startTime: { not: null, lt: endTime },
-    endTime: { gt: startTime },
-  };
-
-  if (excludeBookingId) {
-    where.id = { not: excludeBookingId };
-  }
+    resourceId,
+    startTime,
+    endTime,
+    excludeBookingId,
+  });
 
   const overlapping = await tx.booking.findMany({
     where,
@@ -61,10 +65,10 @@ export async function checkResourceOverlap(tx, payload) {
 
 /**
  * @param {import("@prisma/client").Prisma.TransactionClient} tx
- * @param {{ serviceId: number; bookingAt: Date; quantity: number; excludeBookingId?: number }} payload
+ * @param {{ serviceId: number; bookingAt: Date; quantity: number; resourceId?: number; excludeBookingId?: number }} payload
  */
 export async function checkAvailability(tx, payload) {
-  const { serviceId, bookingAt, quantity, excludeBookingId } = payload;
+  const { serviceId, bookingAt, quantity, resourceId: requestedResourceId, excludeBookingId } = payload;
 
   // Lock service row to serialize concurrent booking requests for the same service.
   // Prevents race condition where two transactions read the same capacity count.
@@ -76,14 +80,109 @@ export async function checkAvailability(tx, payload) {
       id: true,
       maxCapacity: true,
       businessId: true,
+      placeId: true,
       bookingModel: true,
       slotDurationMinutes: true,
+      durationMinutes: true,
       bufferMinutes: true,
       allowOverbooking: true,
     },
   });
   if (!svc) {
     return { ok: false, used: 0, capacity: 0, reason: "NO_SERVICE" };
+  }
+
+  if (resolveBookingModel(svc) === "resource") {
+    let resourceId;
+    try {
+      resourceId = normalizeRequestedResourceId(svc, requestedResourceId);
+    } catch (error) {
+      return {
+        ok: false,
+        used: 0,
+        capacity: 0,
+        reason: "RESOURCE_REQUIRED",
+      };
+    }
+
+    await tx.$executeRaw`SELECT id FROM place_resources WHERE id = ${resourceId} FOR UPDATE`;
+    const resource = await tx.placeResource.findUnique({
+      where: { id: resourceId },
+      select: {
+        id: true,
+        status: true,
+        serviceId: true,
+        placeId: true,
+        capacity: true,
+      },
+    });
+
+    if (
+      !resource ||
+      resource.status !== "active" ||
+      resource.serviceId !== svc.id ||
+      resource.placeId !== svc.placeId
+    ) {
+      return {
+        ok: false,
+        used: 0,
+        capacity: resource?.capacity ?? 0,
+        reason: "RESOURCE_INVALID",
+      };
+    }
+
+    if (Number.isInteger(resource.capacity) && resource.capacity > 0 && quantity > resource.capacity) {
+      return {
+        ok: false,
+        used: 0,
+        capacity: resource.capacity,
+        reason: "RESOURCE_INVALID",
+      };
+    }
+
+    const bookingDate = new Date(bookingAt);
+    bookingDate.setUTCHours(0, 0, 0, 0);
+    const blocked = await tx.businessBlockedDate.findFirst({
+      where: {
+        businessId: svc.businessId,
+        date: bookingDate,
+        OR: [{ serviceId: null }, { serviceId }],
+      },
+    });
+    if (blocked) {
+      return { ok: false, used: 0, capacity: 0, reason: "BLOCKED_DATE" };
+    }
+
+    const { startTime, endTime } = resolveOccupiedInterval(svc, bookingAt);
+    const overlapResult = await checkResourceOverlap(tx, {
+      serviceId,
+      startTime,
+      endTime,
+      resourceId,
+      excludeBookingId,
+    });
+
+    if (!overlapResult.ok) {
+      return {
+        ok: false,
+        used: 0,
+        capacity: resource.capacity ?? 1,
+        reason: "RESOURCE_OVERLAP",
+        resourceId,
+        startTime,
+        endTime,
+        overlappingBookings: overlapResult.overlappingBookings,
+      };
+    }
+
+    return {
+      ok: true,
+      used: 0,
+      capacity: resource.capacity ?? 1,
+      resourceId,
+      startTime,
+      endTime,
+    };
   }
 
   // Check blocked dates
@@ -100,33 +199,6 @@ export async function checkAvailability(tx, payload) {
     return { ok: false, used: 0, capacity: 0, reason: "BLOCKED_DATE" };
   }
 
-  // RESOURCE model: check overlap instead of capacity
-  if (svc.bookingModel === "resource") {
-    const startTime = new Date(bookingAt);
-    const bufferMs = (svc.bufferMinutes || 0) * 60_000;
-    const slotMs = (svc.slotDurationMinutes || svc.maxCapacity || 60) * 60_000;
-    const endTime = new Date(startTime.getTime() + bufferMs + slotMs);
-
-    const overlapResult = await checkResourceOverlap(tx, {
-      serviceId,
-      startTime,
-      endTime,
-      resourceId: svc.resourceId || undefined,
-      excludeBookingId,
-    });
-
-    if (!overlapResult.ok) {
-      return {
-        ok: false,
-        used: 0,
-        capacity: 1,
-        reason: "RESOURCE_OVERLAP",
-        overlappingBookings: overlapResult.overlappingBookings,
-      };
-    }
-    return { ok: true, used: 0, capacity: 1 };
-  }
-
   const cap = svc.maxCapacity ?? 999_999;
   const start = startOfMinuteUtc(new Date(bookingAt));
   const end = endOfMinuteUtc(start);
@@ -136,18 +208,62 @@ export async function checkAvailability(tx, payload) {
       serviceId,
       ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
       status: { in: ACTIVE_STATUSES },
+      deletedAt: null,
       bookingAt: { gte: start, lt: end },
     },
     _sum: { quantity: true },
   });
 
   const used = agg._sum.quantity || 0;
-  const effectiveCapacity = svc.allowOverbooking ? cap + 999_999 : cap;
+  const overbookingAllowed = allowsCapacityOverbooking(svc);
   return {
-    ok: used + quantity <= effectiveCapacity,
+    ok: overbookingAllowed || used + quantity <= cap,
     used,
-    capacity: effectiveCapacity,
+    capacity: cap,
+    resourceId: null,
+    startTime: null,
+    endTime: null,
+    ...(overbookingAllowed || used + quantity <= cap
+      ? {}
+      : { reason: "CAPACITY_EXCEEDED" }),
   };
+}
+
+/**
+ * Convert an availability failure into the stable API error contract.
+ * @param {{ ok: boolean; reason?: string }} availability
+ */
+export function assertAvailability(availability) {
+  if (availability.ok) return;
+
+  const failures = {
+    RESOURCE_REQUIRED: [
+      "Phải chọn tài nguyên cho dịch vụ này",
+      400,
+      ERROR_CODES.BOOKING_RESOURCE_REQUIRED,
+    ],
+    RESOURCE_INVALID: [
+      "Tài nguyên không hợp lệ cho dịch vụ hoặc địa điểm này",
+      400,
+      ERROR_CODES.BOOKING_RESOURCE_INVALID,
+    ],
+    RESOURCE_OVERLAP: [
+      "Tài nguyên đã được đặt trong khung giờ này",
+      409,
+      ERROR_CODES.BOOKING_SLOT_CONFLICT,
+    ],
+    CAPACITY_EXCEEDED: [
+      "Khung giờ đã hết chỗ",
+      409,
+      ERROR_CODES.BOOKING_CAPACITY_EXCEEDED,
+    ],
+  };
+  const [message, statusCode, errorCode] = failures[availability.reason] || [
+    "Khung giờ không còn khả dụng",
+    409,
+    ERROR_CODES.CONFLICT,
+  ];
+  throw new ServiceError(message, statusCode, errorCode);
 }
 
 /**

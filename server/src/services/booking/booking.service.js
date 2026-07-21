@@ -20,6 +20,7 @@ import {
   resolveBookingAtFromPayload,
 } from "../../utils/bookingTimeSlot.js";
 import {
+  assertAvailability,
   checkAvailability,
   lockBookingRow,
 } from "./bookingAvailability.service.js";
@@ -1032,12 +1033,6 @@ export const create = async (payload = {}, userId) => {
   const useTime = payload.useTime || toUseTimeString(bookingAt);
 
   // Tính startTime/endTime cho RESOURCE model
-  const startTime = service.bookingModel === "resource" ? bookingAt : null;
-  const endTime =
-    startTime && service.durationMinutes
-      ? new Date(bookingAt.getTime() + service.durationMinutes * 60_000)
-      : null;
-
   const guestName =
     payload.guestName || user.profile?.fullName || user.email || "Khách";
   const guestPhone = payload.guestPhone || user.profile?.phone || "0000000000";
@@ -1081,15 +1076,10 @@ export const create = async (payload = {}, userId) => {
       serviceId,
       bookingAt,
       quantity,
+      resourceId: payload.resourceId,
     });
 
-    if (!avail.ok) {
-      throw new ServiceError(
-        "Khung giờ đã đầy, vui lòng chọn thời gian khác",
-        409,
-        ERROR_CODES.CONFLICT,
-      );
-    }
+    assertAvailability(avail);
 
     if (payload.voucherId) {
       try {
@@ -1124,8 +1114,9 @@ export const create = async (payload = {}, userId) => {
         quantity,
         useDate,
         useTime,
-        startTime,
-        endTime,
+        resourceId: avail.resourceId,
+        startTime: avail.startTime,
+        endTime: avail.endTime,
         guestName,
         guestPhone,
         guestEmail,
@@ -1231,15 +1222,10 @@ export const confirm = async (bookingId, userId, businessNote = undefined) => {
         serviceId: existing.serviceId,
         bookingAt: at,
         quantity: existing.quantity,
+        resourceId: existing.resourceId,
         excludeBookingId: existing.id,
       });
-      if (!avail.ok) {
-        throw new ServiceError(
-          "Không đủ slot trong khung giờ này",
-          409,
-          ERROR_CODES.CONFLICT,
-        );
-      }
+      assertAvailability(avail);
     }
 
     const updated = await tx.booking.update({

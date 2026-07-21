@@ -17,6 +17,7 @@ import {
   BOOKING_ACTION,
 } from "./bookingActionLog.service.js";
 import {
+  assertAvailability,
   checkAvailability,
   lockBookingRow,
 } from "./bookingAvailability.service.js";
@@ -255,35 +256,23 @@ export async function rescheduleBooking(
       serviceId: existing.serviceId,
       bookingAt: newAt,
       quantity: existing.quantity,
+      resourceId: existing.resourceId,
       excludeBookingId: existing.id,
     });
-    if (!avail.ok) {
-      throw new ServiceError(
-        "Khung giờ đã đủ slot (trùng lịch)",
-        409,
-        ERROR_CODES.CONFLICT,
-      );
-    }
-
+    assertAvailability(avail);
     const useDate = toUseDateOnly(newAt);
     const useTime = toUseTimeString(newAt);
 
     // Update startTime/endTime for RESOURCE model
-    const startTime =
-      existing.service?.bookingModel === "resource" ? newAt : null;
-    const endTime =
-      startTime && existing.service?.durationMinutes
-        ? new Date(newAt.getTime() + existing.service.durationMinutes * 60_000)
-        : null;
-
     const updated = await tx.booking.update({
       where: { id: existing.id },
       data: {
         bookingAt: newAt,
         useDate,
         useTime,
-        startTime,
-        endTime,
+        resourceId: avail.resourceId,
+        startTime: avail.startTime,
+        endTime: avail.endTime,
         ...(businessNote !== undefined && { businessNote }),
       },
       include: {
@@ -387,16 +376,10 @@ export async function quickApproveBooking(bookingId, actorUserId) {
       serviceId: existing.serviceId,
       bookingAt: at,
       quantity: existing.quantity,
+      resourceId: existing.resourceId,
       excludeBookingId: existing.id,
     });
-    if (!avail.ok) {
-      throw new ServiceError(
-        "Không đủ slot trong khung giờ này",
-        409,
-        ERROR_CODES.CONFLICT,
-      );
-    }
-
+    assertAvailability(avail);
     await tx.booking.update({
       where: { id: existing.id },
       data: {
@@ -535,6 +518,7 @@ export async function autoApproveIfMatchRules(bookingId) {
         serviceId: booking.serviceId,
         bookingAt: at,
         quantity: booking.quantity,
+        resourceId: booking.resourceId,
         excludeBookingId: booking.id,
       });
 
