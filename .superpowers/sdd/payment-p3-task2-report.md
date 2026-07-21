@@ -35,3 +35,14 @@ Production/application database rollout remains blocked on reconciling its exist
 - Added live disposable-DB coverage for refund without receipt, over-refund, nonpositive amount, missing booking, incompatible table structure, weaker check constraint, wrong FK, wrong index, and duplicate non-null receipt/refund external IDs.
 - Focused GREEN after review fix: 14 pass, 1 configuration-only skip. Live tests ran with the local server dotenv credentials.
 - Full migration gate after review fix: 47/47 pass on a fresh owned audit database; cleanup completed.
+
+## Second independent review fix
+
+- RED: 4 new live test groups failed for the intended gaps: deferred/`NOT VALID` FK acceptance, invalid/unready index acceptance, conflicting deterministic legacy evidence, and succeeded totals beyond the obligation/collection.
+- Replaced textual FK acceptance with exact `pg_constraint`/`pg_attribute` validation of source and target keys, match type, update/delete actions, validation, and non-deferrable state.
+- Replaced textual index acceptance with exact `pg_index` validation of relation, ordered keys, uniqueness, key/attribute counts, btree access method, no expression/predicate, and valid/ready/live health flags.
+- Deterministic legacy receipt/refund conflicts now fail before and after `ON CONFLICT`; backfill metadata preserves the historical amount used for rerun evidence.
+- Existing and post-backfill succeeded receipt totals must not exceed the canonical obligation; succeeded refund totals must not exceed independently aggregated succeeded receipts.
+- Added explicit full historical refund coverage and live fixtures for untrusted FK/index state, deterministic evidence mismatch, and excess manual receipt/refund totals.
+- Focused GREEN: 18 pass, 1 configuration-only skip. Prisma schema validation passed.
+- Full migration gate: 47/47 pass on a fresh owned audit database; cleanup completed.

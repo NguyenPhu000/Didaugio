@@ -123,7 +123,8 @@ END $$;
 DO $$
 DECLARE
   expected RECORD;
-  actual TEXT;
+  actual RECORD;
+  expected_type "char";
 BEGIN
   FOR expected IN
     SELECT * FROM (VALUES
@@ -139,14 +140,24 @@ BEGIN
       ('refund_attempts', 'refund_attempts_status_check', '^CHECK \(\(status = ANY \(ARRAY\[''pending''::text, ''succeeded''::text, ''failed''::text\]\)\)\)$', 'ALTER TABLE "refund_attempts" ADD CONSTRAINT "refund_attempts_status_check" CHECK ("status" IN (''pending'', ''succeeded'', ''failed''))')
     ) AS values_table(table_name, constraint_name, required_pattern, add_sql)
   LOOP
-    SELECT pg_get_constraintdef(c.oid) INTO actual
+    expected_type := CASE WHEN expected.constraint_name LIKE '%_pkey' THEN 'p' ELSE 'c' END;
+    SELECT c.oid, c.contype, c.convalidated, c.condeferrable, c.condeferred,
+           pg_get_constraintdef(c.oid) AS definition,
+           CASE WHEN c.conindid = 0 THEN true ELSE COALESCE((
+             SELECT i.indisunique AND i.indisvalid AND i.indisready AND i.indislive
+             FROM pg_index i WHERE i.indexrelid = c.conindid
+           ), false) END AS supporting_index_healthy
+      INTO actual
     FROM pg_constraint c
     WHERE c.conrelid = format('public.%I', expected.table_name)::regclass
       AND c.conname = expected.constraint_name;
-    IF actual IS NULL THEN
+    IF actual.oid IS NULL THEN
       EXECUTE expected.add_sql;
-    ELSIF actual !~ expected.required_pattern THEN
-      RAISE EXCEPTION 'same-name constraint % has incompatible definition: %', expected.constraint_name, actual;
+    ELSIF actual.definition !~ expected.required_pattern
+       OR actual.contype <> expected_type
+       OR NOT actual.convalidated OR actual.condeferrable OR actual.condeferred
+       OR NOT actual.supporting_index_healthy THEN
+      RAISE EXCEPTION 'same-name constraint % has incompatible definition: %', expected.constraint_name, actual.definition;
     END IF;
   END LOOP;
 END $$;
@@ -156,26 +167,44 @@ END $$;
 DO $$
 DECLARE
   expected RECORD;
-  actual TEXT;
+  actual RECORD;
+  source_key SMALLINT;
+  target_key SMALLINT;
 BEGIN
   FOR expected IN
     SELECT * FROM (VALUES
-      ('payment_receipts', 'payment_receipts_payment_id_fkey', 'FOREIGN KEY \(payment_id\) REFERENCES payments\(id\)', 'ON DELETE CASCADE', 'ON UPDATE CASCADE', 'ALTER TABLE "payment_receipts" ADD CONSTRAINT "payment_receipts_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "payments"("id") ON DELETE CASCADE ON UPDATE CASCADE'),
-      ('payment_receipts', 'payment_receipts_actor_user_id_fkey', 'FOREIGN KEY \(actor_user_id\) REFERENCES users\(id\)', 'ON DELETE SET NULL', 'ON UPDATE CASCADE', 'ALTER TABLE "payment_receipts" ADD CONSTRAINT "payment_receipts_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE'),
-      ('refund_attempts', 'refund_attempts_payment_id_fkey', 'FOREIGN KEY \(payment_id\) REFERENCES payments\(id\)', 'ON DELETE CASCADE', 'ON UPDATE CASCADE', 'ALTER TABLE "refund_attempts" ADD CONSTRAINT "refund_attempts_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "payments"("id") ON DELETE CASCADE ON UPDATE CASCADE'),
-      ('refund_attempts', 'refund_attempts_actor_user_id_fkey', 'FOREIGN KEY \(actor_user_id\) REFERENCES users\(id\)', 'ON DELETE SET NULL', 'ON UPDATE CASCADE', 'ALTER TABLE "refund_attempts" ADD CONSTRAINT "refund_attempts_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE')
-    ) AS values_table(table_name, constraint_name, required_pattern, required_delete_action, required_update_action, add_sql)
+      ('payment_receipts', 'payment_receipts_payment_id_fkey', 'payment_id', 'payments', 'id', 'c', 'ALTER TABLE "payment_receipts" ADD CONSTRAINT "payment_receipts_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "payments"("id") ON DELETE CASCADE ON UPDATE CASCADE'),
+      ('payment_receipts', 'payment_receipts_actor_user_id_fkey', 'actor_user_id', 'users', 'id', 'n', 'ALTER TABLE "payment_receipts" ADD CONSTRAINT "payment_receipts_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE'),
+      ('refund_attempts', 'refund_attempts_payment_id_fkey', 'payment_id', 'payments', 'id', 'c', 'ALTER TABLE "refund_attempts" ADD CONSTRAINT "refund_attempts_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "payments"("id") ON DELETE CASCADE ON UPDATE CASCADE'),
+      ('refund_attempts', 'refund_attempts_actor_user_id_fkey', 'actor_user_id', 'users', 'id', 'n', 'ALTER TABLE "refund_attempts" ADD CONSTRAINT "refund_attempts_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE')
+    ) AS values_table(table_name, constraint_name, source_column, target_table, target_column, delete_action, add_sql)
   LOOP
-    SELECT pg_get_constraintdef(c.oid) INTO actual
+    SELECT attnum INTO source_key FROM pg_attribute
+    WHERE attrelid = format('public.%I', expected.table_name)::regclass
+      AND attname = expected.source_column;
+    SELECT attnum INTO target_key FROM pg_attribute
+    WHERE attrelid = format('public.%I', expected.target_table)::regclass
+      AND attname = expected.target_column;
+
+    SELECT c.oid, c.contype, c.confrelid, c.conkey::SMALLINT[] AS source_keys,
+           c.confkey::SMALLINT[] AS target_keys, c.confupdtype, c.confdeltype,
+           c.confmatchtype, c.condeferrable, c.condeferred, c.convalidated,
+           pg_get_constraintdef(c.oid) AS definition
+      INTO actual
     FROM pg_constraint c
     WHERE c.conrelid = format('public.%I', expected.table_name)::regclass
       AND c.conname = expected.constraint_name;
-    IF actual IS NULL THEN
+    IF actual.oid IS NULL THEN
       EXECUTE expected.add_sql;
-    ELSIF actual !~ expected.required_pattern
-       OR actual !~ expected.required_delete_action
-       OR actual !~ expected.required_update_action THEN
-      RAISE EXCEPTION 'same-name foreign key % has incompatible definition: %', expected.constraint_name, actual;
+    ELSIF actual.contype <> 'f'
+       OR actual.confrelid <> format('public.%I', expected.target_table)::regclass
+       OR actual.source_keys <> ARRAY[source_key]::SMALLINT[]
+       OR actual.target_keys <> ARRAY[target_key]::SMALLINT[]
+       OR actual.confupdtype <> 'c'
+       OR actual.confdeltype <> expected.delete_action
+       OR actual.confmatchtype <> 's'
+       OR actual.condeferrable OR actual.condeferred OR NOT actual.convalidated THEN
+      RAISE EXCEPTION 'same-name foreign key % has incompatible definition: %', expected.constraint_name, actual.definition;
     END IF;
   END LOOP;
 END $$;
@@ -183,27 +212,49 @@ END $$;
 DO $$
 DECLARE
   expected RECORD;
-  actual TEXT;
+  actual RECORD;
+  expected_keys SMALLINT[];
+  expected_key_count INTEGER;
 BEGIN
   FOR expected IN
     SELECT * FROM (VALUES
-      ('payment_receipts_idempotency_key_key', 'CREATE UNIQUE INDEX "payment_receipts_idempotency_key_key" ON "payment_receipts" ("idempotency_key")', '^CREATE UNIQUE INDEX payment_receipts_idempotency_key_key ON public.payment_receipts USING btree \(idempotency_key\)$'),
-      ('payment_receipts_gateway_external_transaction_id_key', 'CREATE UNIQUE INDEX "payment_receipts_gateway_external_transaction_id_key" ON "payment_receipts" ("gateway", "external_transaction_id")', '^CREATE UNIQUE INDEX payment_receipts_gateway_external_transaction_id_key ON public.payment_receipts USING btree \(gateway, external_transaction_id\)$'),
-      ('payment_receipts_payment_id_status_idx', 'CREATE INDEX "payment_receipts_payment_id_status_idx" ON "payment_receipts" ("payment_id", "status")', '^CREATE INDEX payment_receipts_payment_id_status_idx ON public.payment_receipts USING btree \(payment_id, status\)$'),
-      ('refund_attempts_idempotency_key_key', 'CREATE UNIQUE INDEX "refund_attempts_idempotency_key_key" ON "refund_attempts" ("idempotency_key")', '^CREATE UNIQUE INDEX refund_attempts_idempotency_key_key ON public.refund_attempts USING btree \(idempotency_key\)$'),
-      ('refund_attempts_gateway_external_refund_id_key', 'CREATE UNIQUE INDEX "refund_attempts_gateway_external_refund_id_key" ON "refund_attempts" ("gateway", "external_refund_id")', '^CREATE UNIQUE INDEX refund_attempts_gateway_external_refund_id_key ON public.refund_attempts USING btree \(gateway, external_refund_id\)$'),
-      ('refund_attempts_payment_id_status_idx', 'CREATE INDEX "refund_attempts_payment_id_status_idx" ON "refund_attempts" ("payment_id", "status")', '^CREATE INDEX refund_attempts_payment_id_status_idx ON public.refund_attempts USING btree \(payment_id, status\)$')
-    ) AS values_table(index_name, create_sql, required_pattern)
+      ('payment_receipts', 'payment_receipts_idempotency_key_key', true, 'idempotency_key', NULL, 'CREATE UNIQUE INDEX "payment_receipts_idempotency_key_key" ON "payment_receipts" ("idempotency_key")'),
+      ('payment_receipts', 'payment_receipts_gateway_external_transaction_id_key', true, 'gateway', 'external_transaction_id', 'CREATE UNIQUE INDEX "payment_receipts_gateway_external_transaction_id_key" ON "payment_receipts" ("gateway", "external_transaction_id")'),
+      ('payment_receipts', 'payment_receipts_payment_id_status_idx', false, 'payment_id', 'status', 'CREATE INDEX "payment_receipts_payment_id_status_idx" ON "payment_receipts" ("payment_id", "status")'),
+      ('refund_attempts', 'refund_attempts_idempotency_key_key', true, 'idempotency_key', NULL, 'CREATE UNIQUE INDEX "refund_attempts_idempotency_key_key" ON "refund_attempts" ("idempotency_key")'),
+      ('refund_attempts', 'refund_attempts_gateway_external_refund_id_key', true, 'gateway', 'external_refund_id', 'CREATE UNIQUE INDEX "refund_attempts_gateway_external_refund_id_key" ON "refund_attempts" ("gateway", "external_refund_id")'),
+      ('refund_attempts', 'refund_attempts_payment_id_status_idx', false, 'payment_id', 'status', 'CREATE INDEX "refund_attempts_payment_id_status_idx" ON "refund_attempts" ("payment_id", "status")')
+    ) AS values_table(table_name, index_name, is_unique, first_column, second_column, create_sql)
   LOOP
-    SELECT pg_get_indexdef(i.indexrelid) INTO actual
+    expected_key_count := CASE WHEN expected.second_column IS NULL THEN 1 ELSE 2 END;
+    SELECT array_agg(a.attnum ORDER BY names.ordinality)::SMALLINT[] INTO expected_keys
+    FROM unnest(ARRAY[expected.first_column, expected.second_column]) WITH ORDINALITY AS names(column_name, ordinality)
+    JOIN pg_attribute a
+      ON a.attrelid = format('public.%I', expected.table_name)::regclass
+     AND a.attname = names.column_name
+    WHERE names.column_name IS NOT NULL;
+
+    SELECT i.indexrelid, i.indrelid, i.indisunique, i.indisvalid, i.indisready,
+           i.indislive, i.indnkeyatts, i.indnatts,
+           ARRAY(SELECT unnest(i.indkey::SMALLINT[])) AS keys,
+           i.indpred, i.indexprs, am.amname, pg_get_indexdef(i.indexrelid) AS definition
+      INTO actual
     FROM pg_index i
     JOIN pg_class index_relation ON index_relation.oid = i.indexrelid
+    JOIN pg_class indexed_relation ON indexed_relation.oid = i.indrelid
+    JOIN pg_am am ON am.oid = index_relation.relam
     WHERE index_relation.relnamespace = 'public'::regnamespace
       AND index_relation.relname = expected.index_name;
-    IF actual IS NULL THEN
+    IF actual.indexrelid IS NULL THEN
       EXECUTE expected.create_sql;
-    ELSIF actual !~ expected.required_pattern THEN
-      RAISE EXCEPTION 'same-name index % has incompatible definition: %', expected.index_name, actual;
+    ELSIF actual.indrelid <> format('public.%I', expected.table_name)::regclass
+       OR actual.indisunique IS DISTINCT FROM expected.is_unique
+       OR NOT actual.indisvalid OR NOT actual.indisready OR NOT actual.indislive
+       OR actual.indnkeyatts <> expected_key_count
+       OR actual.indnatts <> expected_key_count
+       OR actual.keys <> expected_keys
+       OR actual.indpred IS NOT NULL OR actual.indexprs IS NOT NULL OR actual.amname <> 'btree' THEN
+      RAISE EXCEPTION 'same-name index % has incompatible definition: %', expected.index_name, actual.definition;
     END IF;
   END LOOP;
 END $$;
@@ -245,6 +296,36 @@ BEGIN
   END IF;
 END $$;
 
+-- A deterministic idempotency key is evidence, not permission to ignore a
+-- conflicting row. Validate any preseeded/rerun receipt before ON CONFLICT.
+DO $$
+DECLARE
+  conflict_ids TEXT;
+BEGIN
+  SELECT string_agg(p."id"::TEXT, ', ' ORDER BY p."id") INTO conflict_ids
+  FROM "payments" p
+  JOIN "bookings" b ON b."id" = p."booking_id"
+  JOIN "payment_receipts" r ON r."idempotency_key" = 'legacy_payment_' || p."id"
+  WHERE NOT (p."status" IN ('paid', 'partially_paid', 'partially_refunded', 'fully_refunded')
+             OR b."payment_status" IN ('paid', 'partially_refunded', 'fully_refunded'))
+     OR r."payment_id" <> p."id"
+     OR r."source" <> 'legacy' OR r."status" <> 'succeeded'
+     OR r."currency" <> upper(btrim(p."currency"))
+     OR r."gateway" IS DISTINCT FROM CASE lower(p."payment_method")
+       WHEN 'vnpay' THEN 'VNPAY' WHEN 'momo' THEN 'MOMO'
+       WHEN 'sepay' THEN 'SEPAY' WHEN 'sepay_qr' THEN 'SEPAY' ELSE NULL END
+     OR r."external_transaction_id" IS DISTINCT FROM p."transaction_id"
+     OR r."actor_user_id" IS NOT NULL
+     OR NOT COALESCE(r."metadata" @> '{"backfill":true}'::jsonb, false)
+     OR CASE WHEN COALESCE(r."metadata"->>'legacy_payment_amount', '') ~ '^[1-9][0-9]*$'
+             THEN (r."metadata"->>'legacy_payment_amount')::NUMERIC ELSE NULL END IS DISTINCT FROM r."amount"::NUMERIC
+     OR CASE WHEN p."amount" <> b."final_price" THEN r."amount" <> p."amount"
+             ELSE r."amount" > p."amount" END;
+  IF conflict_ids IS NOT NULL THEN
+    RAISE EXCEPTION 'conflicting deterministic legacy receipt for payment ids: %', conflict_ids;
+  END IF;
+END $$;
+
 INSERT INTO "payment_receipts" (
   "payment_id", "source", "gateway", "amount", "currency",
   "external_transaction_id", "idempotency_key", "status", "received_at", "metadata"
@@ -261,12 +342,45 @@ SELECT
   'legacy_payment_' || p."id",
   'succeeded',
   COALESCE(p."paid_at", p."updated_at", p."created_at"),
-  jsonb_build_object('backfill', true, 'legacy_payment_status', p."status")
+  jsonb_build_object(
+    'backfill', true,
+    'legacy_payment_status', p."status",
+    'legacy_payment_amount', p."amount",
+    'obligation_amount', b."final_price"
+  )
 FROM "payments" p
 JOIN "bookings" b ON b."id" = p."booking_id"
 WHERE p."status" IN ('paid', 'partially_refunded', 'fully_refunded')
    OR b."payment_status" IN ('paid', 'partially_refunded', 'fully_refunded')
 ON CONFLICT ("idempotency_key") DO NOTHING;
+
+DO $$
+DECLARE
+  conflict_ids TEXT;
+BEGIN
+  SELECT string_agg(p."id"::TEXT, ', ' ORDER BY p."id") INTO conflict_ids
+  FROM "payments" p
+  JOIN "bookings" b ON b."id" = p."booking_id"
+  JOIN "payment_receipts" r ON r."idempotency_key" = 'legacy_payment_' || p."id"
+  WHERE (p."status" IN ('paid', 'partially_paid', 'partially_refunded', 'fully_refunded')
+         OR b."payment_status" IN ('paid', 'partially_refunded', 'fully_refunded'))
+    AND (r."payment_id" <> p."id"
+      OR r."source" <> 'legacy' OR r."status" <> 'succeeded'
+      OR r."currency" <> upper(btrim(p."currency"))
+      OR r."gateway" IS DISTINCT FROM CASE lower(p."payment_method")
+        WHEN 'vnpay' THEN 'VNPAY' WHEN 'momo' THEN 'MOMO'
+        WHEN 'sepay' THEN 'SEPAY' WHEN 'sepay_qr' THEN 'SEPAY' ELSE NULL END
+      OR r."external_transaction_id" IS DISTINCT FROM p."transaction_id"
+      OR r."actor_user_id" IS NOT NULL
+      OR NOT COALESCE(r."metadata" @> '{"backfill":true}'::jsonb, false)
+      OR CASE WHEN COALESCE(r."metadata"->>'legacy_payment_amount', '') ~ '^[1-9][0-9]*$'
+              THEN (r."metadata"->>'legacy_payment_amount')::NUMERIC ELSE NULL END IS DISTINCT FROM r."amount"::NUMERIC
+      OR CASE WHEN p."amount" <> b."final_price" THEN r."amount" <> p."amount"
+              ELSE r."amount" > p."amount" END);
+  IF conflict_ids IS NOT NULL THEN
+    RAISE EXCEPTION 'conflicting deterministic legacy receipt after insert for payment ids: %', conflict_ids;
+  END IF;
+END $$;
 
 -- From this point forward amount is the booking obligation. Historical collection
 -- remains in the immutable receipt inserted above, never overwritten.
@@ -275,6 +389,41 @@ SET "amount" = b."final_price",
     "currency" = upper(btrim(p."currency"))
 FROM "bookings" b
 WHERE b."id" = p."booking_id";
+
+DO $$
+DECLARE
+  unsafe_ids TEXT;
+BEGIN
+  SELECT string_agg(excess."payment_id"::TEXT, ', ' ORDER BY excess."payment_id") INTO unsafe_ids
+  FROM (
+    SELECT r."payment_id"
+    FROM "payment_receipts" r
+    JOIN "payments" p ON p."id" = r."payment_id"
+    WHERE r."status" = 'succeeded'
+    GROUP BY r."payment_id", p."amount"
+    HAVING SUM(r."amount") > p."amount"
+  ) excess;
+  IF unsafe_ids IS NOT NULL THEN
+    RAISE EXCEPTION 'succeeded receipts exceed payment obligation for payment ids: %', unsafe_ids;
+  END IF;
+
+  SELECT string_agg(excess."payment_id"::TEXT, ', ' ORDER BY excess."payment_id") INTO unsafe_ids
+  FROM (
+    SELECT refunds."payment_id"
+    FROM (
+      SELECT "payment_id", SUM("amount") AS total FROM "refund_attempts"
+      WHERE "status" = 'succeeded' GROUP BY "payment_id"
+    ) refunds
+    LEFT JOIN (
+      SELECT "payment_id", SUM("amount") AS total FROM "payment_receipts"
+      WHERE "status" = 'succeeded' GROUP BY "payment_id"
+    ) receipts ON receipts."payment_id" = refunds."payment_id"
+    WHERE refunds.total > COALESCE(receipts.total, 0)
+  ) excess;
+  IF unsafe_ids IS NOT NULL THEN
+    RAISE EXCEPTION 'succeeded refunds exceed succeeded receipts for payment ids: %', unsafe_ids;
+  END IF;
+END $$;
 
 DO $$
 DECLARE
@@ -292,6 +441,29 @@ BEGIN
   ) refund_gap;
   IF unsafe_ids IS NOT NULL THEN
     RAISE EXCEPTION 'Historical refund exceeds preserved succeeded receipts for payment ids: %', unsafe_ids;
+  END IF;
+END $$;
+
+DO $$
+DECLARE
+  conflict_ids TEXT;
+BEGIN
+  SELECT string_agg(p."id"::TEXT, ', ' ORDER BY p."id") INTO conflict_ids
+  FROM "payments" p
+  JOIN "refund_attempts" r ON r."idempotency_key" = 'legacy_refund_' || p."id"
+  WHERE p."refund_amount" IS NULL OR p."refund_amount" <= 0
+     OR r."payment_id" <> p."id" OR r."amount" <> p."refund_amount"
+     OR r."source" <> 'legacy' OR r."status" <> 'succeeded'
+     OR r."currency" <> p."currency"
+     OR r."gateway" IS DISTINCT FROM CASE lower(p."payment_method")
+       WHEN 'vnpay' THEN 'VNPAY' WHEN 'momo' THEN 'MOMO'
+       WHEN 'sepay' THEN 'SEPAY' WHEN 'sepay_qr' THEN 'SEPAY' ELSE NULL END
+     OR r."external_refund_id" IS NOT NULL OR r."actor_user_id" IS NOT NULL
+     OR NOT COALESCE(r."metadata" @> '{"backfill":true}'::jsonb, false)
+     OR CASE WHEN COALESCE(r."metadata"->>'legacy_refund_amount', '') ~ '^[1-9][0-9]*$'
+             THEN (r."metadata"->>'legacy_refund_amount')::NUMERIC ELSE NULL END IS DISTINCT FROM r."amount"::NUMERIC;
+  IF conflict_ids IS NOT NULL THEN
+    RAISE EXCEPTION 'conflicting deterministic legacy refund for payment ids: %', conflict_ids;
   END IF;
 END $$;
 
@@ -315,6 +487,47 @@ SELECT
 FROM "payments" p
 WHERE p."refund_amount" IS NOT NULL AND p."refund_amount" > 0
 ON CONFLICT ("idempotency_key") DO NOTHING;
+
+DO $$
+DECLARE
+  conflict_ids TEXT;
+  unsafe_ids TEXT;
+BEGIN
+  SELECT string_agg(p."id"::TEXT, ', ' ORDER BY p."id") INTO conflict_ids
+  FROM "payments" p
+  JOIN "refund_attempts" r ON r."idempotency_key" = 'legacy_refund_' || p."id"
+  WHERE p."refund_amount" IS NOT NULL AND p."refund_amount" > 0
+    AND (r."payment_id" <> p."id" OR r."amount" <> p."refund_amount"
+      OR r."source" <> 'legacy' OR r."status" <> 'succeeded'
+      OR r."currency" <> p."currency"
+      OR r."gateway" IS DISTINCT FROM CASE lower(p."payment_method")
+        WHEN 'vnpay' THEN 'VNPAY' WHEN 'momo' THEN 'MOMO'
+        WHEN 'sepay' THEN 'SEPAY' WHEN 'sepay_qr' THEN 'SEPAY' ELSE NULL END
+      OR r."external_refund_id" IS NOT NULL OR r."actor_user_id" IS NOT NULL
+      OR NOT COALESCE(r."metadata" @> '{"backfill":true}'::jsonb, false)
+      OR CASE WHEN COALESCE(r."metadata"->>'legacy_refund_amount', '') ~ '^[1-9][0-9]*$'
+              THEN (r."metadata"->>'legacy_refund_amount')::NUMERIC ELSE NULL END IS DISTINCT FROM r."amount"::NUMERIC);
+  IF conflict_ids IS NOT NULL THEN
+    RAISE EXCEPTION 'conflicting deterministic legacy refund after insert for payment ids: %', conflict_ids;
+  END IF;
+
+  SELECT string_agg(excess."payment_id"::TEXT, ', ' ORDER BY excess."payment_id") INTO unsafe_ids
+  FROM (
+    SELECT refunds."payment_id"
+    FROM (
+      SELECT "payment_id", SUM("amount") AS total FROM "refund_attempts"
+      WHERE "status" = 'succeeded' GROUP BY "payment_id"
+    ) refunds
+    LEFT JOIN (
+      SELECT "payment_id", SUM("amount") AS total FROM "payment_receipts"
+      WHERE "status" = 'succeeded' GROUP BY "payment_id"
+    ) receipts ON receipts."payment_id" = refunds."payment_id"
+    WHERE refunds.total > COALESCE(receipts.total, 0)
+  ) excess;
+  IF unsafe_ids IS NOT NULL THEN
+    RAISE EXCEPTION 'succeeded refunds exceed succeeded receipts for payment ids: %', unsafe_ids;
+  END IF;
+END $$;
 
 -- Legacy payment/refund status is a compatibility projection only; receipt and
 -- refund-attempt sums are the canonical evidence used by later transitions.

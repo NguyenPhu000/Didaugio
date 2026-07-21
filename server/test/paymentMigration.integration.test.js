@@ -101,14 +101,16 @@ test(
       await client.query('INSERT INTO "users" ("id") VALUES (1)');
       await client.query(`
         INSERT INTO "bookings" ("id", "final_price", "payment_status") VALUES
-          (101, 120000, 'paid'), (102, 120000, 'paid'), (103, 120000, 'partially_refunded');
+          (101, 120000, 'paid'), (102, 120000, 'paid'), (103, 120000, 'partially_refunded'),
+          (104, 120000, 'fully_refunded');
         INSERT INTO "payments" (
           "id", "booking_id", "user_id", "amount", "currency", "payment_method",
           "transaction_id", "transaction_ref", "idempotency_key", "status", "refund_amount"
         ) VALUES
           (201, 101, 1, 120000, 'vnd', 'VNPAY', 'gateway-201', 'ref-201', 'payment-201', 'paid', NULL),
           (202, 102, 1, 50000, 'VND', 'manual', NULL, 'ref-202', 'payment-202', 'paid', NULL),
-          (203, 103, 1, 120000, 'VND', 'MOMO', 'gateway-203', 'ref-203', 'payment-203', 'partially_refunded', 30000);
+          (203, 103, 1, 120000, 'VND', 'MOMO', 'gateway-203', 'ref-203', 'payment-203', 'partially_refunded', 30000),
+          (204, 104, 1, 120000, 'VND', 'VNPAY', 'gateway-204', 'ref-204', 'payment-204', 'fully_refunded', 120000);
       `);
 
       await client.query(migrationSql);
@@ -121,6 +123,7 @@ test(
         { id: 201, amount: 120000, currency: "VND", status: "paid" },
         { id: 202, amount: 120000, currency: "VND", status: "partially_paid" },
         { id: 203, amount: 120000, currency: "VND", status: "partially_refunded" },
+        { id: 204, amount: 120000, currency: "VND", status: "fully_refunded" },
       ]);
       const receipts = await client.query(`
         SELECT "payment_id", "amount", "source", "status" FROM "payment_receipts" ORDER BY "payment_id"
@@ -129,12 +132,14 @@ test(
         { payment_id: 201, amount: 120000, source: "legacy", status: "succeeded" },
         { payment_id: 202, amount: 50000, source: "legacy", status: "succeeded" },
         { payment_id: 203, amount: 120000, source: "legacy", status: "succeeded" },
+        { payment_id: 204, amount: 120000, source: "legacy", status: "succeeded" },
       ]);
       const refunds = await client.query(`
         SELECT "payment_id", "amount", "source", "status" FROM "refund_attempts" ORDER BY "payment_id"
       `);
       assert.deepEqual(refunds.rows, [
         { payment_id: 203, amount: 30000, source: "legacy", status: "succeeded" },
+        { payment_id: 204, amount: 120000, source: "legacy", status: "succeeded" },
       ]);
     });
   },
@@ -244,6 +249,91 @@ test("rejects same-name wrong foreign key and index definitions", { skip: !sourc
     await client.query('DROP INDEX "payment_receipts_payment_id_status_idx"');
     await client.query('CREATE INDEX "payment_receipts_payment_id_status_idx" ON "payment_receipts" ("status", "payment_id")');
     await assert.rejects(client.query(migrationSql), /same-name index .* incompatible definition/iu);
+    await client.query("ROLLBACK");
+  });
+});
+
+test("rejects a correct-looking FK that is deferred and not validated", { skip: !sourceUrl }, async () => {
+  await withAuditDatabase("payment_untrusted_fk", async (client) => {
+    await createLegacyPaymentTables(client);
+    await client.query(migrationSql);
+    await client.query('ALTER TABLE "payment_receipts" DROP CONSTRAINT "payment_receipts_payment_id_fkey"');
+    await client.query(`ALTER TABLE "payment_receipts"
+      ADD CONSTRAINT "payment_receipts_payment_id_fkey"
+      FOREIGN KEY ("payment_id") REFERENCES "payments"("id")
+      ON DELETE CASCADE ON UPDATE CASCADE DEFERRABLE INITIALLY DEFERRED NOT VALID`);
+    await assert.rejects(client.query(migrationSql), /same-name foreign key .* incompatible definition/iu);
+    await client.query("ROLLBACK");
+  });
+});
+
+test("rejects an invalid or unready exact-name index", { skip: !sourceUrl }, async () => {
+  await withAuditDatabase("payment_unhealthy_index", async (client) => {
+    await createLegacyPaymentTables(client);
+    await client.query(migrationSql);
+    await client.query(`UPDATE pg_index SET indisvalid = false, indisready = false
+      WHERE indexrelid = 'payment_receipts_payment_id_status_idx'::regclass`);
+    await assert.rejects(client.query(migrationSql), /same-name index .* incompatible definition/iu);
+    await client.query("ROLLBACK");
+  });
+});
+
+test("rejects conflicting deterministic legacy receipt and refund evidence", { skip: !sourceUrl }, async () => {
+  await withAuditDatabase("payment_conflicting_legacy", async (client) => {
+    await createLegacyPaymentTables(client);
+    await client.query(migrationSql);
+    await client.query('INSERT INTO "users" ("id") VALUES (1)');
+    await client.query(`INSERT INTO "bookings" ("id", "final_price", "payment_status")
+      VALUES (101, 100, 'partially_refunded')`);
+    await client.query(`INSERT INTO "payments" (
+      "id", "booking_id", "user_id", "amount", "currency", "payment_method",
+      "transaction_id", "transaction_ref", "idempotency_key", "status", "refund_amount"
+    ) VALUES (201, 101, 1, 100, 'VND', 'VNPAY', 'gateway-201', 'ref-201', 'payment-201', 'partially_refunded', 20)`);
+    await client.query(`INSERT INTO "payment_receipts" (
+      "payment_id", "source", "gateway", "amount", "currency", "external_transaction_id",
+      "idempotency_key", "status", "metadata"
+    ) VALUES (201, 'legacy', 'VNPAY', 99, 'VND', 'gateway-201', 'legacy_payment_201', 'succeeded', '{"backfill":true}')`);
+    await client.query(`INSERT INTO "refund_attempts" (
+      "payment_id", "source", "gateway", "amount", "currency", "idempotency_key", "status", "metadata"
+    ) VALUES (201, 'legacy', 'VNPAY', 19, 'VND', 'legacy_refund_201', 'succeeded', '{"backfill":true}')`);
+    await assert.rejects(client.query(migrationSql), /conflicting deterministic legacy (?:receipt|refund)/iu);
+    await client.query("ROLLBACK");
+  });
+});
+
+test("rejects existing succeeded totals beyond obligation or collection", { skip: !sourceUrl }, async () => {
+  await withAuditDatabase("payment_excess_receipts", async (client) => {
+    await createLegacyPaymentTables(client);
+    await client.query(migrationSql);
+    await client.query('INSERT INTO "users" ("id") VALUES (1)');
+    await client.query('INSERT INTO "bookings" ("id", "final_price") VALUES (101, 100)');
+    await client.query(`INSERT INTO "payments" (
+      "id", "booking_id", "user_id", "amount", "currency", "payment_method",
+      "transaction_ref", "idempotency_key", "status"
+    ) VALUES (201, 101, 1, 100, 'VND', 'manual', 'ref-201', 'payment-201', 'unpaid')`);
+    await client.query(`INSERT INTO "payment_receipts" (
+      "payment_id", "source", "amount", "currency", "idempotency_key", "status"
+    ) VALUES (201, 'manual', 60, 'VND', 'receipt-a', 'succeeded'),
+             (201, 'manual', 50, 'VND', 'receipt-b', 'succeeded')`);
+    await assert.rejects(client.query(migrationSql), /succeeded receipts exceed payment obligation/iu);
+    await client.query("ROLLBACK");
+  });
+  await withAuditDatabase("payment_excess_refunds", async (client) => {
+    await createLegacyPaymentTables(client);
+    await client.query(migrationSql);
+    await client.query('INSERT INTO "users" ("id") VALUES (1)');
+    await client.query('INSERT INTO "bookings" ("id", "final_price") VALUES (101, 100)');
+    await client.query(`INSERT INTO "payments" (
+      "id", "booking_id", "user_id", "amount", "currency", "payment_method",
+      "transaction_ref", "idempotency_key", "status"
+    ) VALUES (201, 101, 1, 100, 'VND', 'manual', 'ref-201', 'payment-201', 'unpaid')`);
+    await client.query(`INSERT INTO "payment_receipts" (
+      "payment_id", "source", "amount", "currency", "idempotency_key", "status"
+    ) VALUES (201, 'manual', 50, 'VND', 'receipt-a', 'succeeded')`);
+    await client.query(`INSERT INTO "refund_attempts" (
+      "payment_id", "source", "amount", "currency", "idempotency_key", "status"
+    ) VALUES (201, 'manual', 60, 'VND', 'refund-a', 'succeeded')`);
+    await assert.rejects(client.query(migrationSql), /succeeded refunds exceed succeeded receipts/iu);
     await client.query("ROLLBACK");
   });
 });
