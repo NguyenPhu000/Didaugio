@@ -11,17 +11,19 @@
 
 1. `node --test test/paymentTransition.test.js` initially failed because `paymentTransition.service.js` was absent.
 2. `node --test test/manualPayment.integration.test.js` initially failed because `markPaidSchema` accepted missing collection fields.
-3. GREEN: focused callback, obligation, manual, transition, and owned-DB concurrency suite passed **27/27**.
+3. GREEN: focused callback, obligation, manual, transition, and owned-DB concurrency suite passed **28/28**.
 
 ## Live owned-database evidence
 
 `paymentTransition.test.js` creates a fresh audit-named database, deploys migrations there, runs two simultaneous final-receipt transactions, verifies one paid transition/one rejection, two receipts total including the partial receipt, two ledger entries only, immutable obligation, and paid booking status. The audit database is dropped in `finally`; it never points the Prisma client at the application database.
 
+`manualPayment.integration.test.js` independently creates another owned audit database and calls the real `markPaid` service for a partial receipt, final receipt, and replay. It proves the stored obligation remains `100000`, only two receipts exist, and the ledger is written exactly once.
+
 ## Commands
 
 ```text
 node --test test/paymentCallbackObligation.test.js test/vnpayCallbackNormalization.test.js test/paymentCallbackHandler.test.js test/paymentTransition.test.js test/manualPayment.integration.test.js
-# 27 pass, 0 fail
+# 28 pass, 0 fail
 npm.cmd exec prisma validate -- --schema=prisma/schema.prisma
 # valid
 node --check src/services/payment/paymentTransition.service.js
