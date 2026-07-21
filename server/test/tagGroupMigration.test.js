@@ -1,79 +1,93 @@
+import "dotenv/config";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { Client } from "pg";
 
-const schemaUrl = new URL("../prisma/schema.prisma", import.meta.url);
-const migrationUrl = new URL(
-  "../prisma/migrations/20260721153000_add_tag_groups/migration.sql",
-  import.meta.url,
+import {
+  AUDIT_DB_PREFIX,
+  buildDatabaseUrl,
+  quoteIdentifier,
+} from "../src/scripts/lib/migrationAudit.js";
+
+const migrationSql = await readFile(
+  new URL("../prisma/migrations/20260721153000_add_tag_groups/migration.sql", import.meta.url),
+  "utf8",
 );
+const sourceUrl = process.env.DATABASE_URL;
 
-async function readOptional(url) {
+function createAuditDatabaseName() {
+  return `${AUDIT_DB_PREFIX}tag_groups_${crypto.randomBytes(6).toString("hex")}`;
+}
+
+async function withAuditDatabase(run) {
+  const databaseName = createAuditDatabaseName();
+  const auditUrl = buildDatabaseUrl(sourceUrl, databaseName);
+  const adminUrl = new URL(sourceUrl);
+  adminUrl.pathname = "/postgres";
+  const admin = new Client({ connectionString: adminUrl.toString() });
+
+  await admin.connect();
   try {
-    return await readFile(url, "utf8");
-  } catch (error) {
-    if (error.code === "ENOENT") return "";
-    throw error;
+    await admin.query(`CREATE DATABASE ${quoteIdentifier(databaseName)}`);
+    const audit = new Client({ connectionString: auditUrl });
+    await audit.connect();
+    try {
+      await audit.query('CREATE TABLE "place_tags" ("id" SERIAL PRIMARY KEY, "name" TEXT NOT NULL)');
+      await audit.query("INSERT INTO \"place_tags\" (\"name\") VALUES ('legacy-one'), ('legacy-two')");
+      return await run(audit);
+    } finally {
+      await audit.end().catch(() => undefined);
+    }
+  } finally {
+    await admin
+      .query(`DROP DATABASE IF EXISTS ${quoteIdentifier(databaseName)} WITH (FORCE)`)
+      .catch(() => undefined);
+    await admin.end().catch(() => undefined);
   }
 }
 
-function createMigrationAuditFixture(schema, sql) {
-  const hasTagGroupRelation = /model TagGroup\s*\{[\s\S]*?tags\s+PlaceTag\[\]/u.test(schema)
-    && /model PlaceTag\s*\{[\s\S]*?tagGroupId\s+Int\?\s+@map\("tag_group_id"\)[\s\S]*?tagGroup\s+TagGroup\?\s+@relation\(fields:\s*\[tagGroupId\],\s*references:\s*\[id\],\s*onDelete:\s*Restrict\)/u.test(schema);
-  const createsOneGeneralGroup = /INSERT INTO "tag_groups"[\s\S]*?'general'[\s\S]*?'Chung'[\s\S]*?'General'[\s\S]*?ON CONFLICT \("slug"\) DO NOTHING/iu.test(sql);
-  const backfillsNullGroups = /UPDATE "place_tags"[\s\S]*?SET "tag_group_id"\s*=\s*\(\s*SELECT "id"\s*FROM "tag_groups"\s*WHERE "slug"\s*=\s*'general'\s*\)[\s\S]*?WHERE "tag_group_id" IS NULL/iu.test(sql);
-  const migrationApplied = hasTagGroupRelation && createsOneGeneralGroup && backfillsNullGroups;
+test(
+  "backfills every legacy tag to the unique general group and remains idempotent",
+  { skip: !sourceUrl },
+  async () => {
+    await withAuditDatabase(async (client) => {
+      await client.query(migrationSql);
+      await client.query(migrationSql);
 
-  return {
-    tagGroup: {
-      async findMany({ where: { slug } }) {
-        return migrationApplied && slug === "general"
-          ? [{ id: 1, slug: "general", nameVi: "Chung", nameEn: "General" }]
-          : [];
-      },
-    },
-    placeTag: {
-      async count({ where: { tagGroupId } }) {
-        return migrationApplied && tagGroupId === null ? 0 : 2;
-      },
-    },
-  };
-}
+      const groups = await client.query(
+        'SELECT "id", "slug", "name_vi", "name_en" FROM "tag_groups" WHERE "slug" = \'general\'',
+      );
+      const tags = await client.query(
+        'SELECT COUNT(*)::int AS "orphanedTagCount" FROM "place_tags" WHERE "tag_group_id" IS NULL',
+      );
 
-export async function auditTagGroupBackfill(prisma) {
-  const [generalGroups, orphanedTagCount] = await Promise.all([
-    prisma.tagGroup.findMany({ where: { slug: "general" } }),
-    prisma.placeTag.count({ where: { tagGroupId: null } }),
-  ]);
+      assert.deepEqual(groups.rows, [{ id: 1, slug: "general", name_vi: "Chung", name_en: "General" }]);
+      assert.equal(tags.rows[0].orphanedTagCount, 0);
+    });
+  },
+);
 
-  return {
-    generalGroup: generalGroups.length === 1 ? generalGroups[0] : null,
-    generalGroupCount: generalGroups.length,
-    orphanedTagCount,
-  };
-}
+test(
+  "aborts and rolls back when backfill leaves a legacy tag without a group",
+  { skip: !sourceUrl },
+  async () => {
+    const brokenBackfillSql = migrationSql.replace(
+      `WHERE "slug" = 'general'`,
+      `WHERE "slug" = 'missing'`,
+    );
+    assert.notEqual(brokenBackfillSql, migrationSql);
 
-test("backfills every legacy tag to the unique general group", async () => {
-  const [schema, sql] = await Promise.all([readOptional(schemaUrl), readOptional(migrationUrl)]);
-  const prisma = createMigrationAuditFixture(schema, sql);
+    await withAuditDatabase(async (client) => {
+      await assert.rejects(
+        client.query(brokenBackfillSql),
+        /tag group backfill left orphaned place tags/i,
+      );
+      await client.query("ROLLBACK");
 
-  const audit = await auditTagGroupBackfill(prisma);
-
-  assert.equal(audit.orphanedTagCount, 0);
-  assert.equal(audit.generalGroup?.slug, "general");
-  assert.equal(audit.generalGroupCount, 1);
-});
-
-test("rerunning the migration audit leaves one general group and no orphaned tags", async () => {
-  const [schema, sql] = await Promise.all([readOptional(schemaUrl), readOptional(migrationUrl)]);
-  const prisma = createMigrationAuditFixture(schema, sql);
-
-  const [firstAudit, secondAudit] = await Promise.all([
-    auditTagGroupBackfill(prisma),
-    auditTagGroupBackfill(prisma),
-  ]);
-
-  assert.deepEqual(secondAudit, firstAudit);
-  assert.equal(secondAudit.generalGroupCount, 1);
-  assert.equal(secondAudit.orphanedTagCount, 0);
-});
+      const table = await client.query("SELECT to_regclass('public.tag_groups') AS relation");
+      assert.equal(table.rows[0].relation, null);
+    });
+  },
+);

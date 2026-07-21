@@ -47,4 +47,11 @@ SET "tag_group_id" = (
 )
 WHERE "tag_group_id" IS NULL;
 
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM "place_tags" WHERE "tag_group_id" IS NULL) THEN
+    RAISE EXCEPTION 'tag group backfill left orphaned place tags';
+  END IF;
+END $$;
+
 COMMIT;
