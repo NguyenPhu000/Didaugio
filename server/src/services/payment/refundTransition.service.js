@@ -76,7 +76,7 @@ function intentFingerprint(command) {
     gateway: command.gateway,
     actorUserId: command.actorUserId ?? null,
     reason: command.reason ?? null,
-    metadata: command.metadata || {},
+    metadata: safeAuditMetadata(command.metadata),
   }));
 }
 
@@ -115,10 +115,10 @@ function result(attempt, { replayed = false, collectedAmount, refundedAmount } =
 export function createRefundTransition({ prisma, now = () => new Date() } = {}) {
   if (!prisma?.$transaction) throw new Error("createRefundTransition requires a Prisma client");
 
-  async function createRefundIntent(rawCommand) {
+  async function createRefundIntentInTransaction(tx, rawCommand) {
     const command = normalizeIntent(rawCommand);
     const fingerprint = intentFingerprint(command);
-    return prisma.$transaction(async (tx) => {
+    {
       const payment = await lockPayment(tx, command.paymentId);
       if (String(read(payment, "currency")).toUpperCase() !== command.currency) {
         throw new ServiceError("Refund currency does not match its payment", 422, "PAYMENT_CURRENCY_MISMATCH");
@@ -143,7 +143,11 @@ export function createRefundTransition({ prisma, now = () => new Date() } = {}) 
         },
       });
       return result(attempt);
-    });
+    }
+  }
+
+  async function createRefundIntent(rawCommand) {
+    return prisma.$transaction((tx) => createRefundIntentInTransaction(tx, rawCommand));
   }
 
   async function succeedRefundAttempt({ refundAttemptId, externalRefundId = null, gateway = null, metadata = {} } = {}) {
@@ -285,5 +289,5 @@ export function createRefundTransition({ prisma, now = () => new Date() } = {}) 
     });
   }
 
-  return { createRefundIntent, succeedRefundAttempt, failRefundAttempt };
+  return { createRefundIntent, createRefundIntentInTransaction, succeedRefundAttempt, failRefundAttempt };
 }

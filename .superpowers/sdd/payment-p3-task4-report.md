@@ -14,7 +14,14 @@
 - Frozen and settled partner balances debit the correct bucket; one `REFUND` ledger effect is written per success.
 - Replays are idempotent and conflicting gateway result references fail closed. Audit metadata excludes credential-like fields.
 
-## Evidence
+## Final controller evidence
+
+- SePay refund production handler DI contract: 4/4 pass (HMAC before log/DB, mismatch no financial mutation, pending success + replay, conflicting external reference).
+- Cancellation production-entry harness: 3/3 pass. `cancel`, `cancelMyBooking`, and `quickRejectBooking` commit the booking outcome, pending attempt, and action log before the injected finalizer failure; the attempt remains pending and no event is emitted.
+- Combined payment/refund/cancellation focused suite: 33/33 pass.
+- Prisma schema validation: pass. Syntax checks for all changed services: pass.
+
+## Earlier evidence
 
 - RED: `refundTransition.test.js` initially failed with `ERR_MODULE_NOT_FOUND` before production service existed.
 - Focused unit: 8/8 pass.

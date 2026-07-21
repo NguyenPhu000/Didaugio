@@ -145,3 +145,14 @@ test("gateway finalization safely audits an exact result and rejects a conflicti
     (error) => error.errorCode === "REFUND_DUPLICATE",
   );
 });
+
+test("idempotency fingerprint and persistence exclude raw credential-like metadata", async () => {
+  const { tx, attempts } = createHarness();
+  const transition = createRefundTransition({ prisma: { $transaction: (fn) => fn(tx) } });
+  await transition.createRefundIntent(command({ metadata: { signature: "secret", token: "secret", channel: "admin" } }));
+  assert.equal(attempts[0].metadata.signature, undefined);
+  assert.equal(attempts[0].metadata.token, undefined);
+  assert.equal(attempts[0].metadata.channel, "admin");
+  const replay = await transition.createRefundIntent(command({ metadata: { signature: "different", token: "different", channel: "admin" } }));
+  assert.equal(replay.replayed, true);
+});

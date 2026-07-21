@@ -43,12 +43,10 @@ import {
   normalizeBookingIdempotencyKey,
 } from "./bookingIdempotency.service.js";
 import { createBookingTransaction } from "./bookingTransaction.service.js";
-import {
-  settleCompletedLedger,
-  refundLedger,
-} from "./financialCore.service.js";
+import { settleCompletedLedger } from "./financialCore.service.js";
 import { createPaymentTransition } from "../payment/paymentTransition.service.js";
 import { createRefundTransition } from "../payment/refundTransition.service.js";
+import { createCancelledRefundIntentInTransaction, finalizeCancelledRefund } from "./canonicalBookingRefund.service.js";
 
 let expirePendingBookingsEnumWarned = false;
 const paymentTransition = createPaymentTransition();
@@ -1276,8 +1274,12 @@ export const confirm = async (bookingId, userId, businessNote = undefined) => {
   return serializeBookingUser(booking);
 };
 
-export const cancel = async (bookingId, cancelReason, userId, actorType = "user") => {
-  const booking = await prisma.$transaction(async (tx) => {
+export const cancel = async (bookingId, cancelReason, userId, actorType = "user", overrides = {}) => {
+  const cancellationPrisma = overrides.prisma || prisma;
+  const createRefundIntent = overrides.createCancelledRefundIntentInTransaction || createCancelledRefundIntentInTransaction;
+  const finalizeRefund = overrides.finalizeCancelledRefund || finalizeCancelledRefund;
+  const cancellationEvents = overrides.eventEmitter || eventEmitter;
+  const booking = await cancellationPrisma.$transaction(async (tx) => {
     await lockBookingRow(tx, bookingId);
     const existing = await tx.booking.findUnique({
       where: { id: parseInt(bookingId) },
@@ -1321,10 +1323,9 @@ export const cancel = async (bookingId, cancelReason, userId, actorType = "user"
       include: defaultInclude,
     });
 
-    // Refund frozen balance if booking was paid
-    if (existing.paymentStatus === PAYMENT_STATUS.PAID && existing.businessEarned > 0) {
-      await refundLedger(tx, existing.id, existing.businessId, existing.businessEarned, existing.commissionAmount || 0);
-    }
+    const refundIntent = await createRefundIntent(tx, existing, {
+      actorUserId: userId, reason: cancelReason, idempotencyKey: `booking-cancel:${existing.id}`,
+    });
 
     // Decrement voucher usage count if this booking used a voucher
     if (existing.voucherId) {
@@ -1347,21 +1348,28 @@ export const cancel = async (bookingId, cancelReason, userId, actorType = "user"
       metadata: { cancelReason },
     });
 
-    return updated;
+    return { booking: updated, refundIntent: refundIntent?.attempt || null };
   });
 
-  eventEmitter.emit(EVENTS.BOOKING.CANCELLED, {
-    bookingId: booking.id,
-    bookingCode: booking.bookingCode,
+  await finalizeRefund(booking.refundIntent);
+  const cancelledBooking = booking.booking;
+
+  cancellationEvents.emit(EVENTS.BOOKING.CANCELLED, {
+    bookingId: cancelledBooking.id,
+    bookingCode: cancelledBooking.bookingCode,
     cancelledBy: userId,
     cancelReason,
-    userId: booking.userId,
+    userId: cancelledBooking.userId,
   });
 
-  return serializeBookingUser(booking);
+  return serializeBookingUser(cancelledBooking);
 };
 
-export const cancelMyBooking = async (bookingId, userId, cancelReason) => {
+export const cancelMyBooking = async (bookingId, userId, cancelReason, overrides = {}) => {
+  const cancellationPrisma = overrides.prisma || prisma;
+  const createRefundIntent = overrides.createCancelledRefundIntentInTransaction || createCancelledRefundIntentInTransaction;
+  const finalizeRefund = overrides.finalizeCancelledRefund || finalizeCancelledRefund;
+  const cancellationEvents = overrides.eventEmitter || eventEmitter;
   const normalizedBookingId = parseInt(bookingId, 10);
   const normalizedUserId = parseInt(userId, 10);
 
@@ -1381,7 +1389,7 @@ export const cancelMyBooking = async (bookingId, userId, cancelReason) => {
     );
   }
 
-  const booking = await prisma.$transaction(async (tx) => {
+  const booking = await cancellationPrisma.$transaction(async (tx) => {
     await lockBookingRow(tx, normalizedBookingId);
 
     const existing = await tx.booking.findUnique({
@@ -1436,10 +1444,9 @@ export const cancelMyBooking = async (bookingId, userId, cancelReason) => {
       },
     });
 
-    // Refund frozen balance if booking was paid
-    if (existing.paymentStatus === PAYMENT_STATUS.PAID && existing.businessEarned > 0) {
-      await refundLedger(tx, existing.id, existing.businessId, existing.businessEarned, existing.commissionAmount || 0);
-    }
+    const refundIntent = await createRefundIntent(tx, existing, {
+      actorUserId: normalizedUserId, reason: cancelReason, idempotencyKey: `booking-cancel:${existing.id}`,
+    });
 
     if (existing.voucherId) {
       const voucher = await tx.voucher.findUnique({
@@ -1465,18 +1472,21 @@ export const cancelMyBooking = async (bookingId, userId, cancelReason) => {
       },
     });
 
-    return updated;
+    return { booking: updated, refundIntent: refundIntent?.attempt || null };
   });
 
-  eventEmitter.emit(EVENTS.BOOKING.CANCELLED, {
-    bookingId: booking.id,
-    bookingCode: booking.bookingCode,
+  await finalizeRefund(booking.refundIntent);
+  const cancelledBooking = booking.booking;
+
+  cancellationEvents.emit(EVENTS.BOOKING.CANCELLED, {
+    bookingId: cancelledBooking.id,
+    bookingCode: cancelledBooking.bookingCode,
     cancelledBy: normalizedUserId,
     cancelReason,
-    userId: booking.userId,
+    userId: cancelledBooking.userId,
   });
 
-  return serializeBookingUser(booking);
+  return serializeBookingUser(cancelledBooking);
 };
 
 export const complete = async (bookingId, userId, businessNote = undefined) => {

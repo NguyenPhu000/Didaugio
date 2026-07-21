@@ -2,6 +2,8 @@ import express from "express";
 import * as controller from "../../controllers/payment/payment.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
+import { validateBody } from "../../middlewares/validateSchema.js";
+import { refundPaymentSchema } from "../../models/schemas/payment/payment.schema.js";
 
 const router = express.Router();
 
@@ -50,6 +52,7 @@ router.get("/:id", controller.getById);
 router.post(
   "/:id/refund",
   hasPermission("payments.refund"),
+  validateBody(refundPaymentSchema),
   controller.refund,
 );
 

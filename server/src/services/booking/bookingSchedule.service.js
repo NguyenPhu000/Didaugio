@@ -27,7 +27,7 @@ import {
   assertBookingTransition,
   BOOKING_TRANSITION,
 } from "./bookingStateMachine.js";
-import { refundLedger } from "./financialCore.service.js";
+import { createCancelledRefundIntentInTransaction, finalizeCancelledRefund } from "./canonicalBookingRefund.service.js";
 
 const scheduleInclude = {
   service: {
@@ -411,10 +411,16 @@ export async function quickRejectBooking(
   cancelReason,
   actorUserId,
   businessNote = undefined,
+  overrides = {},
 ) {
-  await expirePendingBookings();
+  const cancellationPrisma = overrides.prisma || prisma;
+  const createRefundIntent = overrides.createCancelledRefundIntentInTransaction || createCancelledRefundIntentInTransaction;
+  const finalizeRefund = overrides.finalizeCancelledRefund || finalizeCancelledRefund;
+  const loadBooking = overrides.getById || getById;
+  const cancellationEvents = overrides.eventEmitter || eventEmitter;
+  await (overrides.expirePendingBookings || expirePendingBookings)();
 
-  await prisma.$transaction(async (tx) => {
+  const refundIntent = await cancellationPrisma.$transaction(async (tx) => {
     await lockBookingRow(tx, bookingId);
     const existing = await tx.booking.findUnique({
       where: { id: parseInt(bookingId, 10) },
@@ -450,10 +456,9 @@ export async function quickRejectBooking(
       },
     });
 
-    // Refund frozen balance if booking was paid
-    if (existing.paymentStatus === "paid" && existing.businessEarned > 0) {
-      await refundLedger(tx, existing.id, existing.businessId, existing.businessEarned, existing.commissionAmount || 0);
-    }
+    const intent = await createRefundIntent(tx, existing, {
+      actorUserId, reason: cancelReason || "Từ chối nhanh", idempotencyKey: `booking-quick-reject:${existing.id}`,
+    });
 
     await appendBookingActionLog(tx, {
       bookingId: existing.id,
@@ -464,10 +469,13 @@ export async function quickRejectBooking(
         businessNote: businessNote || null,
       },
     });
+    return intent?.attempt || null;
   });
 
-  const booking = await getById(bookingId);
-  eventEmitter.emit(EVENTS.BOOKING.REJECTED, {
+  await finalizeRefund(refundIntent);
+
+  const booking = await loadBooking(bookingId);
+  cancellationEvents.emit(EVENTS.BOOKING.REJECTED, {
     bookingId: booking.id,
     bookingCode: booking.bookingCode,
     rejectedBy: actorUserId,

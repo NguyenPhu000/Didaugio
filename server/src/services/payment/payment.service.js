@@ -23,6 +23,7 @@ import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import * as bookingService from "../booking/booking.service.js";
 import { processPaymentLedger } from "../booking/financialCore.service.js";
 import { createPaymentTransition } from "./paymentTransition.service.js";
+import { createRefundTransition } from "./refundTransition.service.js";
 
 const PAYMENT_CODE_PREFIX = process.env.PAYMENT_CODE_PREFIX || "DDG";
 const PAYMENT_CODE_RANDOM_LENGTH = 7;
@@ -51,6 +52,15 @@ const defaultSePayBankWebhookDependencies = Object.freeze({
   paymentTransition: null,
 });
 
+const defaultSePayRefundWebhookDependencies = Object.freeze({
+  prisma,
+  logger,
+  sepayService,
+  sepayWebhookService,
+  webhookLogService,
+  refundTransitionFactory: createRefundTransition,
+});
+
 export function createPaymentCallbackHandlers(overrides = {}) {
   const dependencies = { ...defaultPaymentCallbackDependencies, ...overrides };
   return {
@@ -65,6 +75,14 @@ export function createPaymentSePayBankWebhookHandlers(overrides = {}) {
   return {
     processSePayBankWebhook: (body, headers, rawBody) =>
       processSePayBankWebhookWithDependencies(body, headers, rawBody, dependencies),
+  };
+}
+
+export function createPaymentSePayRefundWebhookHandlers(overrides = {}) {
+  const dependencies = { ...defaultSePayRefundWebhookDependencies, ...overrides };
+  return {
+    processSePayRefundWebhook: (body, headers, rawBody) =>
+      processSePayRefundWebhookWithDependencies(body, headers, rawBody, dependencies),
   };
 }
 
@@ -1123,12 +1141,16 @@ async function processSePayBankWebhookWithDependencies(body, headers, rawBody, d
  * Process SePay outgoing bank transaction webhook.
  * Matches money-out events to payout transfers or refunded payments.
  */
-export async function processSePayRefundWebhook(body, headers = {}, rawBody = null) {
-  const webhookLogId = await webhookLogService.logWebhook({
-    gateway: "SEPAY_BANK_REFUND",
-    payload: body,
-    signature: headers["x-sepay-signature"] || null,
-  });
+async function processSePayRefundWebhookWithDependencies(body, headers = {}, rawBody = null, dependencies) {
+  const {
+    prisma,
+    logger,
+    sepayService,
+    sepayWebhookService,
+    webhookLogService,
+    refundTransitionFactory,
+  } = dependencies;
+  let webhookLogId = null;
 
   try {
     const signature = headers["x-sepay-signature"] || "";
@@ -1141,13 +1163,14 @@ export async function processSePayRefundWebhook(body, headers = {}, rawBody = nu
       timestamp,
     );
     if (!sigResult.valid) {
-      await webhookLogService.markError({
-        transactionRef: body?.code || null,
-        webhookLogId,
-        errorMsg: `Signature verification failed: ${sigResult.error}`,
-      });
       return sepayService.buildIpnError(sigResult.error);
     }
+
+    webhookLogId = (await webhookLogService.logWebhook({
+      gateway: "SEPAY_BANK_REFUND",
+      payload: { id: body?.id || null, code: body?.code || null, transferAmount: Number(body?.transferAmount) || null, transferType: body?.transferType || null },
+      signature: null,
+    }))?.id || null;
 
     const parseResult = sepayWebhookService.parseRefundWebhook(body);
     if (!parseResult.valid) {
@@ -1270,44 +1293,34 @@ export async function processSePayRefundWebhook(body, headers = {}, rawBody = nu
 
         if (paymentRows?.length) {
           const payment = paymentRows[0];
-          const refundedAmount = Number(payment.refund_amount || 0);
-          if (refundedAmount > 0 && Number(transferAmount) > refundedAmount) {
-            logger.warn("SePay refund webhook payment amount exceeds refund", {
-              transactionRef: code,
-              refundedAmount,
-              received: transferAmount,
-            });
+          const replay = await tx.refundAttempt.findFirst({
+            where: { gateway: "SEPAY_BANK", externalRefundId: String(sepayTransactionId) },
+          });
+          if (replay && (replay.paymentId !== payment.id || replay.amount !== Number(transferAmount))) {
             return { type: "AMOUNT_MISMATCH", transactionRef: code };
           }
-
-          const paymentData =
-            payment.payment_data && typeof payment.payment_data === "object"
-              ? payment.payment_data
-              : {};
-
-          await tx.payment.update({
-            where: { id: payment.id },
-            data: {
-              paymentData: {
-                ...paymentData,
-                refundTransfer: {
-                  sepayTransactionId,
-                  gateway,
-                  transactionDate,
-                  referenceCode,
-                  transferAmount,
-                  confirmedAt: new Date().toISOString(),
-                },
-              },
-            },
+          if (replay?.status === "succeeded") return { type: "ALREADY_PROCESSED", transactionRef: code };
+          const attempt = await tx.refundAttempt.findFirst({
+            where: { paymentId: payment.id, status: "pending", gateway: "SEPAY_BANK", amount: Number(transferAmount), currency: "VND" },
           });
-
-          return { type: "PAYMENT_REFUND_CONFIRMED", transactionRef: code };
+          if (!attempt) return { type: "AMOUNT_MISMATCH", transactionRef: code };
+          return { type: "REFUND_PENDING", transactionRef: code, refundAttemptId: attempt.id };
         }
       }
 
       return { type: "NOT_FOUND", transactionRef: code };
     });
+
+    if (result.type === "REFUND_PENDING") {
+      const transition = refundTransitionFactory({ prisma });
+      await transition.succeedRefundAttempt({
+        refundAttemptId: result.refundAttemptId,
+        gateway: "SEPAY_BANK",
+        externalRefundId: String(sepayTransactionId),
+        metadata: { gateway, referenceCode: referenceCode || null, transactionDate: transactionDate || null, source: "sepay_refund_webhook" },
+      });
+      result.type = "PAYMENT_REFUND_CONFIRMED";
+    }
 
     if (result.type !== "NOT_FOUND" && webhookLogId) {
       await webhookLogService.markProcessed({
@@ -1339,6 +1352,15 @@ export async function processSePayRefundWebhook(body, headers = {}, rawBody = nu
     }
     return sepayService.buildIpnError("System error");
   }
+}
+
+export async function processSePayRefundWebhook(body, headers = {}, rawBody = null) {
+  return processSePayRefundWebhookWithDependencies(
+    body,
+    headers,
+    rawBody,
+    defaultSePayRefundWebhookDependencies,
+  );
 }
 
 /**
