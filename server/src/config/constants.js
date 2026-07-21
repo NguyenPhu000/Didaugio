@@ -148,6 +148,7 @@ export const BOOKING_STATUS = {
 
 export const PAYMENT_STATUS = {
   UNPAID: "unpaid",
+  PARTIALLY_PAID: "partially_paid",
   PAID: "paid",
   PARTIALLY_REFUNDED: "partially_refunded",
   FULLY_REFUNDED: "fully_refunded",

@@ -147,6 +147,8 @@ model User {
   pushSubscription        PushSubscription?
   passwordResets          PasswordReset[]
   payments                Payment[]
+  paymentReceiptsActed    PaymentReceipt[]       @relation("PaymentReceiptActor")
+  refundAttemptsActed     RefundAttempt[]        @relation("RefundAttemptActor")
   approvedPlaces          Place[]                 @relation("ApprovedBy")
   places                  Place[]                 @relation("CreatedBy")
   reviewReplies           ReviewReply[]
@@ -1497,9 +1499,55 @@ model Payment {
   updatedAt      DateTime            @updatedAt @map("updated_at")
   booking        Booking             @relation(fields: [bookingId], references: [id])
   user           User                @relation(fields: [userId], references: [id])
+  receipts       PaymentReceipt[]
+  refundAttempts RefundAttempt[]
   webhookLogs    PaymentWebhookLog[]
 
   @@map("payments")
+}
+
+model PaymentReceipt {
+  id                    Int      @id @default(autoincrement())
+  paymentId             Int      @map("payment_id")
+  source                String
+  gateway               String?
+  amount                Int
+  currency              String   @default("VND")
+  externalTransactionId String?  @map("external_transaction_id")
+  idempotencyKey        String   @unique @map("idempotency_key")
+  actorUserId           Int?     @map("actor_user_id")
+  status                String
+  receivedAt            DateTime @default(now()) @map("received_at")
+  metadata              Json?
+  payment               Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  actor                 User?    @relation("PaymentReceiptActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@unique([gateway, externalTransactionId])
+  @@index([paymentId, status])
+  @@map("payment_receipts")
+}
+
+model RefundAttempt {
+  id               Int       @id @default(autoincrement())
+  paymentId        Int       @map("payment_id")
+  source           String
+  gateway          String?
+  amount           Int
+  currency         String    @default("VND")
+  externalRefundId String?   @map("external_refund_id")
+  idempotencyKey   String    @unique @map("idempotency_key")
+  actorUserId      Int?      @map("actor_user_id")
+  status           String
+  reason           String?
+  requestedAt      DateTime  @default(now()) @map("requested_at")
+  completedAt      DateTime? @map("completed_at")
+  metadata         Json?
+  payment          Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  actor            User?     @relation("RefundAttemptActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@unique([gateway, externalRefundId])
+  @@index([paymentId, status])
+  @@map("refund_attempts")
 }
 
 model PaymentWebhookLog {
