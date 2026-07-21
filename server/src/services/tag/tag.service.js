@@ -318,18 +318,36 @@ export const recalculateUsageCount = async (tagId) => {
 
 // Bulk create tags
 export const bulkCreateTags = async (tags) => {
+  await Promise.all(
+    tags.map(async ({ tagGroupId }) => {
+      const tagGroup = await prisma.tagGroup.findFirst({
+        where: { id: tagGroupId, isActive: true },
+      });
+
+      if (!tagGroup) {
+        throw new ServiceError(
+          "Tag group is not available",
+          400,
+          ERROR_CODES.VALIDATION_ERROR,
+        );
+      }
+    }),
+  );
+
   const created = await prisma.$transaction(
     tags.map((tag) =>
       prisma.placeTag.create({
         data: {
           name: tag.name,
           slug: tag.slug,
-          tagType: tag.tagType || TAG_TYPES.GENERAL,
+          tagType: TAG_TYPES.GENERAL,
+          tagGroupId: tag.tagGroupId,
           icon: tag.icon || null,
           color: tag.color || "#6B7280",
           usageCount: 0,
           isActive: true,
         },
+        include: { tagGroup: true },
       }),
     ),
   );
