@@ -404,7 +404,7 @@ export async function refund(req, res, next) {
   try {
     const result = await paymentService.refundPayment(
       req.params.id,
-      { amount: req.body.amount, reason: req.body.reason },
+      { amount: req.body.amount, reason: req.body.reason, idempotencyKey: req.body.idempotencyKey },
       req.user.userId,
     );
 

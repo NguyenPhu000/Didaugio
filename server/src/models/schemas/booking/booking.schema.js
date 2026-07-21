@@ -95,7 +95,8 @@ export const refundBookingSchema = z.object({
     .number({ required_error: "Số tiền hoàn là bắt buộc" })
     .int("Số tiền hoàn phải là số nguyên")
     .positive("Số tiền hoàn phải lớn hơn 0"),
-  refundReason: z.string().min(5).max(500).optional().nullable(),
+  refundReason: z.string().min(5).max(500),
+  idempotencyKey: z.string().trim().min(1).max(128),
   refundedAt: z.string().max(100).optional().nullable(),
 });
 

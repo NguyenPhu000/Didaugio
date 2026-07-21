@@ -1,0 +1,28 @@
+# P3 Task 4 — Refund transition report
+
+## Scope
+
+- Added `refundTransition.service.js` with committed pending intents, canonical success/failure finalizers, and replay protection.
+- Replaced the public booking/payment refund path; removed the direct `Payment.refundAmount` arithmetic implementation.
+- Required refund reason and idempotency key at booking/payment validation boundaries.
+
+## Invariants verified
+
+- Pending and failed attempts have no wallet, ledger, booking, or payment-summary effect.
+- Finalization derives collection/refund totals from succeeded receipt/attempt rows under the payment lock.
+- Partial/full refunds allocate the original commission cumulatively, avoiding rounding loss.
+- Frozen and settled partner balances debit the correct bucket; one `REFUND` ledger effect is written per success.
+- Replays are idempotent and conflicting gateway result references fail closed. Audit metadata excludes credential-like fields.
+
+## Evidence
+
+- RED: `refundTransition.test.js` initially failed with `ERR_MODULE_NOT_FOUND` before production service existed.
+- Focused unit: 8/8 pass.
+- Live owned disposable PostgreSQL: `refundTransition.integration.test.js` 2/2 pass. Each run creates, migrates, and removes its own audit database; it verifies concurrent 60k/50k finalization ceiling, replay, conservation, plus settled-bucket debit.
+- Combined payment/refund focused suite: 15/15 pass.
+- `npx.cmd prisma validate --schema=prisma/schema.prisma`: pass.
+- Syntax checks for changed services/controller: pass.
+
+## Known operational boundary
+
+Production application database migrations were not applied or reset. The existing migration divergence remains an explicit deployment/runbook decision outside this disposable-database verification.

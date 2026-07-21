@@ -1355,7 +1355,7 @@ export async function processSePayRefundWebhook(body, headers = {}, rawBody = nu
  */
 export async function refundPayment(
   paymentId,
-  { amount, reason } = {},
+  { amount, reason, idempotencyKey } = {},
   adminUserId,
 ) {
   const id = parseInt(paymentId, 10);
@@ -1380,7 +1380,7 @@ export async function refundPayment(
     );
   }
 
-  if (payment.status !== PAYMENT_STATUS.PAID) {
+  if (![PAYMENT_STATUS.PAID, PAYMENT_STATUS.PARTIALLY_REFUNDED].includes(payment.status)) {
     throw new ServiceError(
       "Chỉ có thể hoàn tiền đơn đã thanh toán",
       422,
@@ -1392,7 +1392,7 @@ export async function refundPayment(
 
   return bookingService.refund(
     payment.bookingId,
-    { refundAmount: refundAmt, refundReason: reason },
+    { refundAmount: refundAmt, refundReason: reason, idempotencyKey },
     adminUserId,
   );
 }

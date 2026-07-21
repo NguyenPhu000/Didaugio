@@ -48,9 +48,11 @@ import {
   refundLedger,
 } from "./financialCore.service.js";
 import { createPaymentTransition } from "../payment/paymentTransition.service.js";
+import { createRefundTransition } from "../payment/refundTransition.service.js";
 
 let expirePendingBookingsEnumWarned = false;
 const paymentTransition = createPaymentTransition();
+const refundTransition = createRefundTransition({ prisma });
 
 function isBookingStatusEnumMismatchError(error) {
   const msg = String(error?.message || "");
@@ -2000,174 +2002,36 @@ export const markPaid = async (bookingId, payload = {}, userId) => {
   return serializeBookingUser(booking);
 };
 
+/**
+ * Compatibility booking endpoint backed by the canonical refund state machine.
+ * Financial totals and balance debits are intentionally owned by the payment
+ * transition rather than the historical Payment.refundAmount summary field.
+ */
 export const refund = async (bookingId, payload = {}, userId) => {
-  const id = parseInt(bookingId);
+  const id = parseInt(bookingId, 10);
   if (Number.isNaN(id)) {
-    throw new ServiceError(
-      "Booking không hợp lệ",
-      400,
-      ERROR_CODES.VALIDATION_ERROR,
-    );
+    throw new ServiceError("Booking không hợp lệ", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+  const existing = await prisma.booking.findUnique({ where: { id }, include: { payment: true } });
+  if (!existing) throw new ServiceError("Booking không tồn tại", 404, ERROR_CODES.NOT_FOUND);
+  if (!existing.payment) {
+    throw new ServiceError("Booking chưa có giao dịch thanh toán để hoàn tiền", 422, ERROR_CODES.VALIDATION_ERROR);
   }
 
-  const booking = await prisma.$transaction(async (tx) => {
-    await lockBookingRow(tx, id);
-    const existing = await tx.booking.findUnique({
-      where: { id },
-      include: { payment: true },
-    });
-
-    if (!existing) {
-      throw new ServiceError(
-        "Booking không tồn tại",
-        404,
-        ERROR_CODES.NOT_FOUND,
-      );
-    }
-
-    if (!existing.payment) {
-      throw new ServiceError(
-        "Booking chưa có giao dịch thanh toán để hoàn tiền",
-        422,
-        ERROR_CODES.VALIDATION_ERROR,
-      );
-    }
-
-    if (
-      ![PAYMENT_STATUS.PAID, PAYMENT_STATUS.PARTIALLY_REFUNDED].includes(
-        existing.paymentStatus,
-      )
-    ) {
-      throw new ServiceError(
-        "Booking chưa ở trạng thái có thể hoàn tiền",
-        422,
-        ERROR_CODES.VALIDATION_ERROR,
-      );
-    }
-
-    const refundAmount = parseInt(payload.refundAmount);
-    const alreadyRefunded = existing.payment.refundAmount || 0;
-    const paidAmount = existing.payment.amount || existing.finalPrice;
-    const refundableAmount = paidAmount - alreadyRefunded;
-
-    if (Number.isNaN(refundAmount) || refundAmount <= 0) {
-      throw new ServiceError(
-        "Số tiền hoàn không hợp lệ",
-        400,
-        ERROR_CODES.VALIDATION_ERROR,
-      );
-    }
-
-    if (refundAmount > refundableAmount) {
-      throw new ServiceError(
-        `Số tiền hoàn vượt quá phần còn lại (${refundableAmount})`,
-        422,
-        ERROR_CODES.VALIDATION_ERROR,
-      );
-    }
-
-    const totalRefunded = alreadyRefunded + refundAmount;
-    const refundedAt = payload.refundedAt
-      ? new Date(payload.refundedAt)
-      : new Date();
-    if (Number.isNaN(refundedAt.getTime())) {
-      throw new ServiceError(
-        "Thời gian hoàn tiền không hợp lệ",
-        400,
-        ERROR_CODES.VALIDATION_ERROR,
-      );
-    }
-
-    const nextPaymentStatus =
-      totalRefunded >= paidAmount
-        ? PAYMENT_STATUS.FULLY_REFUNDED
-        : PAYMENT_STATUS.PARTIALLY_REFUNDED;
-
-    const nextPaymentData = {
-      ...(existing.payment.paymentData || {}),
-      lastRefundBy: userId,
-      lastRefundAt: refundedAt,
-    };
-
-    const refundRatio =
-      refundableAmount > 0 ? refundAmount / refundableAmount : 0;
-    const commissionPortionRefunded = Math.floor(
-      existing.commissionAmount * refundRatio,
-    );
-    const businessPortionRefunded = Math.floor(
-      existing.businessEarned * refundRatio,
-    );
-    const nextCommissionAmount = Math.max(
-      0,
-      existing.commissionAmount - commissionPortionRefunded,
-    );
-    const nextBusinessEarned = Math.max(
-      0,
-      existing.businessEarned - businessPortionRefunded,
-    );
-
-    // Debit platform wallet for commission reversal
-    if (commissionPortionRefunded > 0) {
-      const platformWallet = await tx.platformWallet.findFirst();
-      if (platformWallet) {
-        await tx.platformWallet.update({
-          where: { id: platformWallet.id },
-          data: {
-            balance: { decrement: commissionPortionRefunded },
-            totalEarned: { decrement: commissionPortionRefunded },
-          },
-        });
-      }
-    }
-
-    if (businessPortionRefunded > 0) {
-      const debitField =
-        existing.status === BOOKING_STATUS.COMPLETED ? "balance" : "frozenBalance";
-      await tx.partnerWallet.update({
-        where: { businessId: existing.businessId },
-        data: {
-          [debitField]: { decrement: businessPortionRefunded },
-        },
-      });
-
-      await tx.financialLedger.create({
-        data: {
-          bookingId: existing.id,
-          type: "REFUND",
-          amount: businessPortionRefunded,
-          description: `Hoan tien phan doanh thu doi tac cho booking #${existing.id}`,
-        },
-      });
-    }
-
-    await tx.payment.update({
-      where: { bookingId: id },
-      data: {
-        refundAmount: totalRefunded,
-        refundedAt,
-        refundReason:
-          payload.refundReason || existing.payment.refundReason || null,
-        status:
-          nextPaymentStatus === PAYMENT_STATUS.FULLY_REFUNDED
-            ? "fully_refunded"
-            : "partially_refunded",
-        paymentData: nextPaymentData,
-      },
-    });
-
-    return tx.booking.update({
-      where: { id },
-      data: {
-        paymentStatus: nextPaymentStatus,
-        commissionAmount: nextCommissionAmount,
-        businessEarned: nextBusinessEarned,
-      },
-      include: {
-        ...defaultInclude,
-        payment: true,
-      },
-    });
+  const intent = await refundTransition.createRefundIntent({
+    paymentId: existing.payment.id,
+    amount: Number(payload.refundAmount),
+    currency: existing.payment.currency,
+    source: "manual",
+    actorUserId: userId,
+    reason: payload.refundReason,
+    idempotencyKey: payload.idempotencyKey,
+    metadata: { channel: "booking", requestedAt: payload.refundedAt || null },
   });
-
+  await refundTransition.succeedRefundAttempt({ refundAttemptId: intent.attempt.id });
+  const booking = await prisma.booking.findUnique({
+    where: { id },
+    include: { ...defaultInclude, payment: true },
+  });
   return serializeBookingUser(booking);
 };
