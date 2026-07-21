@@ -1,4 +1,7 @@
+import crypto from "node:crypto";
+
 export const AUDIT_DB_PREFIX = "didaugio_codex_migration_";
+export const POSTGRES_IDENTIFIER_MAX_BYTES = 63;
 export const PRISMA_SPAWN_TIMEOUT_MS = 120_000;
 export const PG_CONNECTION_TIMEOUT_MS = 10_000;
 export const PG_OPERATION_TIMEOUT_MS = 120_000;
@@ -58,14 +61,42 @@ export function buildPgClientConfig(connectionString) {
 }
 
 export function assertSafeAuditDatabaseName(name) {
-  if (!SAFE_AUDIT_DB_RE.test(String(name))) {
+  const value = String(name);
+  if (!SAFE_AUDIT_DB_RE.test(value)
+      || Buffer.byteLength(value, "ascii") > POSTGRES_IDENTIFIER_MAX_BYTES) {
     throw new Error(`Unsafe audit database name: ${String(name)}`);
   }
-  return String(name);
+  return value;
+}
+
+export function buildAuditDatabaseName(label, {
+  entropy = crypto.randomBytes(16).toString("hex"),
+} = {}) {
+  if (!/^[a-f0-9]{32}$/u.test(entropy)) {
+    throw new Error("Audit database entropy must be 128-bit lowercase hexadecimal");
+  }
+  const base = `${AUDIT_DB_PREFIX}${entropy}_`;
+  const availableBytes = POSTGRES_IDENTIFIER_MAX_BYTES - Buffer.byteLength(base, "ascii");
+  const suffix = String(label ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, "_")
+    .replace(/^_+|_+$/gu, "")
+    .slice(0, availableBytes) || "audit".slice(0, availableBytes);
+  return assertSafeAuditDatabaseName(`${base}${suffix}`);
 }
 
 export function quoteIdentifier(identifier) {
   return `"${assertSafeAuditDatabaseName(identifier)}"`;
+}
+
+export async function dropOwnedAuditDatabase(client, databaseName) {
+  const quotedName = quoteIdentifier(databaseName);
+  await client.query(`ALTER DATABASE ${quotedName} ALLOW_CONNECTIONS false`);
+  await client.query(
+    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()",
+    [databaseName],
+  );
+  await client.query(`DROP DATABASE ${quotedName}`);
 }
 
 export function parsePostgresDatabaseUrl(value) {
@@ -126,8 +157,10 @@ export function buildPrismaCommands({ schemaPath }) {
 export async function runMigrationAudit({ create, deploy, diff, cleanup }) {
   let driftSql;
   let primaryFailure;
+  let ownsDatabase = false;
   try {
     await create();
+    ownsDatabase = true;
     await deploy();
     driftSql = await diff();
   } catch (error) {
@@ -135,10 +168,12 @@ export async function runMigrationAudit({ create, deploy, diff, cleanup }) {
   }
 
   let cleanupFailure;
-  try {
-    await cleanup();
-  } catch (error) {
-    cleanupFailure = error;
+  if (ownsDatabase) {
+    try {
+      await cleanup();
+    } catch (error) {
+      cleanupFailure = error;
+    }
   }
 
   if (primaryFailure && cleanupFailure) {
@@ -167,11 +202,17 @@ export function assertOnlyAllowedRawSqlDrift(sql) {
     .split(";")
     .map((value) => value.trim())
     .filter(Boolean);
-  for (const statement of statements) {
-    const normalized = statement.replace(/\s+/gu, " ");
+  const normalizedStatements = statements.map((statement) => statement.replace(/\s+/gu, " "));
+  for (const [index, normalized] of normalizedStatements.entries()) {
     if (!ALLOWED_RAW_SQL_DRIFT.has(normalized)) {
-      throw new Error(`Managed schema drift detected: ${statement}`);
+      throw new Error(`Managed schema drift detected: ${statements[index]}`);
     }
+  }
+  if (normalizedStatements.length !== ALLOWED_RAW_SQL_DRIFT.size
+      || new Set(normalizedStatements).size !== ALLOWED_RAW_SQL_DRIFT.size) {
+    throw new Error(
+      `Managed schema drift detected: expected exactly ${ALLOWED_RAW_SQL_DRIFT.size} unique preserved raw SQL statements`,
+    );
   }
   return statements;
 }

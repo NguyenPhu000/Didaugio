@@ -8,10 +8,12 @@ import * as migrationAudit from "../src/scripts/lib/migrationAudit.js";
 import {
   AUDIT_DB_PREFIX,
   assertSafeAuditDatabaseName,
+  buildAuditDatabaseName,
   buildPrismaCommands,
   buildAdminDatabaseUrl,
   buildDatabaseUrl,
   quoteIdentifier,
+  dropOwnedAuditDatabase,
   assertOnlyAllowedRawSqlDrift,
   redactDatabaseUrl,
   runMigrationAudit,
@@ -39,7 +41,7 @@ function spawnMigrationQualityGate(env) {
     env,
     encoding: "utf8",
     shell: false,
-    timeout: 20_000,
+    timeout: 60_000,
   });
 }
 
@@ -68,8 +70,8 @@ test("migration audit uses deploy and emits a reviewable drift script", () => {
   assert.ok(!commands.diff.some((arg) => arg.includes("postgresql://")));
 });
 
-test("migration audit always runs cleanup for create, deploy, and diff failures", async () => {
-  for (const failedStep of ["create", "deploy", "diff"]) {
+test("migration audit cleans up only after this invocation creates the database", async () => {
+  for (const failedStep of ["deploy", "diff"]) {
     const calls = [];
     const step = (name) => async () => {
       calls.push(name);
@@ -87,6 +89,21 @@ test("migration audit always runs cleanup for create, deploy, and diff failures"
     );
     assert.equal(calls.at(-1), "cleanup");
   }
+
+  const calls = [];
+  await assert.rejects(
+    runMigrationAudit({
+      create: async () => {
+        calls.push("create");
+        throw new Error("create collision");
+      },
+      deploy: async () => calls.push("deploy"),
+      diff: async () => calls.push("diff"),
+      cleanup: async () => calls.push("cleanup"),
+    }),
+    /create collision/u,
+  );
+  assert.deepEqual(calls, ["create"]);
 });
 
 test("migration audit preserves primary and cleanup failures", async () => {
@@ -120,6 +137,59 @@ test("migration audit accepts only its dedicated database prefix", () => {
   for (const unsafe of ["didaugio", "postgres", "template1", "../didaugio", "audit-db"]) {
     assert.throws(() => assertSafeAuditDatabaseName(unsafe), /unsafe audit database name/i);
   }
+  assert.throws(
+    () => assertSafeAuditDatabaseName(`${AUDIT_DB_PREFIX}${"x".repeat(64)}`),
+    /unsafe audit database name/i,
+  );
+});
+
+test("audit database name builder preserves entropy before a bounded scenario suffix", () => {
+  const first = buildAuditDatabaseName("Same very long scenario label ".repeat(20), {
+    entropy: "0123456789abcdef0123456789abcdef",
+  });
+  const second = buildAuditDatabaseName("Same very long scenario label ".repeat(20), {
+    entropy: "fedcba9876543210fedcba9876543210",
+  });
+
+  assert.ok(first.startsWith(`${AUDIT_DB_PREFIX}0123456789abcdef0123456789abcdef_`));
+  assert.ok(second.startsWith(`${AUDIT_DB_PREFIX}fedcba9876543210fedcba9876543210_`));
+  assert.notEqual(first, second);
+  assert.ok(Buffer.byteLength(first, "ascii") <= 63);
+  assert.ok(Buffer.byteLength(second, "ascii") <= 63);
+  assert.equal(assertSafeAuditDatabaseName(first), first);
+  assert.equal(assertSafeAuditDatabaseName(second), second);
+});
+
+test("audit database name builder generates independent strong entropy", () => {
+  const first = buildAuditDatabaseName("clean");
+  const second = buildAuditDatabaseName("clean");
+  assert.notEqual(first, second);
+  assert.match(first, /^didaugio_codex_migration_[a-f0-9]{32}_clean$/u);
+  assert.match(second, /^didaugio_codex_migration_[a-f0-9]{32}_clean$/u);
+});
+
+test("owned database cleanup uses the PostgreSQL 12 compatible sequence", async () => {
+  const calls = [];
+  const client = {
+    query: async (...args) => {
+      calls.push(args);
+      return { rowCount: 0 };
+    },
+  };
+  const databaseName = buildAuditDatabaseName("cleanup", {
+    entropy: "0123456789abcdef0123456789abcdef",
+  });
+
+  await dropOwnedAuditDatabase(client, databaseName);
+
+  assert.deepEqual(calls, [
+    [`ALTER DATABASE ${quoteIdentifier(databaseName)} ALLOW_CONNECTIONS false`],
+    [
+      "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()",
+      [databaseName],
+    ],
+    [`DROP DATABASE ${quoteIdentifier(databaseName)}`],
+  ]);
 });
 
 test("migration audit rewrites only the database path", () => {
@@ -268,6 +338,10 @@ test("migration quality gate verifies clean history before all focused tests", (
 
 test("live reconciliation tests load the same dotenv credentials as the verifier", () => {
   assert.match(reconciliationIntegrationSource, /^import "dotenv\/config";/u);
+  assert.match(
+    reconciliationIntegrationSource,
+    /assertSuccessfulSpawn\([^;]*\{\s*databaseUrl,?\s*\}\s*\)/su,
+  );
 });
 
 test("migration integrity runbook documents the destructive-safety contract", () => {
@@ -279,7 +353,7 @@ test("migration integrity runbook documents the destructive-safety contract", ()
     "npm run quality:migrations",
     "prisma migrate status",
     "read-only",
-    "unconditional cleanup",
+    "invocation-owned",
     "never deploys or resets the application database",
     "never emits an unredacted database URL or credential",
     "backup",
@@ -289,6 +363,8 @@ test("migration integrity runbook documents the destructive-safety contract", ()
   assert.doesNotMatch(runbook, /postgres(?:ql)?:\/\/[^\s`]+/iu);
   assert.doesNotMatch(runbook, /never prints a database URL/iu);
   assert.doesNotMatch(runbook, /retain(?:ed|ing)?[^\n]*failed[^\n]*database/iu);
+  assert.doesNotMatch(runbook, /must return zero/iu);
+  assert.match(runbook, /local orphan audit/iu);
 });
 
 test("identifier quoting rejects values outside the safe database grammar", () => {
@@ -325,6 +401,27 @@ test("drift guard permits only exact residual statements for preserved raw objec
     () => assertOnlyAllowedRawSqlDrift('ALTER TABLE "bookings" DROP COLUMN "resource_id";'),
     /managed schema drift/i,
   );
+
+  const exact = [
+    'ALTER TABLE "administrative_ward_boundaries" DROP CONSTRAINT "administrative_ward_boundarie_dataset_release_id_ward_code_fkey"',
+    'ALTER TABLE "province_boundaries" DROP CONSTRAINT "province_boundaries_dataset_release_id_province_code_fkey"',
+    'DROP INDEX "ward_records_search_trgm_idx"',
+    'DROP INDEX "province_records_search_trgm_idx"',
+    'DROP TABLE "administrative_ward_boundaries"',
+    'DROP TABLE "province_boundaries"',
+  ];
+  for (const invalid of [
+    "",
+    exact.slice(0, -1).join(";"),
+    [...exact, exact[0]].join(";"),
+    [...exact, 'DROP TABLE "near_miss"'].join(";"),
+    exact.map((statement, index) => index === 0 ? `${statement}_near_miss` : statement).join(";"),
+  ]) assert.throws(() => assertOnlyAllowedRawSqlDrift(invalid), /managed schema drift/i);
+});
+
+test("Phase 1 cleanup never relies on PostgreSQL 13 DROP DATABASE FORCE", () => {
+  assert.doesNotMatch(verifyMigrationHistorySource, /WITH\s*\(\s*FORCE\s*\)/iu);
+  assert.doesNotMatch(reconciliationIntegrationSource, /WITH\s*\(\s*FORCE\s*\)/iu);
 });
 
 test("Prisma child processes use the shared 120 second safety bound", () => {

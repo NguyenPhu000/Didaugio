@@ -100,31 +100,74 @@ CREATE UNIQUE INDEX IF NOT EXISTS "subscription_stats_snapshot_date_key"
   ON "subscription_stats"("snapshot_date");
 
 DO $$
+DECLARE
+  fk RECORD;
+  existing_oid OID;
+  structurally_valid BOOLEAN;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'subscriptions_business_id_fkey'
-  ) THEN
-    ALTER TABLE "subscriptions"
-      ADD CONSTRAINT "subscriptions_business_id_fkey"
-      FOREIGN KEY ("business_id") REFERENCES "businesses"("id")
-      ON DELETE RESTRICT ON UPDATE CASCADE;
-  END IF;
+  FOR fk IN
+    SELECT *
+    FROM (VALUES
+      ('subscriptions', 'subscriptions_business_id_fkey', 'business_id', 'businesses', 'id'),
+      ('subscriptions', 'subscriptions_plan_id_fkey', 'plan_id', 'subscription_plans', 'id'),
+      ('subscription_invoices', 'subscription_invoices_subscription_id_fkey', 'subscription_id', 'subscriptions', 'id')
+    ) AS expected(owning_table, constraint_name, owning_column, referenced_table, referenced_column)
+  LOOP
+    SELECT
+      c.oid,
+      c.contype = 'f'
+        AND referenced_namespace.nspname = 'public'
+        AND referenced_relation.relname = fk.referenced_table
+        AND c.conkey = ARRAY[owning_column.attnum]::SMALLINT[]
+        AND c.confkey = ARRAY[referenced_column.attnum]::SMALLINT[]
+        AND owning_column.attname = fk.owning_column
+        AND referenced_column.attname = fk.referenced_column
+        AND c.confupdtype = 'c'
+        AND c.confdeltype = 'r'
+        AND c.confmatchtype = 's'
+        AND NOT c.condeferrable
+        AND NOT c.condeferred
+        AND c.convalidated
+    INTO existing_oid, structurally_valid
+    FROM pg_constraint c
+    JOIN pg_class owning_relation
+      ON owning_relation.oid = c.conrelid
+    JOIN pg_namespace namespace
+      ON namespace.oid = owning_relation.relnamespace
+    LEFT JOIN pg_class referenced_relation
+      ON referenced_relation.oid = c.confrelid
+    LEFT JOIN pg_namespace referenced_namespace
+      ON referenced_namespace.oid = referenced_relation.relnamespace
+    LEFT JOIN pg_attribute owning_column
+      ON owning_column.attrelid = owning_relation.oid
+      AND owning_column.attnum = ANY(c.conkey)
+      AND NOT owning_column.attisdropped
+    LEFT JOIN pg_attribute referenced_column
+      ON referenced_column.attrelid = referenced_relation.oid
+      AND referenced_column.attnum = ANY(c.confkey)
+      AND NOT referenced_column.attisdropped
+    WHERE namespace.nspname = 'public'
+      AND owning_relation.relname = fk.owning_table
+      AND c.conname = fk.constraint_name;
 
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'subscriptions_plan_id_fkey'
-  ) THEN
-    ALTER TABLE "subscriptions"
-      ADD CONSTRAINT "subscriptions_plan_id_fkey"
-      FOREIGN KEY ("plan_id") REFERENCES "subscription_plans"("id")
-      ON DELETE RESTRICT ON UPDATE CASCADE;
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'subscription_invoices_subscription_id_fkey'
-  ) THEN
-    ALTER TABLE "subscription_invoices"
-      ADD CONSTRAINT "subscription_invoices_subscription_id_fkey"
-      FOREIGN KEY ("subscription_id") REFERENCES "subscriptions"("id")
-      ON DELETE RESTRICT ON UPDATE CASCADE;
-  END IF;
+    IF existing_oid IS NULL THEN
+      EXECUTE format(
+        'ALTER TABLE public.%I ADD CONSTRAINT %I FOREIGN KEY (%I) REFERENCES public.%I (%I) ON DELETE RESTRICT ON UPDATE CASCADE',
+        fk.owning_table,
+        fk.constraint_name,
+        fk.owning_column,
+        fk.referenced_table,
+        fk.referenced_column
+      );
+    ELSIF structurally_valid IS NOT TRUE THEN
+      RAISE EXCEPTION 'Existing subscription constraint % is incompatible with %.%(%) -> %.%(%) ON DELETE RESTRICT ON UPDATE CASCADE',
+        fk.constraint_name,
+        'public',
+        fk.owning_table,
+        fk.owning_column,
+        'public',
+        fk.referenced_table,
+        fk.referenced_column;
+    END IF;
+  END LOOP;
 END $$;

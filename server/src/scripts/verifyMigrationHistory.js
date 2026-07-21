@@ -1,18 +1,17 @@
 import "dotenv/config";
-import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { Client } from "pg";
 import {
-  AUDIT_DB_PREFIX,
   PRISMA_SPAWN_TIMEOUT_MS,
   assertOnlyAllowedRawSqlDrift,
-  assertSafeAuditDatabaseName,
   assertSuccessfulSpawn,
   buildAdminDatabaseUrl,
+  buildAuditDatabaseName,
   buildDatabaseUrl,
   buildPgClientConfig,
   buildPrismaCommands,
+  dropOwnedAuditDatabase,
   quoteIdentifier,
   runMigrationAudit,
 } from "./lib/migrationAudit.js";
@@ -20,9 +19,7 @@ import {
 const sourceUrl = process.env.DATABASE_URL;
 if (!sourceUrl) throw new Error("DATABASE_URL is required");
 
-const databaseName = assertSafeAuditDatabaseName(
-  `${AUDIT_DB_PREFIX}clean_${crypto.randomBytes(6).toString("hex")}`,
-);
+const databaseName = buildAuditDatabaseName("clean");
 const auditUrl = buildDatabaseUrl(sourceUrl, databaseName);
 const adminUrl = buildAdminDatabaseUrl(sourceUrl);
 const prismaCli = createRequire(import.meta.url).resolve("prisma/build/index.js");
@@ -62,6 +59,6 @@ await runMigrationAudit({
   diff: () => runPrisma(commands.diff, { capture: true }),
   cleanup: () =>
     withAdminClient((client) =>
-      client.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(databaseName)} WITH (FORCE)`),
+      dropOwnedAuditDatabase(client, databaseName),
     ),
 }).then(assertOnlyAllowedRawSqlDrift);

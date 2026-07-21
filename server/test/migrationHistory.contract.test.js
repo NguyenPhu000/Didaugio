@@ -154,6 +154,21 @@ test("subscription baseline exists before subscription telemetry alters it", () 
   for (const table of ["subscription_plans", "subscriptions", "subscription_invoices", "subscription_stats"]) {
     assert.match(sql, new RegExp(`CREATE TABLE IF NOT EXISTS "${table}"`, "u"));
   }
+
+  for (const token of [
+    "namespace.nspname = 'public'",
+    "referenced_namespace.nspname = 'public'",
+    "c.contype = 'f'",
+    "c.conkey = ARRAY[owning_column.attnum]::SMALLINT[]",
+    "c.confkey = ARRAY[referenced_column.attnum]::SMALLINT[]",
+    "c.confupdtype = 'c'",
+    "c.confdeltype = 'r'",
+    "Existing subscription constraint % is incompatible",
+  ]) assert.ok(sql.includes(token), `subscription FK guard missing: ${token}`);
+  assert.doesNotMatch(
+    sql,
+    /SELECT\s+1\s+FROM\s+pg_constraint\s+WHERE\s+conname\s*=/iu,
+  );
 });
 
 test("reconciliation migration covers critical booking and financial schema", () => {

@@ -1,6 +1,5 @@
 import "dotenv/config";
 import assert from "node:assert/strict";
-import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -10,12 +9,13 @@ import { fileURLToPath } from "node:url";
 import { Client } from "pg";
 
 import {
-  AUDIT_DB_PREFIX,
   PRISMA_SPAWN_TIMEOUT_MS,
-  assertSafeAuditDatabaseName,
   assertSuccessfulSpawn,
+  buildAdminDatabaseUrl,
+  buildAuditDatabaseName,
   buildDatabaseUrl,
   buildPgClientConfig,
+  dropOwnedAuditDatabase,
   quoteIdentifier,
 } from "../src/scripts/lib/migrationAudit.js";
 
@@ -33,6 +33,13 @@ const migrationSql = await readFile(
   ),
   "utf8",
 );
+const subscriptionBaselineSql = await readFile(
+  new URL(
+    "../prisma/migrations/20260713000000_create_subscription_baseline/migration.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 function runPrisma(databaseUrl, args) {
   const result = spawnSync(process.execPath, [prismaCli, ...args], {
@@ -43,19 +50,19 @@ function runPrisma(databaseUrl, args) {
     shell: false,
     timeout: PRISMA_SPAWN_TIMEOUT_MS,
   });
-  assertSuccessfulSpawn(result, `Prisma ${args.join(" ")}`);
+  assertSuccessfulSpawn(result, `Prisma ${args.join(" ")}`, {
+    databaseUrl,
+  });
 }
 
 async function withAuditDatabase(label, run) {
   assert.ok(sourceUrl, "DATABASE_URL is required for reconciliation integration tests");
-  const databaseName = assertSafeAuditDatabaseName(
-    `${AUDIT_DB_PREFIX}reconcile_${label}_${crypto.randomBytes(6).toString("hex")}`,
-  );
+  const databaseName = buildAuditDatabaseName(label);
   const auditUrl = buildDatabaseUrl(sourceUrl, databaseName);
-  const adminUrl = new URL(sourceUrl);
-  adminUrl.pathname = "/postgres";
-  const admin = new Client(buildPgClientConfig(adminUrl.toString()));
+  const adminUrl = buildAdminDatabaseUrl(sourceUrl);
+  const admin = new Client(buildPgClientConfig(adminUrl));
   let adminConnected = false;
+  let ownsDatabase = false;
   let audit;
   let result;
   let primaryFailure;
@@ -64,6 +71,7 @@ async function withAuditDatabase(label, run) {
     await admin.connect();
     adminConnected = true;
     await admin.query(`CREATE DATABASE ${quoteIdentifier(databaseName)}`);
+    ownsDatabase = true;
     runPrisma(auditUrl, ["db", "push", `--schema=${schemaPath}`, "--skip-generate"]);
     audit = new Client(buildPgClientConfig(auditUrl));
     await audit.connect();
@@ -76,13 +84,13 @@ async function withAuditDatabase(label, run) {
 
   let cleanupFailure;
   try {
-    if (!adminConnected) {
-      await admin.connect();
-      adminConnected = true;
+    if (ownsDatabase) {
+      if (!adminConnected) {
+        await admin.connect();
+        adminConnected = true;
+      }
+      await dropOwnedAuditDatabase(admin, databaseName);
     }
-    await admin.query(
-      `DROP DATABASE IF EXISTS ${quoteIdentifier(databaseName)} WITH (FORCE)`,
-    );
   } catch (error) {
     cleanupFailure = error;
   } finally {
@@ -169,6 +177,28 @@ async function getConstraintSnapshot(client, table, constraint) {
   assert.equal(result.rowCount, 1, `missing ${table}.${constraint}`);
   return result.rows[0];
 }
+
+test(
+  "subscription baseline accepts exact foreign keys and rejects same-name wrong actions",
+  { skip: databaseSkip },
+  async () => {
+    await withAuditDatabase("subscription_fk_guard", async (client) => {
+      await assert.doesNotReject(client.query(subscriptionBaselineSql));
+      await client.query(`
+        ALTER TABLE "subscriptions"
+        DROP CONSTRAINT "subscriptions_plan_id_fkey",
+        ADD CONSTRAINT "subscriptions_plan_id_fkey"
+          FOREIGN KEY ("plan_id") REFERENCES "subscription_plans"("id")
+          ON DELETE CASCADE ON UPDATE CASCADE
+      `);
+
+      await assert.rejects(
+        client.query(subscriptionBaselineSql),
+        /Existing subscription constraint subscriptions_plan_id_fkey is incompatible/iu,
+      );
+    });
+  },
+);
 
 test(
   "canonicalizes booking finance, category levels, and role protection idempotently",

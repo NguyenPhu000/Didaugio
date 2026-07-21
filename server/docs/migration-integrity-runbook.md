@@ -26,19 +26,22 @@ The aggregate command first runs `npm run migrate:verify`, so a missing `DATABAS
 node --test test/migrationAudit.test.js test/migrationHistory.contract.test.js test/migrationReconciliation.integration.test.js
 ```
 
-The verifier generates an unpredictable name under the safe prefix, creates that isolated database, runs `prisma migrate deploy` and the drift comparison against it, then performs unconditional cleanup. Cleanup is attempted after create, deploy, diff, or assertion failures. There is no debug-retention mode.
+The verifier generates an unpredictable name under the safe prefix, creates that isolated database, runs `prisma migrate deploy` and the drift comparison against it, then removes only that invocation-owned database. Cleanup is attempted after deploy, diff, or assertion failures once this invocation's `CREATE DATABASE` has succeeded. A failed create (including a name collision) never claims ownership and therefore never drops another job's database. There is no debug-retention mode.
 
-The verifier passes database credentials only through child-process environment variables. It never emits an unredacted database URL or credential; a safe failure diagnostic may contain URL metadata only after both user-info and query-string passwords are replaced with `***`. The verifier never deploys or resets the application database; only the prefix-validated temporary database can be created or dropped.
+The verifier passes database credentials only through child-process environment variables. It never emits an unredacted database URL or credential; a safe failure diagnostic may contain URL metadata only after both user-info and query-string passwords are replaced with `***`. The verifier never deploys or resets the application database; only the prefix-validated temporary database can be created or dropped. Cleanup is PostgreSQL 12-compatible: it disables new connections for the exact identifier, terminates sessions selected with a parameterized database name, and then executes a plain `DROP DATABASE` from the `postgres` maintenance database.
 
-After the gate, a read-only audit query against `pg_database` must return zero:
+Gate success proves that the current invocation removed its owned database. Do not use a global count of prefix-matching databases as a CI correctness assertion: other parallel jobs may legitimately own databases at the same time.
+
+For a separate local orphan audit, run this read-only listing only when no migration gates are active:
 
 ```sql
-SELECT count(*)
+SELECT datname
 FROM pg_database
-WHERE datname LIKE 'didaugio_codex_migration_%';
+WHERE datname LIKE 'didaugio_codex_migration_%'
+ORDER BY datname;
 ```
 
-If cleanup itself fails, the gate reports both the primary failure and the cleanup failure. An operator must resolve that exceptional infrastructure failure using the exact prefix-validated name from PostgreSQL administration records; never run a wildcard drop command.
+Any rows are candidates for operator investigation, not automatic deletion. If cleanup itself fails, the gate reports both the primary failure and the cleanup failure. An operator must resolve that exceptional infrastructure failure using the exact prefix-validated name from PostgreSQL administration records; never run a wildcard drop command.
 
 ## Application database preflight
 
