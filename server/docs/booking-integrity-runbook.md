@@ -7,6 +7,8 @@ This runbook covers the resource and capacity booking model. It is a verificatio
 - Run commands from `server` with dependencies installed and `DATABASE_URL` supplied through the environment. Never put a credential in a command argument, source file, report, or CI log.
 - A resource booking requires an active `place_resources` row whose `service_id` and `place_id` exactly match the requested active service. Capacity bookings do not select a resource.
 - The persisted canonical interval is calculated once from the requested Vietnam-local booking time, service slot duration, and buffer. All create and reschedule paths must reuse that interval; a client-provided end time is never authoritative.
+- A direct `bookingAt` string must carry `Z` or an explicit numeric UTC offset such as `+07:00`; zone-less timestamps are rejected before database access. The separate `useDate` plus `useTime` fields remain Vietnam wall-clock input and are converted with the `Asia/Ho_Chi_Minh` policy.
+- Booking idempotency keys are unique per user, not globally. Same-user retries serialize and replay one booking; two users may independently use the same opaque key without seeing or receiving each other's booking.
 - Resource conflicts use strict interval overlap: adjacent intervals where one ends exactly when the next starts are allowed. Cancelled, rejected, expired, and soft-deleted bookings do not consume a resource or capacity.
 - Capacity is evaluated in the canonical minute bucket for active pending/confirmed bookings. `allowOverbooking: true` is a literal opt-out from the capacity limit, not a UI-only hint and not an implicit permission for invalid resources.
 
@@ -34,6 +36,8 @@ npm run audit:booking:orphans
 ```
 
 `quality:booking` runs policy, availability, public-route, time-slot, and live PostgreSQL integrity coverage. The live test derives a fresh, entropy-bearing database name from `DATABASE_URL`, applies migrations from disk, and drops only the invocation-owned database. It never deploys to, pushes to, resets, or writes application data.
+
+The forward migration `20260721210000_scope_booking_idempotency_per_user` replaces the historical global key index with the validated composite `(user_id, idempotency_key)` index. Deploy that migration through the separately authorized production migration workflow before running application code that depends on tenant-scoped keys; never recreate or drop either index manually.
 
 Run the migration-history gate separately when a release contains migrations:
 

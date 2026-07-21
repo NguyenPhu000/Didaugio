@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
@@ -52,4 +53,30 @@ test("create input resolver rejects raw invalid useDate/useTime before a booking
     resolveBookingAtFromPayload({ bookingAt: "2026-07-22T02:00:00.000Z" }).toISOString(),
     "2026-07-22T02:00:00.000Z",
   );
+});
+
+test("direct bookingAt requires an explicit zone and preserves the exact instant", () => {
+  assert.throws(
+    () => resolveBookingAtFromPayload({ bookingAt: "2026-07-22T09:00:00" }),
+    /zone|offset|bookingAt/i,
+  );
+  assert.equal(
+    resolveBookingAtFromPayload({ bookingAt: "2026-07-22T09:00:00+07:00" }).toISOString(),
+    "2026-07-22T02:00:00.000Z",
+  );
+});
+
+test("explicit-offset bookingAt is independent of the process timezone", () => {
+  const source = `import { resolveBookingAtFromPayload } from './src/utils/bookingTimeSlot.js';\n`
+    + `process.stdout.write(resolveBookingAtFromPayload({ bookingAt: '2026-07-22T09:00:00+07:00' }).toISOString());`;
+  const outputs = ["UTC", "America/New_York"].map((TZ) => {
+    const result = spawnSync(process.execPath, ["--input-type=module", "--eval", source], {
+      cwd: process.cwd(),
+      env: { ...process.env, TZ },
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout;
+  });
+  assert.deepEqual(outputs, ["2026-07-22T02:00:00.000Z", "2026-07-22T02:00:00.000Z"]);
 });

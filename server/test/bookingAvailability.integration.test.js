@@ -645,6 +645,31 @@ test("booking availability keeps real PostgreSQL resource and capacity integrity
         _sum: { quantity: true },
       });
       assert.equal(consumedCapacity._sum.quantity, 1);
+
+      const tenantScopedFixture = await createServiceFixture(appPrisma, base, {
+        bookingModel: "capacity", maxCapacity: 2, resourceCount: 0,
+      });
+      const tenantScopedAt = futureAt(22, 10);
+      const sharedTenantKey = `shared-tenant-key-${base.nonce}`;
+      const tenantScopedPayload = bookingPayload(
+        tenantScopedFixture.service,
+        undefined,
+        tenantScopedAt,
+        { idempotencyKey: sharedTenantKey },
+      );
+      const tenantScopedRace = await Promise.allSettled([
+        createBooking(tenantScopedPayload, base.customer.id),
+        createBooking(tenantScopedPayload, base.owner.id),
+      ]);
+      assert.equal(tenantScopedRace.filter((entry) => entry.status === "fulfilled").length, 2);
+      assert.equal(tenantScopedRace.filter((entry) => entry.status === "rejected").length, 0);
+      const tenantScopedBookings = tenantScopedRace.map((entry) => entry.value);
+      assert.notEqual(tenantScopedBookings[0].id, tenantScopedBookings[1].id);
+      assert.deepEqual(
+        new Set(tenantScopedBookings.map((booking) => booking.user.id)),
+        new Set([base.customer.id, base.owner.id]),
+      );
+      assert.equal(await appPrisma.booking.count({ where: { idempotencyKey: sharedTenantKey } }), 2);
       } finally {
         await appPrisma?.$disconnect().catch(() => undefined);
         appPrisma = undefined;

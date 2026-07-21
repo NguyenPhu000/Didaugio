@@ -23,7 +23,7 @@ npm run quality:migrations
 The aggregate command first runs `npm run migrate:verify`, so a missing `DATABASE_URL` fails immediately instead of turning the live reconciliation checks into a successful skip. It then runs exactly these focused files:
 
 ```powershell
-node --test test/migrationAudit.test.js test/migrationHistory.contract.test.js test/migrationReconciliation.integration.test.js
+node --test test/migrationAudit.test.js test/migrationHistory.contract.test.js test/migrationReconciliation.integration.test.js test/bookingIdempotencyMigration.integration.test.js
 ```
 
 The verifier generates an unpredictable name under the safe prefix, creates that isolated database, runs `prisma migrate deploy` and the drift comparison against it, then removes only that invocation-owned database. Cleanup is attempted after deploy, diff, or assertion failures once this invocation's `CREATE DATABASE` has succeeded. A failed create (including a name collision) never claims ownership and therefore never drops another job's database. There is no debug-retention mode.

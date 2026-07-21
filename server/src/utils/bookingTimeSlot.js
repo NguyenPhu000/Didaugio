@@ -47,8 +47,11 @@ function parseBookingAt(value) {
 
   const raw = String(value ?? "").trim();
   if (!raw) throw new RangeError("bookingAt must be a valid date");
+  if (!/(?:Z|[+-]\d{2}:?\d{2})$/iu.test(raw)) {
+    throw new RangeError("bookingAt must include a Z or numeric UTC offset");
+  }
 
-  const calendarMatch = /^(\d{4}-\d{2}-\d{2})(?:T|$)/.exec(raw);
+  const calendarMatch = /^(\d{4}-\d{2}-\d{2})T/u.exec(raw);
   if (calendarMatch) getUseDateParts(calendarMatch[1]);
 
   return assertValidDate(new Date(raw), "bookingAt");

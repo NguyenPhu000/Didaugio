@@ -362,7 +362,7 @@ test("real aggregate gate rejects missing DATABASE_URL before focused tests", ()
 test("migration quality gate verifies clean history before all focused tests", () => {
   assert.equal(
     packageJson.scripts["quality:migrations"],
-    "npm run migrate:verify && node --test test/migrationAudit.test.js test/migrationHistory.contract.test.js test/migrationReconciliation.integration.test.js",
+    "npm run migrate:verify && node --test test/migrationAudit.test.js test/migrationHistory.contract.test.js test/migrationReconciliation.integration.test.js test/bookingIdempotencyMigration.integration.test.js",
   );
 });
 

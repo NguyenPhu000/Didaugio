@@ -1424,7 +1424,7 @@ model Booking {
   deletedAt        DateTime?           @map("deleted_at")
   businessId       Int                 @map("business_id")
   bookingAt        DateTime?           @map("booking_at")
-  idempotencyKey   String?             @unique @map("idempotency_key")
+  idempotencyKey   String?             @map("idempotency_key")
   adminEarned      Int                 @default(0) @map("admin_earned")
   businessEarned   Int                 @default(0) @map("business_earned")
   commissionRate   Int                 @default(10) @map("commission_rate")
@@ -1446,6 +1446,7 @@ model Booking {
   @@index([useDate])
   @@index([resourceId])
   @@index([businessId, bookingAt])
+  @@unique([userId, idempotencyKey], map: "bookings_user_id_idempotency_key_key")
   // ─── Composite Indexes for Overlap Queries ─────────────────────────────────────
   // Dùng cho mô hình RESOURCE - tìm booking trùng thời gian
   @@index([resourceId, useDate, status])

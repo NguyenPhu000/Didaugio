@@ -55,3 +55,25 @@ The final independent review found two behavior defects and one runbook mismatch
 | `server: npm.cmd run audit:booking:orphans` | exit 0; `owned_booking_audit_databases=0`. |
 | `app: npm.cmd run test:booking` | exit 0; 5 passed. |
 | targeted app ESLint command from the prior gate | exit 0; no diagnostics. |
+
+## Second final-review remediation (2026-07-21)
+
+- Replaced the schema's global booking idempotency uniqueness with a nullable composite unique index on `(user_id, idempotency_key)`. Forward migration `20260721210000_scope_booking_idempotency_per_user` validates the table, columns, duplicate tenant keys, both exact index definitions, health flags, key order, and access method before it creates the composite index and removes the validated historical index in one transaction. The migration is idempotent and rejects same-name incompatible legacy or composite indexes atomically.
+- P2002 recognition now accepts only the tenant composite fields or exact composite index name. Same-user lock/replay remains user-scoped; a real two-user same-key race proves two independent booking IDs and correct returned user ownership.
+- Direct string `bookingAt` now requires `Z` or a numeric offset. Zone-less input is rejected by both resolver and schema before Prisma access. Explicit `+07:00` input maps to the same UTC instant under `TZ=UTC` and `TZ=America/New_York`; the Vietnam-local `useDate`/`useTime` path is unchanged.
+
+### Second final-review evidence
+
+| Command | Result |
+| --- | --- |
+| RED focused contract/migration command | exit 1; 18 passed, 5 expected failures, 2 migration tests skipped because the forward migration was intentionally absent. Failures covered zone-less schema/resolver/direct-create, composite P2002 target, and missing migration. |
+| RED live booking integration | exit 1; global `idempotency_key` uniqueness allowed only one of two users to succeed (`1 !== 2`). |
+| GREEN focused contract/migration command | exit 0; 25 passed, 0 failed/skipped, including idempotent and fail-closed migration execution on owned databases. |
+| GREEN live run 1 | exit 0; 1 live pass, 1 expected prerequisite skip; 12.16 s. |
+| GREEN live run 2 | exit 0; 1 live pass, 1 expected prerequisite skip; 13.05 s. |
+| `server: npm.cmd run quality:booking` | exit 0; 37 passed, 0 failed, 1 expected prerequisite skip; 10.87 s. |
+| `server: npx.cmd prisma validate --schema=prisma/schema.prisma` | exit 0; schema valid. |
+| First updated migration aggregate | all 19 migrations applied and new migration tests passed, but aggregate exited 1 at 49/50 because the exact gate-wiring contract still named the former three-file command. No schema or migration execution failed. |
+| Targeted migration wiring rerun | exit 0; 27 passed. |
+| Final `server: npm.cmd run quality:migrations` | exit 0; all 19 migrations applied on a new owned clean database; 50 passed, 0 failed/skipped; 124.50 s test duration. |
+| `server: npm.cmd run audit:booking:orphans` | exit 0; `owned_booking_audit_databases=0`. |
