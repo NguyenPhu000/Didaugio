@@ -549,6 +549,32 @@ test(
         },
       },
       {
+        label: "rename_old_constraint_backed_unique",
+        setup: async (client) => {
+          const oldUnique = "place_administrative_location_e_place_id_dataset_release_id_key";
+          const targetUnique = "place_administrative_location_exceptions_place_id_dataset_r_key";
+          await client.query(`DROP INDEX "${targetUnique}"`);
+          await client.query(`
+            ALTER TABLE "place_administrative_location_exceptions"
+            ADD CONSTRAINT "${oldUnique}"
+            UNIQUE ("place_id", "dataset_release_id")
+          `);
+        },
+        expected: null,
+        verify: async (client) => {
+          const targetUnique = "place_administrative_location_exceptions_place_id_dataset_r_key";
+          const result = await client.query(`
+            SELECT to_regclass('public.${targetUnique}') AS target_index,
+                   EXISTS (
+                     SELECT 1 FROM pg_constraint
+                     WHERE conindid = 'public.${targetUnique}'::regclass
+                   ) AS constraint_backed
+          `);
+          assert.equal(result.rows[0].target_index, targetUnique);
+          assert.equal(result.rows[0].constraint_backed, true);
+        },
+      },
+      {
         label: "rename_missing",
         setup: (client) => client.query(`DROP INDEX "${targetName}"`),
         expected: /Historical index .* and target .* are both missing/iu,
@@ -653,5 +679,63 @@ test(
       );
       await client.query("ROLLBACK");
     });
+  },
+);
+
+test(
+  "validates foreign-key supporting key cardinality and equality operators",
+  { skip: databaseSkip },
+  async () => {
+    const scenarios = [
+      {
+        label: "fk_include_support_column",
+        expected: null,
+        mutate: async (client) => {
+          await client.query(`CREATE UNIQUE INDEX "task4_businesses_id_include_status_key"
+            ON "businesses"("id") INCLUDE ("status")`);
+          await client.query(`UPDATE pg_constraint
+            SET conindid = 'public.task4_businesses_id_include_status_key'::regclass
+            WHERE conname = 'bookings_business_id_fkey'
+              AND conrelid = 'public.bookings'::regclass`);
+        },
+      },
+      {
+        label: "fk_extra_support_key",
+        expected: /Existing constraint bookings\.bookings_business_id_fkey is incompatible/iu,
+        mutate: async (client) => {
+          await client.query(`CREATE UNIQUE INDEX "task4_businesses_id_status_key"
+            ON "businesses"("id", "status")`);
+          await client.query(`UPDATE pg_constraint
+            SET conindid = 'public.task4_businesses_id_status_key'::regclass
+            WHERE conname = 'bookings_business_id_fkey'
+              AND conrelid = 'public.bookings'::regclass`);
+        },
+      },
+      {
+        label: "fk_wrong_equality_operator",
+        expected: /Existing constraint bookings\.bookings_business_id_fkey is incompatible/iu,
+        mutate: (client) => client.query(`UPDATE pg_constraint
+          SET conpfeqop = ARRAY[(
+            SELECT oid FROM pg_operator
+            WHERE oprname = '<>'
+              AND oprleft = 'integer'::regtype
+              AND oprright = 'integer'::regtype
+          )]::oid[]
+          WHERE conname = 'bookings_business_id_fkey'
+            AND conrelid = 'public.bookings'::regclass`),
+      },
+    ];
+
+    for (const scenario of scenarios) {
+      await withAuditDatabase(scenario.label, async (client) => {
+        await scenario.mutate(client);
+        if (scenario.expected) {
+          await assert.rejects(client.query(migrationSql), scenario.expected);
+          await client.query("ROLLBACK");
+        } else {
+          await client.query(migrationSql);
+        }
+      });
+    }
   },
 );

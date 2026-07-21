@@ -22,7 +22,7 @@ export function lexPostgresTopLevel(input) {
     if (current === "-" && next === "-") {
       const start = index;
       index += 2;
-      while (index < sql.length && sql[index] !== "\n") index += 1;
+      while (index < sql.length && sql[index] !== "\n" && sql[index] !== "\r") index += 1;
       maskRange(start, index);
       continue;
     }
@@ -47,10 +47,16 @@ export function lexPostgresTopLevel(input) {
 
     if (current === "'") {
       const start = index;
+      const prefix = tokens.at(-1);
+      const isEscapeString = prefix?.type === "word"
+        && prefix.end === index
+        && (prefix.raw === "E" || prefix.raw === "e")
+        && (prefix.start === 0 || !/[A-Za-z0-9_$]/u.test(sql[prefix.start - 1]));
       index += 1;
       let closed = false;
       while (index < sql.length) {
-        if (sql[index] === "'" && sql[index + 1] === "'") index += 2;
+        if (isEscapeString && sql[index] === "\\" && index + 1 < sql.length) index += 2;
+        else if (sql[index] === "'" && sql[index + 1] === "'") index += 2;
         else if (sql[index] === "'") {
           index += 1;
           closed = true;

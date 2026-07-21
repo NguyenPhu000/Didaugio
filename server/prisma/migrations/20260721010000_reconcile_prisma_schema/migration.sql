@@ -1447,6 +1447,7 @@ DECLARE
   supporting_index_is_live BOOLEAN;
   supporting_index_is_unique BOOLEAN;
   supporting_index_is_immediate BOOLEAN;
+  supporting_index_key_count INTEGER;
   supporting_index_relation_oid OID;
   supporting_index_keys SMALLINT[];
   supporting_index_predicate TEXT;
@@ -1608,6 +1609,7 @@ BEGIN
         supporting_index.indislive,
         supporting_index.indisunique,
         supporting_index.indimmediate,
+        supporting_index.indnkeyatts,
         supporting_index.indrelid,
         ARRAY(
           SELECT supporting_key::SMALLINT
@@ -1621,6 +1623,7 @@ BEGIN
         supporting_index_is_live,
         supporting_index_is_unique,
         supporting_index_is_immediate,
+        supporting_index_key_count,
         supporting_index_relation_oid,
         supporting_index_keys,
         supporting_index_predicate
@@ -1672,6 +1675,7 @@ BEGIN
          OR NOT COALESCE(supporting_index_is_live, false)
          OR NOT COALESCE(supporting_index_is_unique, false)
          OR NOT COALESCE(supporting_index_is_immediate, false)
+         OR supporting_index_key_count <> cardinality(actual_referenced_keys)
          OR supporting_index_relation_oid IS DISTINCT FROM referenced_relation_oid
          OR supporting_index_keys[1:cardinality(actual_referenced_keys)]
               IS DISTINCT FROM actual_referenced_keys

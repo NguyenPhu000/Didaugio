@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { Client } from "pg";
 import * as migrationAudit from "../src/scripts/lib/migrationAudit.js";
 import {
   AUDIT_DB_PREFIX,
@@ -186,5 +187,30 @@ test("PostgreSQL clients share bounded connection and operation timeouts", () =>
   assert.equal(
     (reconciliationIntegrationSource.match(/new Client\(buildPgClientConfig\(/gu) ?? []).length,
     2,
+  );
+
+  const hostileUrl = new URL("postgresql://audit:redacted@localhost/task4");
+  hostileUrl.searchParams.append("connect_timeout", "9999");
+  hostileUrl.searchParams.append("statement_timeout", "999999999");
+  hostileUrl.searchParams.append("query_timeout", "999999999");
+  hostileUrl.searchParams.append("Statement_Timeout", "888888888");
+  hostileUrl.searchParams.append("application_name", "task4-timeout-test");
+  hostileUrl.searchParams.append("sslmode", "disable");
+
+  const effectiveClient = new Client(
+    migrationAudit.buildPgClientConfig(hostileUrl.toString()),
+  );
+  assert.equal(effectiveClient.connectionParameters.connect_timeout, 10);
+  assert.equal(effectiveClient.connectionParameters.statement_timeout, 120_000);
+  assert.equal(effectiveClient.connectionParameters.query_timeout, 120_000);
+  assert.equal(effectiveClient.connectionParameters.application_name, "task4-timeout-test");
+  const sanitizedUrl = new URL(
+    migrationAudit.buildPgClientConfig(hostileUrl.toString()).connectionString,
+  );
+  assert.equal(sanitizedUrl.searchParams.get("application_name"), "task4-timeout-test");
+  assert.equal(sanitizedUrl.searchParams.get("sslmode"), "disable");
+  assert.deepEqual(
+    [...sanitizedUrl.searchParams.keys()].filter((name) => /^(?:connect|query|statement)_timeout$/iu.test(name)),
+    [],
   );
 });

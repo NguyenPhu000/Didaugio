@@ -357,6 +357,10 @@ test("reconciliation validates same-name indexes and constraints before acceptin
   assert.doesNotMatch(sql, /\w+\.indnullsnotdistinct\b/u);
   assert.match(sql, /to_jsonb\([^)]*\)\s*->>\s*'indnullsnotdistinct'/iu);
   assert.match(sql, /to_jsonb\([^)]*\)\s*->>\s*'conenforced'/iu);
+  assert.match(
+    sql,
+    /supporting_index\.indnkeyatts[\s\S]*cardinality\(actual_referenced_keys\)/iu,
+  );
 });
 
 test("SQL-aware transaction contract rejects every top-level alias and ignores quoted text", () => {
@@ -375,6 +379,14 @@ test("SQL-aware transaction contract rejects every top-level alias and ignores q
     reconciliationSql.replace(
       /\nCOMMIT;\s*$/u,
       "\nCOMMIT/* outer /* nested */ still outer */WORK;",
+    ),
+    reconciliationSql.replace(
+      "\nCOMMIT;",
+      String.raw`
+SELECT E'left\'quote\\tail';
+START/**/TRANSACTION;
+SELECT e'right\'quote\\tail';
+COMMIT;`,
     ),
   ];
   for (const mutation of unsafeMutations) {
@@ -422,6 +434,18 @@ test("destructive contract is table/column scoped and rejects trailing bypasses"
       "\nCOMMIT;",
       '\nDROP/* outer /* nested */ still outer */TABLE "users";\nCOMMIT;',
     ),
+    reconciliationSql.replace(
+      "\nCOMMIT;",
+      String.raw`
+SELECT E'left\'quote\\tail';
+DROP/**/TABLE "users";
+SELECT e'right\'quote\\tail';
+COMMIT;`,
+    ),
+    reconciliationSql.replace(
+      "\nCOMMIT;",
+      '-- PostgreSQL CR ends this comment\rDROP TABLE "users";\nCOMMIT;',
+    ),
   ];
   for (const mutation of unsafeMutations) {
     assert.throws(() => assertSafeDestructiveOperations(mutation), /destructive/iu);
@@ -440,4 +464,13 @@ $ignored$;
 COMMIT;`,
   );
   assert.doesNotThrow(() => assertSafeDestructiveOperations(literalControls));
+  const escapeStringControls = reconciliationSql.replace(
+    "\nCOMMIT;",
+    String.raw`
+SELECT E'escaped quote: \' DROP/**/TABLE users; slash: \\' AS payload;
+SELECT e'ROLLBACK; DELETE/**/FROM users; escaped: \' and \\' AS payload;
+COMMIT;`,
+  );
+  assert.doesNotThrow(() => assertSafeTopLevelMigration(escapeStringControls));
+  assert.doesNotThrow(() => assertSafeDestructiveOperations(escapeStringControls));
 });

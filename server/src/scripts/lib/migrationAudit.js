@@ -3,6 +3,11 @@ export const PRISMA_SPAWN_TIMEOUT_MS = 120_000;
 export const PG_CONNECTION_TIMEOUT_MS = 10_000;
 export const PG_OPERATION_TIMEOUT_MS = 120_000;
 const SAFE_AUDIT_DB_RE = /^didaugio_codex_migration_[a-z0-9_]+$/u;
+const TIMEOUT_URL_PARAMETERS = new Set([
+  "connect_timeout",
+  "query_timeout",
+  "statement_timeout",
+]);
 
 export function assertSuccessfulSpawn(result, label) {
   if (result.error?.code === "ETIMEDOUT") {
@@ -25,8 +30,14 @@ export function assertSuccessfulSpawn(result, label) {
 }
 
 export function buildPgClientConfig(connectionString) {
+  const sanitizedUrl = new URL(connectionString);
+  for (const parameter of [...sanitizedUrl.searchParams.keys()]) {
+    if (TIMEOUT_URL_PARAMETERS.has(parameter.toLowerCase())) {
+      sanitizedUrl.searchParams.delete(parameter);
+    }
+  }
   return {
-    connectionString,
+    connectionString: sanitizedUrl.toString(),
     connectionTimeoutMillis: PG_CONNECTION_TIMEOUT_MS,
     query_timeout: PG_OPERATION_TIMEOUT_MS,
     statement_timeout: PG_OPERATION_TIMEOUT_MS,
