@@ -14,6 +14,11 @@ import * as momoService from "./momo.service.js";
 import * as sepayService from "./sepay.service.js";
 import * as sepayWebhookService from "./sepayWebhook.service.js";
 import * as webhookLogService from "./webhookLog.service.js";
+import {
+  buildSafeWebhookLogEntry,
+  PAYMENT_OBLIGATION_ERROR_CODES,
+  validateCallbackObligation,
+} from "./paymentCallbackObligation.policy.js";
 import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import * as bookingService from "../booking/booking.service.js";
 import { processPaymentLedger } from "../booking/financialCore.service.js";
@@ -233,11 +238,11 @@ export async function createCheckout({
  * Idempotent: if payment already "paid" or "fully_refunded", returns RspCode "02".
  */
 export async function processVNPayIPN(query) {
-  const webhookLogId = await webhookLogService.logWebhook({
+  const webhookLogId = await webhookLogService.logWebhook(buildSafeWebhookLogEntry({
     gateway: "VNPAY",
-    payload: query,
-    signature: query.vnp_SecureHash || null,
-  });
+    reference: query.vnp_TxnRef,
+    outcome: "received",
+  }));
 
   try {
     const verifyResult = vnpayService.verifyIpn(query);
@@ -257,6 +262,7 @@ export async function processVNPayIPN(query) {
       transactionRef,
       responseCode,
       amount,
+      currency,
       bankCode,
       transactionNo,
       payDate,
@@ -264,7 +270,7 @@ export async function processVNPayIPN(query) {
 
     const result = await prisma.$transaction(async (tx) => {
       const locked = await tx.$queryRaw`
-        SELECT id, status, amount, booking_id
+        SELECT id, status, amount, currency, transaction_ref, booking_id
         FROM payments
         WHERE transaction_ref = ${transactionRef}
         LIMIT 1
@@ -276,6 +282,19 @@ export async function processVNPayIPN(query) {
       }
 
       const payment = locked[0];
+
+      const obligation = validateCallbackObligation({
+        gateway: "VNPAY",
+        payment,
+        callback: {
+          reference: transactionRef,
+          amount,
+          currency,
+        },
+      });
+      if (!obligation.valid) {
+        return { type: "OBLIGATION_MISMATCH", code: obligation.code };
+      }
 
       if (
         payment.status === PAYMENT_STATUS.PAID ||
@@ -367,12 +386,26 @@ export async function processVNPayIPN(query) {
       };
     });
 
-    if (result.type && result.type !== "NOT_FOUND") {
+    if (result.type && result.type !== "NOT_FOUND" && result.type !== "OBLIGATION_MISMATCH") {
       await webhookLogService.markProcessed({ transactionRef, webhookLogId });
     }
 
     if (result.type === "NOT_FOUND") {
+      await webhookLogService.markError({
+        transactionRef: transactionRef || null,
+        webhookLogId,
+        errorMsg: PAYMENT_OBLIGATION_ERROR_CODES.REFERENCE_MISMATCH,
+      });
       return vnpayService.buildIpnResponse("01", "Order not found");
+    }
+
+    if (result.type === "OBLIGATION_MISMATCH") {
+      await webhookLogService.markError({
+        transactionRef: transactionRef || null,
+        webhookLogId,
+        errorMsg: result.code,
+      });
+      return vnpayService.buildIpnResponse("04", "Invalid callback obligation");
     }
 
     if (result.type === "ALREADY_PROCESSED") {
@@ -431,11 +464,11 @@ export async function processVNPayIPN(query) {
  * Idempotent: if payment already "paid" or "fully_refunded", returns resultCode 0.
  */
 export async function processMoMoIPN(body) {
-  const webhookLogId = await webhookLogService.logWebhook({
+  const webhookLogId = await webhookLogService.logWebhook(buildSafeWebhookLogEntry({
     gateway: "MOMO",
-    payload: body,
-    signature: body.signature || null,
-  });
+    reference: body.orderId,
+    outcome: "received",
+  }));
 
   try {
     const verifyResult = momoService.verifyIpnSignature(body);
@@ -455,7 +488,7 @@ export async function processMoMoIPN(body) {
 
     const dbResult = await prisma.$transaction(async (tx) => {
       const locked = await tx.$queryRaw`
-        SELECT id, status, amount, booking_id
+        SELECT id, status, amount, currency, transaction_ref, booking_id
         FROM payments
         WHERE transaction_ref = ${orderId}
         LIMIT 1
@@ -467,6 +500,18 @@ export async function processMoMoIPN(body) {
       }
 
       const payment = locked[0];
+
+      const obligation = validateCallbackObligation({
+        gateway: "MOMO",
+        payment,
+        callback: {
+          reference: orderId,
+          amount,
+        },
+      });
+      if (!obligation.valid) {
+        return { type: "OBLIGATION_MISMATCH", code: obligation.code };
+      }
 
       if (
         payment.status === PAYMENT_STATUS.PAID ||
@@ -555,7 +600,11 @@ export async function processMoMoIPN(body) {
       };
     });
 
-    if (dbResult.type && dbResult.type !== "NOT_FOUND") {
+    if (
+      dbResult.type &&
+      dbResult.type !== "NOT_FOUND" &&
+      dbResult.type !== "OBLIGATION_MISMATCH"
+    ) {
       await webhookLogService.markProcessed({
         transactionRef: orderId,
         webhookLogId,
@@ -563,7 +612,21 @@ export async function processMoMoIPN(body) {
     }
 
     if (dbResult.type === "NOT_FOUND") {
+      await webhookLogService.markError({
+        transactionRef: orderId || null,
+        webhookLogId,
+        errorMsg: PAYMENT_OBLIGATION_ERROR_CODES.REFERENCE_MISMATCH,
+      });
       return momoService.buildIpnResponse(1000, "Order not found");
+    }
+
+    if (dbResult.type === "OBLIGATION_MISMATCH") {
+      await webhookLogService.markError({
+        transactionRef: orderId || null,
+        webhookLogId,
+        errorMsg: dbResult.code,
+      });
+      return momoService.buildIpnResponse(1000, "Invalid callback obligation");
     }
 
     if (dbResult.type === "ALREADY_PROCESSED") {
