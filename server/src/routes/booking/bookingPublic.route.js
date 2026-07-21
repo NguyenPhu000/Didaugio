@@ -46,6 +46,15 @@ router.get(
         });
       }
 
+      if (typeof date !== "string") {
+        return res.status(400).json({
+          success: false,
+          data: null,
+          message: "Định dạng date không hợp lệ (YYYY-MM-DD)",
+          errorCode: "INVALID_PARAMS",
+        });
+      }
+
       try {
         combineUseDateAndTime(date, "00:00");
       } catch {

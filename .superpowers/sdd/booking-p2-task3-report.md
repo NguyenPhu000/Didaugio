@@ -25,3 +25,9 @@ app: npx.cmd eslint "app/booking/[placeId].jsx" src/modules/booking/components/R
 ## Concern
 
 Resource occupancy dates are serialized by Express as ISO strings; the direct service contract uses `Date` instances intentionally so Prisma remains type-safe.
+
+## Review follow-up
+
+- Added regressions for preserving the blocked resource contract, policy duration fallback, literal capacity overbooking, and rejecting non-string/repeated date query values before database access.
+- Repaired the public response to use the policy's resolved duration/buffer, preserve resource shape on blocked days, and keep capacity slots selectable only when literal `allowOverbooking` is enabled.
+- Focused rerun: server 30/30; app 5/5; scoped ESLint passed.

@@ -91,6 +91,62 @@ test("public availability rejects an impossible calendar date before querying th
   }
 });
 
+test("public availability rejects non-string date query values before querying the service", async () => {
+  let serviceReads = 0;
+  const restore = replaceMethod(prisma.businessService, "findUnique", async () => {
+    serviceReads += 1;
+    return null;
+  });
+
+  try {
+    await assert.rejects(
+      () => getAvailableSlots(7, ["2026-07-22"]),
+      (error) => error?.statusCode === 400 && error?.errorCode === "INVALID_PARAMS",
+    );
+    assert.equal(serviceReads, 0);
+    assert.deepEqual(await invokePublicAvailability({ serviceId: "7", date: ["2026-07-22"] }), {
+      statusCode: 400,
+      body: {
+        success: false,
+        data: null,
+        message: "Định dạng date không hợp lệ (YYYY-MM-DD)",
+        errorCode: "INVALID_PARAMS",
+      },
+    });
+  } finally {
+    restore();
+  }
+});
+
+test("blocked resource availability preserves the resource response contract", async () => {
+  const restores = [];
+  try {
+    restores.push(replaceMethod(prisma.businessService, "findUnique", async () => ({
+      id: 7,
+      businessId: 11,
+      placeId: 13,
+      bookingModel: "resource",
+      slotDurationMinutes: null,
+      durationMinutes: 45,
+      bufferMinutes: 15,
+    })));
+    restores.push(replaceMethod(prisma.businessBlockedDate, "findFirst", async () => ({ id: 1 })));
+
+    assert.deepEqual(await getAvailableSlots(7, "2026-07-22"), {
+      date: "2026-07-22",
+      serviceId: 7,
+      available: false,
+      reason: "BLOCKED_DATE",
+      bookingModel: "resource",
+      slotDurationMinutes: 45,
+      bufferMinutes: 15,
+      resources: [],
+    });
+  } finally {
+    restores.reverse().forEach((restore) => restore());
+  }
+});
+
 test("public resource availability returns only active exact-service resources and their own occupancy", async () => {
   const restores = [];
   let bookingQuery;
@@ -101,7 +157,7 @@ test("public resource availability returns only active exact-service resources a
       businessId: 11,
       placeId: 13,
       bookingModel: "resource",
-      slotDurationMinutes: 60,
+      slotDurationMinutes: null,
       durationMinutes: 45,
       bufferMinutes: 15,
     })));
@@ -130,7 +186,7 @@ test("public resource availability returns only active exact-service resources a
       serviceId: 7,
       available: true,
       bookingModel: "resource",
-      slotDurationMinutes: 60,
+      slotDurationMinutes: 45,
       bufferMinutes: 15,
       resources: [{
         id: 19,
@@ -175,6 +231,37 @@ test("capacity availability exposes a Vietnam-local minute key and canonical sta
       startTime: "2026-07-22T02:00:00.000Z",
       available: true,
       remaining: 2,
+      capacity: 2,
+    });
+  } finally {
+    restores.reverse().forEach((restore) => restore());
+  }
+});
+
+test("capacity availability keeps slots available when literal overbooking is enabled", async () => {
+  const restores = [];
+  try {
+    restores.push(replaceMethod(prisma.businessService, "findUnique", async () => ({
+      id: 7,
+      businessId: 11,
+      placeId: 13,
+      maxCapacity: 2,
+      bookingModel: "capacity",
+      slotDurationMinutes: 60,
+      bufferMinutes: 0,
+      allowOverbooking: true,
+    })));
+    restores.push(replaceMethod(prisma.businessBlockedDate, "findFirst", async () => null));
+    restores.push(replaceMethod(prisma.booking, "findMany", async () => [
+      { bookingAt: new Date("2026-07-22T02:00:00.000Z"), quantity: 3 },
+    ]));
+
+    const result = await getAvailableSlots(7, "2026-07-22");
+    assert.deepEqual(result.slots.find((slot) => slot.time === "09:00"), {
+      time: "09:00",
+      startTime: "2026-07-22T02:00:00.000Z",
+      available: true,
+      remaining: 0,
       capacity: 2,
     });
   } finally {

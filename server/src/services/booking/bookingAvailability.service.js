@@ -12,7 +12,9 @@ import {
   allowsCapacityOverbooking,
   buildBlockingBookingWhere,
   normalizeRequestedResourceId,
+  resolveBufferMinutes,
   resolveBookingModel,
+  resolveOccupiedDurationMinutes,
   resolveOccupiedInterval,
 } from "./bookingPolicy.js";
 
@@ -22,6 +24,10 @@ function assertAvailabilityInput(serviceId, dateStr) {
   const normalizedServiceId = Number(serviceId);
   if (!Number.isInteger(normalizedServiceId) || normalizedServiceId <= 0) {
     throw new ServiceError("serviceId không hợp lệ", 400, "INVALID_PARAMS");
+  }
+
+  if (typeof dateStr !== "string") {
+    throw new ServiceError("Định dạng date không hợp lệ (YYYY-MM-DD)", 400, "INVALID_PARAMS");
   }
 
   try {
@@ -117,6 +123,7 @@ export async function checkAvailability(tx, payload) {
       slotDurationMinutes: true,
       durationMinutes: true,
       bufferMinutes: true,
+      allowOverbooking: true,
       allowOverbooking: true,
     },
   });
@@ -321,6 +328,10 @@ export async function getAvailableSlots(serviceId, dateStr) {
     throw new ServiceError("Dịch vụ không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
+  const bookingModel = resolveBookingModel(service);
+  const slotDurationMinutes = resolveOccupiedDurationMinutes(service);
+  const bufferMinutes = resolveBufferMinutes(service);
+
   // Check if date is blocked
   const bookingDate = toUseDateOnly(dateStr);
   const blocked = await prisma.businessBlockedDate.findFirst({
@@ -332,6 +343,18 @@ export async function getAvailableSlots(serviceId, dateStr) {
   });
 
   if (blocked) {
+    if (bookingModel === "resource") {
+      return {
+        date: dateStr,
+        serviceId: normalizedServiceId,
+        available: false,
+        reason: "BLOCKED_DATE",
+        bookingModel,
+        slotDurationMinutes,
+        bufferMinutes,
+        resources: [],
+      };
+    }
     return {
       date: dateStr,
       serviceId: normalizedServiceId,
@@ -344,7 +367,7 @@ export async function getAvailableSlots(serviceId, dateStr) {
   const { start: startOfDay, end: endOfDay } = vietnamDayBounds(dateStr);
   const cap = service.maxCapacity ?? 999_999;
 
-  if (resolveBookingModel(service) === "resource") {
+  if (bookingModel === "resource") {
     const resources = (await prisma.placeResource.findMany({
       where: {
         serviceId: normalizedServiceId,
@@ -401,8 +424,8 @@ export async function getAvailableSlots(serviceId, dateStr) {
       serviceId: normalizedServiceId,
       available: resourcesWithSlots.length > 0,
       bookingModel: "resource",
-      slotDurationMinutes: service.slotDurationMinutes,
-      bufferMinutes: service.bufferMinutes,
+      slotDurationMinutes,
+      bufferMinutes,
       resources: resourcesWithSlots,
     };
   }
@@ -421,6 +444,7 @@ export async function getAvailableSlots(serviceId, dateStr) {
   });
 
   const SLOT_INTERVAL_MINUTES = 30;
+  const overbookingAllowed = allowsCapacityOverbooking(service);
   const slots = [];
   const now = new Date();
   const isToday = dateStr === toUseDateOnly(now).toISOString().slice(0, 10);
@@ -435,7 +459,7 @@ export async function getAvailableSlots(serviceId, dateStr) {
       const usedQty = activeBookings
         .filter((booking) => booking.bookingAt && startOfMinuteUtc(booking.bookingAt).getTime() === slotStart.getTime())
         .reduce((sum, booking) => sum + booking.quantity, 0);
-      const available = usedQty < cap;
+      const available = overbookingAllowed || usedQty < cap;
 
       slots.push({
         time: formatVietnamTime(slotStart),

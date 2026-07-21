@@ -59,6 +59,28 @@ describe("resource booking availability", () => {
     })).toBe(true);
   });
 
+  it("honors the canonical duration returned by public availability", () => {
+    const canonicalAvailability = {
+      ...availability,
+      slotDurationMinutes: 45,
+      bufferMinutes: 0,
+      resources: [{
+        ...availability.resources[0],
+        bookedSlots: [{
+          startTime: "2026-07-22T02:00:00.000Z",
+          endTime: "2026-07-22T02:45:00.000Z",
+        }],
+      }],
+    };
+    expect(getResourceSlotAvailability({
+      availability: canonicalAvailability,
+      resourceId: 7,
+      date: "2026-07-22",
+      time: "09:45",
+      quantity: 1,
+    })).toBe(true);
+  });
+
   it("enforces selected resource capacity and keeps only active response resources", () => {
     expect(getResourceSlotAvailability({
       availability,
