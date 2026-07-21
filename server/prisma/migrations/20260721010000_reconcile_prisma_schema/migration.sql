@@ -210,7 +210,7 @@ ALTER TABLE "businesses"
   ADD COLUMN IF NOT EXISTS "suspension_reason" TEXT,
   ADD COLUMN IF NOT EXISTS "terminated_at" TIMESTAMP(3),
   ADD COLUMN IF NOT EXISTS "termination_reason" TEXT;
-ALTER TABLE "categories" ADD COLUMN IF NOT EXISTS "level" INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE "categories" ADD COLUMN IF NOT EXISTS "level" INTEGER;
 ALTER TABLE "favorites" ADD COLUMN IF NOT EXISTS "collection_name" TEXT;
 ALTER TABLE "notifications_global" ADD COLUMN IF NOT EXISTS "read_at" TIMESTAMP(3);
 ALTER TABLE "payments" ADD COLUMN IF NOT EXISTS "idempotency_key" TEXT;
@@ -223,13 +223,124 @@ ALTER TABLE "places"
   ADD COLUMN IF NOT EXISTS "is_seeded" BOOLEAN NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS "marker_url" TEXT;
 ALTER TABLE "reviews" ADD COLUMN IF NOT EXISTS "is_seeded" BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE "roles" ADD COLUMN IF NOT EXISTS "is_protected" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "roles" ADD COLUMN IF NOT EXISTS "is_protected" BOOLEAN;
 ALTER TABLE "user_profiles" ADD COLUMN IF NOT EXISTS "nickname" TEXT;
 ALTER TABLE "users"
   ADD COLUMN IF NOT EXISTS "business_id" INTEGER,
   ADD COLUMN IF NOT EXISTS "business_role_id" INTEGER,
   ADD COLUMN IF NOT EXISTS "username" TEXT;
 ALTER TABLE "wards_cantho" ADD COLUMN IF NOT EXISTS "boundary" JSONB;
+
+-- Category depth is authoritative from parent_id. Reject malformed hierarchies
+-- before canonicalizing every stored level, including manually pushed defaults.
+DO $$
+DECLARE
+  orphan_category_ids TEXT;
+  cyclic_category_ids TEXT;
+  too_deep_category_ids TEXT;
+  unresolved_category_ids TEXT;
+BEGIN
+  SELECT string_agg(category."id"::TEXT, ', ' ORDER BY category."id")
+    INTO orphan_category_ids
+  FROM "categories" category
+  LEFT JOIN "categories" parent ON parent."id" = category."parent_id"
+  WHERE category."parent_id" IS NOT NULL
+    AND parent."id" IS NULL;
+  IF orphan_category_ids IS NOT NULL THEN
+    RAISE EXCEPTION 'Category hierarchy reconciliation refused: orphan parent_id values for category ids: %',
+      orphan_category_ids;
+  END IF;
+
+  WITH RECURSIVE category_hierarchy AS (
+    SELECT category."id", category."parent_id", 1 AS depth, ARRAY[category."id"] AS path
+    FROM "categories" category
+    WHERE category."parent_id" IS NULL
+    UNION ALL
+    SELECT child."id", child."parent_id", parent.depth + 1, parent.path || child."id"
+    FROM "categories" child
+    JOIN category_hierarchy parent ON child."parent_id" = parent."id"
+    WHERE NOT child."id" = ANY(parent.path)
+  )
+  SELECT string_agg(category."id"::TEXT, ', ' ORDER BY category."id")
+    INTO cyclic_category_ids
+  FROM "categories" category
+  LEFT JOIN category_hierarchy hierarchy ON hierarchy."id" = category."id"
+  WHERE hierarchy."id" IS NULL;
+  IF cyclic_category_ids IS NOT NULL THEN
+    RAISE EXCEPTION 'Category hierarchy reconciliation refused: cycle detected for category ids: %',
+      cyclic_category_ids;
+  END IF;
+
+  WITH RECURSIVE category_hierarchy AS (
+    SELECT category."id", category."parent_id", 1 AS depth, ARRAY[category."id"] AS path
+    FROM "categories" category
+    WHERE category."parent_id" IS NULL
+    UNION ALL
+    SELECT child."id", child."parent_id", parent.depth + 1, parent.path || child."id"
+    FROM "categories" child
+    JOIN category_hierarchy parent ON child."parent_id" = parent."id"
+    WHERE NOT child."id" = ANY(parent.path)
+  )
+  SELECT string_agg("id"::TEXT, ', ' ORDER BY "id")
+    INTO too_deep_category_ids
+  FROM category_hierarchy
+  WHERE depth > 3;
+  IF too_deep_category_ids IS NOT NULL THEN
+    RAISE EXCEPTION 'Category hierarchy reconciliation refused: depth exceeds 3 for category ids: %',
+      too_deep_category_ids;
+  END IF;
+
+  WITH RECURSIVE category_hierarchy AS (
+    SELECT category."id", category."parent_id", 1 AS depth, ARRAY[category."id"] AS path
+    FROM "categories" category
+    WHERE category."parent_id" IS NULL
+    UNION ALL
+    SELECT child."id", child."parent_id", parent.depth + 1, parent.path || child."id"
+    FROM "categories" child
+    JOIN category_hierarchy parent ON child."parent_id" = parent."id"
+    WHERE NOT child."id" = ANY(parent.path)
+  )
+  UPDATE "categories" category
+  SET "level" = hierarchy.depth
+  FROM category_hierarchy hierarchy
+  WHERE category."id" = hierarchy."id";
+
+  SELECT string_agg("id"::TEXT, ', ' ORDER BY "id")
+    INTO unresolved_category_ids
+  FROM "categories"
+  WHERE "level" IS NULL OR "level" < 1 OR "level" > 3;
+  IF unresolved_category_ids IS NOT NULL THEN
+    RAISE EXCEPTION 'Category hierarchy reconciliation left unresolved levels for category ids: %',
+      unresolved_category_ids;
+  END IF;
+
+  ALTER TABLE "categories"
+    ALTER COLUMN "level" SET DEFAULT 1,
+    ALTER COLUMN "level" SET NOT NULL;
+END $$;
+
+-- A role is protected exactly when it is a built-in system role. Recompute every
+-- existing row so stale manually pushed false values cannot weaken that invariant.
+DO $$
+DECLARE
+  unresolved_role_ids TEXT;
+BEGIN
+  UPDATE "roles"
+  SET "is_protected" = "is_system";
+
+  SELECT string_agg("id"::TEXT, ', ' ORDER BY "id")
+    INTO unresolved_role_ids
+  FROM "roles"
+  WHERE "is_protected" IS NULL;
+  IF unresolved_role_ids IS NOT NULL THEN
+    RAISE EXCEPTION 'Role protection reconciliation failed for role ids: %',
+      unresolved_role_ids;
+  END IF;
+
+  ALTER TABLE "roles"
+    ALTER COLUMN "is_protected" SET DEFAULT false,
+    ALTER COLUMN "is_protected" SET NOT NULL;
+END $$;
 
 -- Convert booking status in place. Never replace/drop the source column: every value
 -- is checked against the target enum first, including explicit NULL rejection.
@@ -297,34 +408,23 @@ BEGIN
   SELECT string_agg("id"::TEXT, ', ' ORDER BY "id")
     INTO invalid_financial_ids
   FROM "bookings"
-  WHERE (
-      "admin_earned" IS NULL
-      OR "business_earned" IS NULL
-      OR "commission_rate" IS NULL
-    )
-    AND (
-      "final_price" < 0
-      OR "commission_amount" < 0
-      OR "commission_amount" > "final_price"
-    );
+  WHERE "final_price" IS NULL
+     OR "commission_amount" IS NULL
+     OR "final_price" < 0
+     OR "commission_amount" < 0
+     OR "commission_amount" > "final_price";
   IF invalid_financial_ids IS NOT NULL THEN
     RAISE EXCEPTION 'Booking financial backfill refused; expected 0 <= commission_amount <= final_price for booking ids: %',
       invalid_financial_ids;
   END IF;
 
   UPDATE "bookings" b
-  SET "admin_earned" = COALESCE(b."admin_earned", b."commission_amount"),
-      "business_earned" = COALESCE(b."business_earned", b."final_price" - b."commission_amount"),
-      "commission_rate" = COALESCE(
-        b."commission_rate",
-        CASE
-          WHEN b."final_price" = 0 THEN 0
-          ELSE ROUND((b."commission_amount" * 100.0) / b."final_price")::INTEGER
-        END
-      )
-  WHERE b."admin_earned" IS NULL
-     OR b."business_earned" IS NULL
-     OR b."commission_rate" IS NULL;
+  SET "admin_earned" = b."commission_amount",
+      "business_earned" = b."final_price" - b."commission_amount",
+      "commission_rate" = CASE
+        WHEN b."final_price" = 0 THEN 0
+        ELSE ROUND((b."commission_amount" * 100.0) / b."final_price")::INTEGER
+      END;
 
   SELECT string_agg("id"::TEXT, ', ' ORDER BY "id")
     INTO unenforceable_financial_ids
@@ -806,6 +906,148 @@ BEGIN
   END IF;
 END $$;
 
+-- CREATE INDEX IF NOT EXISTS silently accepts a same-name index with the wrong
+-- table, uniqueness, columns, or ordering. Validate every managed definition
+-- before the idempotent create statements below.
+DO $$
+DECLARE
+  expected RECORD;
+  existing_index_oid OID;
+  existing_index_kind TEXT;
+  actual_normalized TEXT;
+  expected_normalized TEXT;
+BEGIN
+  FOR expected IN
+    SELECT * FROM (VALUES
+      ('notification_recipients_user_id_read_at_created_at_idx', 'CREATE INDEX "notification_recipients_user_id_read_at_created_at_idx" ON "notification_recipients"("user_id", "read_at" DESC, "created_at" DESC)'),
+      ('notification_recipients_business_id_read_at_idx', 'CREATE INDEX "notification_recipients_business_id_read_at_idx" ON "notification_recipients"("business_id", "read_at")'),
+      ('notification_recipients_role_id_read_at_idx', 'CREATE INDEX "notification_recipients_role_id_read_at_idx" ON "notification_recipients"("role_id", "read_at")'),
+      ('notification_recipients_notification_id_user_id_key', 'CREATE UNIQUE INDEX "notification_recipients_notification_id_user_id_key" ON "notification_recipients"("notification_id", "user_id")'),
+      ('push_subscriptions_user_id_key', 'CREATE UNIQUE INDEX "push_subscriptions_user_id_key" ON "push_subscriptions"("user_id")'),
+      ('idx_category_tags_category_id', 'CREATE INDEX "idx_category_tags_category_id" ON "category_tags"("category_id")'),
+      ('idx_category_tags_tag_id', 'CREATE INDEX "idx_category_tags_tag_id" ON "category_tags"("tag_id")'),
+      ('category_tags_category_id_tag_id_key', 'CREATE UNIQUE INDEX "category_tags_category_id_tag_id_key" ON "category_tags"("category_id", "tag_id")'),
+      ('review_moderation_logs_review_id_idx', 'CREATE INDEX "review_moderation_logs_review_id_idx" ON "review_moderation_logs"("review_id")'),
+      ('review_moderation_logs_created_at_idx', 'CREATE INDEX "review_moderation_logs_created_at_idx" ON "review_moderation_logs"("created_at")'),
+      ('saved_trips_user_id_trip_id_key', 'CREATE UNIQUE INDEX "saved_trips_user_id_trip_id_key" ON "saved_trips"("user_id", "trip_id")'),
+      ('sensitive_documents_business_id_idx', 'CREATE INDEX "sensitive_documents_business_id_idx" ON "sensitive_documents"("business_id")'),
+      ('sensitive_documents_business_id_type_idx', 'CREATE INDEX "sensitive_documents_business_id_type_idx" ON "sensitive_documents"("business_id", "type")'),
+      ('business_roles_business_id_name_key', 'CREATE UNIQUE INDEX "business_roles_business_id_name_key" ON "business_roles"("business_id", "name")'),
+      ('staff_invitations_token_key', 'CREATE UNIQUE INDEX "staff_invitations_token_key" ON "staff_invitations"("token")'),
+      ('staff_invitations_token_idx', 'CREATE INDEX "staff_invitations_token_idx" ON "staff_invitations"("token")'),
+      ('staff_invitations_business_id_status_idx', 'CREATE INDEX "staff_invitations_business_id_status_idx" ON "staff_invitations"("business_id", "status")'),
+      ('business_blocked_dates_business_id_date_idx', 'CREATE INDEX "business_blocked_dates_business_id_date_idx" ON "business_blocked_dates"("business_id", "date")'),
+      ('business_blocked_dates_business_id_service_id_date_key', 'CREATE UNIQUE INDEX "business_blocked_dates_business_id_service_id_date_key" ON "business_blocked_dates"("business_id", "service_id", "date")'),
+      ('place_resources_place_id_idx', 'CREATE INDEX "place_resources_place_id_idx" ON "place_resources"("place_id")'),
+      ('place_resources_service_id_idx', 'CREATE INDEX "place_resources_service_id_idx" ON "place_resources"("service_id")'),
+      ('auto_approve_rules_business_id_is_deleted_is_active_idx', 'CREATE INDEX "auto_approve_rules_business_id_is_deleted_is_active_idx" ON "auto_approve_rules"("business_id", "is_deleted", "is_active")'),
+      ('booking_action_logs_booking_id_idx', 'CREATE INDEX "booking_action_logs_booking_id_idx" ON "booking_action_logs"("booking_id")'),
+      ('booking_action_logs_created_at_idx', 'CREATE INDEX "booking_action_logs_created_at_idx" ON "booking_action_logs"("created_at")'),
+      ('booking_transactions_booking_id_key', 'CREATE UNIQUE INDEX "booking_transactions_booking_id_key" ON "booking_transactions"("booking_id")'),
+      ('booking_transactions_business_id_completed_at_idx', 'CREATE INDEX "booking_transactions_business_id_completed_at_idx" ON "booking_transactions"("business_id", "completed_at")'),
+      ('payment_webhook_logs_gateway_created_at_idx', 'CREATE INDEX "payment_webhook_logs_gateway_created_at_idx" ON "payment_webhook_logs"("gateway", "created_at")'),
+      ('payouts_business_id_idx', 'CREATE INDEX "payouts_business_id_idx" ON "payouts"("business_id")'),
+      ('payouts_status_idx', 'CREATE INDEX "payouts_status_idx" ON "payouts"("status")'),
+      ('partner_wallets_business_id_key', 'CREATE UNIQUE INDEX "partner_wallets_business_id_key" ON "partner_wallets"("business_id")'),
+      ('financial_ledgers_booking_id_idx', 'CREATE INDEX "financial_ledgers_booking_id_idx" ON "financial_ledgers"("booking_id")'),
+      ('financial_ledgers_payout_id_idx', 'CREATE INDEX "financial_ledgers_payout_id_idx" ON "financial_ledgers"("payout_id")'),
+      ('cached_itineraries_filter_hash_key', 'CREATE UNIQUE INDEX "cached_itineraries_filter_hash_key" ON "cached_itineraries"("filter_hash")'),
+      ('events_trip_id_idx', 'CREATE INDEX "events_trip_id_idx" ON "events"("trip_id")'),
+      ('events_created_by_idx', 'CREATE INDEX "events_created_by_idx" ON "events"("created_by")'),
+      ('event_participants_event_id_user_id_key', 'CREATE UNIQUE INDEX "event_participants_event_id_user_id_key" ON "event_participants"("event_id", "user_id")'),
+      ('event_moments_event_id_place_id_user_id_key', 'CREATE UNIQUE INDEX "event_moments_event_id_place_id_user_id_key" ON "event_moments"("event_id", "place_id", "user_id")'),
+      ('active_sessions_updated_at_idx', 'CREATE INDEX "active_sessions_updated_at_idx" ON "active_sessions"("updated_at")'),
+      ('active_sessions_event_id_user_id_key', 'CREATE UNIQUE INDEX "active_sessions_event_id_user_id_key" ON "active_sessions"("event_id", "user_id")'),
+      ('banners_marketing_is_active_start_date_end_date_priority_idx', 'CREATE INDEX "banners_marketing_is_active_start_date_end_date_priority_idx" ON "banners_marketing"("is_active", "start_date", "end_date", "priority")'),
+      ('bookings_idempotency_key_key', 'CREATE UNIQUE INDEX "bookings_idempotency_key_key" ON "bookings"("idempotency_key")'),
+      ('bookings_status_idx', 'CREATE INDEX "bookings_status_idx" ON "bookings"("status")'),
+      ('bookings_resource_id_idx', 'CREATE INDEX "bookings_resource_id_idx" ON "bookings"("resource_id")'),
+      ('bookings_business_id_booking_at_idx', 'CREATE INDEX "bookings_business_id_booking_at_idx" ON "bookings"("business_id", "booking_at")'),
+      ('bookings_resource_id_use_date_status_idx', 'CREATE INDEX "bookings_resource_id_use_date_status_idx" ON "bookings"("resource_id", "use_date", "status")'),
+      ('bookings_service_id_use_date_status_idx', 'CREATE INDEX "bookings_service_id_use_date_status_idx" ON "bookings"("service_id", "use_date", "status")'),
+      ('bookings_resource_id_start_time_end_time_idx', 'CREATE INDEX "bookings_resource_id_start_time_end_time_idx" ON "bookings"("resource_id", "start_time", "end_time")'),
+      ('bookings_service_id_start_time_end_time_idx', 'CREATE INDEX "bookings_service_id_start_time_end_time_idx" ON "bookings"("service_id", "start_time", "end_time")'),
+      ('bookings_deleted_at_idx', 'CREATE INDEX "bookings_deleted_at_idx" ON "bookings"("deleted_at")'),
+      ('business_services_business_id_idx', 'CREATE INDEX "business_services_business_id_idx" ON "business_services"("business_id")'),
+      ('business_services_place_id_idx', 'CREATE INDEX "business_services_place_id_idx" ON "business_services"("place_id")'),
+      ('businesses_status_idx', 'CREATE INDEX "businesses_status_idx" ON "businesses"("status")'),
+      ('idx_categories_level', 'CREATE INDEX "idx_categories_level" ON "categories"("level")'),
+      ('favorites_user_id_collection_name_idx', 'CREATE INDEX "favorites_user_id_collection_name_idx" ON "favorites"("user_id", "collection_name")'),
+      ('notifications_global_status_target_type_sent_at_idx', 'CREATE INDEX "notifications_global_status_target_type_sent_at_idx" ON "notifications_global"("status", "target_type", "sent_at" DESC)'),
+      ('payments_transaction_ref_key', 'CREATE UNIQUE INDEX "payments_transaction_ref_key" ON "payments"("transaction_ref")'),
+      ('payments_idempotency_key_key', 'CREATE UNIQUE INDEX "payments_idempotency_key_key" ON "payments"("idempotency_key")'),
+      ('place_images_place_id_idx', 'CREATE INDEX "place_images_place_id_idx" ON "place_images"("place_id")'),
+      ('places_status_category_id_district_id_idx', 'CREATE INDEX "places_status_category_id_district_id_idx" ON "places"("status", "category_id", "district_id")'),
+      ('places_is_seeded_idx', 'CREATE INDEX "places_is_seeded_idx" ON "places"("is_seeded")'),
+      ('places_deleted_at_idx', 'CREATE INDEX "places_deleted_at_idx" ON "places"("deleted_at")'),
+      ('places_is_featured_status_rating_avg_idx', 'CREATE INDEX "places_is_featured_status_rating_avg_idx" ON "places"("is_featured", "status", "rating_avg" DESC)'),
+      ('review_media_review_id_idx', 'CREATE INDEX "review_media_review_id_idx" ON "review_media"("review_id")'),
+      ('review_replies_review_id_idx', 'CREATE INDEX "review_replies_review_id_idx" ON "review_replies"("review_id")'),
+      ('review_replies_user_id_idx', 'CREATE INDEX "review_replies_user_id_idx" ON "review_replies"("user_id")'),
+      ('reviews_is_seeded_idx', 'CREATE INDEX "reviews_is_seeded_idx" ON "reviews"("is_seeded")'),
+      ('reviews_status_idx', 'CREATE INDEX "reviews_status_idx" ON "reviews"("status")'),
+      ('trip_destinations_trip_id_idx', 'CREATE INDEX "trip_destinations_trip_id_idx" ON "trip_destinations"("trip_id")'),
+      ('trip_destinations_place_id_idx', 'CREATE INDEX "trip_destinations_place_id_idx" ON "trip_destinations"("place_id")'),
+      ('trips_is_public_clone_count_idx', 'CREATE INDEX "trips_is_public_clone_count_idx" ON "trips"("is_public", "clone_count" DESC)'),
+      ('user_checkins_user_id_idx', 'CREATE INDEX "user_checkins_user_id_idx" ON "user_checkins"("user_id")'),
+      ('user_checkins_place_id_idx', 'CREATE INDEX "user_checkins_place_id_idx" ON "user_checkins"("place_id")'),
+      ('user_sessions_user_id_idx', 'CREATE INDEX "user_sessions_user_id_idx" ON "user_sessions"("user_id")'),
+      ('users_username_key', 'CREATE UNIQUE INDEX "users_username_key" ON "users"("username")'),
+      ('users_deleted_at_idx', 'CREATE INDEX "users_deleted_at_idx" ON "users"("deleted_at")'),
+      ('users_status_idx', 'CREATE INDEX "users_status_idx" ON "users"("status")')
+    ) AS definitions(index_name, definition)
+  LOOP
+    existing_index_oid := NULL;
+    existing_index_kind := NULL;
+    SELECT index_relation.oid, index_relation.relkind::TEXT
+      INTO existing_index_oid, existing_index_kind
+    FROM pg_class index_relation
+    JOIN pg_namespace namespace ON namespace.oid = index_relation.relnamespace
+    WHERE namespace.nspname = 'public'
+      AND index_relation.relname = expected.index_name;
+
+    IF existing_index_oid IS NOT NULL THEN
+      IF existing_index_kind <> 'i' THEN
+        RAISE EXCEPTION 'Existing index % is incompatible: name belongs to relation kind %',
+          expected.index_name, existing_index_kind;
+      END IF;
+
+      actual_normalized := regexp_replace(
+        replace(
+          replace(
+            replace(lower(pg_get_indexdef(existing_index_oid)), '"', ''),
+            'public.',
+            ''
+          ),
+          ' using btree ',
+          ' '
+        ),
+        '\s+',
+        '',
+        'g'
+      );
+      expected_normalized := regexp_replace(
+        replace(
+          replace(
+            replace(lower(expected.definition), '"', ''),
+            'public.',
+            ''
+          ),
+          ' using btree ',
+          ' '
+        ),
+        '\s+',
+        '',
+        'g'
+      );
+      IF actual_normalized <> expected_normalized THEN
+        RAISE EXCEPTION 'Existing index % is incompatible: expected %, found %',
+          expected.index_name, expected.definition, pg_get_indexdef(existing_index_oid);
+      END IF;
+    END IF;
+  END LOOP;
+END $$;
+
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "notification_recipients_user_id_read_at_created_at_idx" ON "notification_recipients"("user_id", "read_at" DESC, "created_at" DESC);
 
@@ -1039,6 +1281,16 @@ CREATE INDEX IF NOT EXISTS "users_status_idx" ON "users"("status");
 DO $$
 DECLARE
   fk RECORD;
+  existing_constraint_oid OID;
+  actual_definition TEXT;
+  actual_normalized TEXT;
+  expected_normalized TEXT;
+  actual_core TEXT;
+  expected_core TEXT;
+  actual_delete_action TEXT;
+  expected_delete_action TEXT;
+  actual_update_action TEXT;
+  expected_update_action TEXT;
 BEGIN
   FOR fk IN
     SELECT * FROM (VALUES
@@ -1096,21 +1348,68 @@ BEGIN
       ('active_sessions', 'active_sessions_user_id_fkey', 'FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE')
     ) AS definitions(table_name, constraint_name, definition)
   LOOP
-    IF NOT EXISTS (
-      SELECT 1
-      FROM pg_constraint c
-      JOIN pg_class relation ON relation.oid = c.conrelid
-      JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
-      WHERE namespace.nspname = 'public'
-        AND relation.relname = fk.table_name
-        AND c.conname = fk.constraint_name
-    ) THEN
+    existing_constraint_oid := NULL;
+    SELECT c.oid
+      INTO existing_constraint_oid
+    FROM pg_constraint c
+    JOIN pg_class relation ON relation.oid = c.conrelid
+    JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+    WHERE namespace.nspname = 'public'
+      AND relation.relname = fk.table_name
+      AND c.conname = fk.constraint_name;
+
+    IF existing_constraint_oid IS NULL THEN
       EXECUTE format(
         'ALTER TABLE public.%I ADD CONSTRAINT %I %s',
         fk.table_name,
         fk.constraint_name,
         fk.definition
       );
+    ELSE
+      actual_definition := pg_get_constraintdef(existing_constraint_oid, true);
+      actual_normalized := btrim(regexp_replace(
+        replace(replace(lower(actual_definition), '"', ''), 'public.', ''),
+        '\s+',
+        ' ',
+        'g'
+      ));
+      expected_normalized := btrim(regexp_replace(
+        replace(replace(lower(fk.definition), '"', ''), 'public.', ''),
+        '\s+',
+        ' ',
+        'g'
+      ));
+      actual_delete_action := substring(
+        actual_normalized FROM 'on delete (cascade|set null|restrict|no action|set default)'
+      );
+      expected_delete_action := substring(
+        expected_normalized FROM 'on delete (cascade|set null|restrict|no action|set default)'
+      );
+      actual_update_action := substring(
+        actual_normalized FROM 'on update (cascade|set null|restrict|no action|set default)'
+      );
+      expected_update_action := substring(
+        expected_normalized FROM 'on update (cascade|set null|restrict|no action|set default)'
+      );
+      actual_core := btrim(regexp_replace(
+        actual_normalized,
+        '\s+on (delete|update) (cascade|set null|restrict|no action|set default)',
+        '',
+        'g'
+      ));
+      expected_core := btrim(regexp_replace(
+        expected_normalized,
+        '\s+on (delete|update) (cascade|set null|restrict|no action|set default)',
+        '',
+        'g'
+      ));
+
+      IF actual_core <> expected_core
+         OR actual_delete_action IS DISTINCT FROM expected_delete_action
+         OR actual_update_action IS DISTINCT FROM expected_update_action THEN
+        RAISE EXCEPTION 'Existing constraint %.% is incompatible: expected %, found %',
+          fk.table_name, fk.constraint_name, fk.definition, actual_definition;
+      END IF;
     END IF;
   END LOOP;
 END $$;
