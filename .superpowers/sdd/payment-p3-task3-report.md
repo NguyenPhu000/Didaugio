@@ -34,3 +34,11 @@ node --check src/services/booking/booking.service.js
 ## Note
 
 Repository-wide `git diff --check` still reports an existing unrelated trailing blank line in `.gitignore`; scoped Task 3 files have no whitespace errors.
+
+## Review-fix follow-up
+
+- Replaced the reachable `/api/payments/sepay-webhook` bank collection's direct payment/booking/ledger mutation path with `recordSucceededReceipt`.
+- The bank handler now verifies HMAC before every database call. Invalid signatures are logged only afterwards with the existing sanitized webhook-log shape; neither raw body nor signature is stored.
+- Added a dependency-injected production handler factory and tests for verify-before-log, sanitized invalid-signature logging, mismatch zero mutation, one canonical success transition, and replay.
+- Receipt replay identity now compares a stable canonical fingerprint including amount, currency, source/gateway, method, external reference, actor, reason, and stable metadata. Conflicting reuse fails with `PAYMENT_DUPLICATE_TRANSACTION`; volatile gateway payment-data is deliberately excluded.
+- Final combined callback, bank-handler, transition/live, manual, and obligation gate passes **32/32**; Prisma validation and changed-file syntax checks pass.

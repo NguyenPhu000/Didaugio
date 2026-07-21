@@ -39,12 +39,32 @@ const defaultPaymentCallbackDependencies = Object.freeze({
   paymentTransition: null,
 });
 
+const defaultSePayBankWebhookDependencies = Object.freeze({
+  prisma,
+  logger,
+  sepayService,
+  sepayWebhookService,
+  webhookLogService,
+  eventEmitter,
+  EVENTS,
+  processPaymentLedger,
+  paymentTransition: null,
+});
+
 export function createPaymentCallbackHandlers(overrides = {}) {
   const dependencies = { ...defaultPaymentCallbackDependencies, ...overrides };
   return {
     processVNPayIPN: (query) =>
       processVNPayIPNWithDependencies(query, dependencies),
     processMoMoIPN: (body) => processMoMoIPNWithDependencies(body, dependencies),
+  };
+}
+
+export function createPaymentSePayBankWebhookHandlers(overrides = {}) {
+  const dependencies = { ...defaultSePayBankWebhookDependencies, ...overrides };
+  return {
+    processSePayBankWebhook: (body, headers, rawBody) =>
+      processSePayBankWebhookWithDependencies(body, headers, rawBody, dependencies),
   };
 }
 
@@ -876,34 +896,93 @@ export async function processSePayIPN(body) {
  * @returns {Promise<{ success: boolean, message?: string }>}
  */
 export async function processSePayBankWebhook(body, headers = {}, rawBody = null) {
-  const webhookLogId = await webhookLogService.logWebhook({
-    gateway: "SEPAY_BANK",
-    payload: body,
-    signature: headers["x-sepay-signature"] || null,
-  });
+  return processSePayBankWebhookWithDependencies(
+    body,
+    headers,
+    rawBody,
+    defaultSePayBankWebhookDependencies,
+  );
+}
 
+function buildSePayBankWebhookLog(reference, outcome) {
+  return buildSafeWebhookLogEntry({
+    gateway: "SEPAY_BANK",
+    reference,
+    outcome,
+    hasSignature: true,
+  });
+}
+
+function validateSePayBankObligation(payment, { reference, amount }) {
+  const paymentReference = payment.transaction_ref ?? payment.transactionRef;
+  if (!reference || reference !== paymentReference) {
+    return { valid: false, code: PAYMENT_OBLIGATION_ERROR_CODES.REFERENCE_MISMATCH };
+  }
+  if (!Number.isSafeInteger(amount) || amount <= 0 || Number(payment.amount) !== amount) {
+    return { valid: false, code: PAYMENT_OBLIGATION_ERROR_CODES.AMOUNT_MISMATCH };
+  }
+  if (String(payment.currency || "").toUpperCase() !== "VND") {
+    return { valid: false, code: PAYMENT_OBLIGATION_ERROR_CODES.CURRENCY_MISMATCH };
+  }
+  return { valid: true, code: null };
+}
+
+async function processSePayBankWebhookWithDependencies(body, headers, rawBody, dependencies) {
+  const {
+    prisma,
+    logger,
+    sepayService,
+    sepayWebhookService,
+    webhookLogService,
+    eventEmitter,
+    EVENTS,
+    processPaymentLedger,
+    paymentTransition,
+  } = dependencies;
+  let webhookLogId = null;
   try {
-    // Verify HMAC-SHA256 signature if configured
     const signature = headers["x-sepay-signature"] || "";
     const timestamp = headers["x-sepay-timestamp"] || "";
     const bodyForSignature = rawBody || (typeof body === "string" ? body : JSON.stringify(body));
-
-    const sigResult = sepayWebhookService.verifyWebhookSignature(
-      bodyForSignature,
-      signature,
-      timestamp,
-    );
+    let sigResult;
+    try {
+      sigResult = sepayWebhookService.verifyWebhookSignature(
+        bodyForSignature,
+        signature,
+        timestamp,
+      );
+    } catch (error) {
+      webhookLogId = (await webhookLogService.logWebhook(
+        buildSePayBankWebhookLog(body?.code, "verification_error"),
+      ))?.id;
+      if (webhookLogId) {
+        await webhookLogService.markError({
+          transactionRef: body?.code || null,
+          webhookLogId,
+          errorMsg: "PAYMENT_SIGNATURE_VERIFICATION_ERROR",
+        });
+      }
+      logger.error("processSePayBankWebhook signature verification error", { code: body?.code || null });
+      return sepayService.buildIpnError("System error");
+    }
     if (!sigResult.valid) {
-      await webhookLogService.markError({
-        transactionRef: body?.code || null,
-        webhookLogId,
-        errorMsg: `Signature verification failed: ${sigResult.error}`,
-      });
+      webhookLogId = (await webhookLogService.logWebhook(
+        buildSePayBankWebhookLog(body?.code, "signature_invalid"),
+      ))?.id;
+      if (webhookLogId) {
+        await webhookLogService.markError({
+          transactionRef: body?.code || null,
+          webhookLogId,
+          errorMsg: "PAYMENT_SIGNATURE_INVALID",
+        });
+      }
       return sepayService.buildIpnError(sigResult.error);
     }
 
-    // Parse bank transaction
     const parseResult = sepayWebhookService.parseBankWebhook(body);
+    webhookLogId = (await webhookLogService.logWebhook(
+      buildSePayBankWebhookLog(body?.code, parseResult.valid ? "received" : "ignored"),
+    ))?.id;
     if (!parseResult.valid) {
       if (webhookLogId) {
         await webhookLogService.markError({
@@ -925,26 +1004,9 @@ export async function processSePayBankWebhook(body, headers = {}, rawBody = null
       referenceCode,
     } = parseResult.data;
 
-    // Idempotency: check if we already processed this SePay transaction
-    const existingWebhook = await prisma.paymentWebhookLog.findFirst({
-      where: {
-        gateway: "SEPAY_BANK",
-        processed: true,
-        payload: {
-          path: ["id"],
-          equals: sepayTransactionId,
-        },
-      },
-    });
-
-    if (existingWebhook) {
-      return sepayService.buildIpnSuccess();
-    }
-
     const result = await prisma.$transaction(async (tx) => {
-      // Match by code (= transactionRef in Payment table)
       const locked = await tx.$queryRaw`
-        SELECT id, status, amount, booking_id
+        SELECT id, status, amount, currency, transaction_ref, booking_id
         FROM payments
         WHERE transaction_ref = ${code}
         LIMIT 1
@@ -956,95 +1018,40 @@ export async function processSePayBankWebhook(body, headers = {}, rawBody = null
       }
 
       const payment = locked[0];
-
-      if (
-        payment.status === PAYMENT_STATUS.PAID ||
-        payment.status === PAYMENT_STATUS.FULLY_REFUNDED
-      ) {
-        return { type: "ALREADY_PROCESSED", status: payment.status };
-      }
-
-      // Verify amount matches
-      if (payment.amount !== transferAmount) {
-        logger.warn("SePay bank webhook amount mismatch", {
-          expected: payment.amount,
-          received: transferAmount,
-          code,
-        });
-        return {
-          type: "AMOUNT_MISMATCH",
-          expected: payment.amount,
-          received: transferAmount,
-        };
-      }
-
-      const updatedPayment = await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: PAYMENT_STATUS.PAID,
-          paidAt: new Date(),
-          transactionId: String(sepayTransactionId),
-          bankCode: gateway || null,
-          paymentData: {
-            sepayTransactionId,
-            gateway,
-            transactionDate,
-            referenceCode,
-            transferAmount,
-            source: "sepay_bank_webhook",
-            processedAt: new Date().toISOString(),
-          },
-        },
+      const obligation = validateSePayBankObligation(payment, {
+        reference: code,
+        amount: Number(transferAmount),
       });
+      if (!obligation.valid) return { type: "OBLIGATION_MISMATCH", code: obligation.code };
 
-      const bookingForTx = await tx.booking.update({
-        where: { id: payment.booking_id },
-        data: {
-          status: BOOKING_STATUS.PAID_PENDING_CONFIRM,
-          paymentStatus: PAYMENT_STATUS.PAID,
-          confirmedAt: null,
-        },
-        select: {
-          id: true,
-          businessId: true,
-          finalPrice: true,
-          service: {
-            select: { business: { select: { commissionRate: true } } },
-          },
-        },
-      });
-
-      const commissionRate =
-        Number(bookingForTx.service?.business?.commissionRate) || 10;
-      await processPaymentLedger(
-        tx,
-        bookingForTx.id,
-        bookingForTx.finalPrice,
-        commissionRate,
-        bookingForTx.businessId,
-      );
-
-      await tx.bookingActionLog.create({
-        data: {
-          bookingId: payment.booking_id,
-          action: "approve",
-          actorUserId: null,
-          metadata: {
-            source: "sepay_bank_webhook",
-            gateway,
-            sepayTransactionId,
-          },
+      const transition = paymentTransition || createPaymentTransition({ processPaymentLedger });
+      const collection = await transition.recordSucceededReceipt(tx, {
+        paymentId: payment.id,
+        transactionRef: code,
+        amount: Number(transferAmount),
+        currency: "VND",
+        source: "gateway",
+        gateway: "SEPAY_BANK",
+        method: PAYMENT_METHODS.SEPAY,
+        idempotencyKey: `sepay-bank:${sepayTransactionId}`,
+        externalTransactionId: String(sepayTransactionId),
+        bankCode: gateway || null,
+        paymentData: {
+          gateway,
+          transactionDate,
+          referenceCode,
+          source: "sepay_bank_webhook",
+          processedAt: new Date().toISOString(),
         },
       });
 
       return {
-        type: "SUCCESS",
-        payment: updatedPayment,
+        type: collection.replayed ? "ALREADY_PROCESSED" : "SUCCESS",
         bookingId: payment.booking_id,
       };
     });
 
-    if (result.type && result.type !== "NOT_FOUND" && webhookLogId) {
+    if (result.type && !["NOT_FOUND", "OBLIGATION_MISMATCH"].includes(result.type) && webhookLogId) {
       await webhookLogService.markProcessed({
         transactionRef: code,
         webhookLogId,
@@ -1059,11 +1066,14 @@ export async function processSePayBankWebhook(body, headers = {}, rawBody = null
       return sepayService.buildIpnSuccess();
     }
 
-    if (result.type === "ALREADY_PROCESSED") {
+    if (result.type === "OBLIGATION_MISMATCH") {
+      if (webhookLogId) {
+        await webhookLogService.markError({ transactionRef: code, webhookLogId, errorMsg: result.code });
+      }
       return sepayService.buildIpnSuccess();
     }
 
-    if (result.type === "AMOUNT_MISMATCH") {
+    if (result.type === "ALREADY_PROCESSED") {
       return sepayService.buildIpnSuccess();
     }
 
@@ -1097,10 +1107,7 @@ export async function processSePayBankWebhook(body, headers = {}, rawBody = null
       return sepayService.buildIpnSuccess();
     }
   } catch (error) {
-    logger.error("processSePayBankWebhook error", {
-      error: error.message,
-      body,
-    });
+    logger.error("processSePayBankWebhook error", { error: error.message, code: body?.code || null });
     if (webhookLogId) {
       await webhookLogService.markError({
         transactionRef: body?.code || null,

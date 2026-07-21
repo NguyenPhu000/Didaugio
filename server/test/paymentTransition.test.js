@@ -267,6 +267,23 @@ test("manual receipts require explicit actor, reason, idempotency, and external 
   }
 });
 
+test("replay identity rejects a manual receipt when actor, reason, method, or metadata changes", async () => {
+  const { tx, transition } = createHarness();
+  await transition.recordSucceededReceipt(tx, manualCommand({ metadata: { desk: "front" } }));
+
+  for (const conflictingCommand of [
+    manualCommand({ actorUserId: 10, metadata: { desk: "front" } }),
+    manualCommand({ reason: "Different reason", metadata: { desk: "front" } }),
+    manualCommand({ method: "bank_transfer", metadata: { desk: "front" } }),
+    manualCommand({ metadata: { desk: "back" } }),
+  ]) {
+    await assert.rejects(
+      transition.recordSucceededReceipt(tx, conflictingCommand),
+      (error) => error.errorCode === "PAYMENT_DUPLICATE_TRANSACTION",
+    );
+  }
+});
+
 test("live owned database serializes concurrent final receipts into one paid transition", { skip: !sourceUrl }, async () => {
   await withOwnedAuditDatabase("payment_transition", async (databaseUrl) => {
     const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });

@@ -1,6 +1,7 @@
 import { BOOKING_STATUS, PAYMENT_STATUS } from "../../config/constants.js";
 import ServiceError from "../../utils/serviceError.js";
 import { processPaymentLedger as defaultProcessPaymentLedger } from "../booking/financialCore.service.js";
+import { PAYMENT_OBLIGATION_ERROR_CODES } from "./paymentCallbackObligation.policy.js";
 
 export const PAYMENT_TRANSITION_ERROR_CODES = Object.freeze({
   OVER_COLLECTION: "PAYMENT_OVER_COLLECTION",
@@ -14,6 +15,19 @@ function valueOf(record, snakeCase, camelCase = snakeCase) {
 
 function validationError(message) {
   return new ServiceError(message, 400, "VALIDATION_ERROR");
+}
+
+function stableValue(value) {
+  if (Array.isArray(value)) return value.map(stableValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, child]) => child !== undefined)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, child]) => [key, stableValue(child)]),
+    );
+  }
+  return value;
 }
 
 function normalizeCommand(command) {
@@ -48,14 +62,24 @@ function normalizeCommand(command) {
   };
 }
 
-function assertSameReceiptCommand(receipt, command, paymentId) {
+function replayFingerprint(command) {
+  return JSON.stringify(stableValue({
+    amount: command.amount,
+    currency: command.currency,
+    source: command.source,
+    gateway: command.gateway,
+    method: command.method,
+    externalTransactionId: command.externalTransactionId,
+    actorUserId: command.actorUserId ?? null,
+    reason: command.reason ?? null,
+    metadata: command.metadata || {},
+  }));
+}
+
+function assertSameReceiptCommand(receipt, command, paymentId, fingerprint) {
   const isSame =
     Number(receipt.paymentId) === paymentId &&
-    Number(receipt.amount) === command.amount &&
-    String(receipt.currency).toUpperCase() === command.currency &&
-    receipt.source === command.source &&
-    (receipt.gateway || "") === command.gateway &&
-    (receipt.externalTransactionId || "") === command.externalTransactionId;
+    receipt.metadata?._replayFingerprint === fingerprint;
   if (!isSame) {
     throw new ServiceError(
       "Idempotency or external transaction reference conflicts with an existing receipt",
@@ -113,12 +137,21 @@ export function createPaymentTransition({ processPaymentLedger = defaultProcessP
     const command = normalizeCommand(rawCommand);
     const payment = await lockPayment(tx, command);
     const paymentId = Number(valueOf(payment, "id"));
+    const fingerprint = replayFingerprint(command);
+    const expectedReference = String(valueOf(payment, "transaction_ref", "transactionRef") || "");
+    if (command.transactionRef && command.transactionRef !== expectedReference) {
+      throw new ServiceError(
+        "Payment reference does not match its obligation",
+        422,
+        PAYMENT_OBLIGATION_ERROR_CODES.REFERENCE_MISMATCH,
+      );
+    }
 
     const replay = await tx.paymentReceipt.findUnique({
       where: { idempotencyKey: command.idempotencyKey },
     });
     if (replay) {
-      assertSameReceiptCommand(replay, command, paymentId);
+      assertSameReceiptCommand(replay, command, paymentId, fingerprint);
       const collectedAmount = await receiptSummary(tx, paymentId);
       return receiptResult({ receipt: replay, payment, collectedAmount, replayed: true });
     }
@@ -130,15 +163,22 @@ export function createPaymentTransition({ processPaymentLedger = defaultProcessP
       },
     });
     if (externalReplay) {
-      assertSameReceiptCommand(externalReplay, command, paymentId);
+      assertSameReceiptCommand(externalReplay, command, paymentId, fingerprint);
       const collectedAmount = await receiptSummary(tx, paymentId);
       return receiptResult({ receipt: externalReplay, payment, collectedAmount, replayed: true });
     }
 
     const obligation = Number(valueOf(payment, "amount"));
     const paymentCurrency = String(valueOf(payment, "currency") || "").toUpperCase();
-    if (!Number.isSafeInteger(obligation) || obligation <= 0 || paymentCurrency !== command.currency) {
-      throw validationError("Payment obligation is invalid or currency does not match");
+    if (!Number.isSafeInteger(obligation) || obligation <= 0) {
+      throw validationError("Payment obligation is invalid");
+    }
+    if (paymentCurrency !== command.currency) {
+      throw new ServiceError(
+        "Payment currency does not match its obligation",
+        422,
+        PAYMENT_OBLIGATION_ERROR_CODES.CURRENCY_MISMATCH,
+      );
     }
     if ([PAYMENT_STATUS.PAID, PAYMENT_STATUS.FULLY_REFUNDED].includes(valueOf(payment, "status"))) {
       throw new ServiceError("Payment is already final", 409, PAYMENT_TRANSITION_ERROR_CODES.ALREADY_FINAL);
@@ -165,6 +205,7 @@ export function createPaymentTransition({ processPaymentLedger = defaultProcessP
           method: command.method,
           reason: command.reason,
           ...(command.metadata || {}),
+          _replayFingerprint: fingerprint,
         },
       },
     });
