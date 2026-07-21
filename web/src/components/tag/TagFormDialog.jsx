@@ -158,9 +158,9 @@ export default function TagFormDialog({ open, onClose, tag }) {
                 <SelectValue placeholder={t("tags.selectTagType")} />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(TAG_TYPES).map(([value]) => (
+                {Object.entries(TAG_TYPES).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
-                    {t(`tags.types.${value}`)}
+                    {t(`tags.types.${value}`, { defaultValue: label })}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -11,5 +11,6 @@ describe("tag type options", () => {
       "activity",
       "atmosphere",
     ]);
+    expect(TAG_TYPES.feature).toBe("Đặc điểm");
   });
 });

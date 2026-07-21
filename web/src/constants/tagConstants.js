@@ -1,10 +1,10 @@
 export const TAG_TYPES = {
-  general: "General",
-  feature: "Feature",
-  amenity: "Amenity",
-  cuisine: "Cuisine",
-  activity: "Activity",
-  atmosphere: "Atmosphere",
+  general: "Chung",
+  feature: "Đặc điểm",
+  amenity: "Tiện ích",
+  cuisine: "Ẩm thực",
+  activity: "Hoạt động",
+  atmosphere: "Không gian",
 };
 
 export const TAG_COLOR_PRESETS = [

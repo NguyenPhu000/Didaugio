@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatTableSerial } from "@/utils/tableSerial";
+import { TAG_TYPES } from "@/constants/tagConstants";
 
 /**
  * TAG LIST - T.I.M Style Refactor (Vietnamese)
@@ -100,7 +101,7 @@ export default function TagList({ tags, onEdit, onDelete, loading }) {
               <span
                 className={`inline-flex items-center px-2 py-1 rounded-[2px] text-[10px] font-bold uppercase tracking-wider border ${TAG_TYPE_COLORS[tag.tagType] || "border-gray-200 bg-gray-50 text-gray-600"}`}
               >
-                {t(`tags.types.${tag.tagType}`, { defaultValue: tag.tagType })}
+                {t(`tags.types.${tag.tagType}`, { defaultValue: TAG_TYPES[tag.tagType] || tag.tagType })}
               </span>
             </div>
 
