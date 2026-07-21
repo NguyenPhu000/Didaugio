@@ -114,7 +114,7 @@ const StepPreview = ({ isEditMode }) => {
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div className="space-y-2">
               {category && (
-                <Badge variant="outline" className="border-black/15 bg-[#F4F0E8] text-xs text-[#11110F]">
+                <Badge variant="outline" className="border-black/15 bg-muted text-xs text-[#11110F]">
                   {category.name}
                 </Badge>
               )}
@@ -355,7 +355,7 @@ const StepPreview = ({ isEditMode }) => {
           onClick={handleBack}
           disabled={submitting}
           size="lg"
-          className="gap-2 rounded-xl border-black/20 bg-transparent text-[#11110F] hover:bg-[#F4F0E8]"
+          className="gap-2 rounded-xl border-black/20 bg-transparent text-[#11110F] hover:bg-muted"
         >
           <ArrowLeft className="h-4 w-4" />
           {t("common.back")}

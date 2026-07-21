@@ -94,7 +94,7 @@ const PlaceWizardPage = () => {
     <main
       ref={pageRef}
       data-testid="place-wizard-canvas"
-      className="min-h-full overflow-x-hidden rounded-[28px] border border-black/[0.06] bg-[#F4F0E8] pb-8 text-[#11110F]"
+      className="min-h-full overflow-x-hidden rounded-[28px] border border-black/[0.06] bg-background pb-8 text-[#11110F]"
     >
       <header data-wizard-reveal className="border-b border-black/10 bg-[#FFFEFB]/70 px-5 py-5 sm:px-7">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
@@ -149,7 +149,7 @@ const PlaceWizardPage = () => {
                     "group relative flex min-h-[82px] items-center gap-3 rounded-[16px] px-4 py-3 text-left transition-colors",
                     "disabled:cursor-default",
                     isActive && "bg-[#11110F] text-white shadow-[0_12px_25px_rgba(17,17,15,0.16)]",
-                    isCompleted && "hover:bg-[#F4F0E8]",
+                    isCompleted && "hover:bg-muted",
                     !isActive && !isCompleted && "text-[#6B675F]"
                   )}
                 >

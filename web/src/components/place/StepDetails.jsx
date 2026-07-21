@@ -460,7 +460,7 @@ const StepDetails = () => {
           onClick={handleBack}
           disabled={loading}
           size="lg"
-          className="gap-2 rounded-xl border-black/20 bg-transparent text-[#11110F] hover:bg-[#F4F0E8]"
+          className="gap-2 rounded-xl border-black/20 bg-transparent text-[#11110F] hover:bg-muted"
         >
           <ArrowLeft className="h-4 w-4" />
           {t("common.back")}
