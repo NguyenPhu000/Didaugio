@@ -469,6 +469,9 @@ git commit -m "fix: add subscription migration prerequisite"
 **Files:**
 - Create: `server/prisma/migrations/20260721010000_reconcile_prisma_schema/migration.sql`
 - Modify: `server/test/migrationHistory.contract.test.js`
+- Modify: `server/src/scripts/lib/migrationAudit.js`
+- Modify: `server/test/migrationAudit.test.js`
+- Create: `server/test/migrationReconciliation.integration.test.js`
 
 **Interfaces:**
 - Consumes: schema produced by all migrations through `20260720151000`.
@@ -521,9 +524,15 @@ npx.cmd prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-s
 
 Review the generated SQL line-by-line and change destructive generated operations as follows:
 
-- Do not drop `vn_admin_source`, PostGIS geometry tables, functions, or indexes.
+- Wrap the entire migration in one explicit top-level `BEGIN;` / `COMMIT;` transaction.
+- Do not drop `vn_admin_source`, raw boundary tables, boundary foreign keys, PostGIS geometry indexes, pg_trgm search indexes, functions, procedures, extensions, or schemas.
+- Extend `assertOnlyAllowedRawSqlDrift` to accept only the six exact residual raw statements for the two boundary-table drops, their two outgoing foreign-key drops, and the two pg_trgm search-index drops. Near misses and every other drift statement remain rejected.
 - Convert existing text `bookings.status` values to `BookingStatus` with an explicit `USING` mapping and reject unknown values in a preflight `DO` block.
 - Add required columns nullable or with safe defaults first, backfill deterministically, then apply `NOT NULL`.
+- Derive historical booking financial fields from authoritative values: `admin_earned = commission_amount`, `business_earned = final_price - commission_amount`, and `commission_rate = 0` for a zero final price or `ROUND(commission_amount * 100.0 / final_price)::integer`; preflight invalid source/range values before enforcing defaults and `NOT NULL`.
+- Canonicalize all existing booking financial targets from those source fields, including rows whose manually-pushed target columns already contain `0/0/10`; do not preserve stale non-null defaults with `COALESCE`.
+- Add `categories.level` nullable, derive every level from the existing parent hierarchy with a recursive CTE, and refuse orphaned, cyclic, or deeper-than-three hierarchies before applying default 1 and `NOT NULL`.
+- Add `roles.is_protected` nullable and derive it from the authoritative system-role invariant (`is_protected = is_system`) before applying default false and `NOT NULL`.
 - Create missing tables before adding their foreign keys.
 - Create indexes with stable Prisma names.
 - Add unique constraints only after a duplicate preflight query raises a descriptive exception.
@@ -535,20 +544,24 @@ Run: `node --test test/migrationHistory.contract.test.js`
 
 Expected: all contract tests pass.
 
+Run: `node --test test/migrationReconciliation.integration.test.js`
+
+Expected: a matching db-push audit with non-null `0/0/10` booking defaults is canonicalized, a three-level category hierarchy becomes `1/2/3`, built-in system roles become protected while custom roles remain unprotected, invalid finance and category cycle/orphan/depth fixtures fail atomically, and a second application is idempotent. Every prefix-validated audit database is removed.
+
 Run: `npm run migrate:verify`
 
-Expected: all migrations deploy, Prisma diff exits 0, temporary database is removed, overall exit 0.
+Expected: all migrations deploy, the diff contains no managed drift beyond the six exact allowlisted raw statements, the temporary database is removed, and the verifier exits 0.
 
 - [ ] **Step 5: Verify current-database preflight without applying**
 
 Run: `npx.cmd prisma migrate status --schema=prisma/schema.prisma`
 
-Expected: reports the two new migrations as pending and no failed migration. Do not deploy to the application database in this task.
+Expected: reports the new local migrations as pending and no failed migration. Other independently added local migrations may also be pending. Do not deploy to the application database in this task.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add server/prisma/migrations/20260721010000_reconcile_prisma_schema/migration.sql server/test/migrationHistory.contract.test.js
+git add server/prisma/migrations/20260721010000_reconcile_prisma_schema/migration.sql server/test/migrationHistory.contract.test.js server/src/scripts/lib/migrationAudit.js server/test/migrationAudit.test.js server/test/migrationReconciliation.integration.test.js
 git commit -m "fix: reconcile migration history with Prisma schema"
 ```
 
@@ -559,6 +572,8 @@ git commit -m "fix: reconcile migration history with Prisma schema"
 - Modify: `server/package.json`
 - Create: `server/docs/migration-integrity-runbook.md`
 - Test: `server/test/migrationAudit.test.js`
+- Test: `server/test/migrationHistory.contract.test.js`
+- Test: `server/test/migrationReconciliation.integration.test.js`
 
 **Interfaces:**
 - Consumes: working PostgreSQL admin credentials with `CREATE DATABASE` and PostGIS extension privileges.
@@ -588,14 +603,15 @@ Expected RED: export missing. Implement URL password replacement without logging
 Add:
 
 ```json
-"quality:migrations": "npm run migrate:verify && node --test test/migrationAudit.test.js test/migrationHistory.contract.test.js"
+"quality:migrations": "npm run migrate:verify && node --test test/migrationAudit.test.js test/migrationHistory.contract.test.js test/migrationReconciliation.integration.test.js"
 ```
 
 On Windows package scripts, use `&&` only inside npm's script because npm provides the same command-shell semantics in local/CI execution.
+The dedicated gate must fail with a clear diagnostic when `DATABASE_URL` is absent; it must not silently skip the live PostgreSQL integration test.
 
 - [ ] **Step 4: Write the runbook**
 
-Document prerequisites, exact commands, the safe database prefix, expected cleanup, how to inspect a retained failure only by an explicit debug flag, how to run `migrate status`, and the rule that production deployment requires a backup and approval. Do not include credentials or environment values.
+Document prerequisites, exact commands, the safe database prefix, unconditional cleanup, how to run the read-only `migrate status` preflight, and the rule that production deployment requires a backup and explicit approval. A failed audit database must not be retained by the normal gate. Do not include credentials or environment values.
 
 - [ ] **Step 5: Run the complete phase verification**
 
@@ -610,7 +626,7 @@ Expected: schema valid, exit 0.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add server/src/scripts/verifyMigrationHistory.js server/src/scripts/lib/migrationAudit.js server/package.json server/test/migrationAudit.test.js server/docs/migration-integrity-runbook.md
+git add server/src/scripts/verifyMigrationHistory.js server/src/scripts/lib/migrationAudit.js server/package.json server/test/migrationAudit.test.js server/test/migrationHistory.contract.test.js server/test/migrationReconciliation.integration.test.js server/docs/migration-integrity-runbook.md
 git commit -m "build: enforce migration integrity quality gate"
 ```
 
