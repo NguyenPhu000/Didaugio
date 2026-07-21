@@ -75,11 +75,12 @@ export const bulkBookingSchema = z.object({
 });
 
 export const markPaidSchema = z.object({
-  paymentMethod: z.string().min(2).max(50).optional(),
-  transactionRef: z.string().max(255).optional().nullable(),
-  amount: z.coerce.number().int().positive().optional(),
+  paymentMethod: z.string().trim().min(2).max(50),
+  transactionRef: z.string().trim().min(1).max(255),
+  amount: z.coerce.number().int().positive(),
+  idempotencyKey: z.string().trim().min(1).max(128),
+  reason: z.string().trim().min(1).max(500),
   paidAt: z.string().max(100).optional().nullable(),
-  note: z.string().max(500).optional().nullable(),
 });
 
 export const refundBookingSchema = z.object({

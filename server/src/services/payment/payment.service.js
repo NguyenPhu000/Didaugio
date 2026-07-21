@@ -22,6 +22,7 @@ import {
 import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import * as bookingService from "../booking/booking.service.js";
 import { processPaymentLedger } from "../booking/financialCore.service.js";
+import { createPaymentTransition } from "./paymentTransition.service.js";
 
 const PAYMENT_CODE_PREFIX = process.env.PAYMENT_CODE_PREFIX || "DDG";
 const PAYMENT_CODE_RANDOM_LENGTH = 7;
@@ -35,6 +36,7 @@ const defaultPaymentCallbackDependencies = Object.freeze({
   eventEmitter,
   EVENTS,
   processPaymentLedger,
+  paymentTransition: null,
 });
 
 export function createPaymentCallbackHandlers(overrides = {}) {
@@ -273,6 +275,7 @@ async function processVNPayIPNWithDependencies(query, dependencies) {
     eventEmitter,
     EVENTS,
     processPaymentLedger,
+    paymentTransition,
   } = dependencies;
 
   let verifyResult;
@@ -383,67 +386,29 @@ async function processVNPayIPNWithDependencies(query, dependencies) {
         return { type: "FAILED", responseCode };
       }
 
-      const updatedPayment = await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: PAYMENT_STATUS.PAID,
-          paidAt: new Date(),
+      const transition = paymentTransition || createPaymentTransition({ processPaymentLedger });
+      const collection = await transition.recordSucceededReceipt(tx, {
+        paymentId: payment.id,
+        amount: Number(amount) / 100,
+        currency,
+        source: "gateway",
+        gateway: "VNPAY",
+        method: PAYMENT_METHODS.VNPAY,
+        idempotencyKey: `vnpay:${transactionNo || transactionRef}`,
+        externalTransactionId: transactionNo || transactionRef,
+        bankCode,
+        paymentData: {
+          responseCode,
           bankCode: bankCode || null,
-          transactionId: transactionNo || null,
-          paymentData: {
-            responseCode,
-            bankCode: bankCode || null,
-            transactionNo: transactionNo || null,
-            payDate: payDate || null,
-            gateway: "VNPAY",
-            processedAt: new Date().toISOString(),
-          },
-        },
-      });
-
-      // Update booking to paid_pending_confirm (NOT confirmed)
-      const bookingForTx = await tx.booking.update({
-        where: { id: payment.booking_id },
-        data: {
-          status: BOOKING_STATUS.PAID_PENDING_CONFIRM,
-          paymentStatus: PAYMENT_STATUS.PAID,
-          confirmedAt: null,
-        },
-        select: {
-          id: true,
-          businessId: true,
-          originalPrice: true,
-          discountAmount: true,
-          finalPrice: true,
-          service: {
-            select: { business: { select: { commissionRate: true } } },
-          },
-        },
-      });
-
-      // Process financial ledger (commission split + frozen balance)
-      const commissionRate =
-        Number(bookingForTx.service?.business?.commissionRate) || 10;
-      await processPaymentLedger(
-        tx,
-        bookingForTx.id,
-        bookingForTx.finalPrice,
-        commissionRate,
-        bookingForTx.businessId,
-      );
-
-      await tx.bookingActionLog.create({
-        data: {
-          bookingId: payment.booking_id,
-          action: "approve",
-          actorUserId: null,
-          metadata: { source: "payment_gateway", gateway: "VNPAY" },
+          transactionNo: transactionNo || null,
+          payDate: payDate || null,
+          gateway: "VNPAY",
+          processedAt: new Date().toISOString(),
         },
       });
 
       return {
-        type: "SUCCESS",
-        payment: updatedPayment,
+        type: collection.replayed ? "ALREADY_PROCESSED" : "SUCCESS",
         bookingId: payment.booking_id,
       };
     });
@@ -541,6 +506,7 @@ async function processMoMoIPNWithDependencies(body, dependencies) {
     eventEmitter,
     EVENTS,
     processPaymentLedger,
+    paymentTransition,
   } = dependencies;
 
   let verifyResult;
@@ -641,65 +607,27 @@ async function processMoMoIPNWithDependencies(body, dependencies) {
         return { type: "FAILED", resultCode };
       }
 
-      const updatedPayment = await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: PAYMENT_STATUS.PAID,
-          paidAt: new Date(),
-          transactionId: transId || null,
-          paymentData: {
-            resultCode,
-            message: message || null,
-            transId: transId || null,
-            gateway: "MOMO",
-            processedAt: new Date().toISOString(),
-          },
-        },
-      });
-
-      // Update booking to paid_pending_confirm (NOT confirmed)
-      const bookingForTx = await tx.booking.update({
-        where: { id: payment.booking_id },
-        data: {
-          status: BOOKING_STATUS.PAID_PENDING_CONFIRM,
-          paymentStatus: PAYMENT_STATUS.PAID,
-          confirmedAt: null,
-        },
-        select: {
-          id: true,
-          businessId: true,
-          originalPrice: true,
-          discountAmount: true,
-          finalPrice: true,
-          service: {
-            select: { business: { select: { commissionRate: true } } },
-          },
-        },
-      });
-
-      // Process financial ledger (commission split + frozen balance)
-      const commissionRate =
-        Number(bookingForTx.service?.business?.commissionRate) || 10;
-      await processPaymentLedger(
-        tx,
-        bookingForTx.id,
-        bookingForTx.finalPrice,
-        commissionRate,
-        bookingForTx.businessId,
-      );
-
-      await tx.bookingActionLog.create({
-        data: {
-          bookingId: payment.booking_id,
-          action: "approve",
-          actorUserId: null,
-          metadata: { source: "payment_gateway", gateway: "MOMO" },
+      const transition = paymentTransition || createPaymentTransition({ processPaymentLedger });
+      const collection = await transition.recordSucceededReceipt(tx, {
+        paymentId: payment.id,
+        amount: Number(amount),
+        currency: "VND",
+        source: "gateway",
+        gateway: "MOMO",
+        method: PAYMENT_METHODS.MOMO,
+        idempotencyKey: `momo:${transId || orderId}`,
+        externalTransactionId: transId || orderId,
+        paymentData: {
+          resultCode,
+          message: message || null,
+          transId: transId || null,
+          gateway: "MOMO",
+          processedAt: new Date().toISOString(),
         },
       });
 
       return {
-        type: "SUCCESS",
-        payment: updatedPayment,
+        type: collection.replayed ? "ALREADY_PROCESSED" : "SUCCESS",
         bookingId: payment.booking_id,
       };
     });
@@ -847,13 +775,17 @@ export async function processSePayIPN(body) {
         return { type: "AMOUNT_MISMATCH" };
       }
 
-      const updatedPayment = await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: PAYMENT_STATUS.PAID,
-          paidAt: new Date(),
-          transactionId: transactionId || orderId || null,
-          bankCode: sepayMethod || null,
+      const collection = await createPaymentTransition({ processPaymentLedger })
+        .recordSucceededReceipt(tx, {
+          paymentId: payment.id,
+          amount: Number(amount),
+          currency: "VND",
+          source: "gateway",
+          gateway: "SEPAY",
+          method: PAYMENT_METHODS.SEPAY,
+          idempotencyKey: `sepay:${transactionId || orderId || transactionRef}`,
+          externalTransactionId: transactionId || orderId || transactionRef,
+          bankCode: sepayMethod,
           paymentData: {
             sepayOrderId: orderId,
             transactionId,
@@ -862,50 +794,10 @@ export async function processSePayIPN(body) {
             gateway: "SEPAY",
             processedAt: new Date().toISOString(),
           },
-        },
-      });
-
-      const bookingForTx = await tx.booking.update({
-        where: { id: payment.booking_id },
-        data: {
-          status: BOOKING_STATUS.PAID_PENDING_CONFIRM,
-          paymentStatus: PAYMENT_STATUS.PAID,
-          confirmedAt: null,
-        },
-        select: {
-          id: true,
-          businessId: true,
-          originalPrice: true,
-          discountAmount: true,
-          finalPrice: true,
-          service: {
-            select: { business: { select: { commissionRate: true } } },
-          },
-        },
-      });
-
-      const commissionRate =
-        Number(bookingForTx.service?.business?.commissionRate) || 10;
-      await processPaymentLedger(
-        tx,
-        bookingForTx.id,
-        bookingForTx.finalPrice,
-        commissionRate,
-        bookingForTx.businessId,
-      );
-
-      await tx.bookingActionLog.create({
-        data: {
-          bookingId: payment.booking_id,
-          action: "approve",
-          actorUserId: null,
-          metadata: { source: "payment_gateway", gateway: "SEPAY" },
-        },
-      });
+        });
 
       return {
-        type: "SUCCESS",
-        payment: updatedPayment,
+        type: collection.replayed ? "ALREADY_PROCESSED" : "SUCCESS",
         bookingId: payment.booking_id,
       };
     });

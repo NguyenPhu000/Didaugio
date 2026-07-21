@@ -46,8 +46,10 @@ import {
   settleCompletedLedger,
   refundLedger,
 } from "./financialCore.service.js";
+import { createPaymentTransition } from "../payment/paymentTransition.service.js";
 
 let expirePendingBookingsEnumWarned = false;
+const paymentTransition = createPaymentTransition();
 
 function isBookingStatusEnumMismatchError(error) {
   const msg = String(error?.message || "");
@@ -1897,7 +1899,6 @@ export const markPaid = async (bookingId, payload = {}, userId) => {
   }
 
   const booking = await prisma.$transaction(async (tx) => {
-    await lockBookingRow(tx, id);
     const existing = await tx.booking.findUnique({
       where: { id },
       include: { payment: true },
@@ -1923,24 +1924,10 @@ export const markPaid = async (bookingId, payload = {}, userId) => {
       );
     }
 
-    if (
-      [PAYMENT_STATUS.PAID, PAYMENT_STATUS.FULLY_REFUNDED].includes(
-        existing.paymentStatus,
-      )
-    ) {
-      throw new ServiceError(
-        "Booking đã được cập nhật thanh toán trước đó",
-        422,
-        ERROR_CODES.VALIDATION_ERROR,
-      );
-    }
-
-    const amount = payload.amount
-      ? parseInt(payload.amount)
-      : existing.finalPrice;
+    const amount = parseInt(payload.amount, 10);
     const paidAt = payload.paidAt ? new Date(payload.paidAt) : new Date();
-    const paymentMethod = payload.paymentMethod || "manual";
-    const transactionRef = payload.transactionRef || null;
+    const paymentMethod = payload.paymentMethod;
+    const transactionRef = payload.transactionRef;
 
     if (Number.isNaN(amount) || amount <= 0) {
       throw new ServiceError(
@@ -1958,44 +1945,37 @@ export const markPaid = async (bookingId, payload = {}, userId) => {
       );
     }
 
-    const paymentData = {
-      method: "manual",
-      actorUserId: userId,
-      note: payload.note || null,
-    };
-
-    if (existing.payment) {
-      await tx.payment.update({
+    const payment = existing.payment || await tx.payment.upsert({
         where: { bookingId: id },
-        data: {
-          amount,
-          paymentMethod,
-          transactionRef,
-          status: "paid",
-          paidAt,
-          paymentData,
-        },
-      });
-    } else {
-      await tx.payment.create({
-        data: {
+        create: {
           bookingId: id,
           userId: existing.userId,
-          amount,
+          amount: existing.finalPrice,
+          currency: "VND",
           paymentMethod,
-          transactionRef,
-          status: "paid",
-          paidAt,
-          paymentData,
+          transactionRef: `MANUAL-BOOKING-${id}`,
+          idempotencyKey: `manual-payment-${id}`,
+          status: PAYMENT_STATUS.UNPAID,
         },
+        update: {},
       });
-    }
 
-    return tx.booking.update({
+    await paymentTransition.recordSucceededReceipt(tx, {
+      paymentId: payment.id,
+      amount,
+      currency: "VND",
+      source: "manual",
+      method: paymentMethod,
+      idempotencyKey: payload.idempotencyKey,
+      externalTransactionId: transactionRef,
+      actorUserId: userId,
+      reason: payload.reason,
+      paidAt,
+      metadata: { bookingId: id },
+    });
+
+    return tx.booking.findUnique({
       where: { id },
-      data: {
-        paymentStatus: PAYMENT_STATUS.PAID,
-      },
       include: {
         ...defaultInclude,
         payment: true,

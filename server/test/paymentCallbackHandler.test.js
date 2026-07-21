@@ -14,6 +14,7 @@ const EXPECTED_PAYMENT = {
 };
 
 function createHarness({ gateway, payment = EXPECTED_PAYMENT, verified = true, callback }) {
+  payment = { ...payment };
   const calls = {
     sequence: [],
     paymentUpdate: 0,
@@ -25,18 +26,50 @@ function createHarness({ gateway, payment = EXPECTED_PAYMENT, verified = true, c
     logWebhook: [],
     markProcessed: 0,
     markError: [],
+    errors: [],
   };
+  const receipts = [];
 
   const tx = {
     $queryRaw: async () => [payment],
     payment: {
-      update: async () => {
+      update: async ({ data }) => {
         calls.paymentUpdate += 1;
+        Object.assign(payment, data);
+        return payment;
+      },
+    },
+    paymentReceipt: {
+      findUnique: async ({ where: { idempotencyKey } }) =>
+        receipts.find((receipt) => receipt.idempotencyKey === idempotencyKey) || null,
+      findFirst: async ({ where: { gateway: receiptGateway, externalTransactionId } }) =>
+        receipts.find(
+          (receipt) =>
+            receipt.gateway === receiptGateway &&
+            receipt.externalTransactionId === externalTransactionId,
+        ) || null,
+      aggregate: async () => ({
+        _sum: {
+          amount: receipts
+            .filter((receipt) => receipt.status === "succeeded")
+            .reduce((sum, receipt) => sum + receipt.amount, 0),
+        },
+      }),
+      create: async ({ data }) => {
+        const receipt = { id: receipts.length + 1, ...data };
+        receipts.push(receipt);
+        return receipt;
       },
     },
     booking: {
       update: async () => {
         calls.bookingUpdate += 1;
+        return {
+          id: payment.booking_id,
+          businessId: 31,
+          finalPrice: payment.amount,
+          service: { business: { commissionRate: 10 } },
+        };
       },
     },
     bookingActionLog: {
@@ -84,7 +117,15 @@ function createHarness({ gateway, payment = EXPECTED_PAYMENT, verified = true, c
   const handlers = createPaymentCallbackHandlers({
     prisma: {
       $transaction: async (work) => work(tx),
-      booking: { findUnique: async () => null },
+      booking: {
+        findUnique: async () => ({
+          id: payment.booking_id,
+          bookingCode: "BOOKING-1",
+          userId: 51,
+          businessId: 31,
+          service: { business: { ownerId: 61 } },
+        }),
+      },
     },
     vnpayService,
     momoService,
@@ -105,10 +146,10 @@ function createHarness({ gateway, payment = EXPECTED_PAYMENT, verified = true, c
       calls.ledger += 1;
     },
     eventEmitter: { emit: () => {} },
-    logger: { error: () => {} },
+    logger: { error: (...args) => calls.errors.push(args) },
   });
 
-  return { handlers, calls };
+  return { handlers, calls, receipts };
 }
 
 function assertNoMutation(calls) {
@@ -240,4 +281,22 @@ test("invalid signatures are logged only after verification", async () => {
   assert.equal(calls.markError.length, 1);
   assert.equal(calls.markError[0].errorMsg, "PAYMENT_SIGNATURE_INVALID");
   assert.deepEqual(result, { RspCode: "97", Message: "Invalid signature" });
+});
+
+test("gateway handlers persist one canonical receipt and one ledger transition for an exact callback replay", async () => {
+  const callback = { reference: EXPECTED_PAYMENT.transaction_ref, amount: "12500000", currency: "VND" };
+  const { handlers, calls, receipts } = createHarness({ gateway: "VNPAY", callback });
+  const query = {
+    vnp_TxnRef: callback.reference,
+    vnp_SecureHash: "signature-secret",
+  };
+
+  const first = await handlers.processVNPayIPN(query);
+  const replay = await handlers.processVNPayIPN(query);
+
+  assert.deepEqual(first, { RspCode: "00", Message: "Confirm success" }, JSON.stringify(calls.errors));
+  assert.deepEqual(replay, { RspCode: "02", Message: "Order already confirmed" });
+  assert.equal(receipts.length, 1);
+  assert.equal(calls.ledger, 1);
+  assert.equal(calls.actionLog, 1);
 });
