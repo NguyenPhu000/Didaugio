@@ -21,6 +21,8 @@ const sourceUrl = process.env.DATABASE_URL;
 const serverRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const schemaPath = path.join(serverRoot, "prisma", "schema.prisma");
 const auditLifecycle = [];
+const SUBJECT_APPLICATION_NAME = "booking_p2_task4_subject";
+const LOCK_OBSERVATION_TIMEOUT_MS = 15_000;
 
 function safeDiagnostic(value, databaseUrl) {
   return String(value || "").replaceAll(databaseUrl, redactDatabaseUrl(databaseUrl));
@@ -216,6 +218,93 @@ function assertErrorCode(expected) {
   };
 }
 
+function withApplicationName(databaseUrl, applicationName) {
+  const parsed = new URL(databaseUrl);
+  parsed.searchParams.set("application_name", applicationName);
+  return parsed.toString();
+}
+
+async function waitForLockContenders(admin, databaseName, applicationName) {
+  const deadline = Date.now() + LOCK_OBSERVATION_TIMEOUT_MS;
+  let lastRows = [];
+  while (Date.now() < deadline) {
+    const result = await admin.query(
+      `SELECT pid, wait_event_type, wait_event, query
+       FROM pg_stat_activity
+       WHERE datname = $1
+         AND application_name = $2
+         AND state = 'active'
+         AND wait_event_type = 'Lock'
+       ORDER BY pid`,
+      [databaseName, applicationName],
+    );
+    lastRows = result.rows;
+    if (new Set(lastRows.map((row) => row.pid)).size >= 2) return lastRows;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(
+    `Timed out waiting for two real booking lock contenders; observed ${lastRows.length}`,
+  );
+}
+
+async function runWithDatabaseLockGate({
+  admin,
+  databaseName,
+  databaseUrl,
+  lockTarget,
+  lockId,
+  requestFactories,
+}) {
+  assert.equal(requestFactories.length, 2);
+  const gate = new Client(buildPgClientConfig(
+    withApplicationName(databaseUrl, "booking_p2_task4_gate"),
+  ));
+  let transactionOpen = false;
+  let requests = [];
+  let observationFailure;
+  let contenders = [];
+  try {
+    await gate.connect();
+    await gate.query("BEGIN");
+    transactionOpen = true;
+    if (lockTarget === "resource") {
+      await gate.query("SELECT id FROM place_resources WHERE id = $1 FOR UPDATE", [lockId]);
+    } else if (lockTarget === "service") {
+      await gate.query("SELECT id FROM business_services WHERE id = $1 FOR UPDATE", [lockId]);
+    } else {
+      throw new Error(`Unsupported booking integration lock target: ${lockTarget}`);
+    }
+
+    requests = requestFactories.map((factory) => Promise.resolve().then(factory));
+    try {
+      contenders = await waitForLockContenders(
+        admin,
+        databaseName,
+        SUBJECT_APPLICATION_NAME,
+      );
+      assert.ok(
+        new Set(contenders.map((row) => row.pid)).size >= 2,
+        "two distinct real service backends must reach the PostgreSQL lock gate",
+      );
+    } catch (error) {
+      observationFailure = error;
+    } finally {
+      if (transactionOpen) {
+        await gate.query("COMMIT");
+        transactionOpen = false;
+      }
+    }
+
+    const settled = await Promise.allSettled(requests);
+    if (observationFailure) throw observationFailure;
+    return { settled, contenders };
+  } finally {
+    if (transactionOpen) await gate.query("ROLLBACK").catch(() => undefined);
+    await gate.end().catch(() => undefined);
+    if (requests.length > 0) await Promise.allSettled(requests);
+  }
+}
+
 test("booking availability integration requires an explicit disposable PostgreSQL URL", { skip: Boolean(sourceUrl) }, () => {
   assert.fail("DATABASE_URL is required for booking availability integration tests");
 });
@@ -231,14 +320,16 @@ test("booking availability keeps real PostgreSQL resource and capacity integrity
       /intentional fixture failure/u,
     );
 
-    await withOwnedAuditDatabase("booking_availability", async ({ databaseUrl }) => {
+    await withOwnedAuditDatabase("booking_availability", async ({ databaseName, databaseUrl, admin }) => {
       originalDatabaseUrl = process.env.DATABASE_URL;
-      process.env.DATABASE_URL = databaseUrl;
+      process.env.DATABASE_URL = withApplicationName(databaseUrl, SUBJECT_APPLICATION_NAME);
       const prismaModule = await import("../src/config/prismaClient.js");
       appPrisma = prismaModule.default;
+      try {
       const { create: createBooking } = await import("../src/services/booking/booking.service.js");
       const { rescheduleBooking } = await import("../src/services/booking/bookingSchedule.service.js");
       const base = await seedBase(appPrisma);
+      const lockGateProofs = [];
 
       const invalidFixture = await createServiceFixture(appPrisma, base);
       const at = futureAt(14, 10);
@@ -321,10 +412,24 @@ test("booking availability keeps real PostgreSQL resource and capacity integrity
 
       const concurrentResourceFixture = await createServiceFixture(appPrisma, base, { resourceCount: 1 });
       const concurrentResourceAt = futureAt(16, 10);
-      const resourceRace = await Promise.allSettled([
-        createBooking(bookingPayload(concurrentResourceFixture.service, concurrentResourceFixture.resources[0].id, concurrentResourceAt), base.customer.id),
-        createBooking(bookingPayload(concurrentResourceFixture.service, concurrentResourceFixture.resources[0].id, concurrentResourceAt), base.customer.id),
-      ]);
+      const resourceGate = await runWithDatabaseLockGate({
+        admin,
+        databaseName,
+        databaseUrl,
+        lockTarget: "resource",
+        lockId: concurrentResourceFixture.resources[0].id,
+        requestFactories: [
+          () => createBooking(bookingPayload(concurrentResourceFixture.service, concurrentResourceFixture.resources[0].id, concurrentResourceAt), base.customer.id),
+          () => createBooking(bookingPayload(concurrentResourceFixture.service, concurrentResourceFixture.resources[0].id, concurrentResourceAt), base.customer.id),
+        ],
+      });
+      const resourceRace = resourceGate.settled;
+      lockGateProofs.push({
+        scenario: "resource",
+        contenderPids: [...new Set(resourceGate.contenders.map((row) => row.pid))],
+      });
+      assert.ok(resourceGate.contenders.some((row) => /place_resources/iu.test(row.query)));
+      assert.ok(resourceGate.contenders.some((row) => /business_services/iu.test(row.query)));
       assert.equal(resourceRace.filter((entry) => entry.status === "fulfilled").length, 1);
       assert.equal(resourceRace.filter((entry) => entry.status === "rejected").length, 1);
       assertErrorCode("BOOKING_SLOT_CONFLICT")(resourceRace.find((entry) => entry.status === "rejected").reason);
@@ -356,13 +461,28 @@ test("booking availability keeps real PostgreSQL resource and capacity integrity
         bookingModel: "capacity", maxCapacity: 1, resourceCount: 0,
       });
       const capacityAt = futureAt(18, 10);
-      const capacityRace = await Promise.allSettled([
-        createBooking(bookingPayload(capacityFixture.service, undefined, capacityAt), base.customer.id),
-        createBooking(bookingPayload(capacityFixture.service, undefined, capacityAt), base.customer.id),
-      ]);
+      const capacityGate = await runWithDatabaseLockGate({
+        admin,
+        databaseName,
+        databaseUrl,
+        lockTarget: "service",
+        lockId: capacityFixture.service.id,
+        requestFactories: [
+          () => createBooking(bookingPayload(capacityFixture.service, undefined, capacityAt), base.customer.id),
+          () => createBooking(bookingPayload(capacityFixture.service, undefined, capacityAt), base.customer.id),
+        ],
+      });
+      const capacityRace = capacityGate.settled;
+      lockGateProofs.push({
+        scenario: "capacity",
+        contenderPids: [...new Set(capacityGate.contenders.map((row) => row.pid))],
+      });
+      assert.ok(capacityGate.contenders.every((row) => /business_services/iu.test(row.query)));
       assert.equal(capacityRace.filter((entry) => entry.status === "fulfilled").length, 1);
       assert.equal(capacityRace.filter((entry) => entry.status === "rejected").length, 1);
       assertErrorCode("BOOKING_CAPACITY_EXCEEDED")(capacityRace.find((entry) => entry.status === "rejected").reason);
+      assert.deepEqual(lockGateProofs.map((proof) => proof.scenario), ["resource", "capacity"]);
+      assert.ok(lockGateProofs.every((proof) => proof.contenderPids.length >= 2));
 
       const overbookingFixture = await createServiceFixture(appPrisma, base, {
         bookingModel: "capacity", maxCapacity: 1, allowOverbooking: true, resourceCount: 0,
@@ -407,8 +527,10 @@ test("booking availability keeps real PostgreSQL resource and capacity integrity
         _sum: { quantity: true },
       });
       assert.equal(consumedCapacity._sum.quantity, 1);
-      await appPrisma.$disconnect();
-      appPrisma = undefined;
+      } finally {
+        await appPrisma?.$disconnect().catch(() => undefined);
+        appPrisma = undefined;
+      }
     }, { migrate: true });
   } finally {
     await appPrisma?.$disconnect().catch(() => undefined);

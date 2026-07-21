@@ -41,3 +41,13 @@ cd server && node --test test/bookingPolicy.test.js test/bookingTimeSlot.test.js
 ## Concerns
 
 - The project emits the existing informational `Booking rescheduled` log during the focused suite; no errors or cleanup failures were observed.
+
+## Review fix: deterministic concurrency proof
+
+- Reviewer finding: the original `Promise.allSettled` assertions proved final outcomes but did not prove both real service requests overlapped at a database lock boundary.
+- RED: added a required proof ledger for the resource and capacity races; the live suite failed with `actual []`, `expected ["resource", "capacity"]`.
+- GREEN: the test now opens an independent PostgreSQL blocker transaction before launching the two real booking-service requests. The resource race holds `place_resources`, so one application backend waits there while the other waits on the first transaction's `business_services` lock. The capacity race holds `business_services`, so both application backends wait on that service lock.
+- `pg_stat_activity` is polled with a 15-second bound and scoped by the owned database plus a test-only `application_name`. Each race asserts at least two distinct waiting PIDs, and asserts that their active queries name the expected lock tables.
+- The gate transaction is committed or rolled back in `finally`; both request promises are settled even if lock observation fails. The Prisma client is now also disconnected before owned-database teardown on callback failure.
+- Post-fix live suite passed twice: each run 1 pass, 1 expected environment guard skip, 0 failures.
+- Post-fix focused P2 suite passed: 31 passed, 1 expected environment guard skip, 0 failed.
