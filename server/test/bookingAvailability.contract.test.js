@@ -3,7 +3,10 @@ import test from "node:test";
 
 import { createBookingSchema } from "../src/models/schemas/booking/booking.schema.js";
 import prisma from "../src/config/prismaClient.js";
-import { checkAvailability } from "../src/services/booking/bookingAvailability.service.js";
+import {
+  checkAvailability,
+  getAvailableSlots,
+} from "../src/services/booking/bookingAvailability.service.js";
 import { create as createBooking } from "../src/services/booking/booking.service.js";
 import { rescheduleBooking } from "../src/services/booking/bookingSchedule.service.js";
 
@@ -169,6 +172,41 @@ test("capacity blocked-date lookup uses the Vietnam calendar date key", async ()
     tx.calls.blockedDates[0].where.date,
     new Date("2026-07-22T12:00:00.000Z"),
   );
+});
+
+test("public availability returns unavailable empty slots for a Vietnam-local blocked date", async () => {
+  const restore = [];
+  let blockedLookup;
+  try {
+    restore.push(replaceMethod(prisma.businessService, "findUnique", async () => ({
+      id: 7,
+      businessId: 11,
+      maxCapacity: 2,
+      bookingModel: "capacity",
+      slotDurationMinutes: 30,
+      bufferMinutes: 0,
+    })));
+    restore.push(replaceMethod(prisma.businessBlockedDate, "findFirst", async (args) => {
+      blockedLookup = args;
+      return { id: 29 };
+    }));
+
+    const result = await getAvailableSlots(7, "2026-07-22");
+
+    assert.deepEqual(result, {
+      date: "2026-07-22",
+      serviceId: 7,
+      available: false,
+      reason: "BLOCKED_DATE",
+      slots: [],
+    });
+    assert.deepEqual(
+      blockedLookup.where.date,
+      new Date("2026-07-22T12:00:00.000Z"),
+    );
+  } finally {
+    restore.reverse().forEach((fn) => fn());
+  }
 });
 
 test("resource overlap query is isolated to an active nondeleted resource and returns canonical interval", async () => {

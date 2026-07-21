@@ -288,7 +288,7 @@ export async function getAvailableSlots(serviceId, dateStr) {
   }
 
   // Check if date is blocked
-  const bookingDate = new Date(`${dateStr}T00:00:00Z`);
+  const bookingDate = toUseDateOnly(dateStr);
   const blocked = await prisma.businessBlockedDate.findFirst({
     where: {
       businessId: service.businessId,
