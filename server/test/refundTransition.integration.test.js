@@ -93,18 +93,32 @@ for (const run of ["a", "b"]) {
         assert.equal(gatewayAttempts.length, 1);
         assert.equal(gatewayAttempts[0].status, "pending");
         assert.equal(gatewayAttempts[0].amount, 100_000);
+        await assert.rejects(
+          transition.createRefundIntent({
+            paymentId: gatewayFixture.payment.id, source: "manual", amount: 1, currency: "VND", idempotencyKey: `manual-after-gateway-${run}`,
+            actorUserId: gatewayFixture.user.id, reason: "Manual after gateway reservation",
+          }),
+          (error) => error.errorCode === "REFUND_EXCEEDS_COLLECTED",
+        );
+        const manualFixture = await seed(prisma);
+        await transition.createRefundIntent({
+          paymentId: manualFixture.payment.id, source: "manual", amount: 100_000, currency: "VND", idempotencyKey: `manual-reserve-${run}`,
+          actorUserId: manualFixture.user.id, reason: "Manual reservation first",
+        });
+        await assert.rejects(
+          gatewayRefunds.initiateSePayBankRefund(manualFixture.payment.id, {
+            amount: 1, reason: "Gateway after manual reservation", idempotencyKey: `gateway-after-manual-${run}`, actorUserId: manualFixture.user.id,
+          }),
+          (error) => error.errorCode === "REFUND_EXCEEDS_COLLECTED",
+        );
         const platformBeforeManualRefund = await prisma.platformWallet.findFirstOrThrow();
 
         const first = await transition.createRefundIntent({ paymentId: payment.id, source: "manual", amount: 60_000, currency: "VND", idempotencyKey: `refund-${run}-1`, actorUserId: user.id, reason: "Customer cancellation" });
-        const second = await transition.createRefundIntent({ paymentId: payment.id, source: "manual", amount: 50_000, currency: "VND", idempotencyKey: `refund-${run}-2`, actorUserId: user.id, reason: "Second concurrent refund" });
-        const settled = await Promise.allSettled([
-          transition.succeedRefundAttempt({ refundAttemptId: first.attempt.id }),
-          transition.succeedRefundAttempt({ refundAttemptId: second.attempt.id }),
-        ]);
-        assert.equal(settled.filter((item) => item.status === "fulfilled").length, 1);
-        assert.equal(settled.filter((item) => item.status === "rejected").length, 1);
-        assert.equal(settled.find((item) => item.status === "rejected").reason.errorCode, "REFUND_EXCEEDS_COLLECTED");
-        const success = settled.find((item) => item.status === "fulfilled").value;
+        await assert.rejects(
+          transition.createRefundIntent({ paymentId: payment.id, source: "manual", amount: 50_000, currency: "VND", idempotencyKey: `refund-${run}-2`, actorUserId: user.id, reason: "Second concurrent refund" }),
+          (error) => error.errorCode === "REFUND_EXCEEDS_COLLECTED",
+        );
+        const success = await transition.succeedRefundAttempt({ refundAttemptId: first.attempt.id });
         const replay = await transition.succeedRefundAttempt({ refundAttemptId: success.attempt.id });
         assert.equal(replay.replayed, true);
         const refunded = await prisma.refundAttempt.aggregate({ where: { paymentId: payment.id, status: "succeeded" }, _sum: { amount: true } });

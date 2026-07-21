@@ -138,11 +138,13 @@ export function createPaymentRefundOrchestrator({ db = prisma, refundTransitionF
       if (conflictingReference) {
         throw new ServiceError("Refund transfer reference conflicts with an existing attempt", 409, "REFUND_DUPLICATE");
       }
-      const [collections, reserved] = await Promise.all([
+      const [collections, completedRefunds] = await Promise.all([
         tx.paymentReceipt.aggregate({ where: { paymentId: payment.id, status: "succeeded" }, _sum: { amount: true } }),
-        tx.refundAttempt.aggregate({ where: { paymentId: payment.id, status: { in: ["pending", "succeeded"] } }, _sum: { amount: true } }),
+        tx.refundAttempt.aggregate({ where: { paymentId: payment.id, status: "succeeded" }, _sum: { amount: true } }),
       ]);
-      const available = Number(collections?._sum?.amount || 0) - Number(reserved?._sum?.amount || 0);
+      // This only chooses a default amount; the shared transition owns the
+      // pending+succeeded reservation ceiling for every source.
+      const available = Number(collections?._sum?.amount || 0) - Number(completedRefunds?._sum?.amount || 0);
       const canonicalAmount = amount === undefined ? available : Number(amount);
       if (!Number.isSafeInteger(canonicalAmount) || canonicalAmount <= 0 || canonicalAmount > available) {
         throw new ServiceError("Số tiền hoàn vượt quá số tiền đã thu", 422, "REFUND_EXCEEDS_COLLECTED");

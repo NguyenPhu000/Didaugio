@@ -19,7 +19,8 @@ function createHarness({ valid = true, amount = 100, referenceCode = "R-901", at
         (where.id && item.id === where.id) || (where.idempotencyKey && item.idempotencyKey === where.idempotencyKey),
       ) || null,
       aggregate: async ({ where }) => ({ _sum: { amount: attempts.filter((item) =>
-        where.status?.in ? where.status.in.includes(item.status) : item.status === where.status,
+        (where.status?.in ? where.status.in.includes(item.status) : item.status === where.status) &&
+        (!where.id?.not || item.id !== where.id.not),
       ).reduce((sum, item) => sum + item.amount, 0) } }),
       create: async ({ data }) => { const attempt = { id: attempts.length + 1, ...data }; attempts.push(attempt); return attempt; },
       update: async ({ where: { id }, data }) => Object.assign(attempts.find((item) => item.id === id), data),
@@ -98,10 +99,10 @@ test("protected SePay initiation persists the gateway attempt before its actual 
 
 test("same-amount SePay attempts are identified by their persisted transfer reference", async () => {
   const attempts = [
-    { id: 1, paymentId: 11, status: "pending", gateway: "SEPAY_BANK", amount: 100, currency: "VND", externalRefundId: null, metadata: { transferReference: "SEPAY-REFUND-A" } },
-    { id: 2, paymentId: 11, status: "pending", gateway: "SEPAY_BANK", amount: 100, currency: "VND", externalRefundId: null, metadata: { transferReference: "SEPAY-REFUND-B" } },
+    { id: 1, paymentId: 11, status: "pending", gateway: "SEPAY_BANK", amount: 40, currency: "VND", externalRefundId: null, metadata: { transferReference: "SEPAY-REFUND-A" } },
+    { id: 2, paymentId: 11, status: "pending", gateway: "SEPAY_BANK", amount: 40, currency: "VND", externalRefundId: null, metadata: { transferReference: "SEPAY-REFUND-B" } },
   ];
-  const { handlers, calls, callback } = createHarness({ attempts, referenceCode: "SEPAY-REFUND-B" });
+  const { handlers, calls, callback } = createHarness({ attempts, amount: 40, referenceCode: "SEPAY-REFUND-B" });
   await handlers.processSePayRefundWebhook({ code: PAYMENT.transaction_ref }, {}, "{}");
   assert.equal(attempts[0].status, "pending");
   assert.equal(attempts[1].status, "succeeded");

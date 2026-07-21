@@ -25,7 +25,10 @@ function createHarness() {
         (where.id && item.id === where.id),
       ) || null,
       findFirst: async ({ where: { gateway, externalRefundId } }) => attempts.find((item) => item.gateway === gateway && item.externalRefundId === externalRefundId) || null,
-      aggregate: async () => ({ _sum: { amount: attempts.filter((item) => item.status === "succeeded").reduce((sum, item) => sum + item.amount, 0) } }),
+      aggregate: async ({ where }) => ({ _sum: { amount: attempts.filter((item) => {
+        const matchesStatus = where.status?.in ? where.status.in.includes(item.status) : item.status === where.status;
+        return matchesStatus && (!where.id?.not || item.id !== where.id.not);
+      }).reduce((sum, item) => sum + item.amount, 0) } }),
       create: async ({ data }) => { const item = { id: attempts.length + 1, ...data }; attempts.push(item); return item; },
       update: async ({ where: { id }, data }) => Object.assign(attempts.find((item) => item.id === id), data),
     },
@@ -109,15 +112,27 @@ test("settled booking refunds debit available instead of frozen balance", async 
   assert.deepEqual(calls.partnerWallet, [{ balance: { decrement: 36 } }]);
 });
 
-test("refunds above collected receipts fail closed even when Payment.refundAmount is stale", async () => {
+test("refund reservation above collected receipts fails closed even when Payment.refundAmount is stale", async () => {
   const { tx, payment, attempts, ledger } = createHarness();
   tx.paymentReceipt.aggregate = async () => ({ _sum: { amount: 50 } });
   payment.refund_amount = 0;
   const transition = createRefundTransition({ prisma: { $transaction: (fn) => fn(tx) } });
-  const intent = await transition.createRefundIntent(command({ amount: 60 }));
-  await assert.rejects(transition.succeedRefundAttempt({ refundAttemptId: intent.attempt.id }), (error) => error.errorCode === "REFUND_EXCEEDS_COLLECTED");
-  assert.equal(attempts[0].status, "pending");
+  await assert.rejects(transition.createRefundIntent(command({ amount: 60 })), (error) => error.errorCode === "REFUND_EXCEEDS_COLLECTED");
+  assert.equal(attempts.length, 0);
   assert.equal(ledger.length, 0);
+});
+
+test("pending gateway and manual attempts share one reservation ceiling", async () => {
+  const { tx, attempts } = createHarness();
+  const transition = createRefundTransition({ prisma: { $transaction: (fn) => fn(tx) } });
+  await transition.createRefundIntent({
+    paymentId: 1, source: "gateway", gateway: "SEPAY_BANK", amount: 100, currency: "VND", idempotencyKey: "gateway-reservation",
+  });
+  await assert.rejects(
+    transition.createRefundIntent(command({ amount: 1, idempotencyKey: "manual-after-gateway" })),
+    (error) => error.errorCode === "REFUND_EXCEEDS_COLLECTED",
+  );
+  assert.equal(attempts.length, 1);
 });
 
 test("manual refund requires actor and reason and cannot claim a gateway source", async () => {

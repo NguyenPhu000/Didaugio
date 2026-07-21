@@ -103,6 +103,18 @@ async function succeededTotal(delegate, paymentId) {
   return asNumber(summary?._sum?.amount);
 }
 
+async function reservedTotal(delegate, paymentId, excludeAttemptId = null) {
+  const summary = await delegate.aggregate({
+    where: {
+      paymentId,
+      status: { in: ["pending", "succeeded"] },
+      ...(excludeAttemptId ? { id: { not: excludeAttemptId } } : {}),
+    },
+    _sum: { amount: true },
+  });
+  return asNumber(summary?._sum?.amount);
+}
+
 function result(attempt, { replayed = false, collectedAmount, refundedAmount } = {}) {
   return { attempt, status: attempt.status, replayed: Boolean(replayed), collectedAmount, refundedAmount };
 }
@@ -127,6 +139,14 @@ export function createRefundTransition({ prisma, now = () => new Date() } = {}) 
       if (existing) {
         assertReplay(existing, command, fingerprint);
         return result(existing, { replayed: true });
+      }
+      const paymentId = Number(read(payment, "id"));
+      const [collectedAmount, reservedAmount] = await Promise.all([
+        succeededTotal(tx.paymentReceipt, paymentId),
+        reservedTotal(tx.refundAttempt, paymentId),
+      ]);
+      if (reservedAmount + command.amount > collectedAmount) {
+        throw new ServiceError("Refund exceeds succeeded collection", 422, REFUND_TRANSITION_ERROR_CODES.EXCEEDS_COLLECTED);
       }
       const attempt = await tx.refundAttempt.create({
         data: {
@@ -189,12 +209,13 @@ export function createRefundTransition({ prisma, now = () => new Date() } = {}) 
       }
 
       const paymentId = Number(read(payment, "id"));
-      const [collectedAmount, refundedBefore] = await Promise.all([
+      const [collectedAmount, refundedBefore, reservedOther] = await Promise.all([
         succeededTotal(tx.paymentReceipt, paymentId),
         succeededTotal(tx.refundAttempt, paymentId),
+        reservedTotal(tx.refundAttempt, paymentId, attempt.id),
       ]);
       const refundedAmount = refundedBefore + asNumber(attempt.amount);
-      if (refundedAmount > collectedAmount) {
+      if (reservedOther + asNumber(attempt.amount) > collectedAmount || refundedAmount > collectedAmount) {
         throw new ServiceError("Refund exceeds succeeded collection", 422, REFUND_TRANSITION_ERROR_CODES.EXCEEDS_COLLECTED);
       }
 
