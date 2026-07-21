@@ -26,6 +26,26 @@ import { processPaymentLedger } from "../booking/financialCore.service.js";
 const PAYMENT_CODE_PREFIX = process.env.PAYMENT_CODE_PREFIX || "DDG";
 const PAYMENT_CODE_RANDOM_LENGTH = 7;
 
+const defaultPaymentCallbackDependencies = Object.freeze({
+  prisma,
+  logger,
+  vnpayService,
+  momoService,
+  webhookLogService,
+  eventEmitter,
+  EVENTS,
+  processPaymentLedger,
+});
+
+export function createPaymentCallbackHandlers(overrides = {}) {
+  const dependencies = { ...defaultPaymentCallbackDependencies, ...overrides };
+  return {
+    processVNPayIPN: (query) =>
+      processVNPayIPNWithDependencies(query, dependencies),
+    processMoMoIPN: (body) => processMoMoIPNWithDependencies(body, dependencies),
+  };
+}
+
 /**
  * Generate a short, user-friendly payment code.
  * Format: {PREFIX}{RANDOM_ALPHANUMERIC} — e.g., DDG3KAUQ190
@@ -238,19 +258,61 @@ export async function createCheckout({
  * Idempotent: if payment already "paid" or "fully_refunded", returns RspCode "02".
  */
 export async function processVNPayIPN(query) {
-  const webhookLogId = await webhookLogService.logWebhook(buildSafeWebhookLogEntry({
-    gateway: "VNPAY",
-    reference: query.vnp_TxnRef,
-    outcome: "received",
-  }));
+  return processVNPayIPNWithDependencies(
+    query,
+    defaultPaymentCallbackDependencies,
+  );
+}
+
+async function processVNPayIPNWithDependencies(query, dependencies) {
+  const {
+    prisma,
+    logger,
+    vnpayService,
+    webhookLogService,
+    eventEmitter,
+    EVENTS,
+    processPaymentLedger,
+  } = dependencies;
+
+  let verifyResult;
+  try {
+    verifyResult = vnpayService.verifyIpn(query);
+  } catch (error) {
+    const webhookLogId = await webhookLogService.logWebhook(
+      buildSafeWebhookLogEntry({
+        gateway: "VNPAY",
+        reference: query.vnp_TxnRef,
+        outcome: "verification_error",
+        hasSignature: Boolean(query.vnp_SecureHash),
+      }),
+    );
+    await webhookLogService.markError({
+      transactionRef: query.vnp_TxnRef || null,
+      webhookLogId,
+      errorMsg: "PAYMENT_SIGNATURE_VERIFICATION_ERROR",
+    });
+    logger.error("processVNPayIPN signature verification error", {
+      transactionRef: query.vnp_TxnRef,
+    });
+    return vnpayService.buildIpnResponse("99", "System error");
+  }
+
+  const webhookLogId = await webhookLogService.logWebhook(
+    buildSafeWebhookLogEntry({
+      gateway: "VNPAY",
+      reference: query.vnp_TxnRef,
+      outcome: verifyResult.valid ? "received" : "signature_invalid",
+      hasSignature: Boolean(query.vnp_SecureHash),
+    }),
+  );
 
   try {
-    const verifyResult = vnpayService.verifyIpn(query);
     if (!verifyResult.valid) {
       await webhookLogService.markError({
         transactionRef: query.vnp_TxnRef || null,
         webhookLogId,
-        errorMsg: verifyResult.error,
+        errorMsg: "PAYMENT_SIGNATURE_INVALID",
       });
       return vnpayService.buildIpnResponse(
         "97",
@@ -464,19 +526,61 @@ export async function processVNPayIPN(query) {
  * Idempotent: if payment already "paid" or "fully_refunded", returns resultCode 0.
  */
 export async function processMoMoIPN(body) {
-  const webhookLogId = await webhookLogService.logWebhook(buildSafeWebhookLogEntry({
-    gateway: "MOMO",
-    reference: body.orderId,
-    outcome: "received",
-  }));
+  return processMoMoIPNWithDependencies(
+    body,
+    defaultPaymentCallbackDependencies,
+  );
+}
+
+async function processMoMoIPNWithDependencies(body, dependencies) {
+  const {
+    prisma,
+    logger,
+    momoService,
+    webhookLogService,
+    eventEmitter,
+    EVENTS,
+    processPaymentLedger,
+  } = dependencies;
+
+  let verifyResult;
+  try {
+    verifyResult = momoService.verifyIpnSignature(body);
+  } catch (error) {
+    const webhookLogId = await webhookLogService.logWebhook(
+      buildSafeWebhookLogEntry({
+        gateway: "MOMO",
+        reference: body.orderId,
+        outcome: "verification_error",
+        hasSignature: Boolean(body.signature),
+      }),
+    );
+    await webhookLogService.markError({
+      transactionRef: body.orderId || null,
+      webhookLogId,
+      errorMsg: "PAYMENT_SIGNATURE_VERIFICATION_ERROR",
+    });
+    logger.error("processMoMoIPN signature verification error", {
+      orderId: body.orderId,
+    });
+    return momoService.buildIpnResponse(1001, "System error");
+  }
+
+  const webhookLogId = await webhookLogService.logWebhook(
+    buildSafeWebhookLogEntry({
+      gateway: "MOMO",
+      reference: body.orderId,
+      outcome: verifyResult.valid ? "received" : "signature_invalid",
+      hasSignature: Boolean(body.signature),
+    }),
+  );
 
   try {
-    const verifyResult = momoService.verifyIpnSignature(body);
     if (!verifyResult.valid) {
       await webhookLogService.markError({
         transactionRef: body.orderId || null,
         webhookLogId,
-        errorMsg: verifyResult.error,
+        errorMsg: "PAYMENT_SIGNATURE_INVALID",
       });
       return momoService.buildIpnResponse(
         1000,

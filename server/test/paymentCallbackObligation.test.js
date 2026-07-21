@@ -3,7 +3,6 @@ import test from "node:test";
 import {
   buildSafeWebhookLogEntry,
   PAYMENT_OBLIGATION_ERROR_CODES,
-  runValidatedCallbackMutation,
   validateCallbackObligation,
 } from "../src/services/payment/paymentCallbackObligation.policy.js";
 
@@ -113,26 +112,6 @@ test("callback obligation rejects wrong gateway currency and missing reference",
   );
 });
 
-test("VNPay and MoMo mutation guards run no payment, booking, ledger, or log mutation on mismatch", async () => {
-  for (const [gateway, callback] of [
-    ["VNPAY", { reference: payment.transactionRef, amount: "12499900", currency: "VND" }],
-    ["MOMO", { reference: payment.transactionRef, amount: 124999, currency: "VND" }],
-  ]) {
-    const mutations = [];
-    const result = await runValidatedCallbackMutation({
-      gateway,
-      payment,
-      callback,
-      mutate: async () => {
-        mutations.push("payment", "booking", "ledger", "wallet", "action-log");
-      },
-    });
-
-    assert.equal(result.valid, false);
-    assert.deepEqual(mutations, []);
-  }
-});
-
 test("matching paid replays are eligible for idempotent acknowledgement while mismatched replays are rejected", () => {
   const matchingReplay = validateCallbackObligation({
     gateway: "MOMO",
@@ -157,6 +136,7 @@ test("webhook mismatch log entries retain only safe gateway metadata", () => {
     gateway: "VNPAY",
     reference: "DDG-REF-123",
     outcome: PAYMENT_OBLIGATION_ERROR_CODES.AMOUNT_MISMATCH,
+    hasSignature: false,
     callback: {
       vnp_SecureHash: "signature-secret",
       credential: "credential-secret",
@@ -170,6 +150,7 @@ test("webhook mismatch log entries retain only safe gateway metadata", () => {
       gateway: "VNPAY",
       reference: "DDG-REF-123",
       outcome: PAYMENT_OBLIGATION_ERROR_CODES.AMOUNT_MISMATCH,
+      hasSignature: false,
     },
     signature: null,
   });

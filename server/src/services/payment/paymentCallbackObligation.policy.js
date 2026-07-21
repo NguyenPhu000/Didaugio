@@ -5,13 +5,19 @@ export const PAYMENT_OBLIGATION_ERROR_CODES = Object.freeze({
   ALREADY_FINAL: "PAYMENT_ALREADY_FINAL",
 });
 
-export function buildSafeWebhookLogEntry({ gateway, reference, outcome }) {
+export function buildSafeWebhookLogEntry({
+  gateway,
+  reference,
+  outcome,
+  hasSignature = false,
+}) {
   return {
     gateway,
     payload: {
       gateway,
       reference: typeof reference === "string" && reference.length > 0 ? reference : null,
       outcome: typeof outcome === "string" && outcome.length > 0 ? outcome : null,
+      hasSignature: Boolean(hasSignature),
     },
     signature: null,
   };
@@ -86,18 +92,4 @@ export function validateCallbackObligation({ gateway, payment, callback }) {
   }
 
   return { valid: true, code: null };
-}
-
-export async function runValidatedCallbackMutation({
-  gateway,
-  payment,
-  callback,
-  mutate,
-}) {
-  const validation = validateCallbackObligation({ gateway, payment, callback });
-  if (!validation.valid) {
-    return validation;
-  }
-
-  return { ...validation, result: await mutate() };
 }
