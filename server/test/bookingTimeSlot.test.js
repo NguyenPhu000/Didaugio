@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   combineUseDateAndTime,
+  resolveBookingAtFromPayload,
   toUseDateOnly,
   toUseTimeString,
 } from "../src/utils/bookingTimeSlot.js";
@@ -31,5 +32,24 @@ test("date/time helpers reject impossible Vietnam calendar input", () => {
   assert.throws(
     () => combineUseDateAndTime("2026-02-30", "09:00"),
     /valid date/i,
+  );
+});
+
+test("create input resolver rejects raw invalid useDate/useTime before a booking mutation", () => {
+  assert.throws(
+    () => resolveBookingAtFromPayload({ useDate: "2026-02-30", useTime: "09:00" }),
+    /valid date/i,
+  );
+  assert.throws(
+    () => resolveBookingAtFromPayload({ useDate: "2026-07-22", useTime: "9:00" }),
+    /HH:mm/,
+  );
+  assert.equal(
+    resolveBookingAtFromPayload({ useDate: "2026-07-22", useTime: "09:00" }).toISOString(),
+    "2026-07-22T02:00:00.000Z",
+  );
+  assert.equal(
+    resolveBookingAtFromPayload({ bookingAt: "2026-07-22T02:00:00.000Z" }).toISOString(),
+    "2026-07-22T02:00:00.000Z",
   );
 });

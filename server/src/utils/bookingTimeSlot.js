@@ -112,6 +112,18 @@ export function combineUseDateAndTime(useDate, useTime) {
 }
 
 /**
+ * Resolves raw booking-create time input without coercing calendar strings through Date.
+ * @param {{ bookingAt?: Date | string, useDate?: Date | string, useTime?: string } | null | undefined} payload
+ */
+export function resolveBookingAtFromPayload(payload = {}) {
+  if (payload?.bookingAt) return new Date(payload.bookingAt);
+  if (payload?.useDate) {
+    return combineUseDateAndTime(payload.useDate, payload.useTime || "09:00");
+  }
+  return null;
+}
+
+/**
  * @param {Date} bookingAt
  */
 export function toUseTimeString(bookingAt) {

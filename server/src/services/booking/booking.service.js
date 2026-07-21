@@ -15,7 +15,10 @@ import {
 } from "../../utils/generateQR.js";
 import ServiceError from "../../utils/serviceError.js";
 import { assertBusinessLimit } from "../subscription/subscriptionEntitlement.service.js";
-import { combineUseDateAndTime } from "../../utils/bookingTimeSlot.js";
+import {
+  combineUseDateAndTime,
+  resolveBookingAtFromPayload,
+} from "../../utils/bookingTimeSlot.js";
 import {
   checkAvailability,
   lockBookingRow,
@@ -928,6 +931,20 @@ export const create = async (payload = {}, userId) => {
     );
   }
 
+  let requestedBookingAt = null;
+  try {
+    requestedBookingAt = resolveBookingAtFromPayload(payload);
+  } catch (error) {
+    if (error instanceof RangeError) {
+      throw new ServiceError(
+        "useDate hoáº·c useTime khÃ´ng há»£p lá»‡",
+        400,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
+    }
+    throw error;
+  }
+
   const [user, service] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
@@ -991,15 +1008,7 @@ export const create = async (payload = {}, userId) => {
     );
   }
 
-  let bookingAt = null;
-  if (payload.bookingAt) {
-    bookingAt = new Date(payload.bookingAt);
-  } else if (payload.useDate) {
-    const dateOnly = new Date(payload.useDate);
-    if (!Number.isNaN(dateOnly.getTime())) {
-      bookingAt = combineUseDateAndTime(dateOnly, payload.useTime || "09:00");
-    }
-  }
+  let bookingAt = requestedBookingAt;
   if (!bookingAt || Number.isNaN(bookingAt.getTime())) {
     bookingAt = new Date();
   }
