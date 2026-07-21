@@ -30,3 +30,9 @@ Reviewed every `checkAvailability(` caller: create, confirm, reschedule, quickAp
 ## Concerns
 
 - The shared worktree contains unrelated dirty user files, including `.gitignore`; they were not staged or modified by this task.
+
+## Follow-up: blocked-date Vietnam calendar integrity
+
+- Reviewer-found root cause: resource and capacity availability derived blocked-date lookup keys by truncating `bookingAt` to UTC midnight, while `BusinessBlockedDate` stores the Vietnam calendar date via `toUseDateOnly` (noon UTC).
+- RED: 1 run / 2 expected failures, both showing `2026-07-21T00:00:00.000Z` instead of the Vietnam date key `2026-07-22T12:00:00.000Z` for a local `00:30` booking.
+- GREEN: both resource and capacity branches now use `toUseDateOnly(bookingAt)`; 22 focused booking tests pass and `node --check src/services/booking/bookingAvailability.service.js` passes.

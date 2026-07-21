@@ -4,6 +4,7 @@ import prisma from "../../config/prismaClient.js";
 import {
   endOfMinuteUtc,
   startOfMinuteUtc,
+  toUseDateOnly,
 } from "../../utils/bookingTimeSlot.js";
 import ServiceError from "../../utils/serviceError.js";
 import {
@@ -140,8 +141,7 @@ export async function checkAvailability(tx, payload) {
       };
     }
 
-    const bookingDate = new Date(bookingAt);
-    bookingDate.setUTCHours(0, 0, 0, 0);
+    const bookingDate = toUseDateOnly(bookingAt);
     const blocked = await tx.businessBlockedDate.findFirst({
       where: {
         businessId: svc.businessId,
@@ -186,8 +186,7 @@ export async function checkAvailability(tx, payload) {
   }
 
   // Check blocked dates
-  const bookingDate = new Date(bookingAt);
-  bookingDate.setUTCHours(0, 0, 0, 0);
+  const bookingDate = toUseDateOnly(bookingAt);
   const blocked = await tx.businessBlockedDate.findFirst({
     where: {
       businessId: svc.businessId,

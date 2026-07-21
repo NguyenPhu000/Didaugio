@@ -26,7 +26,7 @@ function resourceService(overrides = {}) {
 
 function makeTx({ service = resourceService(), resource = null, bookings = [], blocked = null } = {}) {
   const rawLocks = [];
-  const calls = { aggregate: [], findMany: [] };
+  const calls = { aggregate: [], findMany: [], blockedDates: [] };
   return {
     rawLocks,
     calls,
@@ -40,7 +40,10 @@ function makeTx({ service = resourceService(), resource = null, bookings = [], b
       findUnique: async () => resource,
     },
     businessBlockedDate: {
-      findFirst: async () => blocked,
+      findFirst: async (args) => {
+        calls.blockedDates.push(args);
+        return blocked;
+      },
     },
     booking: {
       findMany: async (args) => {
@@ -129,6 +132,43 @@ test("resource availability still honors a blocked booking date after resource v
     capacity: 0,
     reason: "BLOCKED_DATE",
   });
+});
+
+test("resource blocked-date lookup uses the Vietnam calendar date key", async () => {
+  const tx = makeTx({
+    resource: { id: 19, status: "active", serviceId: 7, placeId: 13, capacity: null },
+    blocked: { id: 29 },
+  });
+
+  await checkAvailability(tx, {
+    serviceId: 7,
+    bookingAt: new Date("2026-07-21T17:30:00.000Z"),
+    quantity: 1,
+    resourceId: 19,
+  });
+
+  assert.deepEqual(
+    tx.calls.blockedDates[0].where.date,
+    new Date("2026-07-22T12:00:00.000Z"),
+  );
+});
+
+test("capacity blocked-date lookup uses the Vietnam calendar date key", async () => {
+  const tx = makeTx({
+    service: resourceService({ bookingModel: "capacity", maxCapacity: 2 }),
+    blocked: { id: 29 },
+  });
+
+  await checkAvailability(tx, {
+    serviceId: 7,
+    bookingAt: new Date("2026-07-21T17:30:00.000Z"),
+    quantity: 1,
+  });
+
+  assert.deepEqual(
+    tx.calls.blockedDates[0].where.date,
+    new Date("2026-07-22T12:00:00.000Z"),
+  );
 });
 
 test("resource overlap query is isolated to an active nondeleted resource and returns canonical interval", async () => {
