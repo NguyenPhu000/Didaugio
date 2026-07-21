@@ -10,8 +10,18 @@ import {
   buildDatabaseUrl,
   quoteIdentifier,
   assertOnlyAllowedRawSqlDrift,
+  redactDatabaseUrl,
   runMigrationAudit,
 } from "../src/scripts/lib/migrationAudit.js";
+
+const packageJson = JSON.parse(fs.readFileSync(
+  new URL("../package.json", import.meta.url),
+  "utf8",
+));
+const migrationRunbookPath = new URL(
+  "../docs/migration-integrity-runbook.md",
+  import.meta.url,
+);
 
 const verifyMigrationHistorySource = fs.readFileSync(
   new URL("../src/scripts/verifyMigrationHistory.js", import.meta.url),
@@ -102,6 +112,69 @@ test("migration audit rewrites only the database path", () => {
   assert.equal(result.pathname, `/${AUDIT_DB_PREFIX}clean_123`);
   assert.equal(result.searchParams.get("schema"), "public");
   assert.equal(result.username, "user");
+});
+
+test("migration audit redacts only PostgreSQL URL passwords", () => {
+  assert.equal(
+    redactDatabaseUrl("postgresql://alice:secret@localhost:5432/db?schema=public"),
+    "postgresql://alice:***@localhost:5432/db?schema=public",
+  );
+  assert.equal(
+    redactDatabaseUrl("postgres://alice:s%40cret@localhost/db?sslmode=require#audit"),
+    "postgres://alice:***@localhost/db?sslmode=require#audit",
+  );
+  assert.equal(
+    redactDatabaseUrl("postgresql://alice@localhost/db"),
+    "postgresql://alice@localhost/db",
+  );
+});
+
+test("migration audit redaction rejects malformed and non-PostgreSQL input without echoing it", () => {
+  const sensitiveInputs = [
+    "not-a-url-secret-password",
+    "mysql://alice:secret@localhost/db",
+  ];
+  for (const value of sensitiveInputs) {
+    assert.throws(
+      () => redactDatabaseUrl(value),
+      (error) => {
+        assert.match(error.message, /database URL/iu);
+        assert.ok(!error.message.includes(value));
+        assert.ok(!error.message.includes("secret"));
+        return true;
+      },
+    );
+  }
+});
+
+test("migration quality gate verifies clean history before all focused tests", () => {
+  assert.equal(
+    packageJson.scripts["quality:migrations"],
+    "npm run migrate:verify && node --test test/migrationAudit.test.js test/migrationHistory.contract.test.js test/migrationReconciliation.integration.test.js",
+  );
+});
+
+test("live reconciliation tests load the same dotenv credentials as the verifier", () => {
+  assert.match(reconciliationIntegrationSource, /^import "dotenv\/config";/u);
+});
+
+test("migration integrity runbook documents the destructive-safety contract", () => {
+  const runbook = fs.readFileSync(migrationRunbookPath, "utf8");
+  for (const required of [
+    "CREATE DATABASE",
+    "PostGIS",
+    AUDIT_DB_PREFIX,
+    "npm run quality:migrations",
+    "prisma migrate status",
+    "read-only",
+    "unconditional cleanup",
+    "never deploys or resets the application database",
+    "backup",
+    "explicit approval",
+    "PostgreSQL 12-14",
+  ]) assert.match(runbook, new RegExp(required, "iu"));
+  assert.doesNotMatch(runbook, /postgres(?:ql)?:\/\/[^\s`]+/iu);
+  assert.doesNotMatch(runbook, /retain(?:ed|ing)?[^\n]*failed[^\n]*database/iu);
 });
 
 test("identifier quoting rejects values outside the safe database grammar", () => {

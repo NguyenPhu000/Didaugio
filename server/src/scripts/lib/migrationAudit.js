@@ -65,6 +65,20 @@ export function buildDatabaseUrl(sourceUrl, databaseName) {
   return parsed.toString();
 }
 
+export function redactDatabaseUrl(value) {
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error("Cannot redact malformed database URL");
+  }
+  if (!/^postgres(?:ql)?:$/u.test(parsed.protocol)) {
+    throw new Error("Cannot redact non-PostgreSQL database URL");
+  }
+  if (parsed.password) parsed.password = "***";
+  return parsed.toString();
+}
+
 export function buildPrismaCommands({ schemaPath }) {
   return {
     deploy: ["prisma", "migrate", "deploy", `--schema=${schemaPath}`],

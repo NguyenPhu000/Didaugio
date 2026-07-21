@@ -21,6 +21,7 @@
     "migrate:dev": "prisma migrate dev --schema=prisma/schema.prisma",
     "migrate:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",
     "migrate:verify": "node src/scripts/verifyMigrationHistory.js",
+    "quality:migrations": "npm run migrate:verify && node --test test/migrationAudit.test.js test/migrationHistory.contract.test.js test/migrationReconciliation.integration.test.js",
     "generate": "prisma generate --schema=prisma/schema.prisma",
     "trip:backfill": "node src/scripts/backfillTripPlans.js"
   },
