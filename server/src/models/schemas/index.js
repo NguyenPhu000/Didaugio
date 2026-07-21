@@ -35,6 +35,7 @@ export * from "./rbac/roleRoute.schema.js";
 export * from "./rbac/permissionRoute.schema.js";
 export * from "./category/category.schema.js";
 export * from "./tag/tag.schema.js";
+export * from "./tag/tagGroup.schema.js";
 export * from "./place/place.schema.js";
 export * from "./business/business.schema.js";
 export * from "./business/staffInvitation.schema.js";

@@ -11,6 +11,7 @@ import permissionRoutes from "./rbac/permission.route.js";
 import userPermissionRoutes from "./rbac/userPermission.route.js";
 import categoryRoutes from "./category/category.route.js";
 import tagRoutes from "./tag/tag.route.js";
+import tagGroupRoutes from "./tag/tagGroup.route.js";
 import placeRoutes from "./place/place.route.js";
 import districtRoutes from "./district/district.route.js";
 import wardRoutes from "./district/ward.route.js";
@@ -112,6 +113,7 @@ export const registerApiRoutes = (app) => {
   app.use("/api/permissions", permissionRoutes);
   app.use("/api/categories", categoryRoutes);
   app.use("/api/tags", tagRoutes);
+  app.use("/api/tag-groups", tagGroupRoutes);
   app.use("/api/places", placeRoutes);
   app.use("/api/districts", locationTrafficMiddleware("v1"), districtRoutes);
   app.use("/api/wards", locationTrafficMiddleware("v1"), wardRoutes);
