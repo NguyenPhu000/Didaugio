@@ -15,6 +15,10 @@ const migrationSql = await readFile(
   new URL("../prisma/migrations/20260721153000_add_tag_groups/migration.sql", import.meta.url),
   "utf8",
 );
+const activeNameUniqueMigrationSql = await readFile(
+  new URL("../prisma/migrations/20260721160000_enforce_tag_group_active_name_unique/migration.sql", import.meta.url),
+  "utf8",
+);
 const sourceUrl = process.env.DATABASE_URL;
 
 function createAuditDatabaseName() {
@@ -88,6 +92,41 @@ test(
 
       const table = await client.query("SELECT to_regclass('public.tag_groups') AS relation");
       assert.equal(table.rows[0].relation, null);
+    });
+  },
+);
+
+test("enforces case-insensitive Vietnamese names only for active tag groups", () => {
+  assert.match(
+    activeNameUniqueMigrationSql,
+    /CREATE UNIQUE INDEX "tag_groups_active_name_vi_key"\s+ON "tag_groups" \(LOWER\("name_vi"\)\)\s+WHERE "is_active"/i,
+  );
+});
+
+test(
+  "rejects duplicate active Vietnamese names while allowing an inactive duplicate",
+  { skip: !sourceUrl },
+  async () => {
+    await withAuditDatabase(async (client) => {
+      await client.query(migrationSql);
+      await client.query(activeNameUniqueMigrationSql);
+      await client.query(
+        `INSERT INTO "tag_groups" ("slug", "name_vi", "is_active", "updated_at")
+         VALUES ('food', 'Ẩm thực', true, CURRENT_TIMESTAMP)`,
+      );
+
+      await assert.rejects(
+        client.query(
+          `INSERT INTO "tag_groups" ("slug", "name_vi", "is_active", "updated_at")
+           VALUES ('food-duplicate', 'ẨM THỰC', true, CURRENT_TIMESTAMP)`,
+        ),
+        /duplicate key/i,
+      );
+
+      await client.query(
+        `INSERT INTO "tag_groups" ("slug", "name_vi", "is_active", "updated_at")
+         VALUES ('food-inactive', 'ẨM THỰC', false, CURRENT_TIMESTAMP)`,
+      );
     });
   },
 );

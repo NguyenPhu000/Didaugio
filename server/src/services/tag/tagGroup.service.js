@@ -8,6 +8,13 @@ const tagCountInclude = {
   },
 };
 
+const tagGroupNameConflictError = () =>
+  new ServiceError(
+    "Tên nhóm tag tiếng Việt đã tồn tại",
+    409,
+    ERROR_CODES.CONFLICT,
+  );
+
 const findActiveNameConflict = (nameVi, excludeId) =>
   prisma.tagGroup.findFirst({
     where: {
@@ -26,23 +33,24 @@ export const getAllTagGroups = async () =>
 export const createTagGroup = async (data) => {
   const existing = await findActiveNameConflict(data.nameVi);
   if (existing) {
-    throw new ServiceError(
-      "Tên nhóm tag tiếng Việt đã tồn tại",
-      409,
-      ERROR_CODES.CONFLICT,
-    );
+    throw tagGroupNameConflictError();
   }
 
-  return prisma.tagGroup.create({
-    data: {
-      slug: data.slug,
-      nameVi: data.nameVi,
-      nameEn: data.nameEn ?? null,
-      sortOrder: data.sortOrder ?? 0,
-      isActive: true,
-    },
-    include: tagCountInclude,
-  });
+  try {
+    return await prisma.tagGroup.create({
+      data: {
+        slug: data.slug,
+        nameVi: data.nameVi,
+        nameEn: data.nameEn ?? null,
+        sortOrder: data.sortOrder ?? 0,
+        isActive: true,
+      },
+      include: tagCountInclude,
+    });
+  } catch (error) {
+    if (error?.code === "P2002") throw tagGroupNameConflictError();
+    throw error;
+  }
 };
 
 export const updateTagGroup = async (id, data) => {
@@ -59,11 +67,7 @@ export const updateTagGroup = async (id, data) => {
   if (nextIsActive && (data.nameVi !== undefined || data.isActive === true)) {
     const conflict = await findActiveNameConflict(nextNameVi, id);
     if (conflict) {
-      throw new ServiceError(
-        "Tên nhóm tag tiếng Việt đã tồn tại",
-        409,
-        ERROR_CODES.CONFLICT,
-      );
+      throw tagGroupNameConflictError();
     }
   }
 
@@ -74,11 +78,16 @@ export const updateTagGroup = async (id, data) => {
   if (data.isActive !== undefined) updateData.isActive = data.isActive;
   if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
 
-  return prisma.tagGroup.update({
-    where: { id },
-    data: updateData,
-    include: tagCountInclude,
-  });
+  try {
+    return await prisma.tagGroup.update({
+      where: { id },
+      data: updateData,
+      include: tagCountInclude,
+    });
+  } catch (error) {
+    if (error?.code === "P2002") throw tagGroupNameConflictError();
+    throw error;
+  }
 };
 
 export const deleteTagGroup = async (id) => {
@@ -99,7 +108,18 @@ export const deleteTagGroup = async (id) => {
     );
   }
 
-  await prisma.tagGroup.delete({ where: { id } });
+  try {
+    await prisma.tagGroup.delete({ where: { id } });
+  } catch (error) {
+    if (error?.code === "P2003") {
+      throw new ServiceError(
+        "Không thể xóa nhóm tag vì vẫn còn tag liên kết",
+        409,
+        ERROR_CODES.CONFLICT,
+      );
+    }
+    throw error;
+  }
   return { success: true, message: "Xóa nhóm tag thành công" };
 };
 
