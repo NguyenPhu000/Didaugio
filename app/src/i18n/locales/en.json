@@ -539,6 +539,8 @@
       "place": "Place",
       "service": "Service",
       "quantity": "Quantity",
+      "resource": "Resource",
+      "selectResource": "Select a resource",
       "usageDate": "Usage date",
       "selectTime": "Select time",
       "selected": "Selected",
@@ -584,6 +586,10 @@
       "note": "Special requests (optional)"
     },
     "timeSlotsCount": "{{count}} time slots available",
+    "resources": {
+      "required": "Select a resource before continuing.",
+      "noneAvailable": "No resources are available for this service."
+    },
     "slotUnavailableWarning": "This time slot has passed. Please select another.",
     "tripDescription": {
       "withService": "Booked service: {{service}}",
@@ -609,6 +615,10 @@
       "selectTrip": {
         "title": "Select a trip",
         "message": "Please select a trip to link this booking to."
+      },
+      "resourceRequired": {
+        "title": "Resource required",
+        "message": "Please select an available resource before booking."
       }
     },
     "errors": {

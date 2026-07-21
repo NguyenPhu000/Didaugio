@@ -2,6 +2,7 @@ import { BOOKING_STATUS } from "../../config/constants.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import prisma from "../../config/prismaClient.js";
 import {
+  combineUseDateAndTime,
   endOfMinuteUtc,
   startOfMinuteUtc,
   toUseDateOnly,
@@ -16,6 +17,36 @@ import {
 } from "./bookingPolicy.js";
 
 const ACTIVE_STATUSES = [BOOKING_STATUS.PENDING, BOOKING_STATUS.CONFIRMED];
+
+function assertAvailabilityInput(serviceId, dateStr) {
+  const normalizedServiceId = Number(serviceId);
+  if (!Number.isInteger(normalizedServiceId) || normalizedServiceId <= 0) {
+    throw new ServiceError("serviceId không hợp lệ", 400, "INVALID_PARAMS");
+  }
+
+  try {
+    // This intentionally parses the calendar string before any database lookup.
+    combineUseDateAndTime(dateStr, "00:00");
+  } catch {
+    throw new ServiceError("Định dạng date không hợp lệ (YYYY-MM-DD)", 400, "INVALID_PARAMS");
+  }
+
+  return normalizedServiceId;
+}
+
+function vietnamDayBounds(dateStr) {
+  const start = combineUseDateAndTime(dateStr, "00:00");
+  return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
+}
+
+function formatVietnamTime(date) {
+  return date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Ho_Chi_Minh",
+  });
+}
 
 /**
  * @param {import("@prisma/client").Prisma.TransactionClient} tx
@@ -271,15 +302,18 @@ export function assertAvailability(availability) {
  * @param {string} dateStr - YYYY-MM-DD format
  */
 export async function getAvailableSlots(serviceId, dateStr) {
+  const normalizedServiceId = assertAvailabilityInput(serviceId, dateStr);
   const service = await prisma.businessService.findUnique({
-    where: { id: serviceId },
+    where: { id: normalizedServiceId },
     select: {
       id: true,
       maxCapacity: true,
       bookingModel: true,
       slotDurationMinutes: true,
+      durationMinutes: true,
       bufferMinutes: true,
       businessId: true,
+      placeId: true,
     },
   });
 
@@ -300,74 +334,112 @@ export async function getAvailableSlots(serviceId, dateStr) {
   if (blocked) {
     return {
       date: dateStr,
-      serviceId,
+      serviceId: normalizedServiceId,
       available: false,
       reason: "BLOCKED_DATE",
       slots: [],
     };
   }
 
-  const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
-  const endOfDay = new Date(`${dateStr}T23:59:59.999Z`);
+  const { start: startOfDay, end: endOfDay } = vietnamDayBounds(dateStr);
   const cap = service.maxCapacity ?? 999_999;
+
+  if (resolveBookingModel(service) === "resource") {
+    const resources = (await prisma.placeResource.findMany({
+      where: {
+        serviceId: normalizedServiceId,
+        placeId: service.placeId,
+        status: "active",
+      },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        resourceType: true,
+        capacity: true,
+      },
+      orderBy: [{ position: "asc" }, { id: "asc" }],
+    })).filter((resource) =>
+      resource.status === undefined || (
+        resource.status === "active" &&
+        resource.serviceId === normalizedServiceId &&
+        resource.placeId === service.placeId
+      ),
+    );
+
+    const resourceIds = resources.map((resource) => resource.id);
+    const resourceBookings = resourceIds.length === 0
+      ? []
+      : await prisma.booking.findMany({
+        where: {
+          serviceId: normalizedServiceId,
+          resourceId: { in: resourceIds },
+          status: { in: ACTIVE_STATUSES },
+          deletedAt: null,
+          startTime: { not: null, lt: endOfDay },
+          endTime: { not: null, gt: startOfDay },
+        },
+        select: { resourceId: true, startTime: true, endTime: true },
+      });
+
+    const resourcesWithSlots = resources.map((resource) => ({
+      id: resource.id,
+      name: resource.name,
+      code: resource.code,
+      resourceType: resource.resourceType,
+      capacity: resource.capacity,
+      bookedSlots: resourceBookings
+        .filter((booking) => booking.resourceId === resource.id)
+        .map((booking) => ({
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+        })),
+    }));
+
+    return {
+      date: dateStr,
+      serviceId: normalizedServiceId,
+      available: resourcesWithSlots.length > 0,
+      bookingModel: "resource",
+      slotDurationMinutes: service.slotDurationMinutes,
+      bufferMinutes: service.bufferMinutes,
+      resources: resourcesWithSlots,
+    };
+  }
 
   const activeBookings = await prisma.booking.findMany({
     where: {
-      serviceId,
+      serviceId: normalizedServiceId,
       status: { in: ACTIVE_STATUSES },
-      bookingAt: { gte: startOfDay, lte: endOfDay },
+      deletedAt: null,
+      bookingAt: { gte: startOfDay, lt: endOfDay },
     },
     select: {
       bookingAt: true,
       quantity: true,
-      startTime: true,
-      endTime: true,
-      status: true,
     },
   });
-
-  if (service.bookingModel === "resource") {
-    const bookedSlots = activeBookings
-      .filter((b) => b.startTime && b.endTime)
-      .map((b) => ({
-        startTime: b.startTime,
-        endTime: b.endTime,
-      }));
-
-    return {
-      date: dateStr,
-      serviceId,
-      available: true,
-      bookingModel: "resource",
-      bookedSlots,
-      slotDurationMinutes: service.slotDurationMinutes,
-      bufferMinutes: service.bufferMinutes,
-    };
-  }
 
   const SLOT_INTERVAL_MINUTES = 30;
   const slots = [];
   const now = new Date();
-  const isToday = dateStr === now.toISOString().slice(0, 10);
+  const isToday = dateStr === toUseDateOnly(now).toISOString().slice(0, 10);
 
   for (let hour = 6; hour <= 21; hour++) {
     for (let minute = 0; minute < 60; minute += SLOT_INTERVAL_MINUTES) {
-      const slotStart = new Date(`${dateStr}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00.000Z`);
-      const slotEnd = new Date(slotStart.getTime() + (service.slotDurationMinutes || 60) * 60_000);
+      const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+      const slotStart = combineUseDateAndTime(dateStr, time);
 
       if (isToday && slotStart <= now) continue;
 
-      const overlappingBookings = activeBookings.filter((b) => {
-        const bStart = new Date(b.bookingAt);
-        const bEnd = new Date(bStart.getTime() + (service.slotDurationMinutes || 60) * 60_000);
-        return bStart < slotEnd && bEnd > slotStart;
-      });
-
-      const usedQty = overlappingBookings.reduce((sum, b) => sum + b.quantity, 0);
+      const usedQty = activeBookings
+        .filter((booking) => booking.bookingAt && startOfMinuteUtc(booking.bookingAt).getTime() === slotStart.getTime())
+        .reduce((sum, booking) => sum + booking.quantity, 0);
       const available = usedQty < cap;
 
       slots.push({
-        time: slotStart.toISOString(),
+        time: formatVietnamTime(slotStart),
+        startTime: slotStart.toISOString(),
         available,
         remaining: Math.max(0, cap - usedQty),
         capacity: cap,
@@ -377,7 +449,7 @@ export async function getAvailableSlots(serviceId, dateStr) {
 
   return {
     date: dateStr,
-    serviceId,
+    serviceId: normalizedServiceId,
     available: slots.some((s) => s.available),
     bookingModel: "capacity",
     slots,

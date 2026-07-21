@@ -26,6 +26,15 @@ import {
 } from "../../src/modules/trips/hooks/useTrips";
 import { StepIndicator } from "../../src/modules/booking/components/StepIndicator";
 import { ServiceCard } from "../../src/modules/booking/components/ServiceCard";
+import { ResourcePicker } from "../../src/modules/booking/components/ResourcePicker";
+import {
+  buildBookingPayload,
+  getActiveResources,
+  getResourceSlotAvailability,
+  getSelectedResource,
+  reconcileSelectedResource,
+  requiresResourceSelection,
+} from "../../src/modules/booking/utils/resourceAvailability";
 import { useTranslation } from "react-i18next";
 
 const buildTimeSlots = ({
@@ -178,6 +187,7 @@ export default function BookingScreen() {
 
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState(null);
+  const [selectedResourceId, setSelectedResourceId] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedDate, setSelectedDate] = useState(() =>
     formatDateYmd(new Date()),
@@ -212,6 +222,28 @@ export default function BookingScreen() {
     selectedService?.id,
     selectedDate,
   );
+
+  const isResourceBooking =
+    selectedService?.bookingModel === "resource" ||
+    requiresResourceSelection(availabilityData);
+  const activeResources = useMemo(
+    () => getActiveResources(availabilityData),
+    [availabilityData],
+  );
+  const selectedResource = useMemo(
+    () => getSelectedResource(availabilityData, selectedResourceId),
+    [availabilityData, selectedResourceId],
+  );
+
+  useEffect(() => {
+    setSelectedResourceId(null);
+  }, [selectedService?.id]);
+
+  useEffect(() => {
+    setSelectedResourceId((current) =>
+      reconcileSelectedResource(current, availabilityData),
+    );
+  }, [availabilityData]);
 
   useEffect(() => {
     const timer = setInterval(() => setNowTs(Date.now()), 30_000);
@@ -263,26 +295,23 @@ export default function BookingScreen() {
 
     if (availabilityData?.bookingModel === "capacity" && availabilityData?.slots) {
       const slotData = availabilityData.slots.find(
-        (s) => s.time?.startsWith(`${dateValue}T${timeValue}`) || s.time?.includes(`T${timeValue}:`),
+        (s) => s.time === timeValue,
       );
       if (slotData && !slotData.available) return false;
     }
 
-    if (availabilityData?.bookingModel === "resource" && availabilityData?.bookedSlots?.length > 0) {
-      const slotStart = new Date(`${dateValue}T${timeValue}:00`);
-      const slotDurationMs = (selectedService?.slotDurationMinutes || 60) * 60_000;
-      const slotEnd = new Date(slotStart.getTime() + slotDurationMs);
-
-      const isBooked = availabilityData.bookedSlots.some((booked) => {
-        const bookedStart = new Date(booked.startTime);
-        const bookedEnd = new Date(booked.endTime);
-        return bookedStart < slotEnd && bookedEnd > slotStart;
+    if (isResourceBooking) {
+      return getResourceSlotAvailability({
+        availability: availabilityData,
+        resourceId: selectedResourceId,
+        date: dateValue,
+        time: timeValue,
+        quantity,
       });
-      if (isBooked) return false;
     }
 
     return true;
-  }, [availabilityData, nowTs, selectedService]);
+  }, [availabilityData, isResourceBooking, nowTs, quantity, selectedResourceId]);
 
   const createdTripDefaultTitle = useMemo(() => {
     const placeLabel = place?.name ? ` - ${place.name}` : "";
@@ -361,6 +390,7 @@ export default function BookingScreen() {
   const canProceedFromStep2 =
     !!selectedTime &&
     isSelectedTimeAvailable &&
+    (!isResourceBooking || !!selectedResource) &&
     (tripLinkMode !== "existing" || !!selectedTripId);
   const normalizedGuestName = guestName.trim();
   const normalizedGuestPhone = guestPhone.trim();
@@ -491,6 +521,15 @@ export default function BookingScreen() {
       return;
     }
 
+    if (isResourceBooking && !selectedResource) {
+      Alert.alert(
+        t("booking.alerts.resourceRequired.title"),
+        t("booking.alerts.resourceRequired.message"),
+      );
+      setStep(2);
+      return;
+    }
+
     if (tripLinkMode === "existing" && !selectedTripId) {
       Alert.alert(t("booking.alerts.selectTrip.title"), t("booking.alerts.selectTrip.message"));
       setStep(2);
@@ -527,7 +566,9 @@ export default function BookingScreen() {
         }
       }
 
-      const bookingRes = await bookingMutation.mutateAsync({
+      const bookingRes = await bookingMutation.mutateAsync(buildBookingPayload({
+        bookingModel: isResourceBooking ? "resource" : "capacity",
+        resourceId: selectedResourceId,
         placeId: parseInt(placeId, 10),
         serviceId: selectedService?.id,
         tripId: tripIdPayload || undefined,
@@ -538,7 +579,7 @@ export default function BookingScreen() {
         guestPhone: normalizedGuestPhone,
         guestEmail: normalizedGuestEmail || undefined,
         note: normalizedRequestNote || null,
-      });
+      }));
 
       const linkedTrip = bookingRes?.data?.linkedTrip || null;
       if (linkedTrip) {
@@ -971,9 +1012,9 @@ export default function BookingScreen() {
                   </Text>
                   <Pressable
                     onPress={() => {
-                      const maxQty = availabilityData?.slots
-                        ? availabilityData.slots.find((s) => s.time?.startsWith(`${selectedDate}T${selectedTime}`))?.remaining ?? 20
-                        : 20;
+                      const maxQty = isResourceBooking
+                        ? selectedResource?.capacity ?? 20
+                        : availabilityData?.slots?.find((s) => s.time === selectedTime)?.remaining ?? 20;
                       if (quantity < Math.min(maxQty, 20)) {
                         setQuantity(quantity + 1);
                       }
@@ -1004,6 +1045,30 @@ export default function BookingScreen() {
                   backgroundColor: BOOKING_THEME.glassBorder,
                 }}
               />
+
+              {isResourceBooking ? (
+                <>
+                  <ResourcePicker
+                    resources={activeResources}
+                    selectedResourceId={selectedResourceId}
+                    onSelect={setSelectedResourceId}
+                    theme={BOOKING_THEME}
+                    title={t("booking.fields.selectResource")}
+                    emptyLabel={t("booking.resources.noneAvailable")}
+                  />
+                  {!selectedResource ? (
+                    <Text style={{ color: "#F59E0B", fontSize: 12 }}>
+                      {t("booking.resources.required")}
+                    </Text>
+                  ) : null}
+                  <View
+                    style={{
+                      height: 1,
+                      backgroundColor: BOOKING_THEME.glassBorder,
+                    }}
+                  />
+                </>
+              ) : null}
 
               <View style={{ gap: 10 }}>
                 <Text
@@ -1252,7 +1317,7 @@ export default function BookingScreen() {
                       let remaining = null;
                       if (availabilityData?.bookingModel === "capacity" && availabilityData?.slots) {
                         const slotData = availabilityData.slots.find(
-                          (s) => s.time?.startsWith(`${selectedDate}T${slot.value}`) || s.time?.includes(`T${slot.value}:`),
+                          (s) => s.time === slot.value,
                         );
                         if (slotData) {
                           remaining = slotData.remaining;
@@ -1725,6 +1790,13 @@ export default function BookingScreen() {
                 >
                   {formatBookingDateTime(selectedDate, selectedTime, t("booking.fields.notSelected"))}
                 </Text>
+                {isResourceBooking ? (
+                  <Text style={{ color: BOOKING_THEME.textSecondary, fontSize: 12 }}>
+                    {t("booking.fields.resource")}: {selectedResource
+                      ? [selectedResource.name, selectedResource.code].filter(Boolean).join(" • ")
+                      : t("booking.fields.notSelected")}
+                  </Text>
+                ) : null}
                 {depositInfo ? (
                   <Text
                     style={{ color: BOOKING_THEME.textSecondary, fontSize: 12 }}
@@ -1863,9 +1935,9 @@ export default function BookingScreen() {
         ) : (
           <Pressable
             onPress={handleConfirmBooking}
-            disabled={isSubmittingBooking || !hasValidContact}
+            disabled={isSubmittingBooking || !hasValidContact || !canProceedFromStep2}
             style={{
-              backgroundColor: hasValidContact
+              backgroundColor: hasValidContact && canProceedFromStep2
                 ? BOOKING_THEME.neon
                 : BOOKING_THEME.surfaceMuted,
               borderRadius: 22,
@@ -1874,11 +1946,11 @@ export default function BookingScreen() {
               flexDirection: "row",
               justifyContent: "center",
               gap: 8,
-              shadowColor: hasValidContact ? BOOKING_THEME.neon : "transparent",
+              shadowColor: hasValidContact && canProceedFromStep2 ? BOOKING_THEME.neon : "transparent",
               shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: hasValidContact ? 0.35 : 0,
+              shadowOpacity: hasValidContact && canProceedFromStep2 ? 0.35 : 0,
               shadowRadius: 20,
-              elevation: hasValidContact ? 10 : 0,
+              elevation: hasValidContact && canProceedFromStep2 ? 10 : 0,
             }}
           >
             {isSubmittingBooking ? (
@@ -1888,7 +1960,7 @@ export default function BookingScreen() {
                 name="check-circle"
                 size={18}
                 color={
-                  hasValidContact
+                  hasValidContact && canProceedFromStep2
                     ? BOOKING_THEME.white
                     : BOOKING_THEME.textSecondary
                 }

@@ -8,6 +8,7 @@ import { validateBody } from "../../middlewares/validateSchema.js";
 import { verifyQRSchema } from "../../models/index.js";
 import { getAvailableSlots } from "../../services/booking/bookingAvailability.service.js";
 import { ROLES } from "../../config/constants.js";
+import { combineUseDateAndTime } from "../../utils/bookingTimeSlot.js";
 
 const router = express.Router();
 
@@ -35,8 +36,19 @@ router.get(
         });
       }
 
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(date)) {
+      const normalizedServiceId = Number(serviceId);
+      if (!Number.isInteger(normalizedServiceId) || normalizedServiceId <= 0) {
+        return res.status(400).json({
+          success: false,
+          data: null,
+          message: "serviceId không hợp lệ",
+          errorCode: "INVALID_PARAMS",
+        });
+      }
+
+      try {
+        combineUseDateAndTime(date, "00:00");
+      } catch {
         return res.status(400).json({
           success: false,
           data: null,
@@ -45,7 +57,7 @@ router.get(
         });
       }
 
-      const result = await getAvailableSlots(parseInt(serviceId), date);
+      const result = await getAvailableSlots(normalizedServiceId, date);
       res.json({
         success: true,
         data: result,
