@@ -5,6 +5,7 @@ export const PG_OPERATION_TIMEOUT_MS = 120_000;
 const SAFE_AUDIT_DB_RE = /^didaugio_codex_migration_[a-z0-9_]+$/u;
 const TIMEOUT_URL_PARAMETERS = new Set([
   "connect_timeout",
+  "connectiontimeoutmillis",
   "query_timeout",
   "statement_timeout",
 ]);

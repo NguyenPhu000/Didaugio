@@ -170,7 +170,7 @@ test("spawn result guard surfaces timeouts and nonzero exits", () => {
   );
 });
 
-test("PostgreSQL clients share bounded connection and operation timeouts", () => {
+test("PostgreSQL clients ignore every timeout URL override", () => {
   assert.equal(migrationAudit.PG_CONNECTION_TIMEOUT_MS, 10_000);
   assert.equal(migrationAudit.PG_OPERATION_TIMEOUT_MS, 120_000);
   assert.equal(typeof migrationAudit.buildPgClientConfig, "function");
@@ -189,28 +189,40 @@ test("PostgreSQL clients share bounded connection and operation timeouts", () =>
     2,
   );
 
-  const hostileUrl = new URL("postgresql://audit:redacted@localhost/task4");
+  const hostileUrl = new URL("postgresql://audit:test%40secret@localhost/task4");
   hostileUrl.searchParams.append("connect_timeout", "9999");
+  hostileUrl.searchParams.append("connectionTimeoutMillis", "0");
   hostileUrl.searchParams.append("statement_timeout", "999999999");
   hostileUrl.searchParams.append("query_timeout", "999999999");
+  hostileUrl.searchParams.append("CoNnEcT_TiMeOuT", "8888");
+  hostileUrl.searchParams.append("CONNECTIONTIMEOUTMILLIS", "1");
   hostileUrl.searchParams.append("Statement_Timeout", "888888888");
+  hostileUrl.searchParams.append("QUERY_TIMEOUT", "888888888");
   hostileUrl.searchParams.append("application_name", "task4-timeout-test");
   hostileUrl.searchParams.append("sslmode", "disable");
 
   const effectiveClient = new Client(
     migrationAudit.buildPgClientConfig(hostileUrl.toString()),
   );
+  assert.equal(effectiveClient._connectionTimeoutMillis, 10_000);
   assert.equal(effectiveClient.connectionParameters.connect_timeout, 10);
   assert.equal(effectiveClient.connectionParameters.statement_timeout, 120_000);
   assert.equal(effectiveClient.connectionParameters.query_timeout, 120_000);
   assert.equal(effectiveClient.connectionParameters.application_name, "task4-timeout-test");
+  assert.equal(effectiveClient.connectionParameters.user, "audit");
+  assert.equal(effectiveClient.connectionParameters.password, "test@secret");
   const sanitizedUrl = new URL(
     migrationAudit.buildPgClientConfig(hostileUrl.toString()).connectionString,
   );
   assert.equal(sanitizedUrl.searchParams.get("application_name"), "task4-timeout-test");
   assert.equal(sanitizedUrl.searchParams.get("sslmode"), "disable");
   assert.deepEqual(
-    [...sanitizedUrl.searchParams.keys()].filter((name) => /^(?:connect|query|statement)_timeout$/iu.test(name)),
+    [...sanitizedUrl.searchParams.keys()].filter((name) => [
+      "connect_timeout",
+      "connectiontimeoutmillis",
+      "query_timeout",
+      "statement_timeout",
+    ].includes(name.toLowerCase())),
     [],
   );
 });
