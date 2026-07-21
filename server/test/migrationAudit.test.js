@@ -1,12 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import { Client } from "pg";
 import * as migrationAudit from "../src/scripts/lib/migrationAudit.js";
 import {
   AUDIT_DB_PREFIX,
   assertSafeAuditDatabaseName,
   buildPrismaCommands,
+  buildAdminDatabaseUrl,
   buildDatabaseUrl,
   quoteIdentifier,
   assertOnlyAllowedRawSqlDrift,
@@ -22,6 +25,23 @@ const migrationRunbookPath = new URL(
   "../docs/migration-integrity-runbook.md",
   import.meta.url,
 );
+const serverRoot = fileURLToPath(new URL("..", import.meta.url));
+
+function spawnMigrationQualityGate(env) {
+  const command = process.platform === "win32"
+    ? {
+        executable: process.env.ComSpec,
+        args: ["/d", "/s", "/c", "npm.cmd run quality:migrations"],
+      }
+    : { executable: "npm", args: ["run", "quality:migrations"] };
+  return spawnSync(command.executable, command.args, {
+    cwd: serverRoot,
+    env,
+    encoding: "utf8",
+    shell: false,
+    timeout: 20_000,
+  });
+}
 
 const verifyMigrationHistorySource = fs.readFileSync(
   new URL("../src/scripts/verifyMigrationHistory.js", import.meta.url),
@@ -127,6 +147,18 @@ test("migration audit redacts only PostgreSQL URL passwords", () => {
     redactDatabaseUrl("postgresql://alice@localhost/db"),
     "postgresql://alice@localhost/db",
   );
+  assert.equal(
+    redactDatabaseUrl(
+      "postgresql://alice:userinfo-secret@localhost/db?sslmode=require&PASSWORD=query%40secret&application_name=audit",
+    ),
+    "postgresql://alice:***@localhost/db?sslmode=require&PASSWORD=***&application_name=audit",
+  );
+  assert.equal(
+    redactDatabaseUrl(
+      "postgresql://alice:userinfo-secret@localhost/db?password=first%2Fsecret&Password=second%3Fsecret&schema=public",
+    ),
+    "postgresql://alice:***@localhost/db?password=***&Password=***&schema=public",
+  );
 });
 
 test("migration audit redaction rejects malformed and non-PostgreSQL input without echoing it", () => {
@@ -145,6 +177,86 @@ test("migration audit redaction rejects malformed and non-PostgreSQL input witho
       },
     );
   }
+});
+
+test("all PostgreSQL URL builders reject malformed input without leaking it", () => {
+  const sentinel = "TASK5_URL_SENTINEL_SECRET";
+  const malformed = `postgresql://alice:${sentinel}@[::1`;
+  for (const operation of [
+    () => buildDatabaseUrl(malformed, `${AUDIT_DB_PREFIX}safe_parse`),
+    () => buildAdminDatabaseUrl(malformed),
+    () => migrationAudit.buildPgClientConfig(malformed),
+    () => redactDatabaseUrl(malformed),
+  ]) {
+    assert.throws(operation, (error) => {
+      assert.match(error.message, /valid PostgreSQL database URL/iu);
+      assert.ok(!error.message.includes(sentinel));
+      assert.equal(error.cause, undefined);
+      return true;
+    });
+  }
+});
+
+test("spawn diagnostics redact both userinfo and query-string passwords", () => {
+  const databaseUrl = "postgresql://alice:userinfo-secret@localhost/db?password=query-secret&schema=public";
+  assert.throws(
+    () => migrationAudit.assertSuccessfulSpawn(
+      {
+        status: 1,
+        stderr: `failed for ${databaseUrl}`,
+      },
+      "Prisma migrate deploy",
+      { databaseUrl },
+    ),
+    (error) => {
+      assert.match(
+        error.message,
+        /postgresql:\/\/alice:\*\*\*@localhost\/db\?password=\*\*\*&schema=public/iu,
+      );
+      assert.doesNotMatch(error.message, /userinfo-secret|query-secret/iu);
+      return true;
+    },
+  );
+  assert.throws(
+    () => migrationAudit.assertSuccessfulSpawn(
+      { error: new Error(`could not start for ${databaseUrl}`) },
+      "Prisma migrate deploy",
+      { databaseUrl },
+    ),
+    (error) => {
+      assert.doesNotMatch(error.message, /userinfo-secret|query-secret/iu);
+      assert.equal(error.cause, undefined);
+      return true;
+    },
+  );
+});
+
+test("real aggregate gate rejects malformed DATABASE_URL without leaking it or running tests", () => {
+  const sentinel = "TASK5_REAL_PROCESS_SENTINEL_SECRET";
+  const result = spawnMigrationQualityGate({
+    ...process.env,
+    DATABASE_URL: `postgresql://alice:${sentinel}@[::1`,
+  });
+  const output = `${String(result.stdout ?? "")}\n${String(result.stderr ?? "")}`;
+  assert.notEqual(result.status, 0);
+  assert.match(output, /valid PostgreSQL database URL/iu);
+  assert.doesNotMatch(output, new RegExp(sentinel, "u"));
+  assert.doesNotMatch(output, /migration audit uses deploy/iu);
+});
+
+test("real aggregate gate rejects missing DATABASE_URL before focused tests", () => {
+  const env = {
+    ...process.env,
+    DOTENV_CONFIG_PATH: fileURLToPath(
+      new URL("../.env.task5-intentionally-missing", import.meta.url),
+    ),
+  };
+  delete env.DATABASE_URL;
+  const result = spawnMigrationQualityGate(env);
+  const output = `${String(result.stdout ?? "")}\n${String(result.stderr ?? "")}`;
+  assert.notEqual(result.status, 0);
+  assert.match(output, /DATABASE_URL is required/u);
+  assert.doesNotMatch(output, /migration audit uses deploy/iu);
 });
 
 test("migration quality gate verifies clean history before all focused tests", () => {
@@ -169,11 +281,13 @@ test("migration integrity runbook documents the destructive-safety contract", ()
     "read-only",
     "unconditional cleanup",
     "never deploys or resets the application database",
+    "never emits an unredacted database URL or credential",
     "backup",
     "explicit approval",
     "PostgreSQL 12-14",
   ]) assert.match(runbook, new RegExp(required, "iu"));
   assert.doesNotMatch(runbook, /postgres(?:ql)?:\/\/[^\s`]+/iu);
+  assert.doesNotMatch(runbook, /never prints a database URL/iu);
   assert.doesNotMatch(runbook, /retain(?:ed|ing)?[^\n]*failed[^\n]*database/iu);
 });
 
@@ -256,7 +370,7 @@ test("PostgreSQL clients ignore every timeout URL override", () => {
       statement_timeout: 120_000,
     },
   );
-  assert.match(verifyMigrationHistorySource, /buildPgClientConfig\(adminUrl\.toString\(\)\)/u);
+  assert.match(verifyMigrationHistorySource, /buildPgClientConfig\(adminUrl\)/u);
   assert.equal(
     (reconciliationIntegrationSource.match(/new Client\(buildPgClientConfig\(/gu) ?? []).length,
     2,
@@ -271,6 +385,7 @@ test("PostgreSQL clients ignore every timeout URL override", () => {
   hostileUrl.searchParams.append("CONNECTIONTIMEOUTMILLIS", "1");
   hostileUrl.searchParams.append("Statement_Timeout", "888888888");
   hostileUrl.searchParams.append("QUERY_TIMEOUT", "888888888");
+  hostileUrl.searchParams.append("password", "query@secret");
   hostileUrl.searchParams.append("application_name", "task4-timeout-test");
   hostileUrl.searchParams.append("sslmode", "disable");
 
@@ -283,12 +398,13 @@ test("PostgreSQL clients ignore every timeout URL override", () => {
   assert.equal(effectiveClient.connectionParameters.query_timeout, 120_000);
   assert.equal(effectiveClient.connectionParameters.application_name, "task4-timeout-test");
   assert.equal(effectiveClient.connectionParameters.user, "audit");
-  assert.equal(effectiveClient.connectionParameters.password, "test@secret");
+  assert.equal(effectiveClient.connectionParameters.password, "query@secret");
   const sanitizedUrl = new URL(
     migrationAudit.buildPgClientConfig(hostileUrl.toString()).connectionString,
   );
   assert.equal(sanitizedUrl.searchParams.get("application_name"), "task4-timeout-test");
   assert.equal(sanitizedUrl.searchParams.get("sslmode"), "disable");
+  assert.equal(sanitizedUrl.searchParams.get("password"), "query@secret");
   assert.deepEqual(
     [...sanitizedUrl.searchParams.keys()].filter((name) => [
       "connect_timeout",

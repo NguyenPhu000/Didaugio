@@ -28,7 +28,7 @@ node --test test/migrationAudit.test.js test/migrationHistory.contract.test.js t
 
 The verifier generates an unpredictable name under the safe prefix, creates that isolated database, runs `prisma migrate deploy` and the drift comparison against it, then performs unconditional cleanup. Cleanup is attempted after create, deploy, diff, or assertion failures. There is no debug-retention mode.
 
-The verifier passes database credentials only through child-process environment variables. It never prints a database URL. The verifier never deploys or resets the application database; only the prefix-validated temporary database can be created or dropped.
+The verifier passes database credentials only through child-process environment variables. It never emits an unredacted database URL or credential; a safe failure diagnostic may contain URL metadata only after both user-info and query-string passwords are replaced with `***`. The verifier never deploys or resets the application database; only the prefix-validated temporary database can be created or dropped.
 
 After the gate, a read-only audit query against `pg_database` must return zero:
 

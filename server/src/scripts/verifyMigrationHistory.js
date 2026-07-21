@@ -9,6 +9,7 @@ import {
   assertOnlyAllowedRawSqlDrift,
   assertSafeAuditDatabaseName,
   assertSuccessfulSpawn,
+  buildAdminDatabaseUrl,
   buildDatabaseUrl,
   buildPgClientConfig,
   buildPrismaCommands,
@@ -23,8 +24,7 @@ const databaseName = assertSafeAuditDatabaseName(
   `${AUDIT_DB_PREFIX}clean_${crypto.randomBytes(6).toString("hex")}`,
 );
 const auditUrl = buildDatabaseUrl(sourceUrl, databaseName);
-const adminUrl = new URL(sourceUrl);
-adminUrl.pathname = "/postgres";
+const adminUrl = buildAdminDatabaseUrl(sourceUrl);
 const prismaCli = createRequire(import.meta.url).resolve("prisma/build/index.js");
 const commands = buildPrismaCommands({ schemaPath: "prisma/schema.prisma" });
 
@@ -37,12 +37,14 @@ function runPrisma(args, { capture = false } = {}) {
     shell: false,
     timeout: PRISMA_SPAWN_TIMEOUT_MS,
   });
-  const stdout = assertSuccessfulSpawn(result, `Prisma ${args.join(" ")}`);
+  const stdout = assertSuccessfulSpawn(result, `Prisma ${args.join(" ")}`, {
+    databaseUrl: auditUrl,
+  });
   return capture ? stdout : "";
 }
 
 const withAdminClient = async (operation) => {
-  const client = new Client(buildPgClientConfig(adminUrl.toString()));
+  const client = new Client(buildPgClientConfig(adminUrl));
   try {
     await client.connect();
     return await operation(client);

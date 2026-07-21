@@ -10,19 +10,31 @@ const TIMEOUT_URL_PARAMETERS = new Set([
   "statement_timeout",
 ]);
 
-export function assertSuccessfulSpawn(result, label) {
+function redactDatabaseUrlInDiagnostic(value, databaseUrl) {
+  const diagnostic = String(value ?? "");
+  if (!databaseUrl) return diagnostic;
+  let redactedUrl;
+  try {
+    redactedUrl = redactDatabaseUrl(databaseUrl);
+  } catch {
+    return "Sensitive database diagnostic suppressed";
+  }
+  return diagnostic.replaceAll(String(databaseUrl), redactedUrl);
+}
+
+export function assertSuccessfulSpawn(result, label, { databaseUrl } = {}) {
   if (result.error?.code === "ETIMEDOUT") {
     throw new Error(`${label} timed out after ${PRISMA_SPAWN_TIMEOUT_MS}ms`, {
       cause: result.error,
     });
   }
   if (result.error) {
-    throw new Error(`${label} failed to start: ${result.error.message}`, {
-      cause: result.error,
-    });
+    const detail = redactDatabaseUrlInDiagnostic(result.error.message, databaseUrl);
+    if (databaseUrl) throw new Error(`${label} failed to start: ${detail}`);
+    throw new Error(`${label} failed to start: ${detail}`, { cause: result.error });
   }
   if (result.status !== 0) {
-    const detail = String(result.stderr ?? "").trim();
+    const detail = redactDatabaseUrlInDiagnostic(result.stderr, databaseUrl).trim();
     throw new Error(
       `${label} exited with ${String(result.status)}${detail ? `: ${detail}` : ""}`,
     );
@@ -31,7 +43,7 @@ export function assertSuccessfulSpawn(result, label) {
 }
 
 export function buildPgClientConfig(connectionString) {
-  const sanitizedUrl = new URL(connectionString);
+  const sanitizedUrl = parsePostgresDatabaseUrl(connectionString);
   for (const parameter of [...sanitizedUrl.searchParams.keys()]) {
     if (TIMEOUT_URL_PARAMETERS.has(parameter.toLowerCase())) {
       sanitizedUrl.searchParams.delete(parameter);
@@ -56,26 +68,42 @@ export function quoteIdentifier(identifier) {
   return `"${assertSafeAuditDatabaseName(identifier)}"`;
 }
 
-export function buildDatabaseUrl(sourceUrl, databaseName) {
-  const parsed = new URL(sourceUrl);
-  if (!/^postgres(?:ql)?:$/u.test(parsed.protocol)) {
-    throw new Error("Migration audit requires a PostgreSQL URL");
-  }
-  parsed.pathname = `/${assertSafeAuditDatabaseName(databaseName)}`;
-  return parsed.toString();
-}
-
-export function redactDatabaseUrl(value) {
+export function parsePostgresDatabaseUrl(value) {
   let parsed;
   try {
     parsed = new URL(value);
   } catch {
-    throw new Error("Cannot redact malformed database URL");
+    throw new Error("Migration audit requires a valid PostgreSQL database URL");
   }
   if (!/^postgres(?:ql)?:$/u.test(parsed.protocol)) {
-    throw new Error("Cannot redact non-PostgreSQL database URL");
+    throw new Error("Migration audit requires a valid PostgreSQL database URL");
   }
+  return parsed;
+}
+
+export function buildDatabaseUrl(sourceUrl, databaseName) {
+  const parsed = parsePostgresDatabaseUrl(sourceUrl);
+  parsed.pathname = `/${assertSafeAuditDatabaseName(databaseName)}`;
+  return parsed.toString();
+}
+
+export function buildAdminDatabaseUrl(sourceUrl) {
+  const parsed = parsePostgresDatabaseUrl(sourceUrl);
+  parsed.pathname = "/postgres";
+  return parsed.toString();
+}
+
+export function redactDatabaseUrl(value) {
+  const parsed = parsePostgresDatabaseUrl(value);
   if (parsed.password) parsed.password = "***";
+  const parameters = [...parsed.searchParams.entries()];
+  parsed.search = "";
+  for (const [name, parameterValue] of parameters) {
+    parsed.searchParams.append(
+      name,
+      name.toLowerCase() === "password" ? "***" : parameterValue,
+    );
+  }
   return parsed.toString();
 }
 
