@@ -21,7 +21,7 @@ export function buildDatabaseUrl(sourceUrl, databaseName) {
   return parsed.toString();
 }
 
-export function buildPrismaCommands({ schemaPath, auditUrl }) {
+export function buildPrismaCommands({ schemaPath }) {
   return {
     deploy: ["prisma", "migrate", "deploy", `--schema=${schemaPath}`],
     diff: [
@@ -29,16 +29,45 @@ export function buildPrismaCommands({ schemaPath, auditUrl }) {
       "migrate",
       "diff",
       "--script",
-      "--from-url",
-      auditUrl,
+      "--from-schema-datasource",
+      schemaPath,
       "--to-schema-datamodel",
       schemaPath,
     ],
   };
 }
 
+export async function runMigrationAudit({ create, deploy, diff, cleanup }) {
+  let driftSql;
+  let primaryFailure;
+  try {
+    await create();
+    await deploy();
+    driftSql = await diff();
+  } catch (error) {
+    primaryFailure = error;
+  }
+
+  let cleanupFailure;
+  try {
+    await cleanup();
+  } catch (error) {
+    cleanupFailure = error;
+  }
+
+  if (primaryFailure && cleanupFailure) {
+    throw new AggregateError(
+      [primaryFailure, cleanupFailure],
+      "Migration audit failed and cleanup also failed",
+    );
+  }
+  if (primaryFailure) throw primaryFailure;
+  if (cleanupFailure) throw cleanupFailure;
+  return driftSql;
+}
+
 const ALLOWED_RAW_DROP_TABLES = new Set([
-  "administrative_province_boundaries",
+  "province_boundaries",
   "administrative_ward_boundaries",
   "vn_admin_source.provinces",
   "vn_admin_source.wards",

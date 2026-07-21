@@ -1,6 +1,7 @@
 import "dotenv/config";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { Client } from "pg";
 import {
   AUDIT_DB_PREFIX,
@@ -9,6 +10,7 @@ import {
   buildDatabaseUrl,
   buildPrismaCommands,
   quoteIdentifier,
+  runMigrationAudit,
 } from "./lib/migrationAudit.js";
 
 const sourceUrl = process.env.DATABASE_URL;
@@ -20,58 +22,40 @@ const databaseName = assertSafeAuditDatabaseName(
 const auditUrl = buildDatabaseUrl(sourceUrl, databaseName);
 const adminUrl = new URL(sourceUrl);
 adminUrl.pathname = "/postgres";
-const admin = new Client({ connectionString: adminUrl.toString() });
-const npx = process.platform === "win32" ? "npx.cmd" : "npx";
-const commands = buildPrismaCommands({
-  schemaPath: "prisma/schema.prisma",
-  auditUrl,
-});
-let connected = false;
+const prismaCli = createRequire(import.meta.url).resolve("prisma/build/index.js");
+const commands = buildPrismaCommands({ schemaPath: "prisma/schema.prisma" });
 
-function run(command, args, env, { capture = false } = {}) {
-  let spawnCommand = command;
-  let spawnArgs = args;
-  if (process.platform === "win32") {
-    const commandLine = [command, ...args]
-      .map((arg) => (arg === auditUrl ? "%DATABASE_URL%" : arg))
-      .map((arg) => {
-        if (!/^[%A-Za-z0-9_./:=+-]+$/u.test(arg)) {
-          throw new Error("Unsafe Prisma command argument");
-        }
-        return arg;
-      })
-      .join(" ");
-    spawnCommand = process.env.ComSpec || "cmd.exe";
-    spawnArgs = ["/d", "/s", "/c", commandLine];
-  }
-  const result = spawnSync(spawnCommand, spawnArgs, {
+function runPrisma(args, { capture = false } = {}) {
+  const result = spawnSync(process.execPath, [prismaCli, ...args.slice(1)], {
     cwd: process.cwd(),
-    env,
+    env: { ...process.env, DATABASE_URL: auditUrl },
     encoding: capture ? "utf8" : undefined,
     stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit",
     shell: false,
   });
-  if (result.status !== 0) throw new Error(`${command} exited with ${result.status}`);
+  if (result.status !== 0) throw new Error(`Prisma CLI exited with ${result.status}`);
   return capture ? result.stdout : "";
 }
 
-try {
-  await admin.connect();
-  connected = true;
-  await admin.query(`CREATE DATABASE ${quoteIdentifier(databaseName)}`);
-  run(npx, commands.deploy, { ...process.env, DATABASE_URL: auditUrl });
-  const driftSql = run(
-    npx,
-    commands.diff,
-    { ...process.env, DATABASE_URL: auditUrl },
-    { capture: true },
-  );
-  assertOnlyAllowedRawSqlDrift(driftSql);
-} finally {
-  if (!connected) {
-    await admin.connect();
-    connected = true;
+const withAdminClient = async (operation) => {
+  const client = new Client({ connectionString: adminUrl.toString() });
+  try {
+    await client.connect();
+    return await operation(client);
+  } finally {
+    await client.end().catch(() => undefined);
   }
-  await admin.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(databaseName)} WITH (FORCE)`);
-  await admin.end();
-}
+};
+
+await runMigrationAudit({
+  create: () =>
+    withAdminClient((client) =>
+      client.query(`CREATE DATABASE ${quoteIdentifier(databaseName)}`),
+    ),
+  deploy: () => runPrisma(commands.deploy),
+  diff: () => runPrisma(commands.diff, { capture: true }),
+  cleanup: () =>
+    withAdminClient((client) =>
+      client.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(databaseName)} WITH (FORCE)`),
+    ),
+}).then(assertOnlyAllowedRawSqlDrift);
