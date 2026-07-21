@@ -2,65 +2,45 @@
 
 ## Goal
 
-Replace the fixed `tagType` dropdown with admin-managed tag groups. An admin can select an existing group while creating or editing a tag, or create a group from the same picker. Group names can be renamed, hidden, and safely deleted from a dedicated management view.
+Replace the fixed `tagType` dropdown with a free-text group label. An admin selects an existing label or types a new one in the tag form. A group exists only when at least one tag uses that label.
 
 ## Current state
 
-`PlaceTag.tagType` is a string column, but both the web UI and API validation currently constrain it to a fixed enum. This caused the create-tag validation failure when the two enum lists diverged. Tags also expose an optional `icon` field in the form; that input has been removed and future tag creation will not send it.
+`PlaceTag.tagType` is already a string column, but the web UI and API validation currently constrain it to a fixed enum. This caused the create-tag validation failure when the two enum lists diverged. Tags also expose an optional `icon` field in the form; that input has been removed and future tag creation will not send it.
 
 ## Data model
 
-Create a `TagGroup` table:
-
-- `id`: primary key.
-- `name`: unique, trimmed display name (1–80 chars).
-- `slug`: unique normalized identifier (1–100 chars).
-- `isActive`: boolean, default true. Inactive groups remain attached to existing tags but are unavailable for new tags.
-- `sortOrder`: integer, default 0.
-- audit timestamps.
-
-Add nullable `tagGroupId` to `PlaceTag`, indexed and related to `TagGroup` with `onDelete: Restrict`.
-
-Keep `tagType` during the transition only. A data migration creates a `Chung` group, maps every existing tag to it, and gives newly-created tags both a `tagGroupId` and the legacy `tagType: "general"`. API responses expose the group object. After all consumers have migrated, a separate future release can remove `tagType`; it is out of scope here.
+Keep `PlaceTag.tagType` as the single source of truth. Remove enum validation and replace it with a trimmed string validation (1–80 chars). Normalize whitespace and compare labels case-insensitively when offering existing groups. No new table, relation, endpoint family, or database migration is needed.
 
 ## API
 
-Add admin-protected endpoints:
-
-- `GET /api/tag-groups?includeInactive=false`: list groups ordered by `sortOrder`, then name.
-- `POST /api/tag-groups`: create a group with name and optional sort order.
-- `PATCH /api/tag-groups/:id`: rename, activate/deactivate, or change sort order.
-- `DELETE /api/tag-groups/:id`: only succeeds when it contains no tags; otherwise returns a validation error with the current tag count.
-
-Change tag create/update payloads to accept `tagGroupId` instead of `tagType`. Server verifies that the referenced group exists and is active for creation/assignment. The server writes `tagType: "general"` only as the legacy compatibility value.
+Keep the existing tag endpoints. `POST` and `PUT /api/tags` accept `tagType` as a free-text group label. `GET /api/tags/groups` returns the distinct non-empty labels and their tag counts, ordered alphabetically. This is the only new endpoint.
 
 ## Web experience
 
 The tag form replaces its type select with a searchable group combobox:
 
-- Existing active groups appear as choices.
-- Typing an unmatched valid name offers `Tạo nhóm “…”`.
-- Creating the group selects it immediately and continues the tag form without losing fields.
-- The form sends `tagGroupId`; it has no icon input or icon payload.
+- Existing labels appear as choices.
+- Typing an unmatched valid name offers `Dùng nhóm “…”`.
+- Selecting that option simply assigns the entered label to this tag; there is no separate creation step.
+- The form sends `tagType`; it has no icon input or icon payload.
 
-The tag-management page adds a compact `Nhóm tag` action that opens a dialog with group name, status, tag count, rename, activate/deactivate, and delete controls. Deletion is disabled with a plain explanation when the group has tags. The existing tag list shows the group name and filters by `tagGroupId`.
+The tag-management page filters by the selected group label. A group disappears automatically when its last tag is moved or deleted. Renaming a group means editing the tags in that group; bulk rename and a standalone group-management screen are intentionally deferred.
 
 ## Error handling
 
-- Duplicate normalized name/slug returns a field-level conflict.
-- Deactivated or missing groups cannot be assigned to a tag.
-- Group deletion with linked tags returns `409` and the number of linked tags.
-- A group name created inline uses the same server endpoint and validation as dedicated management.
+- An empty or overlong group label returns a field-level validation error.
+- Group labels are whitespace-normalized before storage.
+- Duplicate group labels are not an error: multiple tags can intentionally share the same label.
 
 ## Testing
 
-- Server schema/service tests cover group CRUD, duplicate name, inactive assignment, and restricted delete.
-- Tag create/update tests show `tagGroupId` is accepted and legacy `tagType` is written as `general`.
-- Web tests verify inline creation is offered for a new name, select/create returns the group ID, and the form never sends icon/tagType.
-- Migration test verifies every existing tag receives `tagGroupId` and no tag is orphaned.
+- Server schema/service tests cover free-text label validation, normalization, and distinct group listing.
+- Tag create/update tests show custom `tagType` values are accepted.
+- Web tests verify a new typed label can be selected and the form never sends icon.
 
 ## Non-goals
 
+- No group table, migration, standalone group CRUD, or bulk rename.
 - No nesting, colors, icons, or permissions per group.
 - No automated cleanup of existing icon database values.
-- No deletion of the legacy `tagType` column in this release.
