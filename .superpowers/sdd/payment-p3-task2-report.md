@@ -26,3 +26,12 @@
 ## Concern
 
 Production/application database rollout remains blocked on reconciling its existing divergent migration history and taking an approved backup; this task intentionally did not mutate it.
+
+## Independent review fix
+
+- RED: 3 new live tests failed for the intended reasons: a positive refund with no succeeded receipt was accepted, a same-name table with missing columns reached a later PostgreSQL error, and a weaker same-name amount check was accepted.
+- Fixed refund preflight to compare every positive refund against `COALESCE(SUM(succeeded receipts), 0)`, so zero/no receipt fails atomically.
+- Added fail-closed catalog validation for every required column type, nullability, and default; exact primary/check constraints; foreign-key targets/actions; and exact non-partial index definitions.
+- Added live disposable-DB coverage for refund without receipt, over-refund, nonpositive amount, missing booking, incompatible table structure, weaker check constraint, wrong FK, wrong index, and duplicate non-null receipt/refund external IDs.
+- Focused GREEN after review fix: 14 pass, 1 configuration-only skip. Live tests ran with the local server dotenv credentials.
+- Full migration gate after review fix: 47/47 pass on a fresh owned audit database; cleanup completed.

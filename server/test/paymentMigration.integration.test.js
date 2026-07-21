@@ -72,6 +72,13 @@ async function createLegacyPaymentTables(client) {
   `);
 }
 
+async function assertMigrationRejectsAtomically(client, expected) {
+  await assert.rejects(client.query(migrationSql), expected);
+  await client.query("ROLLBACK");
+  const relation = await client.query("SELECT to_regclass('public.payment_receipts') AS relation");
+  assert.equal(relation.rows[0].relation, null);
+}
+
 test("payment migration integration requires an explicit disposable PostgreSQL URL", { skip: Boolean(sourceUrl) }, () => {
   assert.fail("DATABASE_URL is required for payment migration integration tests");
 });
@@ -147,13 +154,121 @@ test(
           "transaction_ref", "idempotency_key", "status"
         ) VALUES (201, 101, 1, 101, 'VND', 'manual', 'ref-201', 'payment-201', 'paid')
       `);
-      await assert.rejects(
-        client.query(migrationSql),
-        /Unsafe payment receipt\/refund backfill/u,
-      );
-      await client.query("ROLLBACK");
-      const relation = await client.query("SELECT to_regclass('public.payment_receipts') AS relation");
-      assert.equal(relation.rows[0].relation, null);
+      await assertMigrationRejectsAtomically(client, /Unsafe payment receipt\/refund backfill/u);
     });
   },
 );
+
+for (const scenario of [
+  {
+    label: "refund_without_receipt",
+    booking: '(101, 100, \'unpaid\')',
+    payment: "(201, 101, 1, 100, 'VND', 'manual', 'ref-201', 'payment-201', 'unpaid', 50)",
+    expected: /refund exceeds preserved succeeded receipts/iu,
+  },
+  {
+    label: "over_refund",
+    booking: "(101, 100, 'paid')",
+    payment: "(201, 101, 1, 100, 'VND', 'manual', 'ref-201', 'payment-201', 'paid', 101)",
+    expected: /Unsafe payment receipt\/refund backfill/u,
+  },
+  {
+    label: "nonpositive_amount",
+    booking: "(101, 100, 'unpaid')",
+    payment: "(201, 101, 1, 0, 'VND', 'manual', 'ref-201', 'payment-201', 'unpaid', NULL)",
+    expected: /Unsafe payment receipt\/refund backfill/u,
+  },
+]) {
+  test(`rejects ${scenario.label.replaceAll("_", " ")} atomically`, { skip: !sourceUrl }, async () => {
+    await withAuditDatabase(`payment_${scenario.label}`, async (client) => {
+      await createLegacyPaymentTables(client);
+      await client.query('INSERT INTO "users" ("id") VALUES (1)');
+      await client.query(`INSERT INTO "bookings" ("id", "final_price", "payment_status") VALUES ${scenario.booking}`);
+      await client.query(`
+        INSERT INTO "payments" (
+          "id", "booking_id", "user_id", "amount", "currency", "payment_method",
+          "transaction_ref", "idempotency_key", "status", "refund_amount"
+        ) VALUES ${scenario.payment}
+      `);
+      await assertMigrationRejectsAtomically(client, scenario.expected);
+    });
+  });
+}
+
+test("rejects a missing linked booking atomically", { skip: !sourceUrl }, async () => {
+  await withAuditDatabase("payment_missing_booking", async (client) => {
+    await createLegacyPaymentTables(client);
+    await client.query('INSERT INTO "users" ("id") VALUES (1)');
+    await client.query(`
+      INSERT INTO "payments" (
+        "id", "booking_id", "user_id", "amount", "currency", "payment_method",
+        "transaction_ref", "idempotency_key", "status"
+      ) VALUES (201, 999, 1, 100, 'VND', 'manual', 'ref-201', 'payment-201', 'unpaid')
+    `);
+    await assertMigrationRejectsAtomically(client, /Unsafe payment receipt\/refund backfill/u);
+  });
+});
+
+test("rejects a same-name payment_receipts table with incompatible columns", { skip: !sourceUrl }, async () => {
+  await withAuditDatabase("payment_bad_table", async (client) => {
+    await createLegacyPaymentTables(client);
+    await client.query('CREATE TABLE "payment_receipts" ("id" SERIAL PRIMARY KEY)');
+    await assert.rejects(client.query(migrationSql), /incompatible payment_receipts table structure/iu);
+    await client.query("ROLLBACK");
+  });
+});
+
+test("rejects a same-name amount constraint with weaker semantics", { skip: !sourceUrl }, async () => {
+  await withAuditDatabase("payment_bad_constraint", async (client) => {
+    await createLegacyPaymentTables(client);
+    await client.query(migrationSql);
+    await client.query('ALTER TABLE "payment_receipts" DROP CONSTRAINT "payment_receipts_amount_positive_check"');
+    await client.query('ALTER TABLE "payment_receipts" ADD CONSTRAINT "payment_receipts_amount_positive_check" CHECK ("amount" >= 0)');
+    await assert.rejects(client.query(migrationSql), /same-name constraint .* incompatible definition/iu);
+    await client.query("ROLLBACK");
+  });
+});
+
+test("rejects same-name wrong foreign key and index definitions", { skip: !sourceUrl }, async () => {
+  await withAuditDatabase("payment_bad_fk", async (client) => {
+    await createLegacyPaymentTables(client);
+    await client.query(migrationSql);
+    await client.query('ALTER TABLE "payment_receipts" DROP CONSTRAINT "payment_receipts_payment_id_fkey"');
+    await client.query('ALTER TABLE "payment_receipts" ADD CONSTRAINT "payment_receipts_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "users"("id")');
+    await assert.rejects(client.query(migrationSql), /same-name foreign key .* incompatible definition/iu);
+    await client.query("ROLLBACK");
+  });
+  await withAuditDatabase("payment_bad_index", async (client) => {
+    await createLegacyPaymentTables(client);
+    await client.query(migrationSql);
+    await client.query('DROP INDEX "payment_receipts_payment_id_status_idx"');
+    await client.query('CREATE INDEX "payment_receipts_payment_id_status_idx" ON "payment_receipts" ("status", "payment_id")');
+    await assert.rejects(client.query(migrationSql), /same-name index .* incompatible definition/iu);
+    await client.query("ROLLBACK");
+  });
+});
+
+test("rejects duplicate non-null gateway external identifiers", { skip: !sourceUrl }, async () => {
+  await withAuditDatabase("payment_duplicate_external", async (client) => {
+    await createLegacyPaymentTables(client);
+    await client.query('INSERT INTO "users" ("id") VALUES (1)');
+    await client.query('INSERT INTO "bookings" ("id", "final_price") VALUES (101, 100)');
+    await client.query(`INSERT INTO "payments" (
+      "id", "booking_id", "user_id", "amount", "currency", "payment_method",
+      "transaction_ref", "idempotency_key", "status"
+    ) VALUES (201, 101, 1, 100, 'VND', 'manual', 'ref-201', 'payment-201', 'unpaid')`);
+    await client.query(migrationSql);
+    await client.query(`INSERT INTO "payment_receipts" (
+      "payment_id", "source", "gateway", "amount", "currency", "external_transaction_id", "idempotency_key", "status"
+    ) VALUES (201, 'manual', 'VNPAY', 10, 'VND', 'external-1', 'receipt-1', 'succeeded')`);
+    await assert.rejects(client.query(`INSERT INTO "payment_receipts" (
+      "payment_id", "source", "gateway", "amount", "currency", "external_transaction_id", "idempotency_key", "status"
+    ) VALUES (201, 'manual', 'VNPAY', 10, 'VND', 'external-1', 'receipt-2', 'succeeded')`), /duplicate key/iu);
+    await client.query(`INSERT INTO "refund_attempts" (
+      "payment_id", "source", "gateway", "amount", "currency", "external_refund_id", "idempotency_key", "status"
+    ) VALUES (201, 'manual', 'VNPAY', 10, 'VND', 'refund-external-1', 'refund-1', 'succeeded')`);
+    await assert.rejects(client.query(`INSERT INTO "refund_attempts" (
+      "payment_id", "source", "gateway", "amount", "currency", "external_refund_id", "idempotency_key", "status"
+    ) VALUES (201, 'manual', 'VNPAY', 10, 'VND', 'refund-external-1', 'refund-2', 'succeeded')`), /duplicate key/iu);
+  });
+});

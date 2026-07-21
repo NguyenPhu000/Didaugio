@@ -62,6 +62,95 @@ CREATE TABLE IF NOT EXISTS "refund_attempts" (
   CONSTRAINT "refund_attempts_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
+-- CREATE TABLE IF NOT EXISTS is not a structure validator. Validate every
+-- required column before adding or trusting any same-name constraints/indexes.
+DO $$
+DECLARE
+  expected RECORD;
+  actual_type TEXT;
+  actual_not_null BOOLEAN;
+  actual_default TEXT;
+BEGIN
+  FOR expected IN
+    SELECT * FROM (VALUES
+      ('payment_receipts', 'id', 'integer', true, '^nextval\(''payment_receipts_id_seq''::regclass\)$'),
+      ('payment_receipts', 'payment_id', 'integer', true, '^$'),
+      ('payment_receipts', 'source', 'text', true, '^$'),
+      ('payment_receipts', 'gateway', 'text', false, '^$'),
+      ('payment_receipts', 'amount', 'integer', true, '^$'),
+      ('payment_receipts', 'currency', 'text', true, '^''VND''::text$'),
+      ('payment_receipts', 'external_transaction_id', 'text', false, '^$'),
+      ('payment_receipts', 'idempotency_key', 'text', true, '^$'),
+      ('payment_receipts', 'actor_user_id', 'integer', false, '^$'),
+      ('payment_receipts', 'status', 'text', true, '^$'),
+      ('payment_receipts', 'received_at', 'timestamp(3) without time zone', true, '^CURRENT_TIMESTAMP$'),
+      ('payment_receipts', 'metadata', 'jsonb', false, '^$'),
+      ('refund_attempts', 'id', 'integer', true, '^nextval\(''refund_attempts_id_seq''::regclass\)$'),
+      ('refund_attempts', 'payment_id', 'integer', true, '^$'),
+      ('refund_attempts', 'source', 'text', true, '^$'),
+      ('refund_attempts', 'gateway', 'text', false, '^$'),
+      ('refund_attempts', 'amount', 'integer', true, '^$'),
+      ('refund_attempts', 'currency', 'text', true, '^''VND''::text$'),
+      ('refund_attempts', 'external_refund_id', 'text', false, '^$'),
+      ('refund_attempts', 'idempotency_key', 'text', true, '^$'),
+      ('refund_attempts', 'actor_user_id', 'integer', false, '^$'),
+      ('refund_attempts', 'status', 'text', true, '^$'),
+      ('refund_attempts', 'reason', 'text', false, '^$'),
+      ('refund_attempts', 'requested_at', 'timestamp(3) without time zone', true, '^CURRENT_TIMESTAMP$'),
+      ('refund_attempts', 'completed_at', 'timestamp(3) without time zone', false, '^$'),
+      ('refund_attempts', 'metadata', 'jsonb', false, '^$')
+    ) AS values_table(table_name, column_name, data_type, is_not_null, default_pattern)
+  LOOP
+    SELECT format_type(a.atttypid, a.atttypmod), a.attnotnull,
+           COALESCE(pg_get_expr(d.adbin, d.adrelid), '')
+      INTO actual_type, actual_not_null, actual_default
+    FROM pg_attribute a
+    LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+    WHERE a.attrelid = format('public.%I', expected.table_name)::regclass
+      AND a.attname = expected.column_name
+      AND a.attnum > 0 AND NOT a.attisdropped;
+
+    IF actual_type IS NULL
+       OR actual_type <> expected.data_type
+       OR actual_not_null IS DISTINCT FROM expected.is_not_null
+       OR actual_default !~ expected.default_pattern THEN
+      RAISE EXCEPTION 'incompatible % table structure at column % (type %, not-null %, default %)',
+        expected.table_name, expected.column_name, actual_type, actual_not_null, actual_default;
+    END IF;
+  END LOOP;
+END $$;
+
+DO $$
+DECLARE
+  expected RECORD;
+  actual TEXT;
+BEGIN
+  FOR expected IN
+    SELECT * FROM (VALUES
+      ('payment_receipts', 'payment_receipts_pkey', '^PRIMARY KEY \(id\)$', 'ALTER TABLE "payment_receipts" ADD CONSTRAINT "payment_receipts_pkey" PRIMARY KEY ("id")'),
+      ('payment_receipts', 'payment_receipts_amount_positive_check', '^CHECK \(\(amount > 0\)\)$', 'ALTER TABLE "payment_receipts" ADD CONSTRAINT "payment_receipts_amount_positive_check" CHECK ("amount" > 0)'),
+      ('payment_receipts', 'payment_receipts_currency_uppercase_check', '^CHECK \(\(\(btrim\(currency\) <> ''''::text\) AND \(currency = upper\(currency\)\)\)\)$', 'ALTER TABLE "payment_receipts" ADD CONSTRAINT "payment_receipts_currency_uppercase_check" CHECK (btrim("currency") <> '''' AND "currency" = upper("currency"))'),
+      ('payment_receipts', 'payment_receipts_source_nonblank_check', '^CHECK \(\(btrim\(source\) <> ''''::text\)\)$', 'ALTER TABLE "payment_receipts" ADD CONSTRAINT "payment_receipts_source_nonblank_check" CHECK (btrim("source") <> '''')'),
+      ('payment_receipts', 'payment_receipts_status_check', '^CHECK \(\(status = ANY \(ARRAY\[''pending''::text, ''succeeded''::text, ''failed''::text\]\)\)\)$', 'ALTER TABLE "payment_receipts" ADD CONSTRAINT "payment_receipts_status_check" CHECK ("status" IN (''pending'', ''succeeded'', ''failed''))'),
+      ('refund_attempts', 'refund_attempts_pkey', '^PRIMARY KEY \(id\)$', 'ALTER TABLE "refund_attempts" ADD CONSTRAINT "refund_attempts_pkey" PRIMARY KEY ("id")'),
+      ('refund_attempts', 'refund_attempts_amount_positive_check', '^CHECK \(\(amount > 0\)\)$', 'ALTER TABLE "refund_attempts" ADD CONSTRAINT "refund_attempts_amount_positive_check" CHECK ("amount" > 0)'),
+      ('refund_attempts', 'refund_attempts_currency_uppercase_check', '^CHECK \(\(\(btrim\(currency\) <> ''''::text\) AND \(currency = upper\(currency\)\)\)\)$', 'ALTER TABLE "refund_attempts" ADD CONSTRAINT "refund_attempts_currency_uppercase_check" CHECK (btrim("currency") <> '''' AND "currency" = upper("currency"))'),
+      ('refund_attempts', 'refund_attempts_source_nonblank_check', '^CHECK \(\(btrim\(source\) <> ''''::text\)\)$', 'ALTER TABLE "refund_attempts" ADD CONSTRAINT "refund_attempts_source_nonblank_check" CHECK (btrim("source") <> '''')'),
+      ('refund_attempts', 'refund_attempts_status_check', '^CHECK \(\(status = ANY \(ARRAY\[''pending''::text, ''succeeded''::text, ''failed''::text\]\)\)\)$', 'ALTER TABLE "refund_attempts" ADD CONSTRAINT "refund_attempts_status_check" CHECK ("status" IN (''pending'', ''succeeded'', ''failed''))')
+    ) AS values_table(table_name, constraint_name, required_pattern, add_sql)
+  LOOP
+    SELECT pg_get_constraintdef(c.oid) INTO actual
+    FROM pg_constraint c
+    WHERE c.conrelid = format('public.%I', expected.table_name)::regclass
+      AND c.conname = expected.constraint_name;
+    IF actual IS NULL THEN
+      EXECUTE expected.add_sql;
+    ELSIF actual !~ expected.required_pattern THEN
+      RAISE EXCEPTION 'same-name constraint % has incompatible definition: %', expected.constraint_name, actual;
+    END IF;
+  END LOOP;
+END $$;
+
 -- Catalog guards make an interrupted/manual fixture rerun safe, but never accept
 -- an index or FK whose name has been re-used for a different invariant.
 DO $$
@@ -98,12 +187,12 @@ DECLARE
 BEGIN
   FOR expected IN
     SELECT * FROM (VALUES
-      ('payment_receipts_idempotency_key_key', 'CREATE UNIQUE INDEX "payment_receipts_idempotency_key_key" ON "payment_receipts" ("idempotency_key")', 'UNIQUE INDEX .*payment_receipts.*\(idempotency_key\)'),
-      ('payment_receipts_gateway_external_transaction_id_key', 'CREATE UNIQUE INDEX "payment_receipts_gateway_external_transaction_id_key" ON "payment_receipts" ("gateway", "external_transaction_id")', 'UNIQUE INDEX .*payment_receipts.*\(gateway, external_transaction_id\)'),
-      ('payment_receipts_payment_id_status_idx', 'CREATE INDEX "payment_receipts_payment_id_status_idx" ON "payment_receipts" ("payment_id", "status")', 'INDEX .*payment_receipts.*\(payment_id, status\)'),
-      ('refund_attempts_idempotency_key_key', 'CREATE UNIQUE INDEX "refund_attempts_idempotency_key_key" ON "refund_attempts" ("idempotency_key")', 'UNIQUE INDEX .*refund_attempts.*\(idempotency_key\)'),
-      ('refund_attempts_gateway_external_refund_id_key', 'CREATE UNIQUE INDEX "refund_attempts_gateway_external_refund_id_key" ON "refund_attempts" ("gateway", "external_refund_id")', 'UNIQUE INDEX .*refund_attempts.*\(gateway, external_refund_id\)'),
-      ('refund_attempts_payment_id_status_idx', 'CREATE INDEX "refund_attempts_payment_id_status_idx" ON "refund_attempts" ("payment_id", "status")', 'INDEX .*refund_attempts.*\(payment_id, status\)')
+      ('payment_receipts_idempotency_key_key', 'CREATE UNIQUE INDEX "payment_receipts_idempotency_key_key" ON "payment_receipts" ("idempotency_key")', '^CREATE UNIQUE INDEX payment_receipts_idempotency_key_key ON public.payment_receipts USING btree \(idempotency_key\)$'),
+      ('payment_receipts_gateway_external_transaction_id_key', 'CREATE UNIQUE INDEX "payment_receipts_gateway_external_transaction_id_key" ON "payment_receipts" ("gateway", "external_transaction_id")', '^CREATE UNIQUE INDEX payment_receipts_gateway_external_transaction_id_key ON public.payment_receipts USING btree \(gateway, external_transaction_id\)$'),
+      ('payment_receipts_payment_id_status_idx', 'CREATE INDEX "payment_receipts_payment_id_status_idx" ON "payment_receipts" ("payment_id", "status")', '^CREATE INDEX payment_receipts_payment_id_status_idx ON public.payment_receipts USING btree \(payment_id, status\)$'),
+      ('refund_attempts_idempotency_key_key', 'CREATE UNIQUE INDEX "refund_attempts_idempotency_key_key" ON "refund_attempts" ("idempotency_key")', '^CREATE UNIQUE INDEX refund_attempts_idempotency_key_key ON public.refund_attempts USING btree \(idempotency_key\)$'),
+      ('refund_attempts_gateway_external_refund_id_key', 'CREATE UNIQUE INDEX "refund_attempts_gateway_external_refund_id_key" ON "refund_attempts" ("gateway", "external_refund_id")', '^CREATE UNIQUE INDEX refund_attempts_gateway_external_refund_id_key ON public.refund_attempts USING btree \(gateway, external_refund_id\)$'),
+      ('refund_attempts_payment_id_status_idx', 'CREATE INDEX "refund_attempts_payment_id_status_idx" ON "refund_attempts" ("payment_id", "status")', '^CREATE INDEX refund_attempts_payment_id_status_idx ON public.refund_attempts USING btree \(payment_id, status\)$')
     ) AS values_table(index_name, create_sql, required_pattern)
   LOOP
     SELECT pg_get_indexdef(i.indexrelid) INTO actual
@@ -191,12 +280,16 @@ DO $$
 DECLARE
   unsafe_ids TEXT;
 BEGIN
-  SELECT string_agg(p."id"::TEXT, ', ' ORDER BY p."id") INTO unsafe_ids
-  FROM "payments" p
-  JOIN "payment_receipts" r ON r."payment_id" = p."id" AND r."status" = 'succeeded'
-  WHERE p."refund_amount" IS NOT NULL AND p."refund_amount" > 0
-  GROUP BY p."id", p."refund_amount"
-  HAVING p."refund_amount" > SUM(r."amount");
+  SELECT string_agg(refund_gap."id"::TEXT, ', ' ORDER BY refund_gap."id") INTO unsafe_ids
+  FROM (
+    SELECT p."id"
+    FROM "payments" p
+    LEFT JOIN "payment_receipts" r
+      ON r."payment_id" = p."id" AND r."status" = 'succeeded'
+    WHERE p."refund_amount" IS NOT NULL AND p."refund_amount" > 0
+    GROUP BY p."id", p."refund_amount"
+    HAVING COALESCE(SUM(r."amount"), 0) < p."refund_amount"
+  ) refund_gap;
   IF unsafe_ids IS NOT NULL THEN
     RAISE EXCEPTION 'Historical refund exceeds preserved succeeded receipts for payment ids: %', unsafe_ids;
   END IF;
