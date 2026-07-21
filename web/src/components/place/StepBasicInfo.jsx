@@ -12,11 +12,11 @@ import usePlaceStore from "@/stores/placeStore";
 import { useCheckSlugExists } from "@/hooks/queries/usePlaceQueries";
 import { Button, Input, Label } from "@/components/ui";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import ProvinceWardSelect from "@/components/common/ProvinceWardSelect";
 import CategorySelector from "./CategorySelector";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { WizardActions, WizardPanel, WizardSectionHeading } from "./wizard/PlaceWizardSurface";
 
 /**
  * STEP 1: BASIC INFO
@@ -120,39 +120,36 @@ const StepBasicInfo = () => {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-500 pb-12">
-      {/* Category Section */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="w-1 h-6 bg-primary rounded-full" />
-          <h3 className="text-base font-semibold">{t("admin.placeWizard.basicInfo.category")}</h3>
-        </div>
+    <div className="space-y-6 pb-28">
+      <WizardPanel className="p-5 sm:p-6">
+        <WizardSectionHeading
+          title={t("admin.placeWizard.basicInfo.category")}
+          description="Chọn nhóm phù hợp để địa điểm xuất hiện đúng trong hành trình khám phá."
+        />
+        <div className="mt-5">
         <CategorySelector
           value={wizardData.categoryId}
           onChange={(categoryId) => updateWizardData({ categoryId })}
           error={errors.categoryId}
         />
         {errors.categoryId && (
-          <p className="text-sm text-destructive flex items-center gap-1">
+          <p className="mt-3 flex items-center gap-1 text-sm text-destructive">
             <AlertCircle className="h-3 w-3" />
             {errors.categoryId}
           </p>
         )}
-      </section>
+        </div>
+      </WizardPanel>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Left Column: Basic Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Type className="h-5 w-5 text-primary" />
-              {t("admin.placeWizard.basicInfo.title")}
-            </CardTitle>
-            <CardDescription>
-              {t("admin.placeWizard.basicInfo.descriptionPlaceholder")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
+        <WizardPanel className="p-5 sm:p-6">
+          <WizardSectionHeading
+            icon={Type}
+            title={t("admin.placeWizard.basicInfo.title")}
+            description="Tên hiển thị, đường dẫn và một mô tả ngắn cho địa điểm."
+          />
+          <div className="mt-6 space-y-5">
             <div className="space-y-2">
               <Label htmlFor="name" className="text-sm font-medium">
                 {t("admin.placeWizard.basicInfo.placeName")} <span className="text-destructive">*</span>
@@ -163,7 +160,7 @@ const StepBasicInfo = () => {
                 value={wizardData.name}
                 onChange={handleNameChange}
                 className={cn(
-                  "h-11",
+                  "h-11 rounded-xl border-black/15 bg-[#FFFEFB] focus-visible:ring-black",
                   errors.name && "border-destructive focus-visible:ring-destructive"
                 )}
               />
@@ -186,7 +183,7 @@ const StepBasicInfo = () => {
                   value={wizardData.slug}
                   onChange={handleSlugChange}
                   className={cn(
-                    "h-11 lowercase pr-10",
+                    "h-11 rounded-xl border-black/15 bg-[#FFFEFB] lowercase pr-10 focus-visible:ring-black",
                     (errors.slug || slugError) && "border-destructive focus-visible:ring-destructive"
                   )}
                 />
@@ -206,8 +203,8 @@ const StepBasicInfo = () => {
                   {errors.slug || slugError}
                 </p>
               ) : (
-                <p className="text-xs text-muted-foreground">
-                  didaugio.com/place/{wizardData.slug || "slug-cua-ban"}
+                <p className="text-xs text-[#6B675F]">
+                  ipointgenie.com/place/{wizardData.slug || "slug-cua-ban"}
                 </p>
               )}
             </div>
@@ -225,7 +222,7 @@ const StepBasicInfo = () => {
                   updateWizardData({ shortDescription: e.target.value })
                 }
                 maxLength={200}
-                className="resize-none"
+                className="resize-none rounded-xl border-black/15 bg-[#FFFEFB] focus-visible:ring-black"
               />
               <div className="flex justify-end">
                 <span className="text-xs text-muted-foreground">
@@ -233,21 +230,17 @@ const StepBasicInfo = () => {
                 </span>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </WizardPanel>
 
         {/* Right Column: Location Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <MapPin className="h-5 w-5 text-primary" />
-              {t("admin.placeWizard.basicInfo.address")}
-            </CardTitle>
-            <CardDescription>
-              {t("admin.placeWizard.basicInfo.addressPlaceholder")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
+        <WizardPanel className="p-5 sm:p-6">
+          <WizardSectionHeading
+            icon={MapPin}
+            title={t("admin.placeWizard.basicInfo.address")}
+            description="Chọn tỉnh/thành và phường/xã; sau đó nhập địa chỉ cụ thể."
+          />
+          <div className="mt-6 space-y-5">
             <ProvinceWardSelect
               provinceCode={wizardData.provinceCode}
               wardCode={wizardData.wardCode}
@@ -275,7 +268,7 @@ const StepBasicInfo = () => {
                   updateWizardData({ address: e.target.value })
                 }
                 className={cn(
-                  "h-11",
+                  "h-11 rounded-xl border-black/15 bg-[#FFFEFB] focus-visible:ring-black",
                   errors.address && "border-destructive focus-visible:ring-destructive"
                 )}
               />
@@ -286,22 +279,23 @@ const StepBasicInfo = () => {
                 </p>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </WizardPanel>
       </div>
 
       {/* Actions */}
-      <div className="flex justify-end pt-6 border-t">
+      <WizardActions>
+        <p className="hidden pl-2 text-sm text-[#6B675F] sm:block">Bước tiếp theo: nội dung, hình ảnh và vị trí.</p>
         <Button
           onClick={handleNext}
           disabled={loading}
           size="lg"
-          className="gap-2"
+          className="ml-auto gap-2 rounded-xl bg-[#11110F] px-5 text-white hover:bg-black"
         >
           {t("common.next")}
           <ArrowRight className="h-4 w-4" />
         </Button>
-      </div>
+      </WizardActions>
     </div>
   );
 };

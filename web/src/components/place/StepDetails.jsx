@@ -36,6 +36,7 @@ import OpeningHoursEditor from "./OpeningHoursEditor";
 import SpokenGuideEditor from "./SpokenGuideEditor";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { WizardActions } from "./wizard/PlaceWizardSurface";
 
 // Lazy load MapPicker (heavy component with maplibre-gl)
 const MapPicker = lazy(() => import("./MapPicker"));
@@ -179,15 +180,15 @@ const StepDetails = () => {
   };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-6 space-y-6 pb-12 duration-500">
+    <div className="space-y-6 pb-28">
       <Tabs defaultValue="description" className="w-full">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-2 shadow-sm">
+        <div className="rounded-[22px] border border-black/10 bg-[#FFFEFB] p-2 shadow-[0_16px_48px_rgba(32,28,20,0.06)]">
           <TabsList className="grid h-auto w-full grid-cols-4 gap-2 bg-transparent p-0">
             {TAB_ITEMS.map(({ value, icon: Icon, labelKey }) => (
               <TabsTrigger
                 key={value}
                 value={value}
-                className="min-h-14 rounded-2xl border border-transparent px-2 py-3 text-zinc-500 transition-all data-[state=active]:border-black data-[state=active]:bg-zinc-50 data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm"
+                className="min-h-14 rounded-[16px] border border-transparent px-2 py-3 text-[#6B675F] transition-all data-[state=active]:border-black data-[state=active]:bg-[#11110F] data-[state=active]:text-white data-[state=active]:shadow-sm"
               >
                 <span className="flex flex-col items-center gap-1.5 sm:flex-row sm:gap-2">
                   <Icon className="h-4 w-4 text-black" />
@@ -202,7 +203,7 @@ const StepDetails = () => {
 
         {/* Tab 1: Description */}
         <TabsContent value="description" className="space-y-6 mt-6">
-          <Card className="overflow-hidden rounded-3xl border-zinc-200 shadow-sm">
+          <Card className="overflow-hidden rounded-[24px] border-black/10 bg-[#FFFEFB] shadow-[0_24px_70px_rgba(32,28,20,0.08)]">
             <CardHeader>
               <SectionHeader
                 icon={Info}
@@ -224,7 +225,7 @@ const StepDetails = () => {
                     updateWizardData({ description: e.target.value })
                   }
                   className={cn(
-                    "min-h-36 resize-none rounded-2xl border-zinc-200 bg-zinc-50/70 p-4 focus-visible:bg-white",
+                    "min-h-36 resize-none rounded-xl border-black/15 bg-[#FFFEFB] p-4 focus-visible:ring-black",
                     errors.description && "border-destructive focus-visible:ring-destructive"
                   )}
                 />
@@ -242,7 +243,7 @@ const StepDetails = () => {
               />
 
               {/* Price Range */}
-              <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+              <div className="rounded-2xl border border-black/10 bg-[#FFFEFB] p-4">
                 <div className="flex items-center gap-2 mb-4">
                   <DollarSign className="h-5 w-5 text-black" />
                   <h4 className="font-semibold">{t("admin.placeWizard.details.priceRange")}</h4>
@@ -453,13 +454,13 @@ const StepDetails = () => {
       </Tabs>
 
       {/* Actions */}
-      <div className="flex justify-between pt-6 border-t bg-background/80 backdrop-blur-sm sticky bottom-0 pb-2">
+      <WizardActions>
         <Button
           variant="outline"
           onClick={handleBack}
           disabled={loading}
           size="lg"
-          className="gap-2"
+          className="gap-2 rounded-xl border-black/20 bg-transparent text-[#11110F] hover:bg-[#F4F0E8]"
         >
           <ArrowLeft className="h-4 w-4" />
           {t("common.back")}
@@ -468,12 +469,12 @@ const StepDetails = () => {
           onClick={handleNext}
           disabled={loading}
           size="lg"
-          className="gap-2"
+          className="gap-2 rounded-xl bg-[#11110F] text-white hover:bg-black"
         >
           {t("common.next")}
           <ArrowRight className="h-4 w-4" />
         </Button>
-      </div>
+      </WizardActions>
     </div>
   );
 };

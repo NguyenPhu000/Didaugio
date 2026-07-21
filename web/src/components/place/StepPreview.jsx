@@ -26,6 +26,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle, CardDescription, Badg
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { WizardActions, WizardPanel } from "./wizard/PlaceWizardSurface";
 
 /**
  * STEP 3: PREVIEW & SUBMIT
@@ -106,22 +107,22 @@ const StepPreview = ({ isEditMode }) => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-500 pb-20">
+    <div className="space-y-6 pb-28">
       {/* Summary Header */}
-      <Card className="overflow-hidden">
-        <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-6">
+      <WizardPanel className="overflow-hidden">
+        <div className="border-b border-black/10 bg-[#FFFEFB] p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div className="space-y-2">
               {category && (
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="outline" className="border-black/15 bg-[#F4F0E8] text-xs text-[#11110F]">
                   {category.name}
                 </Badge>
               )}
-              <h2 className="text-2xl sm:text-3xl font-bold">
+              <h2 className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">
                 {wizardData.name || t("common.noData")}
               </h2>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4" />
+              <div className="flex items-center gap-2 text-sm text-[#6B675F]">
+                <MapPin className="h-4 w-4 text-[#11110F]" />
                 <span>
                   {wizardData.address}
                   {district && `, ${district.name}`}
@@ -141,16 +142,16 @@ const StepPreview = ({ isEditMode }) => {
             </div>
           </div>
         </div>
-      </Card>
+      </WizardPanel>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Images Gallery */}
-          <Card>
+          <Card className="rounded-[24px] border-black/10 bg-[#FFFEFB] shadow-[0_24px_70px_rgba(32,28,20,0.08)]">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <ImageIcon className="h-5 w-5 text-primary" />
+                <ImageIcon className="h-5 w-5 text-[#11110F]" />
                 {t("admin.placeWizard.preview.images")}
               </CardTitle>
             </CardHeader>
@@ -187,10 +188,10 @@ const StepPreview = ({ isEditMode }) => {
           </Card>
 
           {/* Description */}
-          <Card>
+          <Card className="rounded-[24px] border-black/10 bg-[#FFFEFB] shadow-[0_24px_70px_rgba(32,28,20,0.08)]">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <Tag className="h-5 w-5 text-primary" />
+                <Tag className="h-5 w-5 text-[#11110F]" />
                 {t("admin.placeWizard.preview.description")}
               </CardTitle>
             </CardHeader>
@@ -202,10 +203,10 @@ const StepPreview = ({ isEditMode }) => {
           </Card>
 
           {(wizardData.spokenGuide?.text || wizardData.spokenGuide?.faqs?.length > 0) && (
-            <Card className="border-cyan-100">
+          <Card className="rounded-[24px] border-black/10 bg-[#FFFEFB] shadow-[0_24px_70px_rgba(32,28,20,0.08)]">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Headphones className="h-5 w-5 text-cyan-700" />
+                  <Headphones className="h-5 w-5 text-[#11110F]" />
                   Thuyết minh địa điểm
                 </CardTitle>
                 <CardDescription>
@@ -222,10 +223,10 @@ const StepPreview = ({ isEditMode }) => {
 
           {/* Tags & Price */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <Card>
+            <Card className="rounded-[24px] border-black/10 bg-[#FFFEFB] shadow-[0_24px_70px_rgba(32,28,20,0.08)]">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Tag className="h-5 w-5 text-primary" />
+                  <Tag className="h-5 w-5 text-[#11110F]" />
                   {t("admin.placeWizard.preview.tags")}
                 </CardTitle>
               </CardHeader>
@@ -249,10 +250,10 @@ const StepPreview = ({ isEditMode }) => {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="rounded-[24px] border-black/10 bg-[#FFFEFB] shadow-[0_24px_70px_rgba(32,28,20,0.08)]">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <DollarSign className="h-5 w-5 text-primary" />
+                  <DollarSign className="h-5 w-5 text-[#11110F]" />
                   {t("admin.placeWizard.preview.priceRange")}
                 </CardTitle>
               </CardHeader>
@@ -272,10 +273,10 @@ const StepPreview = ({ isEditMode }) => {
 
         {/* Sidebar Info */}
         <div className="space-y-6">
-          <Card>
+          <Card className="rounded-[24px] border-black/10 bg-[#FFFEFB] shadow-[0_24px_70px_rgba(32,28,20,0.08)]">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <Clock className="h-5 w-5 text-primary" />
+                <Clock className="h-5 w-5 text-[#11110F]" />
                 {t("admin.placeWizard.preview.openingHours")}
               </CardTitle>
             </CardHeader>
@@ -311,10 +312,10 @@ const StepPreview = ({ isEditMode }) => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="rounded-[24px] border-black/10 bg-[#FFFEFB] shadow-[0_24px_70px_rgba(32,28,20,0.08)]">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <Phone className="h-5 w-5 text-primary" />
+                <Phone className="h-5 w-5 text-[#11110F]" />
                 {t("admin.placeWizard.preview.phone")}
               </CardTitle>
             </CardHeader>
@@ -348,13 +349,13 @@ const StepPreview = ({ isEditMode }) => {
       </div>
 
       {/* Actions */}
-      <div className="flex justify-between pt-6 border-t bg-background/80 backdrop-blur-sm sticky bottom-0 pb-2">
+      <WizardActions>
         <Button
           variant="outline"
           onClick={handleBack}
           disabled={submitting}
           size="lg"
-          className="gap-2"
+          className="gap-2 rounded-xl border-black/20 bg-transparent text-[#11110F] hover:bg-[#F4F0E8]"
         >
           <ArrowLeft className="h-4 w-4" />
           {t("common.back")}
@@ -363,7 +364,7 @@ const StepPreview = ({ isEditMode }) => {
           onClick={handleSubmit}
           disabled={submitting}
           size="lg"
-          className="gap-2"
+          className="gap-2 rounded-xl bg-[#11110F] text-white hover:bg-black"
         >
           {submitting ? (
             <>
@@ -377,7 +378,7 @@ const StepPreview = ({ isEditMode }) => {
             </>
           )}
         </Button>
-      </div>
+      </WizardActions>
     </div>
   );
 };
