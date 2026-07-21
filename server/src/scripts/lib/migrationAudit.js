@@ -66,13 +66,13 @@ export async function runMigrationAudit({ create, deploy, diff, cleanup }) {
   return driftSql;
 }
 
-const ALLOWED_RAW_DROP_TABLES = new Set([
-  "province_boundaries",
-  "administrative_ward_boundaries",
-  "vn_admin_source.provinces",
-  "vn_admin_source.wards",
-  "vn_admin_source.province_boundaries",
-  "vn_admin_source.ward_boundaries",
+const ALLOWED_RAW_SQL_DRIFT = new Set([
+  'ALTER TABLE "administrative_ward_boundaries" DROP CONSTRAINT "administrative_ward_boundarie_dataset_release_id_ward_code_fkey"',
+  'ALTER TABLE "province_boundaries" DROP CONSTRAINT "province_boundaries_dataset_release_id_province_code_fkey"',
+  'DROP INDEX "ward_records_search_trgm_idx"',
+  'DROP INDEX "province_records_search_trgm_idx"',
+  'DROP TABLE "administrative_ward_boundaries"',
+  'DROP TABLE "province_boundaries"',
 ]);
 
 export function assertOnlyAllowedRawSqlDrift(sql) {
@@ -82,11 +82,8 @@ export function assertOnlyAllowedRawSqlDrift(sql) {
     .map((value) => value.trim())
     .filter(Boolean);
   for (const statement of statements) {
-    const match = statement.match(
-      /^DROP TABLE (?:(?:"([a-z0-9_]+)")\.)?"([a-z0-9_]+)"$/u,
-    );
-    const relation = match ? [match[1], match[2]].filter(Boolean).join(".") : null;
-    if (!relation || !ALLOWED_RAW_DROP_TABLES.has(relation)) {
+    const normalized = statement.replace(/\s+/gu, " ");
+    if (!ALLOWED_RAW_SQL_DRIFT.has(normalized)) {
       throw new Error(`Managed schema drift detected: ${statement}`);
     }
   }

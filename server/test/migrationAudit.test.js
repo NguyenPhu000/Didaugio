@@ -97,8 +97,16 @@ test("identifier quoting rejects values outside the safe database grammar", () =
   assert.throws(() => quoteIdentifier(`x"; DROP DATABASE didaugio; --`), /unsafe audit database name/i);
 });
 
-test("drift guard permits only explicitly raw PostGIS boundary tables", () => {
+test("drift guard permits only exact residual statements for preserved raw objects", () => {
   assert.doesNotThrow(() => assertOnlyAllowedRawSqlDrift(`
+    -- DropForeignKey
+    ALTER TABLE "administrative_ward_boundaries" DROP CONSTRAINT "administrative_ward_boundarie_dataset_release_id_ward_code_fkey";
+    -- DropForeignKey
+    ALTER TABLE "province_boundaries" DROP CONSTRAINT "province_boundaries_dataset_release_id_province_code_fkey";
+    -- DropIndex
+    DROP INDEX "ward_records_search_trgm_idx";
+    -- DropIndex
+    DROP INDEX "province_records_search_trgm_idx";
     -- DropTable
     DROP TABLE "province_boundaries";
     -- DropTable
@@ -108,6 +116,12 @@ test("drift guard permits only explicitly raw PostGIS boundary tables", () => {
     () => assertOnlyAllowedRawSqlDrift('DROP TABLE "administrative_province_boundaries";'),
     /managed schema drift/i,
   );
+  for (const unsafe of [
+    'ALTER TABLE "province_boundaries" DROP CONSTRAINT "administrative_ward_boundarie_dataset_release_id_ward_code_fkey";',
+    'ALTER TABLE "administrative_ward_boundaries" DROP CONSTRAINT "unexpected_fkey";',
+    'DROP INDEX "ward_records_search_trgm_idx_extra";',
+    'DROP INDEX "province_boundaries_geom_gist_idx";',
+  ]) assert.throws(() => assertOnlyAllowedRawSqlDrift(unsafe), /managed schema drift/i);
   assert.throws(
     () => assertOnlyAllowedRawSqlDrift('ALTER TABLE "bookings" DROP COLUMN "resource_id";'),
     /managed schema drift/i,
