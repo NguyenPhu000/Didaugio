@@ -72,7 +72,7 @@ test("identifier quoting rejects values outside the safe database grammar", () =
 test("drift guard permits only explicitly raw PostGIS boundary tables", () => {
   assert.doesNotThrow(() => assertOnlyAllowedRawSqlDrift(`
     -- DropTable
-    DROP TABLE "administrative_province_boundaries";
+    DROP TABLE "province_boundaries";
     -- DropTable
     DROP TABLE "administrative_ward_boundaries";
   `));
@@ -116,7 +116,7 @@ export function buildDatabaseUrl(sourceUrl, databaseName) {
 }
 
 const ALLOWED_RAW_DROP_TABLES = new Set([
-  "administrative_province_boundaries",
+  "province_boundaries",
   "administrative_ward_boundaries",
   "vn_admin_source.provinces",
   "vn_admin_source.wards",
@@ -169,18 +169,39 @@ git commit -m "test: add safe migration audit database helpers"
 
 - [ ] **Step 1: Add failing tests for command construction and cleanup safety**
 
-Extend `migrationAudit.js` with a pure `buildPrismaCommands({ schemaPath, auditUrl })` API and first add:
+Extend `migrationAudit.js` with pure `buildPrismaCommands({ schemaPath })` and `runMigrationAudit(steps)` APIs and first add:
 
 ```js
 test("migration audit uses deploy and emits a reviewable drift script", () => {
   const commands = buildPrismaCommands({
     schemaPath: "prisma/schema.prisma",
-    auditUrl: "postgresql://user:secret@localhost:5432/didaugio_codex_migration_clean",
   });
   assert.deepEqual(commands.deploy, ["prisma", "migrate", "deploy", "--schema=prisma/schema.prisma"]);
   assert.deepEqual(commands.diff.slice(0, 4), ["prisma", "migrate", "diff", "--script"]);
-  assert.ok(commands.diff.includes("--from-url"));
+  assert.ok(commands.diff.includes("--from-schema-datasource"));
   assert.ok(commands.diff.includes("--to-schema-datamodel"));
+  assert.ok(!commands.diff.some((arg) => arg.includes("postgresql://")));
+});
+
+test("migration audit always runs cleanup for create, deploy, and diff failures", async () => {
+  for (const failedStep of ["create", "deploy", "diff"]) {
+    const calls = [];
+    const step = (name) => async () => {
+      calls.push(name);
+      if (name === failedStep) throw new Error(`${name} failed`);
+      return name === "diff" ? "" : undefined;
+    };
+    await assert.rejects(
+      runMigrationAudit({
+        create: step("create"),
+        deploy: step("deploy"),
+        diff: step("diff"),
+        cleanup: step("cleanup"),
+      }),
+      new RegExp(`${failedStep} failed`, "u"),
+    );
+    assert.equal(calls.at(-1), "cleanup");
+  }
 });
 ```
 
@@ -198,6 +219,7 @@ The script must:
 import "dotenv/config";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { Client } from "pg";
 import {
   AUDIT_DB_PREFIX,
@@ -205,6 +227,8 @@ import {
   buildDatabaseUrl,
   quoteIdentifier,
   assertOnlyAllowedRawSqlDrift,
+  buildPrismaCommands,
+  runMigrationAudit,
 } from "./lib/migrationAudit.js";
 
 const sourceUrl = process.env.DATABASE_URL;
@@ -216,52 +240,42 @@ const databaseName = assertSafeAuditDatabaseName(
 const auditUrl = buildDatabaseUrl(sourceUrl, databaseName);
 const adminUrl = new URL(sourceUrl);
 adminUrl.pathname = "/postgres";
-const admin = new Client({ connectionString: adminUrl.toString() });
-const npx = process.platform === "win32" ? "npx.cmd" : "npx";
-let connected = false;
+const prismaCli = createRequire(import.meta.url).resolve("prisma/build/index.js");
+const commands = buildPrismaCommands({ schemaPath: "prisma/schema.prisma" });
 
-function run(command, args, env, { capture = false } = {}) {
-  const result = spawnSync(command, args, {
+function runPrisma(args, { capture = false } = {}) {
+  const result = spawnSync(process.execPath, [prismaCli, ...args.slice(1)], {
     cwd: process.cwd(),
-    env,
+    env: { ...process.env, DATABASE_URL: auditUrl },
     encoding: capture ? "utf8" : undefined,
     stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit",
     shell: false,
   });
-  if (result.status !== 0) throw new Error(`${command} exited with ${result.status}`);
+  if (result.status !== 0) throw new Error(`Prisma CLI exited with ${result.status}`);
   return capture ? result.stdout : "";
 }
 
-try {
-  await admin.connect();
-  connected = true;
-  await admin.query(`CREATE DATABASE ${quoteIdentifier(databaseName)}`);
-  run(npx, ["prisma", "migrate", "deploy", "--schema=prisma/schema.prisma"], {
-    ...process.env,
-    DATABASE_URL: auditUrl,
-  });
-  const driftSql = run(
-    npx,
-    [
-      "prisma", "migrate", "diff", "--script",
-      "--from-url", auditUrl,
-      "--to-schema-datamodel", "prisma/schema.prisma",
-    ],
-    process.env,
-    { capture: true },
-  );
-  assertOnlyAllowedRawSqlDrift(driftSql);
-} finally {
-  if (!connected) {
-    await admin.connect();
-    connected = true;
+const withAdminClient = async (operation) => {
+  const client = new Client({ connectionString: adminUrl.toString() });
+  try {
+    await client.connect();
+    return await operation(client);
+  } finally {
+    await client.end().catch(() => undefined);
   }
-  await admin.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(databaseName)} WITH (FORCE)`);
-  await admin.end();
-}
+};
+
+await runMigrationAudit({
+  create: () => withAdminClient((client) =>
+    client.query(`CREATE DATABASE ${quoteIdentifier(databaseName)}`)),
+  deploy: () => runPrisma(commands.deploy),
+  diff: () => runPrisma(commands.diff, { capture: true }),
+  cleanup: () => withAdminClient((client) =>
+    client.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(databaseName)} WITH (FORCE)`)),
+}).then(assertOnlyAllowedRawSqlDrift);
 ```
 
-Do not log either database URL. An empty drift script is valid; otherwise every statement must pass the explicit raw-table allowlist.
+Do not log either database URL or place it in child-process arguments. `DATABASE_URL` reaches Prisma only through the child environment. Each create/drop operation owns a fresh admin connection, so cleanup does not depend on a connection retained across subprocess execution. An empty drift script is valid; otherwise every statement must pass the explicit raw-table allowlist.
 
 Add the package script:
 
@@ -498,10 +512,11 @@ Expected: FAIL because the reconciliation migration does not exist.
 
 - [ ] **Step 3: Generate the raw delta from a database built through Task 3**
 
-Use a dedicated audit database and Prisma's output option, never shell redirection:
+Use a dedicated audit database through `DATABASE_URL` and Prisma's output option, never shell redirection or a credential-bearing command argument:
 
 ```powershell
-npx.cmd prisma migrate diff --from-url $auditUrl --to-schema-datamodel prisma/schema.prisma --script --output prisma/migrations/20260721010000_reconcile_prisma_schema/migration.sql
+$env:DATABASE_URL = $auditUrl
+npx.cmd prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script --output prisma/migrations/20260721010000_reconcile_prisma_schema/migration.sql
 ```
 
 Review the generated SQL line-by-line and change destructive generated operations as follows:
