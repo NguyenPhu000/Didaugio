@@ -87,6 +87,67 @@ export function createPaymentSePayRefundWebhookHandlers(overrides = {}) {
 }
 
 /**
+ * Creates/refinalizes refund attempts for protected operational endpoints.
+ * SePay bank refunds are operator-initiated bank transfers: this records the
+ * canonical pending obligation first and returns its stable transfer reference.
+ */
+export function createPaymentRefundOrchestrator({ db = prisma, refundTransitionFactory = createRefundTransition } = {}) {
+  if (!db?.$transaction || !db?.refundAttempt) throw new Error("createPaymentRefundOrchestrator requires a Prisma client");
+  const transition = refundTransitionFactory({ prisma: db });
+
+  async function initiateSePayBankRefund(paymentId, { amount, reason, idempotencyKey, actorUserId } = {}) {
+    const normalizedPaymentId = Number(paymentId);
+    if (!Number.isInteger(normalizedPaymentId) || normalizedPaymentId <= 0) {
+      throw new ServiceError("Payment ID không hợp lệ", 400, ERROR_CODES.VALIDATION_ERROR);
+    }
+    return db.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw`
+        SELECT id, status, currency, transaction_ref
+        FROM payments WHERE id = ${normalizedPaymentId} LIMIT 1 FOR UPDATE
+      `;
+      const payment = rows?.[0];
+      if (!payment) throw new ServiceError("Không tìm thấy giao dịch", 404, ERROR_CODES.NOT_FOUND);
+      if (![PAYMENT_STATUS.PAID, PAYMENT_STATUS.PARTIALLY_REFUNDED].includes(payment.status)) {
+        throw new ServiceError("Chỉ có thể tạo lệnh hoàn SePay cho giao dịch đã thanh toán", 422, ERROR_CODES.VALIDATION_ERROR);
+      }
+      const [collections, refunds] = await Promise.all([
+        tx.paymentReceipt.aggregate({ where: { paymentId: payment.id, status: "succeeded" }, _sum: { amount: true } }),
+        tx.refundAttempt.aggregate({ where: { paymentId: payment.id, status: "succeeded" }, _sum: { amount: true } }),
+      ]);
+      const available = Number(collections?._sum?.amount || 0) - Number(refunds?._sum?.amount || 0);
+      const canonicalAmount = amount === undefined ? available : Number(amount);
+      if (!Number.isSafeInteger(canonicalAmount) || canonicalAmount <= 0 || canonicalAmount > available) {
+        throw new ServiceError("Số tiền hoàn vượt quá số tiền đã thu", 422, "REFUND_EXCEEDS_COLLECTED");
+      }
+      const transferReference = `SEPAY-REFUND-${payment.transaction_ref}-${idempotencyKey}`;
+      const intent = await transition.createRefundIntentInTransaction(tx, {
+        paymentId: payment.id,
+        amount: canonicalAmount,
+        currency: payment.currency,
+        source: "gateway",
+        gateway: "SEPAY_BANK",
+        idempotencyKey,
+        actorUserId,
+        reason,
+        metadata: { channel: "sepay_bank_refund_initiation", transferReference },
+      });
+      return { ...intent, transferReference };
+    });
+  }
+
+  async function recoverPendingManualRefund(refundAttemptId) {
+    const id = Number(refundAttemptId);
+    if (!Number.isInteger(id) || id <= 0) throw new ServiceError("Refund attempt ID không hợp lệ", 400, ERROR_CODES.VALIDATION_ERROR);
+    const attempt = await db.refundAttempt.findUnique({ where: { id } });
+    if (!attempt) throw new ServiceError("Không tìm thấy yêu cầu hoàn tiền", 404, ERROR_CODES.NOT_FOUND);
+    if (attempt.source !== "manual") throw new ServiceError("Chỉ có thể khôi phục refund thủ công", 409, "REFUND_INVALID_RESULT");
+    return transition.succeedRefundAttempt({ refundAttemptId: id });
+  }
+
+  return { initiateSePayBankRefund, recoverPendingManualRefund };
+}
+
+/**
  * Generate a short, user-friendly payment code.
  * Format: {PREFIX}{RANDOM_ALPHANUMERIC} — e.g., DDG3KAUQ190
  * The bookingId is encoded in the random part for uniqueness.

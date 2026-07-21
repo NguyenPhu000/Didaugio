@@ -16,9 +16,11 @@
 
 ## Final controller evidence
 
+- Protected `/:id/refund/sepay` creates a canonical `SEPAY_BANK` gateway attempt (including stable transfer reference) before the bank transfer; its real SePay refund webhook test finalizes that same attempt without a test preseed.
+- Protected `/refunds/recover` takes one attempt ID only and reuses the locked canonical finalizer for pending manual cancellations; exact replay is a no-op.
 - SePay refund production handler DI contract: 4/4 pass (HMAC before log/DB, mismatch no financial mutation, pending success + replay, conflicting external reference).
 - Cancellation production-entry harness: 3/3 pass. `cancel`, `cancelMyBooking`, and `quickRejectBooking` commit the booking outcome, pending attempt, and action log before the injected finalizer failure; the attempt remains pending and no event is emitted.
-- Combined payment/refund/cancellation focused suite: 33/33 pass.
+- Combined payment/refund/cancellation focused suite: 35/35 pass.
 - Prisma schema validation: pass. Syntax checks for all changed services: pass.
 
 ## Earlier evidence

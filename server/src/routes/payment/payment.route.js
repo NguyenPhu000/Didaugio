@@ -3,7 +3,7 @@ import * as controller from "../../controllers/payment/payment.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import { validateBody } from "../../middlewares/validateSchema.js";
-import { refundPaymentSchema } from "../../models/schemas/payment/payment.schema.js";
+import { initiateSePayRefundSchema, recoverPendingRefundSchema, refundPaymentSchema } from "../../models/schemas/payment/payment.schema.js";
 
 const router = express.Router();
 
@@ -54,6 +54,20 @@ router.post(
   hasPermission("payments.refund"),
   validateBody(refundPaymentSchema),
   controller.refund,
+);
+
+router.post(
+  "/:id/refund/sepay",
+  hasPermission("payments.refund"),
+  validateBody(initiateSePayRefundSchema),
+  controller.initiateSePayRefund,
+);
+
+router.post(
+  "/refunds/recover",
+  hasPermission("payments.refund"),
+  validateBody(recoverPendingRefundSchema),
+  controller.recoverPendingManualRefund,
 );
 
 router.post(

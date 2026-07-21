@@ -432,6 +432,41 @@ export async function refund(req, res, next) {
   }
 }
 
+/** Protected operational path: persist the outgoing SePay refund obligation before bank action. */
+export async function initiateSePayRefund(req, res, next) {
+  try {
+    const result = await paymentService.createPaymentRefundOrchestrator().initiateSePayBankRefund(
+      req.params.id,
+      { ...req.body, actorUserId: req.user.userId },
+    );
+    return successResponse(res, {
+      refundAttemptId: result.attempt.id,
+      status: result.status,
+      replayed: result.replayed,
+      transferReference: result.transferReference,
+    }, "Đã tạo lệnh hoàn SePay đang chờ xác nhận");
+  } catch (error) {
+    if (error.name === "ServiceError") return errorResponse(res, error.statusCode, error.message, error.errorCode);
+    next(error);
+  }
+}
+
+/** Protected, bounded recovery for a single pending manual refund after post-commit finalizer failure. */
+export async function recoverPendingManualRefund(req, res, next) {
+  try {
+    const result = await paymentService.createPaymentRefundOrchestrator().recoverPendingManualRefund(req.body.refundAttemptId);
+    return successResponse(res, {
+      refundAttemptId: result.attempt.id,
+      status: result.status,
+      replayed: result.replayed,
+      refundAmount: result.refundedAmount,
+    }, "Đã xử lý refund pending");
+  } catch (error) {
+    if (error.name === "ServiceError") return errorResponse(res, error.statusCode, error.message, error.errorCode);
+    next(error);
+  }
+}
+
 export async function rejectRefund(req, res, next) {
   try {
     const validation = rejectRefundSchema.safeParse(req.body || {});

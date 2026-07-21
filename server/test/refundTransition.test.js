@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createRefundTransition } from "../src/services/payment/refundTransition.service.js";
+import { createPaymentRefundOrchestrator } from "../src/services/payment/payment.service.js";
 
 function createHarness() {
   const payment = { id: 1, booking_id: 2, status: "paid", amount: 100, currency: "VND", refund_amount: 0 };
@@ -155,4 +156,23 @@ test("idempotency fingerprint and persistence exclude raw credential-like metada
   assert.equal(attempts[0].metadata.channel, "admin");
   const replay = await transition.createRefundIntent(command({ metadata: { signature: "different", token: "different", channel: "admin" } }));
   assert.equal(replay.replayed, true);
+});
+
+test("bounded manual recovery finalizes a pending cancellation refund once after the original finalizer failed", async () => {
+  const { tx, attempts, ledger, calls } = createHarness();
+  const prisma = {
+    $transaction: (fn) => fn(tx),
+    refundAttempt: { findUnique: async ({ where: { id } }) => attempts.find((item) => item.id === id) || null },
+  };
+  const transition = createRefundTransition({ prisma });
+  // This is the committed state left after the cancellation's injected post-commit finalizer failure.
+  const pending = await transition.createRefundIntent(command({ idempotencyKey: "booking-cancel:2" }));
+  const recovery = createPaymentRefundOrchestrator({ db: prisma, refundTransitionFactory: () => transition });
+  const success = await recovery.recoverPendingManualRefund(pending.attempt.id);
+  const replay = await recovery.recoverPendingManualRefund(pending.attempt.id);
+  assert.equal(success.status, "succeeded");
+  assert.equal(replay.replayed, true);
+  assert.equal(attempts[0].status, "succeeded");
+  assert.equal(ledger.length, 1);
+  assert.equal(calls.partnerWallet.length, 1);
 });
