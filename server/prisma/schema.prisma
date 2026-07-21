@@ -551,6 +551,7 @@ model PlaceTag {
   name          String         @unique
   slug          String         @unique
   tagType       String         @default("general") @map("tag_type")
+  tagGroupId    Int?           @map("tag_group_id")
   icon          String?
   color         String         @default("#6B7280")
   usageCount    Int            @default(0) @map("usage_count")
@@ -558,8 +559,24 @@ model PlaceTag {
   createdAt     DateTime       @default(now()) @map("created_at")
   categoryTags  CategoryTag[]
   placeTagLinks PlaceTagLink[]
+  tagGroup      TagGroup?      @relation(fields: [tagGroupId], references: [id], onDelete: Restrict)
 
+  @@index([tagGroupId], map: "idx_place_tags_tag_group_id")
   @@map("place_tags")
+}
+
+model TagGroup {
+  id        Int        @id @default(autoincrement())
+  slug      String     @unique
+  nameVi    String     @map("name_vi")
+  nameEn    String?    @map("name_en")
+  isActive  Boolean    @default(true) @map("is_active")
+  sortOrder Int        @default(0) @map("sort_order")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  tags      PlaceTag[]
+
+  @@map("tag_groups")
 }
 
 model CategoryTag {
