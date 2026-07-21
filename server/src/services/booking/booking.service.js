@@ -39,6 +39,7 @@ import {
 } from "../voucher/index.js";
 import {
   isUniqueConstraintOnIdempotencyKey,
+  lockBookingIdempotencyKey,
   normalizeBookingIdempotencyKey,
 } from "./bookingIdempotency.service.js";
 import { createBookingTransaction } from "./bookingTransaction.service.js";
@@ -1011,10 +1012,7 @@ export const create = async (payload = {}, userId) => {
     );
   }
 
-  let bookingAt = requestedBookingAt;
-  if (!bookingAt || Number.isNaN(bookingAt.getTime())) {
-    bookingAt = new Date();
-  }
+  const bookingAt = requestedBookingAt || new Date();
 
   // Validate booking time is in the future (allow 5-minute grace for clock skew)
   const now = new Date();
@@ -1074,6 +1072,20 @@ export const create = async (payload = {}, userId) => {
   let bookingResult;
   try {
     bookingResult = await prisma.$transaction(async (tx) => {
+    if (idempotencyKey) {
+      await lockBookingIdempotencyKey(tx, userId, idempotencyKey);
+      const existingBooking = await tx.booking.findFirst({
+        where: {
+          userId,
+          idempotencyKey,
+        },
+        include: defaultInclude,
+      });
+      if (existingBooking) {
+        return { booking: existingBooking, linkedTrip: null, replayed: true };
+      }
+    }
+
     const avail = await checkAvailability(tx, {
       serviceId,
       bookingAt,
@@ -1173,6 +1185,8 @@ export const create = async (payload = {}, userId) => {
 
   const booking = bookingResult.booking;
   const linkedTrip = bookingResult.linkedTrip;
+
+  if (bookingResult.replayed) return serializeBookingUser(booking);
 
   eventEmitter.emit(EVENTS.BOOKING.CREATED, {
     bookingId: booking.id,

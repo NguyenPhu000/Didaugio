@@ -42,6 +42,18 @@ function getUseDateParts(useDate) {
   };
 }
 
+function parseBookingAt(value) {
+  if (value instanceof Date) return assertValidDate(new Date(value), "bookingAt");
+
+  const raw = String(value ?? "").trim();
+  if (!raw) throw new RangeError("bookingAt must be a valid date");
+
+  const calendarMatch = /^(\d{4}-\d{2}-\d{2})(?:T|$)/.exec(raw);
+  if (calendarMatch) getUseDateParts(calendarMatch[1]);
+
+  return assertValidDate(new Date(raw), "bookingAt");
+}
+
 function getUseTimeParts(useTime) {
   if (useTime === null || useTime === undefined || String(useTime).trim() === "") {
     return { hour: 0, minute: 0 };
@@ -116,11 +128,20 @@ export function combineUseDateAndTime(useDate, useTime) {
  * @param {{ bookingAt?: Date | string, useDate?: Date | string, useTime?: string } | null | undefined} payload
  */
 export function resolveBookingAtFromPayload(payload = {}) {
-  if (payload?.bookingAt) return new Date(payload.bookingAt);
+  if (payload?.bookingAt) return parseBookingAt(payload.bookingAt);
   if (payload?.useDate) {
     return combineUseDateAndTime(payload.useDate, payload.useTime || "09:00");
   }
   return null;
+}
+
+export function isValidBookingAt(value) {
+  try {
+    parseBookingAt(value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**

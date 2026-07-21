@@ -334,6 +334,61 @@ async function runWithDatabaseLockGate({
   }
 }
 
+async function runWithIdempotencyLockGate({
+  admin,
+  databaseName,
+  databaseUrl,
+  userId,
+  idempotencyKey,
+  requestFactories,
+}) {
+  assert.equal(requestFactories.length, 2);
+  const gate = new Client(buildPgClientConfig(
+    withApplicationName(databaseUrl, "booking_p2_task5_idempotency_gate"),
+  ));
+  let transactionOpen = false;
+  let requests = [];
+  let observationFailure;
+  let contenders = [];
+  try {
+    await gate.connect();
+    await gate.query("BEGIN");
+    transactionOpen = true;
+    await gate.query(
+      "SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))",
+      [String(userId), idempotencyKey],
+    );
+
+    requests = requestFactories.map((factory) => Promise.resolve().then(factory));
+    try {
+      contenders = await waitForLockContenders(
+        admin,
+        databaseName,
+        SUBJECT_APPLICATION_NAME,
+      );
+      assert.ok(
+        new Set(contenders.map((row) => row.pid)).size >= 2,
+        "two same-key requests must reach the idempotency advisory lock",
+      );
+    } catch (error) {
+      observationFailure = error;
+    } finally {
+      if (transactionOpen) {
+        await gate.query("COMMIT");
+        transactionOpen = false;
+      }
+    }
+
+    const settled = await Promise.allSettled(requests);
+    if (observationFailure) throw observationFailure;
+    return { settled, contenders };
+  } finally {
+    if (transactionOpen) await gate.query("ROLLBACK").catch(() => undefined);
+    await gate.end().catch(() => undefined);
+    if (requests.length > 0) await Promise.allSettled(requests);
+  }
+}
+
 test("booking availability integration requires an explicit disposable PostgreSQL URL", { skip: Boolean(sourceUrl) }, () => {
   assert.fail("DATABASE_URL is required for booking availability integration tests");
 });
@@ -568,9 +623,22 @@ test("booking availability keeps real PostgreSQL resource and capacity integrity
       const idempotencyAt = futureAt(21, 10);
       const idempotencyKey = `booking-idempotency-${base.nonce}`;
       const idempotencyPayload = bookingPayload(idempotencyFixture.service, undefined, idempotencyAt, { idempotencyKey });
-      const replayFirst = await createBooking(idempotencyPayload, base.customer.id);
-      const replaySecond = await createBooking(idempotencyPayload, base.customer.id);
-      assert.equal(replaySecond.id, replayFirst.id);
+      const idempotencyGate = await runWithIdempotencyLockGate({
+        admin,
+        databaseName,
+        databaseUrl,
+        userId: base.customer.id,
+        idempotencyKey,
+        requestFactories: [
+          () => createBooking(idempotencyPayload, base.customer.id),
+          () => createBooking(idempotencyPayload, base.customer.id),
+        ],
+      });
+      const idempotencyRace = idempotencyGate.settled;
+      assert.equal(idempotencyRace.filter((entry) => entry.status === "fulfilled").length, 2);
+      assert.equal(idempotencyRace.filter((entry) => entry.status === "rejected").length, 0);
+      assert.equal(idempotencyRace[0].value.id, idempotencyRace[1].value.id);
+      assert.ok(idempotencyGate.contenders.every((row) => /pg_advisory_xact_lock/iu.test(row.query)));
       assert.equal(await appPrisma.booking.count({ where: { idempotencyKey } }), 1);
       const consumedCapacity = await appPrisma.booking.aggregate({
         where: { serviceId: idempotencyFixture.service.id, bookingAt: idempotencyAt, status: { in: ["pending", "confirmed"] }, deletedAt: null },

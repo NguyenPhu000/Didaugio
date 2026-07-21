@@ -58,6 +58,6 @@ If a disposable audit cleanup fails, retain the exact prefix-validated name from
 ```sql
 SELECT datname
 FROM pg_database
-WHERE datname LIKE 'didaugio_codex_booking_%'
+WHERE datname LIKE 'didaugio_codex_migration_%_booking_%'
 ORDER BY datname;
 ```

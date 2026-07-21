@@ -266,6 +266,12 @@ test("create booking schema accepts only a positive optional resource ID", () =>
   );
 });
 
+test("create booking schema rejects unparseable and impossible bookingAt calendar input", () => {
+  for (const bookingAt of ["not-a-date", "2026-02-30T09:00:00.000Z"]) {
+    assert.throws(() => createBookingSchema.parse({ serviceId: 7, bookingAt }));
+  }
+});
+
 function replaceMethod(target, key, replacement) {
   const original = target[key];
   target[key] = replacement;
@@ -378,6 +384,24 @@ test("create rejects an impossible raw calendar date before the first Prisma rea
   try {
     await assert.rejects(
       () => createBooking({ serviceId: 7, useDate: "2026-02-30", useTime: "09:00" }, 2),
+      (error) => error?.errorCode === "VALIDATION_ERROR" && error?.statusCode === 400,
+    );
+    assert.equal(prismaReads, 0);
+  } finally {
+    restore();
+  }
+});
+
+test("create rejects an invalid bookingAt before the first Prisma read", async () => {
+  let prismaReads = 0;
+  const restore = replaceMethod(prisma.user, "findUnique", async () => {
+    prismaReads += 1;
+    throw new Error("Prisma must not be read for invalid bookingAt");
+  });
+
+  try {
+    await assert.rejects(
+      () => createBooking({ serviceId: 7, bookingAt: "not-a-date" }, 2),
       (error) => error?.errorCode === "VALIDATION_ERROR" && error?.statusCode === 400,
     );
     assert.equal(prismaReads, 0);

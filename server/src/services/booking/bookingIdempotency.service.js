@@ -18,3 +18,9 @@ export function isUniqueConstraintOnIdempotencyKey(error) {
       ["idempotencyKey", "idempotency_key"].includes(String(field)),
     );
 }
+
+export async function lockBookingIdempotencyKey(tx, userId, idempotencyKey) {
+  await tx.$executeRaw`
+    SELECT pg_advisory_xact_lock(hashtext(${String(userId)}), hashtext(${idempotencyKey}))
+  `;
+}

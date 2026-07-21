@@ -32,3 +32,26 @@ The booking live test uses the shared entropy-bearing `didaugio_codex_migration_
 - The configured application database remains outside this task's mutation scope; its migration divergence, deployment, backup, and restore decisions require separately authorized operational work.
 - The suite is real PostgreSQL evidence for the configured runtime. The migration runbook retains the existing PostgreSQL 12–14 matrix caveat for release CI.
 - This report deliberately does not assert correctness for uncommitted concurrent Payment work; P3 needs its own gate and review after its working tree is committed.
+
+## Final-review remediation (2026-07-21)
+
+The final independent review found two behavior defects and one runbook mismatch. Each behavior fix followed a RED-to-GREEN regression sequence:
+
+- **I1 — concurrent idempotency:** the former replay lookup occurred outside the transaction, so two same-key capacity requests could both pass the lookup and the later request failed availability before the unique-key fallback. The live test now holds the exact PostgreSQL transaction advisory lock, starts two real same-user/same-key requests, observes two distinct service backends waiting on `pg_advisory_xact_lock`, then releases the gate. The implementation acquires that transaction-scoped lock and performs the user-scoped replay lookup before availability. Both responses must contain the same booking ID and the capacity aggregate must remain one.
+- **I2 — invalid `bookingAt`:** `resolveBookingAtFromPayload` returned `Invalid Date`, and create silently substituted the current time after fetching user/service. The resolver and Zod schema now reject unparseable or impossible calendar values; direct create rejects before any Prisma read.
+- **M1 — orphan audit documentation:** the runbook SQL now uses the same `didaugio_codex_migration_%_booking_%` pattern as the read-only audit command.
+
+### Final-review evidence
+
+| Command | Result |
+| --- | --- |
+| RED `server: node --test test/bookingAvailability.contract.test.js` | exit 1; 13 passed, 2 failed exactly at the new invalid-`bookingAt` schema and no-Prisma-read regressions. |
+| RED `server: node --test test/bookingAvailability.integration.test.js` | exit 1; real same-key contention reproduced `BOOKING_CAPACITY_EXCEEDED` before replay. |
+| GREEN `server: node --test test/bookingAvailability.contract.test.js` | exit 0; 15 passed, 0 failed. |
+| GREEN live run 1 `server: node --test test/bookingAvailability.integration.test.js` | exit 0; 1 passed, 1 expected prerequisite skip; 11.57 s. |
+| GREEN live run 2 `server: node --test test/bookingAvailability.integration.test.js` | exit 0; 1 passed, 1 expected prerequisite skip; 12.52 s. |
+| `server: npm.cmd run quality:booking` | exit 0; 33 passed, 0 failed, 1 expected prerequisite skip; includes the real advisory-lock regression. |
+| `server: npx.cmd prisma validate --schema=prisma/schema.prisma` | exit 0; schema valid. |
+| `server: npm.cmd run audit:booking:orphans` | exit 0; `owned_booking_audit_databases=0`. |
+| `app: npm.cmd run test:booking` | exit 0; 5 passed. |
+| targeted app ESLint command from the prior gate | exit 0; no diagnostics. |

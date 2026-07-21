@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidBookingAt } from "../../../utils/bookingTimeSlot.js";
 
 const dateYmdRegex = /^\d{4}-\d{2}-\d{2}$/;
 const timeHmRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -20,7 +21,13 @@ export const createBookingSchema = z.object({
     .string()
     .regex(timeHmRegex, "useTime phải theo định dạng HH:mm")
     .optional(),
-  bookingAt: z.string().min(8).max(64).optional(),
+  bookingAt: z
+    .string()
+    .trim()
+    .min(8)
+    .max(64)
+    .refine(isValidBookingAt, "bookingAt phải là thời điểm hợp lệ")
+    .optional(),
   guestName: z.string().min(2).max(100).optional(),
   guestPhone: z.string().min(8).max(20).optional(),
   guestEmail: z.string().email().optional(),
