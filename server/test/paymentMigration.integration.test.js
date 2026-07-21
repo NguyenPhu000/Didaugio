@@ -278,6 +278,42 @@ test("rejects an invalid or unready exact-name index", { skip: !sourceUrl }, asy
   });
 });
 
+test("rejects same-name indexes with DESC or non-default opclass semantics", { skip: !sourceUrl }, async () => {
+  await withAuditDatabase("payment_desc_index", async (client) => {
+    await createLegacyPaymentTables(client);
+    await client.query(migrationSql);
+    await client.query('DROP INDEX "payment_receipts_payment_id_status_idx"');
+    await client.query('CREATE INDEX "payment_receipts_payment_id_status_idx" ON "payment_receipts" ("payment_id" DESC, "status")');
+    await assert.rejects(client.query(migrationSql), /same-name index .* incompatible definition/iu);
+    await client.query("ROLLBACK");
+  });
+  await withAuditDatabase("payment_opclass_index", async (client) => {
+    await createLegacyPaymentTables(client);
+    await client.query(migrationSql);
+    await client.query('DROP INDEX "payment_receipts_payment_id_status_idx"');
+    await client.query('CREATE INDEX "payment_receipts_payment_id_status_idx" ON "payment_receipts" ("payment_id", "status" text_pattern_ops)');
+    await assert.rejects(client.query(migrationSql), /same-name index .* incompatible definition/iu);
+    await client.query("ROLLBACK");
+  });
+});
+
+test("rejects partially_paid payment when deterministic legacy receipt evidence is missing", { skip: !sourceUrl }, async () => {
+  await withAuditDatabase("payment_missing_partial_evidence", async (client) => {
+    await createLegacyPaymentTables(client);
+    await client.query(migrationSql);
+    await client.query('INSERT INTO "users" ("id") VALUES (1)');
+    await client.query('INSERT INTO "bookings" ("id", "final_price", "payment_status") VALUES (101, 100, \'unpaid\')');
+    await client.query(`INSERT INTO "payments" (
+      "id", "booking_id", "user_id", "amount", "currency", "payment_method",
+      "transaction_ref", "idempotency_key", "status"
+    ) VALUES (201, 101, 1, 100, 'VND', 'manual', 'ref-201', 'payment-201', 'partially_paid')`);
+    await assert.rejects(client.query(migrationSql), /missing deterministic legacy receipt evidence/iu);
+    await client.query("ROLLBACK");
+    const payment = await client.query('SELECT "status", "amount" FROM "payments" WHERE "id" = 201');
+    assert.deepEqual(payment.rows, [{ status: "partially_paid", amount: 100 }]);
+  });
+});
+
 test("rejects conflicting deterministic legacy receipt and refund evidence", { skip: !sourceUrl }, async () => {
   await withAuditDatabase("payment_conflicting_legacy", async (client) => {
     await createLegacyPaymentTables(client);

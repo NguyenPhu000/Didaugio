@@ -218,13 +218,13 @@ DECLARE
 BEGIN
   FOR expected IN
     SELECT * FROM (VALUES
-      ('payment_receipts', 'payment_receipts_idempotency_key_key', true, 'idempotency_key', NULL, 'CREATE UNIQUE INDEX "payment_receipts_idempotency_key_key" ON "payment_receipts" ("idempotency_key")'),
-      ('payment_receipts', 'payment_receipts_gateway_external_transaction_id_key', true, 'gateway', 'external_transaction_id', 'CREATE UNIQUE INDEX "payment_receipts_gateway_external_transaction_id_key" ON "payment_receipts" ("gateway", "external_transaction_id")'),
-      ('payment_receipts', 'payment_receipts_payment_id_status_idx', false, 'payment_id', 'status', 'CREATE INDEX "payment_receipts_payment_id_status_idx" ON "payment_receipts" ("payment_id", "status")'),
-      ('refund_attempts', 'refund_attempts_idempotency_key_key', true, 'idempotency_key', NULL, 'CREATE UNIQUE INDEX "refund_attempts_idempotency_key_key" ON "refund_attempts" ("idempotency_key")'),
-      ('refund_attempts', 'refund_attempts_gateway_external_refund_id_key', true, 'gateway', 'external_refund_id', 'CREATE UNIQUE INDEX "refund_attempts_gateway_external_refund_id_key" ON "refund_attempts" ("gateway", "external_refund_id")'),
-      ('refund_attempts', 'refund_attempts_payment_id_status_idx', false, 'payment_id', 'status', 'CREATE INDEX "refund_attempts_payment_id_status_idx" ON "refund_attempts" ("payment_id", "status")')
-    ) AS values_table(table_name, index_name, is_unique, first_column, second_column, create_sql)
+      ('payment_receipts', 'payment_receipts_idempotency_key_key', true, 'idempotency_key', NULL, 'CREATE UNIQUE INDEX "payment_receipts_idempotency_key_key" ON "payment_receipts" ("idempotency_key")', 'CREATE UNIQUE INDEX payment_receipts_idempotency_key_key ON public.payment_receipts USING btree (idempotency_key)'),
+      ('payment_receipts', 'payment_receipts_gateway_external_transaction_id_key', true, 'gateway', 'external_transaction_id', 'CREATE UNIQUE INDEX "payment_receipts_gateway_external_transaction_id_key" ON "payment_receipts" ("gateway", "external_transaction_id")', 'CREATE UNIQUE INDEX payment_receipts_gateway_external_transaction_id_key ON public.payment_receipts USING btree (gateway, external_transaction_id)'),
+      ('payment_receipts', 'payment_receipts_payment_id_status_idx', false, 'payment_id', 'status', 'CREATE INDEX "payment_receipts_payment_id_status_idx" ON "payment_receipts" ("payment_id", "status")', 'CREATE INDEX payment_receipts_payment_id_status_idx ON public.payment_receipts USING btree (payment_id, status)'),
+      ('refund_attempts', 'refund_attempts_idempotency_key_key', true, 'idempotency_key', NULL, 'CREATE UNIQUE INDEX "refund_attempts_idempotency_key_key" ON "refund_attempts" ("idempotency_key")', 'CREATE UNIQUE INDEX refund_attempts_idempotency_key_key ON public.refund_attempts USING btree (idempotency_key)'),
+      ('refund_attempts', 'refund_attempts_gateway_external_refund_id_key', true, 'gateway', 'external_refund_id', 'CREATE UNIQUE INDEX "refund_attempts_gateway_external_refund_id_key" ON "refund_attempts" ("gateway", "external_refund_id")', 'CREATE UNIQUE INDEX refund_attempts_gateway_external_refund_id_key ON public.refund_attempts USING btree (gateway, external_refund_id)'),
+      ('refund_attempts', 'refund_attempts_payment_id_status_idx', false, 'payment_id', 'status', 'CREATE INDEX "refund_attempts_payment_id_status_idx" ON "refund_attempts" ("payment_id", "status")', 'CREATE INDEX refund_attempts_payment_id_status_idx ON public.refund_attempts USING btree (payment_id, status)')
+    ) AS values_table(table_name, index_name, is_unique, first_column, second_column, create_sql, expected_definition)
   LOOP
     expected_key_count := CASE WHEN expected.second_column IS NULL THEN 1 ELSE 2 END;
     SELECT array_agg(a.attnum ORDER BY names.ordinality)::SMALLINT[] INTO expected_keys
@@ -253,7 +253,8 @@ BEGIN
        OR actual.indnkeyatts <> expected_key_count
        OR actual.indnatts <> expected_key_count
        OR actual.keys <> expected_keys
-       OR actual.indpred IS NOT NULL OR actual.indexprs IS NOT NULL OR actual.amname <> 'btree' THEN
+       OR actual.indpred IS NOT NULL OR actual.indexprs IS NOT NULL OR actual.amname <> 'btree'
+       OR actual.definition <> expected.expected_definition THEN
       RAISE EXCEPTION 'same-name index % has incompatible definition: %', expected.index_name, actual.definition;
     END IF;
   END LOOP;
@@ -274,6 +275,9 @@ BEGIN
      OR b."final_price" IS NULL OR b."final_price" <= 0
      OR p."amount" > b."final_price"
      OR (p."refund_amount" IS NOT NULL AND (p."refund_amount" < 0 OR p."refund_amount" > p."amount"))
+     OR ((p."status" IN ('partially_refunded', 'fully_refunded')
+          OR b."payment_status" IN ('partially_refunded', 'fully_refunded'))
+         AND COALESCE(p."refund_amount", 0) <= 0)
      OR btrim(COALESCE(p."currency", '')) = '';
   IF unsafe_ids IS NOT NULL THEN
     RAISE EXCEPTION 'Unsafe payment receipt/refund backfill for payment ids: %', unsafe_ids;
@@ -293,6 +297,19 @@ BEGIN
   ) duplicates;
   IF unsafe_ids IS NOT NULL THEN
     RAISE EXCEPTION 'Duplicate legacy gateway transaction identifiers for payment ids: %', unsafe_ids;
+  END IF;
+END $$;
+
+DO $$
+DECLARE
+  missing_ids TEXT;
+BEGIN
+  SELECT string_agg(p."id"::TEXT, ', ' ORDER BY p."id") INTO missing_ids
+  FROM "payments" p
+  LEFT JOIN "payment_receipts" r ON r."idempotency_key" = 'legacy_payment_' || p."id"
+  WHERE p."status" = 'partially_paid' AND r."id" IS NULL;
+  IF missing_ids IS NOT NULL THEN
+    RAISE EXCEPTION 'missing deterministic legacy receipt evidence for partially_paid payment ids: %', missing_ids;
   END IF;
 END $$;
 
@@ -350,14 +367,26 @@ SELECT
   )
 FROM "payments" p
 JOIN "bookings" b ON b."id" = p."booking_id"
-WHERE p."status" IN ('paid', 'partially_refunded', 'fully_refunded')
+WHERE p."status" IN ('paid', 'partially_paid', 'partially_refunded', 'fully_refunded')
    OR b."payment_status" IN ('paid', 'partially_refunded', 'fully_refunded')
 ON CONFLICT ("idempotency_key") DO NOTHING;
 
 DO $$
 DECLARE
+  missing_ids TEXT;
   conflict_ids TEXT;
 BEGIN
+  SELECT string_agg(p."id"::TEXT, ', ' ORDER BY p."id") INTO missing_ids
+  FROM "payments" p
+  JOIN "bookings" b ON b."id" = p."booking_id"
+  LEFT JOIN "payment_receipts" r ON r."idempotency_key" = 'legacy_payment_' || p."id"
+  WHERE (p."status" IN ('paid', 'partially_paid', 'partially_refunded', 'fully_refunded')
+         OR b."payment_status" IN ('paid', 'partially_refunded', 'fully_refunded'))
+    AND r."id" IS NULL;
+  IF missing_ids IS NOT NULL THEN
+    RAISE EXCEPTION 'missing deterministic legacy receipt evidence after insert for payment ids: %', missing_ids;
+  END IF;
+
   SELECT string_agg(p."id"::TEXT, ', ' ORDER BY p."id") INTO conflict_ids
   FROM "payments" p
   JOIN "bookings" b ON b."id" = p."booking_id"
@@ -490,9 +519,20 @@ ON CONFLICT ("idempotency_key") DO NOTHING;
 
 DO $$
 DECLARE
+  missing_ids TEXT;
   conflict_ids TEXT;
   unsafe_ids TEXT;
 BEGIN
+  SELECT string_agg(p."id"::TEXT, ', ' ORDER BY p."id") INTO missing_ids
+  FROM "payments" p
+  LEFT JOIN "refund_attempts" r ON r."idempotency_key" = 'legacy_refund_' || p."id"
+  WHERE (COALESCE(p."refund_amount", 0) > 0
+         OR p."status" IN ('partially_refunded', 'fully_refunded'))
+    AND r."id" IS NULL;
+  IF missing_ids IS NOT NULL THEN
+    RAISE EXCEPTION 'missing deterministic legacy refund evidence after insert for payment ids: %', missing_ids;
+  END IF;
+
   SELECT string_agg(p."id"::TEXT, ', ' ORDER BY p."id") INTO conflict_ids
   FROM "payments" p
   JOIN "refund_attempts" r ON r."idempotency_key" = 'legacy_refund_' || p."id"

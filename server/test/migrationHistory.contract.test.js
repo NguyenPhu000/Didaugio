@@ -13,7 +13,7 @@ const reconciliationPath = path.join(
   "20260721010000_reconcile_prisma_schema",
   "migration.sql",
 );
-const reconciliationSql = fs.readFileSync(reconciliationPath, "utf8");
+const reconciliationSql = fs.readFileSync(reconciliationPath, "utf8").replaceAll("\r\n", "\n");
 
 function assertTableAddsColumn(table, column) {
   assert.match(

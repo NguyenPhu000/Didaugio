@@ -46,3 +46,13 @@ Production/application database rollout remains blocked on reconciling its exist
 - Added explicit full historical refund coverage and live fixtures for untrusted FK/index state, deterministic evidence mismatch, and excess manual receipt/refund totals.
 - Focused GREEN: 18 pass, 1 configuration-only skip. Prisma schema validation passed.
 - Full migration gate: 47/47 pass on a fresh owned audit database; cleanup completed.
+
+## Final independent review fix
+
+- RED: missing `partially_paid` legacy receipt evidence and same-name indexes with `DESC`/non-default opclass semantics were both accepted.
+- Expected receipt/refund sets now use explicit missing-row assertions around the deterministic inserts. A `partially_paid` payment without its immutable legacy receipt fails atomically because its historical collected amount cannot be reconstructed safely.
+- Refunded historical states require positive refund summary data and exact deterministic refund evidence after insertion.
+- Index validation now requires the exact normalized `pg_get_indexdef` in addition to catalog keys, uniqueness, access method, predicate/expression absence, and health flags; this rejects sort/null/opclass/collation semantic changes.
+- Added Windows-safe line-ending normalization to the migration-history contract reader after the full gate exposed a CRLF-only false failure.
+- Focused GREEN: 20 pass, 1 configuration-only skip. Prisma schema validation passed.
+- Full migration gate rerun with a sufficient outer timeout: 47/47 pass on a fresh owned audit database; cleanup completed.
