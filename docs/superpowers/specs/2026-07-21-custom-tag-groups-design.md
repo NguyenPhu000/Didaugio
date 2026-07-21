@@ -1,46 +1,71 @@
-# Custom Tag Groups Design
+# Durable Tag Groups Design
 
 ## Goal
 
-Replace the fixed `tagType` dropdown with a free-text group label. An admin selects an existing label or types a new one in the tag form. A group exists only when at least one tag uses that label.
-
-## Current state
-
-`PlaceTag.tagType` is already a string column, but the web UI and API validation currently constrain it to a fixed enum. This caused the create-tag validation failure when the two enum lists diverged. Tags also expose an optional `icon` field in the form; that input has been removed and future tag creation will not send it.
+Replace the fixed tag-type enum with database-backed tag groups. Groups remain available over time, support Vietnamese and English display names, can be created empty, ordered, renamed, and hidden without changing individual tag records.
 
 ## Data model
 
-Keep `PlaceTag.tagType` as the single source of truth. Remove enum validation and replace it with a trimmed string validation (1–80 chars). Normalize whitespace and compare labels case-insensitively when offering existing groups. No new table, relation, endpoint family, or database migration is needed.
+Create `TagGroup` with:
+
+- `id`: primary key.
+- `slug`: unique normalized identifier, 1–100 characters.
+- `nameVi`: required Vietnamese name, 1–80 characters.
+- `nameEn`: optional English name, 1–80 characters.
+- `isActive`: boolean, default `true`.
+- `sortOrder`: integer, default `0`.
+- `createdAt` and `updatedAt`.
+
+Add nullable, indexed `tagGroupId` to `PlaceTag`, with a relation to `TagGroup` and `onDelete: Restrict`.
+
+Keep the legacy `PlaceTag.tagType` string during the compatibility phase. It is no longer accepted from new web clients. Server writes `"general"` for new/updated tags until the legacy removal release.
+
+## Migration and durability
+
+The database migration creates a `general` group (`Chung` / `General`) and assigns its ID to every existing tag whose `tagGroupId` is null. It leaves current `tagType` values untouched for rollback safety.
+
+The migration is idempotent: rerunning it does not duplicate `general` or change already linked tags. The migration fails transactionally if any tag cannot be assigned.
+
+The later removal release is explicitly separate. Before removing `tagType`, an audit confirms that every tag has a valid group ID and that all API/web/mobile consumers read `tagGroup`. Only then does a migration drop `tagType` and remove compatibility writes.
 
 ## API
 
-Keep the existing tag endpoints. `POST` and `PUT /api/tags` accept `tagType` as a free-text group label. `GET /api/tags/groups` returns the distinct non-empty labels and their tag counts, ordered alphabetically. This is the only new endpoint.
+Add admin-protected tag-group endpoints:
 
-## Web experience
+- `GET /api/tag-groups?includeInactive=false`: list groups ordered by `sortOrder`, then `nameVi`, including tag count.
+- `POST /api/tag-groups`: create a group from `slug`, `nameVi`, optional `nameEn`, and optional `sortOrder`.
+- `PATCH /api/tag-groups/:id`: update names, status, or sort order.
+- `DELETE /api/tag-groups/:id`: only succeeds for an empty group. Otherwise return `409` with its tag count.
 
-The tag form replaces its type select with a searchable group combobox:
+Tag create/update accepts `tagGroupId`; server validates that the group exists and is active before assignment. Tag read responses include `tagGroup { id, slug, nameVi, nameEn, isActive, sortOrder }`.
 
-- Existing labels appear as choices.
-- Typing an unmatched valid name offers `Dùng nhóm “…”`.
-- Selecting that option simply assigns the entered label to this tag; there is no separate creation step.
-- The form sends `tagType`; it has no icon input or icon payload.
+## Web admin
 
-The tag-management page filters by the selected group label. A group disappears automatically when its last tag is moved or deleted. Renaming a group means editing the tags in that group; bulk rename and a standalone group-management screen are intentionally deferred.
+The tag form uses a searchable group combobox. It lists active groups using the current UI locale. A typed unmatched label shows `Tạo nhóm “…”`; creation uses `POST /api/tag-groups`, selects the returned group, and retains the rest of the tag form state. The icon input and icon payload remain removed.
 
-## Error handling
+Tag management adds a compact `Quản lý nhóm` dialog. It lists group name, status, order, and tag count; supports create, edit, hide/show, and deletes only empty groups. The tag list filters by `tagGroupId` and displays the localized group name.
 
-- An empty or overlong group label returns a field-level validation error.
-- Group labels are whitespace-normalized before storage.
-- Duplicate group labels are not an error: multiple tags can intentionally share the same label.
+## Localization
+
+Admin writes both `nameVi` and `nameEn`; `nameEn` may initially be blank. Vietnamese UI displays `nameVi`. English UI displays `nameEn` when present and otherwise falls back to `nameVi`. The group slug never appears as the user-facing label.
+
+## Validation and error handling
+
+- Duplicate slug or case-insensitive duplicate Vietnamese name returns a field-level conflict.
+- Inactive groups cannot receive new tag assignments but remain shown on existing tags.
+- Empty-group deletion is allowed; deletion with linked tags returns `409` and does not alter tags.
+- A missing, inactive, or malformed `tagGroupId` returns a field-level validation error.
 
 ## Testing
 
-- Server schema/service tests cover free-text label validation, normalization, and distinct group listing.
-- Tag create/update tests show custom `tagType` values are accepted.
-- Web tests verify a new typed label can be selected and the form never sends icon.
+- Prisma migration test verifies the group table, `tagGroupId`, unique constraints, and one linked group per existing tag.
+- API/schema/service tests cover group CRUD, duplicate handling, inactive assignment, restricted deletion, and i18n fallback.
+- Tag API tests prove new writes use `tagGroupId`, include the related group in reads, and retain `tagType: "general"` only during compatibility.
+- Web tests cover group combobox selection, inline group creation, group dialog controls, locale fallback, and no icon input/payload.
+- A removal-readiness audit test reports any tag lacking `tagGroupId` before legacy `tagType` can be removed.
 
 ## Non-goals
 
-- No group table, migration, standalone group CRUD, or bulk rename.
-- No nesting, colors, icons, or permissions per group.
-- No automated cleanup of existing icon database values.
+- No nested groups, per-group icons, colors, permissions, or translations beyond Vietnamese and English.
+- No automatic translation of group names.
+- No physical deletion of a non-empty group.
