@@ -21,6 +21,22 @@ export function buildDatabaseUrl(sourceUrl, databaseName) {
   return parsed.toString();
 }
 
+export function buildPrismaCommands({ schemaPath, auditUrl }) {
+  return {
+    deploy: ["prisma", "migrate", "deploy", `--schema=${schemaPath}`],
+    diff: [
+      "prisma",
+      "migrate",
+      "diff",
+      "--script",
+      "--from-url",
+      auditUrl,
+      "--to-schema-datamodel",
+      schemaPath,
+    ],
+  };
+}
+
 const ALLOWED_RAW_DROP_TABLES = new Set([
   "administrative_province_boundaries",
   "administrative_ward_boundaries",

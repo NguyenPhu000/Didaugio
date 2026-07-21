@@ -3,10 +3,27 @@ import assert from "node:assert/strict";
 import {
   AUDIT_DB_PREFIX,
   assertSafeAuditDatabaseName,
+  buildPrismaCommands,
   buildDatabaseUrl,
   quoteIdentifier,
   assertOnlyAllowedRawSqlDrift,
 } from "../src/scripts/lib/migrationAudit.js";
+
+test("migration audit uses deploy and emits a reviewable drift script", () => {
+  const commands = buildPrismaCommands({
+    schemaPath: "prisma/schema.prisma",
+    auditUrl: "postgresql://user:secret@localhost:5432/didaugio_codex_migration_clean",
+  });
+  assert.deepEqual(commands.deploy, [
+    "prisma",
+    "migrate",
+    "deploy",
+    "--schema=prisma/schema.prisma",
+  ]);
+  assert.deepEqual(commands.diff.slice(0, 4), ["prisma", "migrate", "diff", "--script"]);
+  assert.ok(commands.diff.includes("--from-url"));
+  assert.ok(commands.diff.includes("--to-schema-datamodel"));
+});
 
 test("migration audit accepts only its dedicated database prefix", () => {
   assert.equal(
