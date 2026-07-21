@@ -46,7 +46,11 @@ function deployMigrations(databaseUrl) {
   }
 }
 
-async function withOwnedAuditDatabase(label, run, { migrate = false } = {}) {
+async function withOwnedAuditDatabase(label, run, {
+  migrate = false,
+  dropDatabase = dropOwnedAuditDatabase,
+  closeAdmin = (admin) => admin.end(),
+} = {}) {
   assert.ok(sourceUrl, "DATABASE_URL is required for booking availability integration tests");
   const databaseName = buildAuditDatabaseName(label);
   const databaseUrl = buildDatabaseUrl(sourceUrl, databaseName);
@@ -54,27 +58,52 @@ async function withOwnedAuditDatabase(label, run, { migrate = false } = {}) {
 
   const admin = new Client(buildPgClientConfig(buildAdminDatabaseUrl(sourceUrl)));
   let ownsDatabase = false;
-  let runFailure;
+  let result;
+  let primaryFailure;
   try {
     await admin.connect();
     await admin.query(`CREATE DATABASE ${quoteIdentifier(databaseName)}`);
     ownsDatabase = true;
     if (migrate) deployMigrations(databaseUrl);
-    return await run({ databaseName, databaseUrl, admin });
+    result = await run({ databaseName, databaseUrl, admin });
   } catch (error) {
-    runFailure = error;
-    throw error;
-  } finally {
-    if (ownsDatabase) {
-      try {
-        await dropOwnedAuditDatabase(admin, databaseName);
-        auditLifecycle.push({ databaseName, cleaned: true, failed: Boolean(runFailure) });
-      } finally {
-        ownsDatabase = false;
-      }
-    }
-    await admin.end().catch(() => undefined);
+    primaryFailure = error;
   }
+
+  let dropFailure;
+  let closeFailure;
+  let cleaned = false;
+  try {
+    if (ownsDatabase) {
+      await dropDatabase(admin, databaseName);
+      cleaned = true;
+    }
+  } catch (error) {
+    dropFailure = error;
+  } finally {
+    try {
+      await closeAdmin(admin);
+    } catch (error) {
+      closeFailure = error;
+    }
+    if (ownsDatabase) {
+      auditLifecycle.push({ databaseName, cleaned, failed: Boolean(primaryFailure) });
+    }
+  }
+
+  const cleanupFailures = [dropFailure, closeFailure].filter(Boolean);
+  if (primaryFailure && cleanupFailures.length > 0) {
+    throw new AggregateError(
+      [primaryFailure, ...cleanupFailures],
+      "Booking audit failed and cleanup also failed",
+    );
+  }
+  if (primaryFailure) throw primaryFailure;
+  if (cleanupFailures.length === 1) throw cleanupFailures[0];
+  if (cleanupFailures.length > 1) {
+    throw new AggregateError(cleanupFailures, "Booking audit cleanup failed");
+  }
+  return result;
 }
 
 function futureAt(dayOffset, hour, minute = 0) {
@@ -313,12 +342,33 @@ test("booking availability keeps real PostgreSQL resource and capacity integrity
   let originalDatabaseUrl;
   let appPrisma;
   try {
-    await assert.rejects(
-      withOwnedAuditDatabase("booking_cleanup_failure", async () => {
+    let cleanupProbeError;
+    let cleanupProbeAdminClosed = 0;
+    let cleanupProbeDatabaseDropped = false;
+    try {
+      await withOwnedAuditDatabase("booking_cleanup_failure", async () => {
         throw new Error("intentional fixture failure");
-      }),
-      /intentional fixture failure/u,
+      }, {
+        dropDatabase: async (admin, databaseName) => {
+          await dropOwnedAuditDatabase(admin, databaseName);
+          cleanupProbeDatabaseDropped = true;
+          throw new Error("intentional cleanup failure");
+        },
+        closeAdmin: async (admin) => {
+          cleanupProbeAdminClosed += 1;
+          await admin.end();
+        },
+      });
+    } catch (error) {
+      cleanupProbeError = error;
+    }
+    assert.ok(cleanupProbeError instanceof AggregateError);
+    assert.deepEqual(
+      cleanupProbeError.errors.map((error) => error.message),
+      ["intentional fixture failure", "intentional cleanup failure"],
     );
+    assert.equal(cleanupProbeAdminClosed, 1);
+    assert.equal(cleanupProbeDatabaseDropped, true);
 
     await withOwnedAuditDatabase("booking_availability", async ({ databaseName, databaseUrl, admin }) => {
       originalDatabaseUrl = process.env.DATABASE_URL;
@@ -539,6 +589,6 @@ test("booking availability keeps real PostgreSQL resource and capacity integrity
   }
 
   assert.equal(auditLifecycle.length, 2);
-  assert.ok(auditLifecycle.every((entry) => entry.cleaned));
+  assert.deepEqual(auditLifecycle.map((entry) => entry.cleaned), [false, true]);
   assert.ok(auditLifecycle.some((entry) => entry.failed));
 });

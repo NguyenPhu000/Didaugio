@@ -51,3 +51,10 @@ cd server && node --test test/bookingPolicy.test.js test/bookingTimeSlot.test.js
 - The gate transaction is committed or rolled back in `finally`; both request promises are settled even if lock observation fails. The Prisma client is now also disconnected before owned-database teardown on callback failure.
 - Post-fix live suite passed twice: each run 1 pass, 1 expected environment guard skip, 0 failures.
 - Post-fix focused P2 suite passed: 31 passed, 1 expected environment guard skip, 0 failed.
+
+## Approved-review minor cleanup hardening
+
+- RED: injected a cleanup implementation that physically drops the owned audit database and then throws while the callback also throws. The previous lifecycle returned only the primary error, so the required `AggregateError` assertion failed.
+- GREEN: lifecycle cleanup now has a nested `try/finally`; the admin client close runs even when database drop reports failure. Primary, drop, and close failures are retained, with primary plus cleanup failures returned as one `AggregateError` instead of masking either cause.
+- Live evidence asserts the owned database was physically dropped, the admin close callback ran exactly once, and the aggregate contains both intentional error messages in order.
+- Verification: syntax check passed; relevant live suite passed with 1 pass, 1 expected environment guard skip, 0 failures.
