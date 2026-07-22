@@ -223,7 +223,7 @@ export default function CinematicSplash({ active, onFinish }) {
           style={styles.media}
           player={player}
           allowsFullscreen={false}
-          showsPlaybackControls={false}
+          nativeControls={false}
           resizeMode="cover"
         />
 
