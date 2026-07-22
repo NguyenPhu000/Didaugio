@@ -352,16 +352,6 @@ export function NotificationProvider({ children }) {
   }, [router]);
 
   useEffect(() => {
-    const handleSocketNotification = (notification) => {
-      invalidateNotificationQueries();
-      enqueueBanner(notification);
-    };
-
-    const handleAnnouncement = (announcement) => {
-      invalidateNotificationQueries();
-      enqueueBanner(announcement);
-    };
-
     let pushCleanup = () => {};
     if (Notifications) {
       const receivedSubscription = Notifications.addNotificationReceivedListener(
@@ -373,25 +363,8 @@ export function NotificationProvider({ children }) {
       pushCleanup = () => receivedSubscription.remove();
     }
 
-    let socketCleanup = () => {};
-    try {
-      const { getSocket } = require("../utils/socket");
-      const socket = getSocket();
-      if (socket) {
-        socket.on("notification", handleSocketNotification);
-        socket.on("announcement", handleAnnouncement);
-        socketCleanup = () => {
-          socket.off("notification", handleSocketNotification);
-          socket.off("announcement", handleAnnouncement);
-        };
-      }
-    } catch {
-      // Socket is optional for screens that mount before realtime is ready.
-    }
-
     return () => {
       pushCleanup();
-      socketCleanup();
     };
   }, [enqueueBanner, invalidateNotificationQueries]);
 

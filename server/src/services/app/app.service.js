@@ -736,7 +736,7 @@ export const getMyProfileSummary = async (userId) => {
       _count: {
         select: {
           favorites: true,
-          trips: true,
+          tripPlans: true,
           bookings: true,
           reviews: true,
         },
