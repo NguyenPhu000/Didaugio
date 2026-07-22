@@ -20,6 +20,11 @@ Base: `b199d0d`
 - `npx prisma validate --schema=prisma/schema.prisma`: passed.
 - Payment callback/transition/refund core suite: 56 passed; the single live concurrency test could not connect to local PostgreSQL.
 
+## Review follow-up
+
+- `quality:payments` now also runs `test/vnpayCallbackNormalization.test.js` and the app's `paymentApi.test.js` through `npm --prefix ../app`. The database preflight remains the first command, so live database unavailability still fails closed before either aggregate test phase.
+- Follow-up contract/normalization run: 3/3 passed (quality-gate contracts plus VNPay normalization); app payment API contract: 1/1 passed.
+
 ## Live-gate blocker
 
 The configured local target is a PostgreSQL URL for `localhost:5432/didaugio_db`. No local PostgreSQL service/process is running, and Docker Desktop's daemon is unavailable. `npm run quality:payments` now stops before tests with the clear `ECONNREFUSED` preflight error. `npm run quality:migrations` is likewise blocked by the unavailable local database. No audit database was created or left behind; application data was not mutated.
