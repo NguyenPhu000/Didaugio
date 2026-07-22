@@ -105,31 +105,6 @@ export const getTripDetail = async (req, res, next) => {
       data: tripPlan,
       message: "Lấy chi tiết chuyến đi thành công",
     });
-
-    if (tripPlan) {
-      return res.json({
-        success: true,
-        data: tripPlan,
-        message: "Lấy chi tiết chuyến đi thành công",
-      });
-    }
-
-    // Nếu không thấy TripPlan, kiểm tra xem có legacy Trip chưa migrate không (không tạo data ngầm trong GET request)
-    const legacyTrip = null;
-    if (legacyTrip) {
-      return res.status(409).json({
-        success: false,
-        data: null,
-        message: "Chuyến đi này chưa được chuyển đổi sang phiên bản mới. Vui lòng thực hiện chuyển đổi trước.",
-        errorCode: "TRIP_MIGRATION_REQUIRED",
-      });
-    }
-
-    return res.status(404).json({
-      success: false,
-      data: null,
-      message: "Không tìm thấy chuyến đi",
-    });
   } catch (error) {
     next(error);
   }
