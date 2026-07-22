@@ -470,7 +470,11 @@ export default function ExploreScreen() {
               />
             ) : null}
 
-            <SampleTripSection sampleTrips={sampleTrips} onPressTrip={handlePressTrip} />
+            <SampleTripSection
+              sampleTrips={sampleTrips}
+              onPressTrip={handlePressTrip}
+              onPressViewAll={() => router.push("/(tabs)/trips")}
+            />
 
             {selectedCategory === null && regularEvents.length > 0 ? (
               <EventSection events={regularEvents} onPressEvent={handlePressEvent} />
@@ -556,7 +560,7 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: APPLE_THEME.background,
+    backgroundColor: "#FFFFFF",
   },
   scrollContent: {
     paddingTop: 4,
@@ -569,14 +573,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 40,
     borderRadius: 999,
-    backgroundColor: APPLE_THEME.surfaceMuted,
+    backgroundColor: "#FFFFFF",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(24,24,25,0.14)",
     gap: 10,
   },
   filterDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: APPLE_THEME.focusBlue,
+    backgroundColor: "#181819",
   },
   filterText: {
     flex: 1,

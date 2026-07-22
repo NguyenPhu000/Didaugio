@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState } from "react";
-import { FlatList, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { FlatList, Text, View, useWindowDimensions } from "react-native";
 import { useTranslation } from "react-i18next";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
@@ -19,7 +19,7 @@ function SectionTitle({ title }) {
     <View className="flex-row items-center gap-2.5">
       <View
         className="w-1 h-6 rounded-full"
-        style={{ backgroundColor: APPLE_THEME.focusBlue }}
+        style={{ backgroundColor: "#181819" }}
       />
       <Text
         className="text-[22px] leading-7 tracking-[-0.5px] font-bold"
@@ -69,9 +69,7 @@ function FeaturedSectionInner({ places, onPressPlace, onPressViewAll, onSavePlac
       <View
         style={{
           paddingHorizontal: TAB_SCREEN_PADDING,
-          paddingBottom: 14,
-          borderBottomWidth: StyleSheet.hairlineWidth,
-          borderBottomColor: "rgba(0,0,0,0.06)",
+          paddingBottom: 2,
         }}
         className="flex-row justify-between items-center mb-3.5"
       >
@@ -109,7 +107,7 @@ function FeaturedSectionInner({ places, onPressPlace, onPressViewAll, onSavePlac
                 className="h-1 rounded-full"
                 style={{
                   width: active ? 28 : 8,
-                  backgroundColor: active ? APPLE_THEME.focusBlue : APPLE_THEME.primaryTint,
+                  backgroundColor: active ? "#181819" : "rgba(24,24,25,0.14)",
                 }}
               />
             );

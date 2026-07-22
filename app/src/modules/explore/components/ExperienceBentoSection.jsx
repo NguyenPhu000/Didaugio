@@ -116,7 +116,7 @@ function ExperienceBentoSectionInner({ places, onPressPlace }) {
       <View className="flex-row items-center gap-2.5 mb-3.5">
         <View
           className="w-1 h-6 rounded-full"
-          style={{ backgroundColor: APPLE_THEME.focusBlue }}
+          style={{ backgroundColor: "#181819" }}
         />
         <Text
           className="text-[22px] leading-7 tracking-[-0.5px] font-bold"

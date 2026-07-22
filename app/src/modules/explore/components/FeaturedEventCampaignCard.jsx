@@ -65,7 +65,7 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
         />
       ) : (
         <LinearGradient
-          colors={["#052E2B", "#0F766E", "#134E4A"]}
+          colors={["#181819", "#403C36", "#847765"]}
           style={StyleSheet.absoluteFillObject}
         />
       )}
@@ -105,7 +105,7 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
 
         <View style={styles.cta}>
           <Text style={styles.ctaText}>Mở chiến dịch</Text>
-          <MaterialIconsRounded name="arrow-forward" size={14} color="#06352F" />
+          <MaterialIconsRounded name="arrow-forward" size={14} color="#181819" />
         </View>
       </View>
     </AnimatedPressable>
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     height: 214,
     borderRadius: 30,
     overflow: "hidden",
-    backgroundColor: "#052E2B",
+    backgroundColor: "#181819",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.25)",
   },
@@ -144,7 +144,9 @@ const styles = StyleSheet.create({
     height: 30,
     paddingHorizontal: 11,
     borderRadius: 15,
-    backgroundColor: "rgba(239,68,68,0.92)",
+    backgroundColor: "#181819",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.46)",
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
@@ -185,7 +187,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   kicker: {
-    color: "#A7F3D0",
+    color: "rgba(255,255,255,0.74)",
     fontFamily: TOKENS.font.bold,
     fontSize: 10,
     letterSpacing: 1.4,
@@ -233,13 +235,13 @@ const styles = StyleSheet.create({
     paddingLeft: 13,
     paddingRight: 9,
     borderRadius: 17,
-    backgroundColor: "#D1FAE5",
+    backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
   },
   ctaText: {
-    color: "#06352F",
+    color: "#181819",
     fontFamily: TOKENS.font.bold,
     fontSize: 12,
   },

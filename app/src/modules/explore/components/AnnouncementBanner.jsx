@@ -1,9 +1,11 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
 import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
+  withSpring,
   withTiming,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
@@ -11,164 +13,151 @@ import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRound
 import { TOKENS } from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { formatDayMonthNumeric } from "@/utils/dateFormat";
+import { getOptimizedCloudinaryUrl, resolveMediaUrl } from "../../../lib/media-url";
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const TONE = {
-  info: {
-    icon: "campaign",
-    bg: "#EFF6FF",
-    border: "rgba(0,123,255,0.18)",
-    iconBg: "rgba(0,123,255,0.12)",
-    accent: "#007BFF",
-    label: "THÔNG BÁO",
-  },
-  warning: {
-    icon: "warning-amber",
-    bg: "#FFF7ED",
-    border: "rgba(245,158,11,0.24)",
-    iconBg: "rgba(245,158,11,0.14)",
-    accent: "#D97706",
-    label: "LƯU Ý",
-  },
-  success: {
-    icon: "check-circle",
-    bg: "#ECFDF5",
-    border: "rgba(16,185,129,0.22)",
-    iconBg: "rgba(16,185,129,0.14)",
-    accent: "#059669",
-    label: "CẬP NHẬT",
-  },
-  error: {
-    icon: "priority-high",
-    bg: "#FEF2F2",
-    border: "rgba(239,68,68,0.22)",
-    iconBg: "rgba(239,68,68,0.14)",
-    accent: "#DC2626",
-    label: "KHẨN",
-  },
+  info: { icon: "campaign", accent: "#111111", label: "CẬP NHẬT" },
+  warning: { icon: "priority-high", accent: "#8A5A00", label: "LƯU Ý" },
+  success: { icon: "check-circle", accent: "#176B48", label: "CẬP NHẬT" },
+  error: { icon: "priority-high", accent: "#9D2020", label: "KHẨN" },
 };
 
 function AnnouncementBannerInner({ announcement }) {
   const [dismissed, setDismissed] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const opacity = useSharedValue(1);
   const translateY = useSharedValue(0);
+  const scale = useSharedValue(1);
 
   const tone = useMemo(
     () => TONE[announcement?.type] || TONE.info,
     [announcement?.type],
   );
+  const imageUri = useMemo(() => {
+    if (!announcement?.imageUrl) return null;
+    return getOptimizedCloudinaryUrl(resolveMediaUrl(announcement.imageUrl), 480);
+  }, [announcement?.imageUrl]);
+  const dateText = announcement?.sentAt
+    ? formatDayMonthNumeric(announcement.sentAt)
+    : null;
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
+    transform: [{ translateY: translateY.value }, { scale: scale.value }],
   }));
 
   const handleDismiss = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    opacity.value = withTiming(0, { duration: 220 });
-    translateY.value = withTiming(-8, { duration: 220 }, () => {
+    opacity.value = withTiming(0, { duration: 180 });
+    translateY.value = withTiming(-10, { duration: 180 }, () => {
       runOnJS(setDismissed)(true);
     });
   }, [opacity, translateY]);
 
-  if (!announcement || dismissed) return null;
+  const handleToggle = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setExpanded((value) => !value);
+  }, []);
 
-  const dateText = announcement.sentAt
-    ? formatDayMonthNumeric(announcement.sentAt)
-    : null;
+  if (!announcement || dismissed) return null;
 
   return (
     <Animated.View style={[animatedStyle, styles.outer]}>
-      <View style={[styles.card, { backgroundColor: tone.bg, borderColor: tone.border }]}>
-        <View style={[styles.iconWrap, { backgroundColor: tone.iconBg }]}>
-          <MaterialIconsRounded name={tone.icon} size={18} color={tone.accent} />
-        </View>
+      <AnimatedPressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        onPress={handleToggle}
+        onPressIn={() => { scale.value = withSpring(0.987, TOKENS.spring.press); }}
+        onPressOut={() => { scale.value = withSpring(1, TOKENS.spring.press); }}
+        style={styles.card}
+      >
+        {imageUri ? (
+          <Image
+            source={{ uri: imageUri }}
+            contentFit="cover"
+            transition={220}
+            cachePolicy="memory-disk"
+            style={styles.image}
+          />
+        ) : (
+          <View style={[styles.iconPanel, { backgroundColor: tone.accent }]}>
+            <MaterialIconsRounded name={tone.icon} size={21} color="#FFFFFF" />
+          </View>
+        )}
 
         <View style={styles.content}>
           <View style={styles.metaRow}>
-            <Text style={[styles.label, { color: tone.accent }]}>{tone.label}</Text>
+            <View style={[styles.labelPill, { borderColor: tone.accent }]}>
+              <Text style={[styles.label, { color: tone.accent }]}>{tone.label}</Text>
+            </View>
             {dateText ? <Text style={styles.date}>{dateText}</Text> : null}
           </View>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={styles.title} numberOfLines={expanded ? undefined : 2}>
             {announcement.title}
           </Text>
           {announcement.body ? (
-            <Text style={styles.body} numberOfLines={2}>
+            <Text style={styles.body} numberOfLines={expanded ? undefined : 2}>
               {announcement.body}
             </Text>
           ) : null}
+          <View style={styles.detailRow}>
+            <Text style={styles.detailText}>{expanded ? "Thu gọn" : "Xem chi tiết"}</Text>
+            <MaterialIconsRounded
+              name={expanded ? "keyboard-arrow-up" : "arrow-forward"}
+              size={16}
+              color="#181819"
+            />
+          </View>
         </View>
 
-        <Pressable onPress={handleDismiss} hitSlop={12} style={styles.closeBtn}>
-          <MaterialIconsRounded name="close" size={15} color="rgba(24,24,25,0.48)" />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Đóng thông báo"
+          onPress={handleDismiss}
+          hitSlop={12}
+          style={styles.closeBtn}
+        >
+          <MaterialIconsRounded name="close" size={16} color="#181819" />
         </Pressable>
-      </View>
+      </AnimatedPressable>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  outer: {
-    paddingHorizontal: TAB_SCREEN_PADDING,
-    marginTop: 12,
-  },
+  outer: { paddingHorizontal: TAB_SCREEN_PADDING, marginTop: 12 },
   card: {
-    borderRadius: 18,
+    minHeight: 122,
+    borderRadius: 22,
+    backgroundColor: "#FFFFFF",
     borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderColor: "rgba(24,24,25,0.12)",
+    padding: 10,
     flexDirection: "row",
-    alignItems: "flex-start",
     gap: 12,
+    ...TOKENS.shadow.sm,
   },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  image: { width: 92, minHeight: 102, borderRadius: 14, backgroundColor: "#E5E3DF" },
+  iconPanel: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 1,
-  },
-  content: {
-    flex: 1,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 2,
-  },
-  label: {
-    fontSize: 10,
-    fontFamily: TOKENS.font.bold,
-    letterSpacing: 1,
-  },
-  date: {
-    color: "rgba(24,24,25,0.42)",
-    fontSize: 10,
-    fontFamily: TOKENS.font.medium,
-  },
-  title: {
-    color: "#181819",
-    fontSize: 14,
-    lineHeight: 18,
-    fontFamily: TOKENS.font.semibold,
-    letterSpacing: -0.15,
-  },
-  body: {
-    color: "rgba(24,24,25,0.58)",
-    fontSize: 12,
-    lineHeight: 17,
-    fontFamily: TOKENS.font.medium,
     marginTop: 2,
   },
-  closeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(24,24,25,0.05)",
-  },
+  content: { flex: 1, paddingTop: 2, paddingRight: 20 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 7 },
+  labelPill: { height: 21, paddingHorizontal: 8, borderRadius: 11, borderWidth: 1, justifyContent: "center" },
+  label: { fontSize: 9, fontFamily: TOKENS.font.bold, letterSpacing: 0.75 },
+  date: { color: "rgba(24,24,25,0.48)", fontSize: 10, fontFamily: TOKENS.font.medium },
+  title: { color: "#181819", fontSize: 15, lineHeight: 20, fontFamily: TOKENS.font.semibold, letterSpacing: -0.2 },
+  body: { color: "rgba(24,24,25,0.62)", fontSize: 12, lineHeight: 18, fontFamily: TOKENS.font.medium, marginTop: 4 },
+  detailRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 10 },
+  detailText: { color: "#181819", fontSize: 12, fontFamily: TOKENS.font.bold },
+  closeBtn: { position: "absolute", right: 10, top: 10, width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(24,24,25,0.06)" },
 });
 
 export const AnnouncementBanner = memo(AnnouncementBannerInner);

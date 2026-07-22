@@ -1,10 +1,10 @@
 import { memo, useCallback } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { TOKENS } from "../../../constants/design-tokens";
+import { FlatList, Pressable, Text, View } from "react-native";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { SampleTripCard, SAMPLE_TRIP_CARD_W } from "./SampleTripCard";
 
-const ITEM_LENGTH = SAMPLE_TRIP_CARD_W + 12;
+const ITEM_LENGTH = SAMPLE_TRIP_CARD_W + 14;
 
 const getItemLayout = (_, index) => ({
   length: ITEM_LENGTH,
@@ -27,25 +27,41 @@ function SampleTripSectionInner({ sampleTrips, onPressTrip, onPressViewAll }) {
   if (!sampleTrips?.length) return null;
 
   return (
-    <View style={styles.section}>
-      <View style={styles.header}>
-        <View style={styles.titleBlock}>
-          <View style={styles.eyebrowRow}>
-            <View style={styles.eyebrowDot} />
-            <Text style={styles.eyebrow}>DÀNH CHO BẠN</Text>
+    <View className="mt-8">
+      {/* Section Header */}
+      <View
+        style={{ paddingHorizontal: TAB_SCREEN_PADDING }}
+        className="mb-3.5 flex-row items-end justify-between"
+      >
+        <View className="flex-1 space-y-0.5">
+          <View className="flex-row items-center space-x-2">
+            <Text className="text-2xl font-bold text-slate-900 tracking-tight">
+              Lịch trình gợi ý
+            </Text>
+            <View className="px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300/60">
+              <Text className="text-[10px] font-extrabold text-amber-800 uppercase">
+                Hot
+              </Text>
+            </View>
           </View>
-          <Text style={styles.title}>Chuyến đi mẫu</Text>
-          <Text style={styles.subtitle}>
-            Clone hành trình đẹp từ cộng đồng
+          <Text className="text-xs font-medium text-slate-500">
+            Khám phá Cần Thơ trọn vẹn cùng các gợi ý tối ưu
           </Text>
         </View>
+
         {onPressViewAll ? (
-          <Pressable onPress={onPressViewAll} hitSlop={8} style={styles.viewAll}>
-            <Text style={styles.viewAllText}>Xem tất cả</Text>
+          <Pressable
+            onPress={onPressViewAll}
+            hitSlop={8}
+            className="flex-row items-center space-x-1.5 px-3 py-1.5 rounded-full bg-slate-100 active:bg-slate-200"
+          >
+            <Text className="text-xs font-bold text-slate-800">Tất cả</Text>
+            <MaterialIconsRounded name="arrow-forward" size={15} color="#1E293B" />
           </Pressable>
         ) : null}
       </View>
 
+      {/* Horizontal Cards Carousel */}
       <FlatList
         data={sampleTrips}
         renderItem={renderItem}
@@ -55,75 +71,13 @@ function SampleTripSectionInner({ sampleTrips, onPressTrip, onPressViewAll }) {
         snapToInterval={ITEM_LENGTH}
         decelerationRate="fast"
         getItemLayout={getItemLayout}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={{
+          paddingHorizontal: Math.max(0, TAB_SCREEN_PADDING),
+        }}
+        ItemSeparatorComponent={() => <View className="w-3.5" />}
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  section: {
-    marginTop: 28,
-  },
-  header: {
-    paddingHorizontal: TAB_SCREEN_PADDING,
-    marginBottom: 14,
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    gap: 14,
-  },
-  titleBlock: {
-    flex: 1,
-  },
-  eyebrowRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 3,
-  },
-  eyebrowDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#007BFF",
-  },
-  eyebrow: {
-    color: "rgba(24,24,25,0.42)",
-    fontSize: 10,
-    fontFamily: TOKENS.font.bold,
-    letterSpacing: 1.2,
-  },
-  title: {
-    color: "#181819",
-    fontSize: 23,
-    lineHeight: 28,
-    fontFamily: TOKENS.font.heading,
-    letterSpacing: -0.6,
-  },
-  subtitle: {
-    color: "rgba(24,24,25,0.48)",
-    fontSize: 12,
-    fontFamily: TOKENS.font.medium,
-    marginTop: 1,
-  },
-  viewAll: {
-    height: 32,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-    backgroundColor: "rgba(0,123,255,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  viewAllText: {
-    color: "#007BFF",
-    fontSize: 13,
-    fontFamily: TOKENS.font.semibold,
-  },
-  listContent: {
-    paddingHorizontal: Math.max(0, TAB_SCREEN_PADDING - 4),
-    gap: 12,
-  },
-});
 
 export const SampleTripSection = memo(SampleTripSectionInner);

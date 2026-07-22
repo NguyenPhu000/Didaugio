@@ -101,13 +101,14 @@ function ViewMoreButton({ onPress }) {
     <Pressable
       haptic="light"
       onPress={onPress}
-      className="w-[148px] h-[190px] rounded-[20px] items-center justify-center bg-slate-100"
+      className="w-[148px] h-[190px] rounded-[20px] items-center justify-center"
+      style={{ backgroundColor: "#ECE7DE", borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(24,24,25,0.14)" }}
     >
-      <View className="w-12 h-12 rounded-full bg-white items-center justify-center shadow-sm">
+      <View className="w-12 h-12 rounded-full items-center justify-center" style={{ backgroundColor: "#181819" }}>
         <MaterialIconsRounded
           name="arrow-forward"
           size={20}
-          color={APPLE_THEME.text}
+          color="#FFFFFF"
         />
       </View>
     </Pressable>
@@ -156,7 +157,7 @@ function CategoryPlacesSectionInner({
             <MaterialCommunityIcons
               name={categoryIcon}
               size={16}
-              color={APPLE_THEME.focusBlue}
+              color="#181819"
             />
           </View>
           <Text style={styles.headerTitle} numberOfLines={1}>
@@ -191,9 +192,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: TAB_SCREEN_PADDING,
     marginBottom: 16,
-    paddingBottom: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.06)",
+    paddingBottom: 0,
   },
   headerTitleGroup: {
     flexDirection: "row",
@@ -207,7 +206,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,113,227,0.08)",
+    backgroundColor: "#ECE7DE",
   },
   headerTitle: {
     fontSize: 20,

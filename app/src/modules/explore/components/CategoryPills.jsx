@@ -56,8 +56,8 @@ const PillItem = memo(function PillItem({
       style={[
         animatedStyle,
         {
-          backgroundColor: isActive ? APPLE_THEME.focusBlue : APPLE_THEME.surface,
-          borderColor: isActive ? APPLE_THEME.focusBlue : APPLE_THEME.border,
+          backgroundColor: isActive ? "#181819" : "#FDFCF9",
+          borderColor: isActive ? "#181819" : "rgba(24,24,25,0.16)",
           borderCurve: "continuous",
         },
         isActive
