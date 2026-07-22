@@ -57,11 +57,7 @@ export default function LoginScreen() {
     >
       <StatusBar style="light" />
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      >
+      <View className="flex-1">
         <ScrollView
           bounces={true}
           keyboardShouldPersistTaps="handled"
@@ -284,7 +280,7 @@ export default function LoginScreen() {
             </View>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     </GridBackground>
   );
 }

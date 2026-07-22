@@ -20,7 +20,7 @@ const errorHandler = (err, req, res, next) => {
     return res.status(400).json({
       success: false,
       data: null,
-      message: firstError?.message || "Loi validation",
+      message: firstError?.message || "Lỗi dữ liệu không hợp lệ",
       errorCode: ERROR_CODES.VALIDATION_ERROR,
       errors:
         err.errors?.map((e) => ({
@@ -61,7 +61,7 @@ const errorHandler = (err, req, res, next) => {
     return res.status(400).json({
       success: false,
       data: null,
-      message: "Du lieu da ton tai",
+      message: "Dữ liệu đã tồn tại trong hệ thống",
       errorCode: ERROR_CODES.DUPLICATE_ERROR,
     });
   }
@@ -70,7 +70,7 @@ const errorHandler = (err, req, res, next) => {
     return res.status(404).json({
       success: false,
       data: null,
-      message: "Khong tim thay du lieu",
+      message: "Không tìm thấy dữ liệu yêu cầu",
       errorCode: ERROR_CODES.NOT_FOUND,
     });
   }

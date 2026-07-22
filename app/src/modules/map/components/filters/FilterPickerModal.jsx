@@ -6,8 +6,9 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
 } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import {
   BottomSheetBackdrop,
@@ -36,7 +37,18 @@ const FilterPickerModal = memo(
     const sheetRef = useRef(null);
     const visibleRef = useRef(visible);
     const dismissFromStateRef = useRef(false);
+    const [searchQuery, setSearchQuery] = useState("");
     const snapPoints = useMemo(() => ["64%", "82%"], []);
+    const isWebAreaFilter = Platform.OS === "web" && activeFilterGroup === "area";
+    const normalizeSearchText = useCallback(
+      (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("vi-VN"),
+      [],
+    );
+    const visibleOptions = useMemo(() => {
+      if (!isWebAreaFilter || !searchQuery.trim()) return options;
+      const query = normalizeSearchText(searchQuery.trim());
+      return options.filter((option) => normalizeSearchText(option.label).includes(query));
+    }, [isWebAreaFilter, normalizeSearchText, options, searchQuery]);
 
     useImperativeHandle(ref, () => sheetRef.current);
 
@@ -85,6 +97,10 @@ const FilterPickerModal = memo(
       },
       [onSelectOption],
     );
+
+    useEffect(() => {
+      setSearchQuery("");
+    }, [activeFilterGroup]);
 
     return (
       <BottomSheetModal
@@ -159,6 +175,29 @@ const FilterPickerModal = memo(
           })}
         </View>
 
+        {isWebAreaFilter ? (
+          <View className="px-5 pb-3">
+            <View className="flex-row items-center rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5">
+              <MaterialIconsRounded name="search" size={19} color="#64748B" />
+              <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Tìm phường, xã, đặc khu"
+                placeholderTextColor="#94A3B8"
+                accessibilityLabel="Tìm kiếm phường xã"
+                autoCapitalize="none"
+                autoCorrect={false}
+                className="ml-2 flex-1 text-[14px] text-slate-800"
+              />
+              {searchQuery ? (
+                <Pressable onPress={() => setSearchQuery("")} hitSlop={8} accessibilityLabel="Xóa tìm kiếm">
+                  <MaterialIconsRounded name="close" size={18} color="#64748B" />
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+
         <BottomSheetScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
@@ -169,7 +208,14 @@ const FilterPickerModal = memo(
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {options.map((option) => (
+          {visibleOptions.length === 0 ? (
+            <View className="items-center justify-center px-6 py-16">
+              <MaterialIconsRounded name="search-off" size={34} color="#CBD5E1" />
+              <Text className="mt-3 text-center text-[14px] font-medium text-slate-500">
+                Không tìm thấy phường/xã phù hợp
+              </Text>
+            </View>
+          ) : visibleOptions.map((option) => (
             <Pressable
               key={option.key}
               onPress={() => handleSelectOption(option.value)}

@@ -146,7 +146,7 @@ export class TripExecutionService {
     const tripPlan = await this.resolveTripPlan(userId, tripId);
     if (!tripPlan) {
       throw new ServiceError(
-        "Khong tim thay hanh trinh du lich hoac ban khong co quyen truy cap",
+        "Không tìm thấy hành trình du lịch hoặc bạn không có quyền truy cập",
         404,
         ERROR_CODES.NOT_FOUND,
       );

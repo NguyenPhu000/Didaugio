@@ -30,25 +30,32 @@ const generateSlug = (name) => {
 };
 
 /**
- * Kiểm tra slug unique
+ * Kiểm tra slug unique (Tối ưu hóa: chỉ dùng 1 query duy nhất để lấy danh sách slug trùng)
  */
 const ensureUniqueSlug = async (baseSlug, excludeId = null) => {
-  let slug = baseSlug;
+  const existingPlaces = await prisma.place.findMany({
+    where: {
+      slug: { startsWith: baseSlug },
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+    select: { slug: true },
+  });
+
+  if (existingPlaces.length === 0) {
+    return baseSlug;
+  }
+
+  const slugSet = new Set(existingPlaces.map((p) => p.slug));
+  if (!slugSet.has(baseSlug)) {
+    return baseSlug;
+  }
+
   let counter = 1;
-
-  while (true) {
-    const existing = await prisma.place.findUnique({
-      where: { slug },
-      select: { id: true },
-    });
-
-    if (!existing || (excludeId && existing.id === excludeId)) {
-      return slug;
-    }
-
-    slug = `${baseSlug}-${counter}`;
+  while (slugSet.has(`${baseSlug}-${counter}`)) {
     counter++;
   }
+
+  return `${baseSlug}-${counter}`;
 };
 
 const calculateDistanceMeters = (lat1, lon1, lat2, lon2) => {

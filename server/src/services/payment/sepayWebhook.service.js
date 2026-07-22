@@ -38,8 +38,16 @@ function extractPaymentCode(rawCode, content) {
  * @returns {{ valid: boolean, error: string|null }}
  */
 export function verifyWebhookSignature(rawBody, signature, timestamp) {
+  const isProduction = process.env.NODE_ENV === "production";
+
   if (!SEPAY_WEBHOOK_SECRET) {
-    // No secret configured — skip verification (dev mode)
+    if (isProduction) {
+      return {
+        valid: false,
+        error: "SEPAY_WEBHOOK_SECRET không được cấu hình trong môi trường Production",
+      };
+    }
+    // No secret configured — skip verification only in non-production mode
     return { valid: true, error: null };
   }
 
