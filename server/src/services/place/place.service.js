@@ -676,12 +676,14 @@ export const createPlace = async (data, userId) => {
 
         // Update thumbnail (first cover image)
         const coverImage = images.find((img) => img.isCover) || images[0];
-        if (coverImage) {
-          const markerUrl = await generateMapMarkerUrl(coverImage.imageData);
+        const coverImageUrl =
+          coverImage?.secureUrl || coverImage?.thumbnailUrl || coverImage?.imageData;
+        if (coverImageUrl) {
+          const markerUrl = await generateMapMarkerUrl(coverImageUrl);
           await tx.place.update({
             where: { id: newPlace.id },
             data: {
-              thumbnail: coverImage.imageData,
+              thumbnail: coverImageUrl,
               markerUrl: markerUrl,
             },
           });

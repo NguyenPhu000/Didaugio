@@ -52,6 +52,7 @@ export const queryKeys = {
   tags: {
     all: () => ["tags"],
     list: () => ["tags", "list"],
+    groups: () => ["tags", "groups"],
     popular: () => ["tags", "popular"],
     detail: (id) => ["tags", "detail", id],
   },

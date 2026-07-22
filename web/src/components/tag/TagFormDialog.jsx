@@ -19,9 +19,14 @@ import {
   DialogTitle,
 } from "@/components/ui/Dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useCreateTag, useUpdateTag } from "@/hooks/queries/useTagQueries";
+import {
+  useCreateTag,
+  useCreateTagGroup,
+  useTagGroups,
+  useUpdateTag,
+} from "@/hooks/queries/useTagQueries";
 import { useToast } from "@/hooks/use-toast";
-import { TAG_TYPES, TAG_COLOR_PRESETS } from "@/constants/tagConstants";
+import { TAG_COLOR_PRESETS } from "@/constants/tagConstants";
 
 /**
  * TAG FORM DIALOG
@@ -32,13 +37,16 @@ export default function TagFormDialog({ open, onClose, tag }) {
   const { t } = useTranslation();
   const createMutation = useCreateTag();
   const updateMutation = useUpdateTag();
+  const createGroupMutation = useCreateTagGroup();
+  const { data: tagGroups = [] } = useTagGroups();
   const { toast } = useToast();
   const loading = createMutation.isPending || updateMutation.isPending;
+  const [newGroupName, setNewGroupName] = useState("");
 
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
-    tagType: "general",
+    tagGroupId: "",
     color: "#6B7280",
     isActive: true,
   });
@@ -48,7 +56,7 @@ export default function TagFormDialog({ open, onClose, tag }) {
       setFormData({
         name: tag.name || "",
         slug: tag.slug || "",
-        tagType: tag.tagType || "general",
+        tagGroupId: String(tag.tagGroupId || tag.tagGroup?.id || ""),
         color: tag.color || "#6B7280",
         isActive: tag.isActive !== undefined ? tag.isActive : true,
       });
@@ -56,12 +64,20 @@ export default function TagFormDialog({ open, onClose, tag }) {
       setFormData({
         name: "",
         slug: "",
-        tagType: "general",
+        tagGroupId: "",
         color: "#6B7280",
         isActive: true,
       });
     }
   }, [tag, open]);
+
+  useEffect(() => {
+    if (tag || formData.tagGroupId) return;
+    const firstActiveGroup = tagGroups.find((group) => group.isActive);
+    if (firstActiveGroup) {
+      setFormData((prev) => ({ ...prev, tagGroupId: String(firstActiveGroup.id) }));
+    }
+  }, [tag, tagGroups, formData.tagGroupId]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -82,15 +98,22 @@ export default function TagFormDialog({ open, onClose, tag }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const tagGroupId = Number(formData.tagGroupId);
+    if (!Number.isInteger(tagGroupId) || tagGroupId <= 0) {
+      toast({ variant: "destructive", title: t("tags.error"), description: "Vui lòng chọn nhóm tag." });
+      return;
+    }
+
     try {
+      const payload = { ...formData, tagGroupId };
       if (tag) {
-        await updateMutation.mutateAsync({ id: tag.id, data: formData });
+        await updateMutation.mutateAsync({ id: tag.id, data: payload });
         toast({
           title: t("tags.success"),
           description: t("tags.tagUpdated"),
         });
       } else {
-        await createMutation.mutateAsync(formData);
+        await createMutation.mutateAsync(payload);
         toast({
           title: t("tags.success"),
           description: t("tags.tagCreated"),
@@ -103,6 +126,25 @@ export default function TagFormDialog({ open, onClose, tag }) {
         title: t("tags.error"),
         description: error.response?.data?.message || error.message,
       });
+    }
+  };
+
+  const handleCreateGroup = async () => {
+    const nameVi = newGroupName.trim();
+    if (!nameVi) return;
+    const slug = nameVi
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\u0111/g, "d")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    try {
+      const group = await createGroupMutation.mutateAsync({ nameVi, slug });
+      setFormData((prev) => ({ ...prev, tagGroupId: String(group.id) }));
+      setNewGroupName("");
+    } catch (error) {
+      toast({ variant: "destructive", title: t("tags.error"), description: error.response?.data?.message || error.message });
     }
   };
 
@@ -145,26 +187,32 @@ export default function TagFormDialog({ open, onClose, tag }) {
             </div>
           </div>
 
-          {/* Tag Type */}
+          {/* Tag group */}
           <div className="space-y-2">
-            <Label htmlFor="tagType">
-              {t("tags.tagType")} <span className="text-destructive">*</span>
+            <Label htmlFor="tagGroupId">
+              Nhóm tag <span className="text-destructive">*</span>
             </Label>
             <Select
-              value={formData.tagType}
-              onValueChange={(val) => handleChange("tagType", val)}
+              value={formData.tagGroupId}
+              onValueChange={(value) => handleChange("tagGroupId", value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder={t("tags.selectTagType")} />
+                <SelectValue placeholder="Chọn nhóm tag" />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(TAG_TYPES).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {t(`tags.types.${value}`, { defaultValue: label })}
+                {tagGroups.filter((group) => group.isActive).map((group) => (
+                  <SelectItem key={group.id} value={String(group.id)}>
+                    {group.nameVi}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex gap-2">
+              <Input value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} placeholder="Tạo nhóm mới" />
+              <Button type="button" variant="outline" onClick={handleCreateGroup} disabled={!newGroupName.trim() || createGroupMutation.isPending}>
+                Tạo nhóm
+              </Button>
+            </div>
           </div>
 
           {/* Color */}

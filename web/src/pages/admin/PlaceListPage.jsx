@@ -80,6 +80,21 @@ import { getTableSerialNumber } from "@/utils/tableSerial";
  * PLACE LIST PAGE - T.I.M STYLE OVERHAUL
  */
 
+const getPlaceCardImageSrc = (place) => {
+  const coverImage = Array.isArray(place?.images)
+    ? place.images.find((image) => image?.isCover) || place.images[0]
+    : null;
+
+  return (
+    place?.thumbnail ||
+    coverImage?.secureUrl ||
+    coverImage?.thumbnailUrl ||
+    coverImage?.imageData ||
+    coverImage?.url ||
+    (typeof coverImage === "string" ? coverImage : null)
+  );
+};
+
 const PlaceListPage = ({
   initialStatus = "all",
   lockStatusFilter = false,
@@ -209,9 +224,23 @@ const PlaceListPage = ({
   }, []);
 
   const handleFilterChange = (key, value) => {
-    const newFilters = { ...filters, [key]: value, page: 1 };
+    const newFilters = {
+      ...filters,
+      [key]: value,
+      // Changing a filter returns to page one; pagination itself must retain
+      // the requested page instead of being reset to one.
+      page: key === "page" ? Number(value) : 1,
+    };
     setFilters(newFilters);
     updateURL(newFilters);
+  };
+
+  const handlePageChange = (nextPage) => {
+    const boundedPage = Math.min(
+      Math.max(1, Number(nextPage) || 1),
+      pagination.totalPages,
+    );
+    if (boundedPage !== filters.page) handleFilterChange("page", boundedPage);
   };
 
   const handleCreate = () => {
@@ -557,10 +586,10 @@ const PlaceListPage = ({
 
                   {/* Image Container */}
                   <div className="h-52 bg-zinc-900 relative overflow-hidden border-b border-zinc-100 dark:border-zinc-800 rounded-t-2xl shrink-0">
-                    {place.images?.[0] ? (
+                    {getPlaceCardImageSrc(place) ? (
                       <>
                         <img
-                          src={place.images[0].imageData || place.images[0]}
+                          src={getPlaceCardImageSrc(place)}
                           className="w-full h-full object-cover grayscale-[0.7] group-hover:grayscale-0 group-hover:scale-110 transition-all duration-700"
                           alt={place.name}
                         />
@@ -739,9 +768,9 @@ const PlaceListPage = ({
                   className="flex flex-col sm:flex-row sm:items-center bg-white border border-black p-3 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all group gap-3 sm:gap-0"
                 >
                   <div className="w-full sm:w-16 sm:h-16 h-36 bg-gray-200 sm:mr-4 shrink-0 relative border border-black">
-                    {place.images?.[0] ? (
+                    {getPlaceCardImageSrc(place) ? (
                       <img
-                        src={place.images[0].imageData || place.images[0]}
+                        src={getPlaceCardImageSrc(place)}
                         className="w-full h-full object-cover"
                         alt={place.name}
                       />
@@ -880,16 +909,16 @@ const PlaceListPage = ({
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                disabled={filters.page === 1}
-                onClick={() => handleFilterChange("page", filters.page - 1)}
+                disabled={pagination.page <= 1}
+                onClick={() => handlePageChange(pagination.page - 1)}
                 className="rounded-none border-black h-8 hover:bg-black hover:text-white"
               >
                 {t("common.previous")}
               </Button>
               <Button
                 variant="outline"
-                disabled={filters.page === pagination.totalPages}
-                onClick={() => handleFilterChange("page", filters.page + 1)}
+                disabled={pagination.page >= pagination.totalPages}
+                onClick={() => handlePageChange(pagination.page + 1)}
                 className="rounded-none border-black h-8 hover:bg-black hover:text-white"
               >
                 {t("common.next")}

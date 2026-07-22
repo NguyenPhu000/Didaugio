@@ -13,6 +13,19 @@ export function useTags(params = {}) {
   );
 }
 
+export function useTagGroups() {
+  return useApiQuery(queryKeys.tags.groups(), () => tagService.getAllTagGroups());
+}
+
+export function useCreateTagGroup() {
+  const queryClient = useQueryClient();
+  return useApiMutation((data) => tagService.createTagGroup(data), {
+    onSuccess: () => {
+      invalidateQueries(queryClient, [queryKeys.tags.groups()]);
+    },
+  });
+}
+
 /**
  * Fetch popular tags.
  */
