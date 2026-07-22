@@ -67,5 +67,8 @@ export function getResourceSlotAvailability({ availability, resourceId, date, ti
 
 export function buildBookingPayload({ bookingModel, resourceId, ...payload }) {
   const normalizedResourceId = bookingModel === "resource" ? toPositiveInteger(resourceId) : null;
-  return { ...payload, resourceId: normalizedResourceId };
+  return {
+    ...payload,
+    ...(normalizedResourceId ? { resourceId: normalizedResourceId } : {}),
+  };
 }

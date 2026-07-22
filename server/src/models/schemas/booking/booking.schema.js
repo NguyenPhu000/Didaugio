@@ -11,7 +11,10 @@ export const serviceBookingParamSchema = z.object({
 export const createBookingSchema = z.object({
   placeId: z.coerce.number().int().positive().optional(),
   serviceId: z.coerce.number().int().positive(),
-  resourceId: z.coerce.number().int().positive().optional(),
+  resourceId: z.preprocess(
+    (value) => (value === null || value === "" ? undefined : value),
+    z.coerce.number().int().positive().optional(),
+  ),
   quantity: z.coerce.number().int().min(1).max(20).default(1),
   useDate: z
     .string()
