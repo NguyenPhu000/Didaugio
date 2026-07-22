@@ -8,7 +8,6 @@ import {
   addDestinationSchema,
   updateDestinationSchema,
   moveDestinationSchema,
-  reorderDestinationsSchema,
   linkBookingToTripSchema,
   reorderTripStopsSchema,
   generateTripSchema,
@@ -81,33 +80,21 @@ router.patch(
 router.delete("/trips/:id", authenticate, tripController.deleteTrip);
 router.post("/trips/:id/duplicate", authenticate, tripController.duplicateTrip);
 router.post(
-  "/trips/:id/destinations",
+  "/trips/:id/stops",
   authenticate,
   validateBody(addDestinationSchema),
   tripController.addDestination,
 );
 router.delete(
-  "/trips/:id/destinations/:destId",
+  "/trips/:id/stops/:destId",
   authenticate,
   tripController.removeDestination,
 );
 router.patch(
-  "/trips/:id/destinations/reorder",
-  authenticate,
-  validateBody(reorderDestinationsSchema),
-  tripController.reorderDestinations,
-);
-router.patch(
-  "/trips/:id/destinations/:destId",
+  "/trips/:id/stops/:destId",
   authenticate,
   validateBody(updateDestinationSchema),
   tripController.updateDestination,
-);
-router.patch(
-  "/trips/:id/destinations/:destId/move",
-  authenticate,
-  validateBody(moveDestinationSchema),
-  tripController.moveDestination,
 );
 router.post(
   "/trips/:id/share",

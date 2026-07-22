@@ -243,6 +243,8 @@ export function useCreateTripCached() {
   return {
     mutateAsync: async (tripData) => {
       const pendingActionsKey = OFFLINE_STORAGE_KEYS.PENDING_TRIP_ACTIONS;
+      const clientRequestId = tripData.clientRequestId || createRandomId("trip-create");
+      const idempotentTripData = { ...tripData, clientRequestId };
 
       const queuePending = async (type, data) => {
         try {
@@ -259,16 +261,18 @@ export function useCreateTripCached() {
       };
 
       if (!isConnected) {
-        const tempId = await queuePending("CREATE_TRIP", tripData);
+        const tempId = await queuePending("CREATE_TRIP", idempotentTripData);
         return { success: true, pending: true, tempId };
       }
 
       try {
-        const response = await createTripApi(tripData);
+        const response = await createTripApi(idempotentTripData);
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
         return response;
       } catch (error) {
-        await queuePending("CREATE_TRIP", tripData);
+        const isNetworkError = !(error?.status || error?.response?.status)
+          && (error?.message === "Network Error" || error?.code === "ERR_NETWORK" || !error?.response);
+        if (isNetworkError) await queuePending("CREATE_TRIP", idempotentTripData);
         throw error;
       }
     },
@@ -313,7 +317,9 @@ export function useDeleteTripCached() {
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
         return response;
       } catch (error) {
-        await queuePending("DELETE_TRIP", tripId);
+        const isNetworkError = !(error?.status || error?.response?.status)
+          && (error?.message === "Network Error" || error?.code === "ERR_NETWORK" || !error?.response);
+        if (isNetworkError) await queuePending("DELETE_TRIP", tripId);
         throw error;
       }
     },
@@ -379,13 +385,18 @@ export function useOfflineSync() {
         }
 
         const remainingActions = [];
+        const idMapRaw = await safeAsyncStorage.getItem(OFFLINE_STORAGE_KEYS.TRIP_ID_MAP);
+        const idMap = idMapRaw ? JSON.parse(idMapRaw) : {};
 
         for (const action of actions) {
           try {
             if (action.type === "CREATE_TRIP") {
-              await createTripApi(action.data);
+              const response = await createTripApi(action.data);
+              const serverId = response?.data?.id;
+              if (action.tempId && serverId) idMap[action.tempId] = serverId;
             } else if (action.type === "DELETE_TRIP") {
-              const idToDelete = action.data?.id || action.data;
+              const queuedId = action.data?.id || action.data;
+              const idToDelete = idMap[String(queuedId)] || queuedId;
               await deleteTripApi(idToDelete);
             }
           } catch (err) {
@@ -395,6 +406,11 @@ export function useOfflineSync() {
             }
           }
         }
+
+        await safeAsyncStorage.setItem(
+          OFFLINE_STORAGE_KEYS.TRIP_ID_MAP,
+          JSON.stringify(idMap),
+        );
 
         if (remainingActions.length > 0) {
           await safeAsyncStorage.setItem(pendingActionsKey, JSON.stringify(remainingActions));

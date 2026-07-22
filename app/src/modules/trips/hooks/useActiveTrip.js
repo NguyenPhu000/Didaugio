@@ -1,24 +1,102 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 import { useQuery } from "@tanstack/react-query";
+import NetInfo from "@react-native-community/netinfo";
 import {
   getTripDetailApi,
   getTripSessionApi,
   syncTripSessionApi,
-  endTripSessionApi,
 } from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
+import { OFFLINE_STORAGE_KEYS } from "../../../constants/storage";
 import { normalizeServerTripSession } from "./activeTripSession";
 
 const ACTIVE_TRIP_KEY = "ACTIVE_TRIP_ID";
 const VISITED_PREFIX = "visitedDestinations_";
 const PAUSED_PREFIX = "pausedTrip_";
+const SESSION_OUTBOX_KEY = OFFLINE_STORAGE_KEYS.TRIP_SESSION_OUTBOX;
 
 /** Bán kính nhận diện đã đến nơi (mét). */
 export const ARRIVAL_RADIUS_M = 50;
 
 const visitedKey = (tripId) => `${VISITED_PREFIX}${tripId}`;
 const pausedKey = (tripId) => `${PAUSED_PREFIX}${tripId}`;
+
+const generateOperationId = () =>
+  `op_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+async function readSessionOutbox() {
+  try {
+    const raw = await safeAsyncStorage.getItem(SESSION_OUTBOX_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeSessionOutbox(items) {
+  if (items.length === 0) return safeAsyncStorage.removeItem(SESSION_OUTBOX_KEY);
+  return safeAsyncStorage.setItem(SESSION_OUTBOX_KEY, JSON.stringify(items));
+}
+
+let sessionFlushPromise = null;
+
+async function runSessionOutboxFlush() {
+  const queue = await readSessionOutbox();
+  if (queue.length === 0) return;
+  const remaining = [...queue];
+  while (remaining.length > 0) {
+    const operation = remaining[0];
+    try {
+      if (operation.baseVersion == null) {
+        const session = await getTripSessionApi(operation.tripId);
+        operation.baseVersion = Number(session?.data?.clientStateVersion || 0);
+        await writeSessionOutbox(remaining);
+      }
+      await syncTripSessionApi(operation.tripId, {
+        ...operation.payload,
+        operationId: operation.operationId,
+        baseVersion: operation.baseVersion,
+      });
+      remaining.shift();
+      await writeSessionOutbox(remaining);
+    } catch (error) {
+      const status = error?.status || error?.response?.status;
+      if (status === 409) {
+        operation.baseVersion = null;
+        await writeSessionOutbox(remaining);
+      } else if (status >= 400 && status < 500) {
+        remaining.shift();
+        await writeSessionOutbox(remaining);
+        continue;
+      }
+      break;
+    }
+  }
+}
+
+async function flushSessionOutbox() {
+  if (!sessionFlushPromise) {
+    sessionFlushPromise = runSessionOutboxFlush().finally(() => {
+      sessionFlushPromise = null;
+    });
+  }
+  return sessionFlushPromise;
+}
+
+async function enqueueSessionOperation(tripId, payload) {
+  const queue = await readSessionOutbox();
+  queue.push({
+    tripId: String(tripId),
+    operationId: generateOperationId(),
+    baseVersion: null,
+    payload,
+    createdAt: Date.now(),
+  });
+  await writeSessionOutbox(queue);
+  await flushSessionOutbox();
+}
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 
@@ -134,6 +212,13 @@ export function useActiveTrip() {
 
   useEffect(() => {
     void refreshActiveTripId();
+    void flushSessionOutbox();
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      if (state.isConnected && state.isInternetReachable !== false) {
+        void flushSessionOutbox();
+      }
+    });
+    return unsubscribe;
   }, [refreshActiveTripId]);
 
   const { data: activeTrip } = useQuery({
@@ -175,11 +260,7 @@ export function useActiveTrip() {
     setVisitedIds([]);
     setIsPaused(false);
 
-    try {
-      await syncTripSessionApi(tripId, { status: "active", visitedIds: [] });
-    } catch {
-      // Allow offline fallback
-    }
+    await enqueueSessionOperation(tripId, { status: "active", visitedIds: [] });
   }, []);
 
   const markArrived = useCallback(
@@ -197,15 +278,11 @@ export function useActiveTrip() {
         return next;
       });
 
-      try {
-        await syncTripSessionApi(activeTripId, {
-          status: "active",
-          currentStopId: destId,
-          visitedIds: nextVisitedIds,
-        });
-      } catch {
-        // Allow offline fallback
-      }
+      await enqueueSessionOperation(activeTripId, {
+        status: "active",
+        currentStopId: destId,
+        visitedIds: nextVisitedIds,
+      });
     },
     [activeTripId],
   );
@@ -215,11 +292,7 @@ export function useActiveTrip() {
     await safeAsyncStorage.setItem(pausedKey(activeTripId), "true");
     setIsPaused(true);
 
-    try {
-      await syncTripSessionApi(activeTripId, { status: "paused", visitedIds });
-    } catch {
-      // Allow offline fallback
-    }
+    await enqueueSessionOperation(activeTripId, { status: "paused", visitedIds });
   }, [activeTripId, visitedIds]);
 
   const resumeActiveTrip = useCallback(async () => {
@@ -227,28 +300,20 @@ export function useActiveTrip() {
     await safeAsyncStorage.removeItem(pausedKey(activeTripId));
     setIsPaused(false);
 
-    try {
-      await syncTripSessionApi(activeTripId, { status: "active", visitedIds });
-    } catch {
-      // Allow offline fallback
-    }
+    await enqueueSessionOperation(activeTripId, { status: "active", visitedIds });
   }, [activeTripId, visitedIds]);
 
   const exitActiveTrip = useCallback(async () => {
     const tripIdToExit = activeTripId;
     if (tripIdToExit) {
       await safeAsyncStorage.removeItem(pausedKey(tripIdToExit));
-      try {
-        await endTripSessionApi(tripIdToExit, { status: "completed" });
-      } catch {
-        // Allow offline fallback
-      }
+      await enqueueSessionOperation(tripIdToExit, { status: "completed", visitedIds });
     }
     await clearActiveTripId();
     setActiveTripIdState(null);
     setVisitedIds([]);
     setIsPaused(false);
-  }, [activeTripId]);
+  }, [activeTripId, visitedIds]);
 
   const isLastDestination = useMemo(() => {
     if (!activeTrip?.destinations?.length || !nextDestination) return false;

@@ -1,6 +1,15 @@
 import prisma from "../../config/prismaClient.js";
 import ServiceError from "../../utils/serviceError.js";
 import { ERROR_CODES } from "../../config/messages.js";
+import { serializeTripPlan } from "../trip/trip.service.js";
+
+const publicTripWhere = { metadata: { path: ["isPublic"], equals: true } };
+const sampleTripInclude = {
+  stops: {
+    orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
+    include: { place: { include: { category: true, images: { take: 2, orderBy: [{ isCover: "desc" }, { id: "asc" }] } } } },
+  },
+};
 
 /**
  * Lấy toàn bộ data cần thiết cho Explore landing screen trong 1 request duy nhất.
@@ -52,50 +61,11 @@ export const getExploreLandingData = async () => {
     }),
 
     // 3. Lịch trình mẫu công khai — destinations dùng đúng tên relation từ schema
-    prisma.trip.findMany({
-      where: { isPublic: true },
+    prisma.tripPlan.findMany({
+      where: publicTripWhere,
       take: 6,
-      select: {
-        id: true,
-        title: true,
-        thumbnail: true,
-        totalDays: true,
-        estimatedCost: true,
-        travelStyle: true,
-        cloneCount: true,
-        destinations: {
-          orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-          select: {
-            id: true,
-            dayNumber: true,
-            order: true,
-            startTime: true,
-            endTime: true,
-            place: {
-              select: {
-                id: true,
-                name: true,
-                address: true,
-                thumbnail: true,
-                latitude: true,
-                longitude: true,
-                category: { select: { id: true, name: true } },
-                images: {
-                  take: 2,
-                  orderBy: [{ isCover: "desc" }, { id: "asc" }],
-                  select: {
-                    secureUrl: true,
-                    thumbnailUrl: true,
-                    imageData: true,
-                    isCover: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      orderBy: { cloneCount: "desc" },
+      include: sampleTripInclude,
+      orderBy: { updatedAt: "desc" },
     }),
 
     // 4. Thông báo hệ thống mới nhất (targetType = "all", status = "sent")
@@ -115,7 +85,7 @@ export const getExploreLandingData = async () => {
     }),
   ]);
 
-  return { banners, featuredPlaces, sampleTrips, announcement };
+  return { banners, featuredPlaces, sampleTrips: sampleTrips.map((trip) => serializeTripPlan(trip)), announcement };
 };
 
 /**
@@ -168,51 +138,13 @@ export const getFeaturedPlaces = async ({ limit = 8 } = {}) => {
  * Lấy danh sách lịch trình mẫu công khai
  */
 export const getSampleTrips = async ({ limit = 6 } = {}) => {
-  return prisma.trip.findMany({
-    where: { isPublic: true },
+  const plans = await prisma.tripPlan.findMany({
+    where: publicTripWhere,
     take: Math.min(limit, 12),
-    select: {
-      id: true,
-      title: true,
-      thumbnail: true,
-      totalDays: true,
-      estimatedCost: true,
-      travelStyle: true,
-      cloneCount: true,
-      destinations: {
-        orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-        select: {
-          id: true,
-          dayNumber: true,
-          order: true,
-          startTime: true,
-          endTime: true,
-          place: {
-            select: {
-              id: true,
-              name: true,
-              address: true,
-              thumbnail: true,
-              latitude: true,
-              longitude: true,
-              category: { select: { id: true, name: true } },
-              images: {
-                take: 2,
-                orderBy: [{ isCover: "desc" }, { id: "asc" }],
-                select: {
-                  secureUrl: true,
-                  thumbnailUrl: true,
-                  imageData: true,
-                  isCover: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    orderBy: { cloneCount: "desc" },
+    include: sampleTripInclude,
+    orderBy: { updatedAt: "desc" },
   });
+  return plans.map((trip) => serializeTripPlan(trip));
 };
 
 /**

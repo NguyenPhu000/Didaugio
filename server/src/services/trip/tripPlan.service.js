@@ -12,6 +12,10 @@ import {
   isAdminOrSuperAdminRole,
 } from "../../config/constants.js";
 import ServiceError from "../../utils/serviceError.js";
+import {
+  assertTripAccess,
+  CAPABILITIES,
+} from "./tripAccessPolicy.service.js";
 
 const TEMP_SEQUENCE_BASE = 100000;
 
@@ -81,9 +85,8 @@ const canManageTrip = (trip, actorUserId, actor) => {
 };
 
 const toLegacyDestination = (stop) => {
-  const legacyDestinationId = stop.metadata?.legacyDestinationId ?? null;
   return {
-    id: legacyDestinationId ?? stop.id,
+    id: stop.id,
     stopId: stop.id,
     tripId: stop.tripId,
     placeId: stop.placeId,
@@ -107,28 +110,28 @@ const toLegacyDestination = (stop) => {
   };
 };
 
-const normalizeTripPlanDetail = (tripPlan, { legacyTrip = null, isSaved = false } = {}) => ({
-  id: legacyTrip?.id ?? tripPlan.id,
+const normalizeTripPlanDetail = (tripPlan, { isSaved = false } = {}) => ({
+  id: tripPlan.id,
   tripPlanId: tripPlan.id,
   userId: tripPlan.userId,
   title: tripPlan.title,
   description: tripPlan.description,
-  thumbnail: legacyTrip?.thumbnail ?? tripPlan.coverImage,
+  thumbnail: tripPlan.coverImage,
   coverImage: tripPlan.coverImage,
   startDate: tripPlan.startDate,
   endDate: tripPlan.endDate,
   totalDays: tripPlan.totalDays,
-  totalDistance: legacyTrip?.totalDistance ?? null,
+  totalDistance: tripPlan.totalDistanceM == null ? null : Number((tripPlan.totalDistanceM / 1000).toFixed(2)),
   totalDistanceM: tripPlan.totalDistanceM,
   estimatedCost: tripPlan.estimatedCost,
-  travelStyle: legacyTrip?.travelStyle ?? null,
-  groupSize: legacyTrip?.groupSize ?? 1,
-  isAiGenerated: legacyTrip?.isAiGenerated ?? tripPlan.source === TRIP_PLAN_SOURCE.AI_GENERATED,
-  aiPrompt: legacyTrip?.aiPrompt ?? null,
+  travelStyle: tripPlan.metadata?.travelStyle ?? null,
+  groupSize: tripPlan.metadata?.groupSize ?? 1,
+  isAiGenerated: tripPlan.source === TRIP_PLAN_SOURCE.AI_GENERATED,
+  aiPrompt: tripPlan.metadata?.aiPrompt ?? null,
   status: tripPlan.status,
-  isPublic: legacyTrip?.isPublic ?? false,
-  viewCount: legacyTrip?.viewCount ?? 0,
-  cloneCount: legacyTrip?.cloneCount ?? 0,
+  isPublic: tripPlan.metadata?.isPublic === true,
+  viewCount: tripPlan.metadata?.viewCount ?? 0,
+  cloneCount: tripPlan.metadata?.cloneCount ?? 0,
   source: tripPlan.source,
   metadata: tripPlan.metadata,
   createdAt: tripPlan.createdAt,
@@ -142,9 +145,7 @@ const findStopByClientId = (stops, clientId) => {
   const id = Number(clientId);
   if (!Number.isInteger(id) || id <= 0) return null;
   return (
-    stops.find((stop) => Number(stop.id) === id) ||
-    stops.find((stop) => Number(stop.metadata?.legacyDestinationId) === id) ||
-    null
+    stops.find((stop) => Number(stop.id) === id) || null
   );
 };
 
@@ -185,6 +186,8 @@ export const makeTripPlanService = (prismaClient = prisma) => {
       },
     });
 
+  /* Legacy request-time resolver retained only in git history; disabled by the
+     canonical cutover. The executable resolver is defined below this block.
   const createShadowTripPlan = async (tx, legacyTrip) => {
     const startDate = legacyTrip.startDate || new Date();
     const endDate = legacyTrip.endDate || startDate;
@@ -257,9 +260,12 @@ export const makeTripPlanService = (prismaClient = prisma) => {
     return getTripPlanWithStops(tx, plan.id);
   };
 
-  const resolveTripPlan = async (tx, { tripId, actorUserId, includeStops = false }) => {
+  const resolveTripPlan = async (
+    tx,
+    { tripId, actorUserId, includeStops = false, capability = CAPABILITIES.EDIT },
+  ) => {
     let tripPlan = await tx.tripPlan.findFirst({
-      where: { id: tripId, userId: actorUserId },
+      where: { id: tripId },
       ...(includeStops
         ? {
             include: {
@@ -271,6 +277,10 @@ export const makeTripPlanService = (prismaClient = prisma) => {
           }
         : {}),
     });
+
+    // Hard cutover: only TripPlan.id is accepted. Migration/backfill is offline.
+    assertTripAccess(actorUserId, tripPlan, capability);
+    return { tripPlan, legacyTrip: null };
 
     if (tripPlan) {
       return { tripPlan, legacyTrip: null };
@@ -341,26 +351,39 @@ export const makeTripPlanService = (prismaClient = prisma) => {
     }
   };
 
+  */
+
+  const resolveTripPlan = async (
+    tx,
+    { tripId, actorUserId, includeStops = false, capability = CAPABILITIES.EDIT },
+  ) => {
+    const tripPlan = await tx.tripPlan.findUnique({
+      where: { id: tripId },
+      ...(includeStops ? { include: { stops: {
+        orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
+        include: { place: { select: TRIP_PLAN_PLACE_SELECT } },
+      } } } : {}),
+    });
+    assertTripAccess(actorUserId, tripPlan, capability);
+    return { tripPlan };
+  };
+
   const getTripDetail = async ({ tripId, actorUserId }) =>
     prismaClient.$transaction(async (tx) => {
       const { tripPlan, legacyTrip } = await resolveTripPlan(tx, {
         tripId,
         actorUserId,
         includeStops: true,
+        capability: CAPABILITIES.VIEW,
       });
 
       if (!tripPlan) return null;
 
-      const saved = legacyTrip
-        ? await tx.savedTrip.findUnique({
-            where: { userId_tripId: { userId: actorUserId, tripId: legacyTrip.id } },
-          })
-        : null;
-
-      return normalizeTripPlanDetail(tripPlan, {
-        legacyTrip,
-        isSaved: !!saved,
+      const saved = actorUserId == null ? null : await tx.savedTrip.findUnique({
+        where: { userId_tripId: { userId: actorUserId, tripId: tripPlan.id } },
       });
+
+      return normalizeTripPlanDetail(tripPlan, { isSaved: !!saved });
     });
 
   const linkBookingToTrip = async ({

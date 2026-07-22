@@ -61,8 +61,12 @@ export function sortDestinations(destinations = []) {
     if ((a.dayNumber || 0) !== (b.dayNumber || 0)) {
       return (a.dayNumber || 0) - (b.dayNumber || 0);
     }
-    if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
-    return (a.order || 0) - (b.order || 0);
+    const aTime = a.startTime || a.arrivalTime;
+    const bTime = b.startTime || b.arrivalTime;
+    if (aTime && bTime) return aTime.localeCompare(bTime);
+    const aOrder = a.order ?? a.sequence ?? 0;
+    const bOrder = b.order ?? b.sequence ?? 0;
+    return aOrder - bOrder;
   });
 }
 

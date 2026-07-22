@@ -1384,13 +1384,25 @@ CREATE INDEX IF NOT EXISTS "reviews_is_seeded_idx" ON "reviews"("is_seeded");
 CREATE INDEX IF NOT EXISTS "reviews_status_idx" ON "reviews"("status");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "trip_destinations_trip_id_idx" ON "trip_destinations"("trip_id");
+DO $$ BEGIN
+  IF to_regclass('public.trip_destinations') IS NOT NULL THEN
+    CREATE INDEX IF NOT EXISTS "trip_destinations_trip_id_idx" ON "trip_destinations"("trip_id");
+  END IF;
+END $$;
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "trip_destinations_place_id_idx" ON "trip_destinations"("place_id");
+DO $$ BEGIN
+  IF to_regclass('public.trip_destinations') IS NOT NULL THEN
+    CREATE INDEX IF NOT EXISTS "trip_destinations_place_id_idx" ON "trip_destinations"("place_id");
+  END IF;
+END $$;
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "trips_is_public_clone_count_idx" ON "trips"("is_public", "clone_count" DESC);
+DO $$ BEGIN
+  IF to_regclass('public.trips') IS NOT NULL THEN
+    CREATE INDEX IF NOT EXISTS "trips_is_public_clone_count_idx" ON "trips"("is_public", "clone_count" DESC);
+  END IF;
+END $$;
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "user_checkins_user_id_idx" ON "user_checkins"("user_id");
@@ -1511,6 +1523,12 @@ BEGIN
       ('active_sessions', 'active_sessions_user_id_fkey', 'FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE')
     ) AS definitions(table_name, constraint_name, definition)
   LOOP
+    -- Later canonical TripPlan migration intentionally repoints these two
+    -- foreign keys. Re-running reconciliation must not undo that cutover.
+    IF to_regclass('public.trip_legacy_maps') IS NOT NULL
+       AND fk.constraint_name IN ('saved_trips_trip_id_fkey', 'events_trip_id_fkey') THEN
+      CONTINUE;
+    END IF;
     existing_constraint_oid := NULL;
     SELECT c.oid
       INTO existing_constraint_oid

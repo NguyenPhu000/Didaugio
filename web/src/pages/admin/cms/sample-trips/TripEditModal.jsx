@@ -119,9 +119,10 @@ function TripEditModalContent({ open, onClose, item, onSave, loading }) {
   const [draftDestinations, setDraftDestinations] = useState([]);
 
   const totalDays = parseInt(form.totalDays, 10) || 1;
+  const rawDestinations = tripDetail?.stops || tripDetail?.destinations || [];
   const savedDestinations = useMemo(
-    () => sortDestinations(tripDetail?.destinations || []),
-    [tripDetail?.destinations],
+    () => sortDestinations(rawDestinations),
+    [rawDestinations],
   );
   const visibleDestinations = isEdit ? savedDestinations : draftDestinations;
   const currentDayDestinations = useMemo(

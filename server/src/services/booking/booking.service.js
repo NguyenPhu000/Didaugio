@@ -404,22 +404,11 @@ const findLinkedTripByBookingCode = (destinations = [], bookingCode) => {
 const attachLinkedTripForBookings = async (bookings = [], userId) => {
   if (!Array.isArray(bookings) || bookings.length === 0) return [];
 
-  const placeIds = Array.from(
-    new Set(
-      bookings
-        .map((item) => Number(item?.service?.place?.id))
-        .filter((id) => Number.isInteger(id) && id > 0),
-    ),
-  );
-
-  if (placeIds.length === 0) {
-    return bookings.map((booking) => ({ ...booking, linkedTrip: null }));
-  }
-
-  const linkedDestinations = await prisma.tripDestination.findMany({
+  const bookingIds = bookings.map((item) => Number(item.id)).filter(Number.isInteger);
+  const links = await prisma.bookingTripLink.findMany({
     where: {
-      placeId: { in: placeIds },
-      note: { contains: BOOKING_TRIP_NOTE_PREFIX },
+      bookingId: { in: bookingIds },
+      status: "linked",
       trip: { userId: parseInt(userId, 10) },
     },
     include: {
@@ -433,15 +422,13 @@ const attachLinkedTripForBookings = async (bookings = [], userId) => {
           status: true,
         },
       },
+      stop: { select: { id: true, dayNumber: true } },
     },
-    orderBy: [{ createdAt: "desc" }],
   });
+  const byBookingId = new Map(links.map((link) => [link.bookingId, link]));
 
   return bookings.map((booking) => {
-    const matched = findLinkedTripByBookingCode(
-      linkedDestinations,
-      booking?.bookingCode,
-    );
+    const matched = byBookingId.get(Number(booking.id));
 
     if (!matched?.trip) {
       return { ...booking, linkedTrip: null };
@@ -456,8 +443,8 @@ const attachLinkedTripForBookings = async (bookings = [], userId) => {
         startDate: matched.trip.startDate,
         endDate: matched.trip.endDate,
         totalDays: matched.trip.totalDays,
-        dayNumber: matched.dayNumber,
-        destinationId: matched.id,
+        dayNumber: matched.stop?.dayNumber ?? null,
+        destinationId: matched.stopId,
       },
     };
   });
@@ -476,7 +463,7 @@ const linkBookingIntoTripTx = async (
     );
   }
 
-  const trip = await tx.trip.findFirst({
+  const trip = await tx.tripPlan.findFirst({
     where: {
       id: parsedTripId,
       userId: parseInt(userId, 10),
@@ -498,6 +485,7 @@ const linkBookingIntoTripTx = async (
       ERROR_CODES.NOT_FOUND,
     );
   }
+  await tx.$queryRaw`SELECT id FROM trip_plans WHERE id = ${trip.id} FOR UPDATE`;
 
   const bookingDate = toUtcDateOnly(useDate || bookingCreatedAt) || new Date();
   const dayNumber = computeTripDayNumber(
@@ -530,39 +518,52 @@ const linkBookingIntoTripTx = async (
   }
 
   if (Object.keys(tripUpdateData).length > 0) {
-    await tx.trip.update({
+    await tx.tripPlan.update({
       where: { id: trip.id },
       data: tripUpdateData,
     });
   }
 
-  await tx.tripDestination.deleteMany({
-    where: {
-      note: { contains: String(bookingCode) },
-      trip: { userId: parseInt(userId, 10) },
-    },
-  });
-
-  const maxOrder = await tx.tripDestination.aggregate({
+  const maxOrder = await tx.tripStop.aggregate({
     where: { tripId: trip.id, dayNumber },
-    _max: { order: true },
+    _max: { sequence: true },
   });
 
-  const destination = await tx.tripDestination.create({
+  const destination = await tx.tripStop.create({
     data: {
       tripId: trip.id,
       placeId: parseInt(placeId, 10),
       dayNumber,
-      order: (maxOrder?._max?.order || 0) + 1,
-      startTime: useTime || null,
+      sequence: (maxOrder?._max?.sequence || 0) + 1,
+      arrivalTime: useTime || null,
       note: buildBookingTripNote(bookingCode, useTime),
-      status: "planned",
+      fulfillmentStatus: "scheduled",
     },
     select: {
       id: true,
       dayNumber: true,
     },
   });
+
+  const booking = await tx.booking.findUnique({
+    where: { bookingCode },
+    select: { id: true },
+  });
+  if (!booking) {
+    throw new ServiceError("Không tìm thấy booking để liên kết", 404, ERROR_CODES.NOT_FOUND);
+  }
+  const previousLink = await tx.bookingTripLink.findUnique({
+    where: { bookingId: booking.id },
+    select: { stopId: true },
+  });
+  await tx.bookingTripLink.upsert({
+    where: { bookingId: booking.id },
+    create: { bookingId: booking.id, tripId: trip.id, stopId: destination.id, status: "linked" },
+    update: { tripId: trip.id, stopId: destination.id, status: "linked", unlinkedAt: null },
+  });
+  if (previousLink?.stopId && previousLink.stopId !== destination.id) {
+    await tx.tripStop.deleteMany({ where: { id: previousLink.stopId } });
+  }
 
   return {
     id: trip.id,

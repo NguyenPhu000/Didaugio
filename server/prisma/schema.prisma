@@ -115,64 +115,64 @@ model UserPermission {
 }
 
 model User {
-  id                      Int                     @id @default(autoincrement())
-  email                   String                  @unique
-  username                String                  @unique
+  id                      Int                      @id @default(autoincrement())
+  email                   String                   @unique
+  username                String                   @unique
   password                String
-  roleId                  Int                     @default(5) @map("role_id")
-  businessId              Int?                    @map("business_id")
-  businessRoleId          Int?                    @map("business_role_id")
-  status                  String                  @default("active")
-  emailVerified           Boolean                 @default(false) @map("email_verified")
-  lastLoginAt             DateTime?               @map("last_login_at")
-  failedLoginCount        Int                     @default(0) @map("failed_login_count")
-  lockedUntil             DateTime?               @map("locked_until")
-  createdAt               DateTime                @default(now()) @map("created_at")
-  updatedAt               DateTime                @updatedAt @map("updated_at")
-  deletedAt               DateTime?               @map("deleted_at")
+  roleId                  Int                      @default(5) @map("role_id")
+  businessId              Int?                     @map("business_id")
+  businessRoleId          Int?                     @map("business_role_id")
+  status                  String                   @default("active")
+  emailVerified           Boolean                  @default(false) @map("email_verified")
+  lastLoginAt             DateTime?                @map("last_login_at")
+  failedLoginCount        Int                      @default(0) @map("failed_login_count")
+  lockedUntil             DateTime?                @map("locked_until")
+  createdAt               DateTime                 @default(now()) @map("created_at")
+  updatedAt               DateTime                 @updatedAt @map("updated_at")
+  deletedAt               DateTime?                @map("deleted_at")
   aiPromptHistories       AiPromptHistory[]
   auditLogs               AuditLog[]
   banners                 BannerMarketing[]
   bookingActionLogs       BookingActionLog[]
   bookings                Booking[]
-  business                Business?               @relation("BusinessOwner")
-  staffBusiness           Business?               @relation("BusinessStaff", fields: [businessId], references: [id])
-  businessRole            BusinessRole?           @relation(fields: [businessRoleId], references: [id], onDelete: SetNull)
+  business                Business?                @relation("BusinessOwner")
+  staffBusiness           Business?                @relation("BusinessStaff", fields: [businessId], references: [id])
+  businessRole            BusinessRole?            @relation(fields: [businessRoleId], references: [id], onDelete: SetNull)
   emailVerifications      EmailVerification[]
   favorites               Favorite[]
-  feedbackReports         FeedbackReport[]        @relation("Reporter")
-  resolvedReports         FeedbackReport[]        @relation("Resolver")
+  feedbackReports         FeedbackReport[]         @relation("Reporter")
+  resolvedReports         FeedbackReport[]         @relation("Resolver")
   notifications           NotificationGlobal[]
   notificationRecipients  NotificationRecipient[]
   pushSubscription        PushSubscription?
   passwordResets          PasswordReset[]
   payments                Payment[]
-  paymentReceiptsActed    PaymentReceipt[]       @relation("PaymentReceiptActor")
-  refundAttemptsActed     RefundAttempt[]        @relation("RefundAttemptActor")
-  approvedPlaces          Place[]                 @relation("ApprovedBy")
-  places                  Place[]                 @relation("CreatedBy")
+  paymentReceiptsActed    PaymentReceipt[]         @relation("PaymentReceiptActor")
+  refundAttemptsActed     RefundAttempt[]          @relation("RefundAttemptActor")
+  approvedPlaces          Place[]                  @relation("ApprovedBy")
+  places                  Place[]                  @relation("CreatedBy")
   reviewReplies           ReviewReply[]
   reviews                 Review[]
-  reviewModerationActions ReviewModerationLog[]   @relation("ReviewModerationActor")
+  reviewModerationActions ReviewModerationLog[]    @relation("ReviewModerationActor")
   systemConfigs           SystemConfig[]
-  trips                   Trip[]
   tripPlans               TripPlan[]
   tripExecutionSessions   TripExecutionSession[]
-  bookingTripLinksActor   BookingTripLink[]       @relation("BookingTripLinkActor")
+  tripExecutionOperations TripExecutionOperation[]
+  bookingTripLinksActor   BookingTripLink[]        @relation("BookingTripLinkActor")
   savedTrips              SavedTrip[]
   checkins                UserCheckin[]
-  createdEvents           Event[]                 @relation("EventCreator")
+  createdEvents           Event[]                  @relation("EventCreator")
   eventParticipations     EventParticipant[]
   eventMoments            EventMoment[]
   activeSessions          ActiveSession[]
-  grantedPermissions      UserPermission[]        @relation("GrantedPermissions")
-  staffInvitationsCreated StaffInvitation[]       @relation("StaffInvitationCreator")
-  staffInvitationAccepted StaffInvitation[]       @relation("StaffInvitationAccepted")
-  blockedDatesCreated     BusinessBlockedDate[]   @relation("BlockedDateCreator")
+  grantedPermissions      UserPermission[]         @relation("GrantedPermissions")
+  staffInvitationsCreated StaffInvitation[]        @relation("StaffInvitationCreator")
+  staffInvitationAccepted StaffInvitation[]        @relation("StaffInvitationAccepted")
+  blockedDatesCreated     BusinessBlockedDate[]    @relation("BlockedDateCreator")
   userPermissions         UserPermission[]
   profile                 UserProfile?
   sessions                UserSession[]
-  role                    Role                    @relation(fields: [roleId], references: [id])
+  role                    Role                     @relation(fields: [roleId], references: [id])
 
   @@index([deletedAt])
   @@index([status])
@@ -653,7 +653,6 @@ model Place {
   administrativeWard               AdministrativeWard?                    @relation(fields: [administrativeWardCode], references: [code])
   administrativeLocationExceptions PlaceAdministrativeLocationException[]
   reviews                          Review[]
-  tripDestinations                 TripDestination[]
   tripStops                        TripStop[]
   checkins                         UserCheckin[]
   aiGuides                         PlaceAiGuide[]
@@ -887,7 +886,7 @@ model SavedTrip {
   userId    Int      @map("user_id")
   tripId    Int      @map("trip_id")
   createdAt DateTime @default(now()) @map("created_at")
-  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  trip      TripPlan @relation(fields: [tripId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tripId])
@@ -912,84 +911,35 @@ model UserCheckin {
   @@map("user_checkins")
 }
 
-model Trip {
-  id            Int               @id @default(autoincrement())
-  userId        Int               @map("user_id")
-  title         String
-  description   String?
-  thumbnail     String?
-  startDate     DateTime?         @map("start_date") @db.Date
-  endDate       DateTime?         @map("end_date") @db.Date
-  totalDays     Int               @default(1) @map("total_days")
-  totalDistance Decimal?          @map("total_distance") @db.Decimal(10, 2)
-  estimatedCost Int?              @map("estimated_cost")
-  travelStyle   String?           @map("travel_style")
-  groupSize     Int               @default(1) @map("group_size")
-  isAiGenerated Boolean           @default(false) @map("is_ai_generated")
-  aiPrompt      String?           @map("ai_prompt")
-  status        String            @default("draft")
-  isPublic      Boolean           @default(false) @map("is_public")
-  viewCount     Int               @default(0) @map("view_count")
-  cloneCount    Int               @default(0) @map("clone_count")
-  createdAt     DateTime          @default(now()) @map("created_at")
-  updatedAt     DateTime          @updatedAt @map("updated_at")
-  destinations  TripDestination[]
-  shares        TripShare[]
-  savedBy       SavedTrip[]
-  events        Event[]
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([status])
-  @@index([isPublic, cloneCount(sort: Desc)])
-  @@map("trips")
-}
-
-model TripDestination {
-  id              Int       @id @default(autoincrement())
-  tripId          Int       @map("trip_id")
-  placeId         Int       @map("place_id")
-  dayNumber       Int       @map("day_number")
-  order           Int
-  startTime       String?   @map("start_time")
-  endTime         String?   @map("end_time")
-  durationMinutes Int?      @map("duration_minutes")
-  note            String?
-  transportToNext String?   @map("transport_to_next")
-  distanceToNext  Decimal?  @map("distance_to_next") @db.Decimal(10, 2)
-  estimatedCost   Int?      @map("estimated_cost")
-  status          String    @default("planned")
-  visitedAt       DateTime? @map("visited_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  place           Place     @relation(fields: [placeId], references: [id])
-  trip            Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
-
-  @@index([tripId])
-  @@index([placeId])
-  @@map("trip_destinations")
-}
-
 model TripPlan {
-  id                Int                    @id @default(autoincrement())
-  userId            Int                    @map("user_id")
-  title             String
-  description       String?
-  coverImage        String?                @map("cover_image")
-  startDate         DateTime               @map("start_date") @db.Date
-  endDate           DateTime               @map("end_date") @db.Date
-  totalDays         Int                    @map("total_days")
-  status            TripPlanStatus         @default(draft)
-  source            TripPlanSource         @default(manual)
-  estimatedCost     Int?                   @map("estimated_cost")
-  totalDistanceM    Int?                   @map("total_distance_m")
-  metadata          Json?
-  createdAt         DateTime               @default(now()) @map("created_at")
-  updatedAt         DateTime               @updatedAt @map("updated_at")
-  user              User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  stops             TripStop[]
-  bookingLinks      BookingTripLink[]
-  executionSessions TripExecutionSession[]
+  id                  Int                      @id @default(autoincrement())
+  userId              Int                      @map("user_id")
+  title               String
+  description         String?
+  coverImage          String?                  @map("cover_image")
+  startDate           DateTime                 @map("start_date") @db.Date
+  endDate             DateTime                 @map("end_date") @db.Date
+  totalDays           Int                      @map("total_days")
+  status              TripPlanStatus           @default(draft)
+  source              TripPlanSource           @default(manual)
+  estimatedCost       Int?                     @map("estimated_cost")
+  totalDistanceM      Int?                     @map("total_distance_m")
+  metadata            Json?
+  clientRequestId     String?                  @map("client_request_id")
+  clientRequestHash   String?                  @map("client_request_hash")
+  createdAt           DateTime                 @default(now()) @map("created_at")
+  updatedAt           DateTime                 @updatedAt @map("updated_at")
+  user                User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stops               TripStop[]
+  bookingLinks        BookingTripLink[]
+  executionSessions   TripExecutionSession[]
+  executionOperations TripExecutionOperation[]
+  shares              TripShare[]
+  savedBy             SavedTrip[]
+  events              Event[]
+  legacyMapping       TripLegacyMap?
 
+  @@unique([userId, clientRequestId])
   @@index([userId, status])
   @@index([userId, startDate, endDate])
   @@index([source])
@@ -1074,12 +1024,42 @@ model TripExecutionSession {
   trip               TripPlan                   @relation(fields: [tripId], references: [id], onDelete: Cascade)
   user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   currentStop        TripStop?                  @relation("SessionCurrentStop", fields: [currentStopId], references: [id], onDelete: SetNull)
+  operations         TripExecutionOperation[]
 
   @@index([tripId, status])
   @@index([userId, status])
   @@index([deviceId])
   @@index([lastSyncAt])
   @@map("trip_execution_sessions")
+}
+
+model TripExecutionOperation {
+  id          Int                  @id @default(autoincrement())
+  sessionId   Int                  @map("session_id")
+  tripId      Int                  @map("trip_id")
+  userId      Int                  @map("user_id")
+  operationId String               @map("operation_id")
+  baseVersion Int                  @map("base_version")
+  nextVersion Int                  @map("next_version")
+  payloadHash String               @map("payload_hash")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  session     TripExecutionSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  trip        TripPlan             @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, operationId])
+  @@index([tripId, userId, createdAt])
+  @@map("trip_execution_operations")
+}
+
+model TripLegacyMap {
+  id           Int      @id @default(autoincrement())
+  legacyTripId Int      @unique @map("legacy_trip_id")
+  tripPlanId   Int      @unique @map("trip_plan_id")
+  migratedAt   DateTime @default(now()) @map("migrated_at")
+  tripPlan     TripPlan @relation(fields: [tripPlanId], references: [id], onDelete: Cascade)
+
+  @@map("trip_legacy_maps")
 }
 
 model DomainJob {
@@ -1130,7 +1110,7 @@ model TripShare {
   accessCount Int       @default(0) @map("access_count")
   isActive    Boolean   @default(true) @map("is_active")
   createdAt   DateTime  @default(now()) @map("created_at")
-  trip        Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  trip        TripPlan  @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
   @@map("trip_shares")
 }
@@ -1440,13 +1420,13 @@ model Booking {
   financialLedgers FinancialLedger[]
   reviews          Review[]
 
+  @@unique([userId, idempotencyKey], map: "bookings_user_id_idempotency_key_key")
   @@index([userId])
   @@index([serviceId])
   @@index([status])
   @@index([useDate])
   @@index([resourceId])
   @@index([businessId, bookingAt])
-  @@unique([userId, idempotencyKey], map: "bookings_user_id_idempotency_key_key")
   // ─── Composite Indexes for Overlap Queries ─────────────────────────────────────
   // Dùng cho mô hình RESOURCE - tìm booking trùng thời gian
   @@index([resourceId, useDate, status])
@@ -1782,7 +1762,7 @@ model Event {
   broadcastNotice String? @map("broadcast_notice") @db.VarChar(255) // Viễn cảnh 4: Ticker khẩn cấp từ BTC
 
   tripId         Int?               @map("trip_id")
-  trip           Trip?              @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  trip           TripPlan?          @relation(fields: [tripId], references: [id], onDelete: SetNull)
   createdBy      Int                @map("created_by")
   createdByUser  User               @relation("EventCreator", fields: [createdBy], references: [id])
   createdAt      DateTime           @default(now()) @map("created_at")
