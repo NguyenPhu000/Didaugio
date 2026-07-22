@@ -1781,3 +1781,65 @@ export async function getPaymentById(paymentId, { userId, roleId }) {
 
   return payment;
 }
+
+/**
+ * Reads the latest payment obligation for one booking.  This deliberately
+ * applies the same owner/super-admin policy as getPaymentById; a booking id
+ * must never become a way to enumerate another user's payments.
+ */
+export async function getPaymentByBookingId(bookingId, { userId, roleId }) {
+  const id = Number(bookingId);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new ServiceError(
+      "Booking ID không hợp lệ",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+
+  const payment = await prisma.payment.findFirst({
+    where: { bookingId: id },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      bookingId: true,
+      userId: true,
+      amount: true,
+      currency: true,
+      paymentMethod: true,
+      transactionId: true,
+      transactionRef: true,
+      bankCode: true,
+      status: true,
+      paidAt: true,
+      refundAmount: true,
+      refundedAt: true,
+      refundReason: true,
+      createdAt: true,
+      updatedAt: true,
+      booking: {
+        select: {
+          bookingCode: true,
+          status: true,
+          finalPrice: true,
+          service: { select: { name: true, place: { select: { name: true } } } },
+        },
+      },
+    },
+  });
+
+  if (!payment) {
+    throw new ServiceError("Payment không tồn tại", 404, ERROR_CODES.NOT_FOUND);
+  }
+
+  const isAdmin = Number(roleId) <= 2;
+  if (!isAdmin && payment.userId !== userId) {
+    throw new ServiceError(
+      "Bạn không có quyền xem payment này",
+      403,
+      ERROR_CODES.FORBIDDEN,
+    );
+  }
+
+  return payment;
+}

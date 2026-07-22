@@ -432,6 +432,48 @@ export async function refund(req, res, next) {
   }
 }
 
+/**
+ * GET /api/payments/by-booking/:bookingId
+ * Auth: booking owner or super-admin/admin.  This is read-only and returns
+ * the same public payment DTO as GET /:id.
+ */
+export async function getByBooking(req, res, next) {
+  try {
+    const payment = await paymentService.getPaymentByBookingId(req.params.bookingId, req.user);
+    return successResponse(res, {
+      id: payment.id,
+      bookingId: payment.bookingId,
+      amount: payment.amount,
+      currency: payment.currency,
+      paymentMethod: payment.paymentMethod,
+      transactionId: payment.transactionId,
+      transactionRef: payment.transactionRef,
+      bankCode: payment.bankCode,
+      status: payment.status,
+      paidAt: payment.paidAt,
+      refundAmount: payment.refundAmount,
+      refundedAt: payment.refundedAt,
+      refundReason: payment.refundReason,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+      booking: payment.booking
+        ? {
+            bookingCode: payment.booking.bookingCode,
+            status: payment.booking.status,
+            finalPrice: payment.booking.finalPrice,
+            serviceName: payment.booking.service?.name,
+            placeName: payment.booking.service?.place?.name,
+          }
+        : null,
+    });
+  } catch (error) {
+    if (error.name === "ServiceError") {
+      return errorResponse(res, error.statusCode, error.message, error.errorCode);
+    }
+    next(error);
+  }
+}
+
 /** Protected operational path: persist the outgoing SePay refund obligation before bank action. */
 export async function initiateSePayRefund(req, res, next) {
   try {

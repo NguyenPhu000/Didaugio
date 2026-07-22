@@ -47,6 +47,8 @@ router.get(
 
 router.get("/admin", hasPermission("payments.refund"), controller.getAdminPayments);
 
+router.get("/by-booking/:bookingId", controller.getByBooking);
+
 router.get("/:id", controller.getById);
 
 router.post(
