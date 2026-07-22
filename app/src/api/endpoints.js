@@ -44,15 +44,15 @@ export const ENDPOINTS = {
     updateTrip: (id) => `/profile/trips/${id}`,
     deleteTrip: (id) => `/profile/trips/${id}`,
     duplicateTrip: (id) => `/profile/trips/${id}/duplicate`,
-    addDestination: (tripId) => `/profile/trips/${tripId}/destinations`,
+    addDestination: (tripId) => `/profile/trips/${tripId}/stops`,
     removeDestination: (tripId, destId) =>
-      `/profile/trips/${tripId}/destinations/${destId}`,
+      `/profile/trips/${tripId}/stops/${destId}`,
     linkBookingToTrip: (tripId, bookingId) =>
       `/profile/trips/${tripId}/bookings/${bookingId}/link`,
     reorderTripStops: (tripId) => `/profile/trips/${tripId}/stops/reorder`,
     moveTripStop: (tripId, stopId) => `/profile/trips/${tripId}/stops/${stopId}/move`,
     tripSession: (tripId) => `/profile/trips/${tripId}/session`,
-    updateDestination: (tripId, destId) => `/profile/trips/${tripId}/destinations/${destId}`,
+    updateDestination: (tripId, destId) => `/profile/trips/${tripId}/stops/${destId}`,
     tripShare: (id) => `/profile/trips/${id}/share`,
     tripShareById: (tripId, shareId) => `/profile/trips/${tripId}/share/${shareId}`,
     accessTripShare: (shareCode) => `/profile/shared-trip/${shareCode}`,

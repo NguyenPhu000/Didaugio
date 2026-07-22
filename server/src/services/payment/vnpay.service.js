@@ -103,6 +103,7 @@ export function verifyReturn(query) {
     vnp_BankCode,
     vnp_BankTranNo,
     vnp_CardType,
+    vnp_CurrCode,
     vnp_OrderInfo,
     vnp_PayDate,
     vnp_ResponseCode,
@@ -136,7 +137,10 @@ export function verifyReturn(query) {
     data: {
       transactionRef: vnp_TxnRef,
       responseCode: vnp_ResponseCode,
-      amount: vnp_Amount ? parseInt(vnp_Amount, 10) / 100 : null,
+      // Preserve these signed values verbatim. Payment callback processing
+      // validates the exact amount/currency obligation after locking the payment.
+      amount: vnp_Amount || null,
+      currency: vnp_CurrCode || null,
       bankCode: vnp_BankCode || null,
       bankTranNo: vnp_BankTranNo || null,
       cardType: vnp_CardType || null,

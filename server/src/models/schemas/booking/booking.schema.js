@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidBookingAt } from "../../../utils/bookingTimeSlot.js";
 
 const dateYmdRegex = /^\d{4}-\d{2}-\d{2}$/;
 const timeHmRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -10,6 +11,7 @@ export const serviceBookingParamSchema = z.object({
 export const createBookingSchema = z.object({
   placeId: z.coerce.number().int().positive().optional(),
   serviceId: z.coerce.number().int().positive(),
+  resourceId: z.coerce.number().int().positive().optional(),
   quantity: z.coerce.number().int().min(1).max(20).default(1),
   useDate: z
     .string()
@@ -19,7 +21,13 @@ export const createBookingSchema = z.object({
     .string()
     .regex(timeHmRegex, "useTime phải theo định dạng HH:mm")
     .optional(),
-  bookingAt: z.string().min(8).max(64).optional(),
+  bookingAt: z
+    .string()
+    .trim()
+    .min(8)
+    .max(64)
+    .refine(isValidBookingAt, "bookingAt phải là thời điểm hợp lệ")
+    .optional(),
   guestName: z.string().min(2).max(100).optional(),
   guestPhone: z.string().min(8).max(20).optional(),
   guestEmail: z.string().email().optional(),
@@ -74,11 +82,12 @@ export const bulkBookingSchema = z.object({
 });
 
 export const markPaidSchema = z.object({
-  paymentMethod: z.string().min(2).max(50).optional(),
-  transactionRef: z.string().max(255).optional().nullable(),
-  amount: z.coerce.number().int().positive().optional(),
+  paymentMethod: z.string().trim().min(2).max(50),
+  transactionRef: z.string().trim().min(1).max(255),
+  amount: z.coerce.number().int().positive(),
+  idempotencyKey: z.string().trim().min(1).max(128),
+  reason: z.string().trim().min(1).max(500),
   paidAt: z.string().max(100).optional().nullable(),
-  note: z.string().max(500).optional().nullable(),
 });
 
 export const refundBookingSchema = z.object({
@@ -86,7 +95,8 @@ export const refundBookingSchema = z.object({
     .number({ required_error: "Số tiền hoàn là bắt buộc" })
     .int("Số tiền hoàn phải là số nguyên")
     .positive("Số tiền hoàn phải lớn hơn 0"),
-  refundReason: z.string().min(5).max(500).optional().nullable(),
+  refundReason: z.string().min(5).max(500),
+  idempotencyKey: z.string().trim().min(1).max(128),
   refundedAt: z.string().max(100).optional().nullable(),
 });
 

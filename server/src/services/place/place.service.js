@@ -12,6 +12,7 @@ import {
   toPublicSpokenGuide,
   writeSpokenGuide,
 } from "./placeSpokenGuide.service.js";
+import { validatePlaceLocation } from "./placeLocation.service.js";
 
 /**
  * Generate slug từ tên
@@ -29,25 +30,32 @@ const generateSlug = (name) => {
 };
 
 /**
- * Kiểm tra slug unique
+ * Kiểm tra slug unique (Tối ưu hóa: chỉ dùng 1 query duy nhất để lấy danh sách slug trùng)
  */
 const ensureUniqueSlug = async (baseSlug, excludeId = null) => {
-  let slug = baseSlug;
+  const existingPlaces = await prisma.place.findMany({
+    where: {
+      slug: { startsWith: baseSlug },
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+    select: { slug: true },
+  });
+
+  if (existingPlaces.length === 0) {
+    return baseSlug;
+  }
+
+  const slugSet = new Set(existingPlaces.map((p) => p.slug));
+  if (!slugSet.has(baseSlug)) {
+    return baseSlug;
+  }
+
   let counter = 1;
-
-  while (true) {
-    const existing = await prisma.place.findUnique({
-      where: { slug },
-      select: { id: true },
-    });
-
-    if (!existing || (excludeId && existing.id === excludeId)) {
-      return slug;
-    }
-
-    slug = `${baseSlug}-${counter}`;
+  while (slugSet.has(`${baseSlug}-${counter}`)) {
     counter++;
   }
+
+  return `${baseSlug}-${counter}`;
 };
 
 const calculateDistanceMeters = (lat1, lon1, lat2, lon2) => {
@@ -486,6 +494,8 @@ export const createPlace = async (data, userId) => {
     name,
     slug: customSlug,
     categoryId,
+    provinceCode,
+    wardCode,
     districtId,
     wardId,
     description,
@@ -508,6 +518,7 @@ export const createPlace = async (data, userId) => {
     businessId,
     spokenGuide,
   } = data;
+  const resolvedProvinceCode = provinceCode || (districtId ? "92" : null);
 
   const ownedBusiness = await prisma.business.findUnique({
     where: { ownerId: userId },
@@ -533,22 +544,24 @@ export const createPlace = async (data, userId) => {
   if (
     !name ||
     !categoryId ||
-    !districtId ||
+    !resolvedProvinceCode ||
     !address ||
     !latitude ||
     !longitude
   ) {
     throw new ServiceError(
-      ERROR_CODES.INVALID_INPUT,
-      "Thiếu thông tin bắt buộc: Tên, Danh mục, Quận/Huyện, Địa chỉ, Tọa độ",
+      "Thiếu thông tin bắt buộc: Tên, Danh mục, Tỉnh/Thành, Địa chỉ, Tọa độ",
       400,
+      ERROR_CODES.INVALID_INPUT,
     );
   }
 
   // Validate Category & Location
   const [category, district] = await Promise.all([
     prisma.category.findUnique({ where: { id: parseInt(categoryId) } }),
-    prisma.districtCantho.findUnique({ where: { id: parseInt(districtId) } }),
+    districtId
+      ? prisma.districtCantho.findUnique({ where: { id: parseInt(districtId) } })
+      : Promise.resolve(null),
   ]);
 
   if (!category)
@@ -557,12 +570,19 @@ export const createPlace = async (data, userId) => {
       "Danh mục không tồn tại",
       404,
     );
-  if (!district)
+  if (districtId && !district)
     throw new ServiceError(
       ERROR_CODES.NOT_FOUND,
       "Quận/Huyện không tồn tại",
       404,
     );
+
+  await validatePlaceLocation({
+    provinceCode: resolvedProvinceCode,
+    administrativeWardCode: wardCode || null,
+    latitude,
+    longitude,
+  });
 
   // Validate Tags (filter out invalid IDs)
   let validTagIds = [];
@@ -602,7 +622,9 @@ export const createPlace = async (data, userId) => {
           name,
           slug,
           categoryId: parseInt(categoryId),
-          districtId: parseInt(districtId),
+          provinceCode: resolvedProvinceCode,
+          administrativeWardCode: wardCode || null,
+          districtId: districtId ? parseInt(districtId) : null,
           wardId: wardId ? parseInt(wardId) : null,
           description,
           shortDescription,
@@ -726,6 +748,8 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
     name,
     slug: customSlug,
     categoryId,
+    provinceCode,
+    wardCode,
     districtId,
     wardId,
     description,
@@ -750,7 +774,16 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
   // Check place exists
   const existing = await prisma.place.findUnique({
     where: { id, deletedAt: null },
-    select: { id: true, slug: true, status: true, markerUrl: true },
+    select: {
+      id: true,
+      slug: true,
+      status: true,
+      markerUrl: true,
+      provinceCode: true,
+      administrativeWardCode: true,
+      latitude: true,
+      longitude: true,
+    },
   });
 
   if (!existing) {
@@ -759,6 +792,21 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
       ERROR_MESSAGES.NOT_FOUND,
       404,
     );
+  }
+
+  if (
+    provinceCode !== undefined ||
+    wardCode !== undefined ||
+    latitude !== undefined ||
+    longitude !== undefined
+  ) {
+    await validatePlaceLocation({
+      provinceCode: provinceCode ?? existing.provinceCode,
+      administrativeWardCode:
+        wardCode !== undefined ? wardCode || null : existing.administrativeWardCode,
+      latitude: latitude ?? existing.latitude,
+      longitude: longitude ?? existing.longitude,
+    });
   }
 
   // Generate or validate slug if changed
@@ -780,7 +828,11 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
     if (name !== undefined) updateData.name = name;
     if (slug !== existing.slug) updateData.slug = slug;
     if (categoryId !== undefined) updateData.categoryId = parseInt(categoryId);
-    if (districtId !== undefined) updateData.districtId = parseInt(districtId);
+    if (provinceCode !== undefined) updateData.provinceCode = provinceCode;
+    if (wardCode !== undefined)
+      updateData.administrativeWardCode = wardCode || null;
+    if (districtId !== undefined)
+      updateData.districtId = districtId ? parseInt(districtId) : null;
     if (wardId !== undefined)
       updateData.wardId = wardId ? parseInt(wardId) : null;
     if (description !== undefined) updateData.description = description;

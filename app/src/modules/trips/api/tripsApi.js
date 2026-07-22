@@ -46,8 +46,8 @@ export const createTripShareApi = (tripId, data) =>
 export const getTripSharesApi = (tripId) =>
   client.get(ENDPOINTS.profile.tripShare(tripId));
 
-export const deleteTripShareApi = (tripId, shareId) =>
-  client.delete(ENDPOINTS.profile.tripShareById(tripId, shareId));
+export const deleteTripShareApi = (shareId) =>
+  client.delete(ENDPOINTS.profile.deleteTripShare(shareId));
 
 export const accessTripShareApi = (shareCode, data) =>
   client.post(ENDPOINTS.profile.accessTripShare(shareCode), data);

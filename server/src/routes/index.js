@@ -11,6 +11,7 @@ import permissionRoutes from "./rbac/permission.route.js";
 import userPermissionRoutes from "./rbac/userPermission.route.js";
 import categoryRoutes from "./category/category.route.js";
 import tagRoutes from "./tag/tag.route.js";
+import tagGroupRoutes from "./tag/tagGroup.route.js";
 import placeRoutes from "./place/place.route.js";
 import districtRoutes from "./district/district.route.js";
 import wardRoutes from "./district/ward.route.js";
@@ -47,6 +48,8 @@ import bannerRoutes from "./banner/banner.route.js";
 import paymentRoutes from "./payment/payment.route.js";
 import documentRoutes from "./document/document.route.js";
 import placeV2Routes from "./v2/place.route.js";
+import locationV2Routes from "./v2/location.route.js";
+import { locationTrafficMiddleware } from "../observability/administrativeMetrics.js";
 import { businessRouter as subscriptionRoutes, adminRouter as adminSubscriptionRoutes } from "./subscription/subscription.route.js";
 import {
   authLimiter,
@@ -94,6 +97,7 @@ export const registerRateLimiters = (app) => {
 
 export const registerApiRoutes = (app) => {
   app.use("/api/v2/places", placeV2Routes);
+  app.use("/api/v2/locations", locationTrafficMiddleware("v2"), locationV2Routes);
   // Public routes (no auth required)
   app.use("/api/staff/invite", staffInvitePublicRoutes);
 
@@ -109,9 +113,10 @@ export const registerApiRoutes = (app) => {
   app.use("/api/permissions", permissionRoutes);
   app.use("/api/categories", categoryRoutes);
   app.use("/api/tags", tagRoutes);
+  app.use("/api/tag-groups", tagGroupRoutes);
   app.use("/api/places", placeRoutes);
-  app.use("/api/districts", districtRoutes);
-  app.use("/api/wards", wardRoutes);
+  app.use("/api/districts", locationTrafficMiddleware("v1"), districtRoutes);
+  app.use("/api/wards", locationTrafficMiddleware("v1"), wardRoutes);
   app.use("/api/boundaries", boundaryRoutes);
   app.use("/api/settings", settingsRoutes);
   // Register specific /api/business/* sub-routes BEFORE the generic /api/business

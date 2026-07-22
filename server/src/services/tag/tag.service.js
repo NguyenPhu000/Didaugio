@@ -41,6 +41,7 @@ export const getAllTags = async (filters = {}) => {
   const tags = await prisma.placeTag.findMany({
     where,
     include: {
+      tagGroup: true,
       _count: {
         select: { placeTagLinks: true, categoryTags: true },
       },
@@ -56,6 +57,7 @@ export const getTagById = async (id) => {
   const tag = await prisma.placeTag.findUnique({
     where: { id },
     include: {
+      tagGroup: true,
       placeTagLinks: {
         include: {
           place: {
@@ -85,6 +87,7 @@ export const getTagBySlug = async (slug) => {
   const tag = await prisma.placeTag.findUnique({
     where: { slug },
     include: {
+      tagGroup: true,
       _count: {
         select: { placeTagLinks: true },
       },
@@ -96,7 +99,7 @@ export const getTagBySlug = async (slug) => {
 
 // Tạo tag mới
 export const createTag = async (data) => {
-  const { name, slug, tagType = TAG_TYPES.GENERAL, icon, color } = data;
+  const { name, slug, tagGroupId, icon, color } = data;
 
   // Check unique slug
   const existing = await prisma.placeTag.findUnique({
@@ -107,11 +110,13 @@ export const createTag = async (data) => {
     throw new ServiceError("Slug đã tồn tại", 400, ERROR_CODES.EXISTED);
   }
 
-  // Validate tagType
-  const validTypes = Object.values(TAG_TYPES);
-  if (!validTypes.includes(tagType)) {
+  const tagGroup = await prisma.tagGroup.findFirst({
+    where: { id: tagGroupId, isActive: true },
+  });
+
+  if (!tagGroup) {
     throw new ServiceError(
-      `Loại tag không hợp lệ. Chỉ chấp nhận: ${validTypes.join(", ")}`,
+      "Tag group is not available",
       400,
       ERROR_CODES.VALIDATION_ERROR,
     );
@@ -121,12 +126,14 @@ export const createTag = async (data) => {
     data: {
       name,
       slug,
-      tagType,
+      tagType: TAG_TYPES.GENERAL,
+      tagGroupId,
       icon: icon || null,
       color: color || "#6B7280",
       usageCount: 0,
       isActive: true,
     },
+    include: { tagGroup: true },
   });
 
   return tag;
@@ -134,7 +141,7 @@ export const createTag = async (data) => {
 
 // Update tag
 export const updateTag = async (id, data) => {
-  const { name, slug, tagType, icon, color, isActive } = data;
+  const { name, slug, tagGroupId, icon, color, isActive } = data;
 
   // Check tag exists
   const existing = await prisma.placeTag.findUnique({
@@ -157,12 +164,14 @@ export const updateTag = async (id, data) => {
     }
   }
 
-  // Validate tagType
-  if (tagType) {
-    const validTypes = Object.values(TAG_TYPES);
-    if (!validTypes.includes(tagType)) {
+  if (tagGroupId !== undefined) {
+    const tagGroup = await prisma.tagGroup.findFirst({
+      where: { id: tagGroupId, isActive: true },
+    });
+
+    if (!tagGroup) {
       throw new ServiceError(
-        `Loại tag không hợp lệ. Chỉ chấp nhận: ${validTypes.join(", ")}`,
+        "Tag group is not available",
         400,
         ERROR_CODES.VALIDATION_ERROR,
       );
@@ -172,7 +181,10 @@ export const updateTag = async (id, data) => {
   const updateData = {};
   if (name !== undefined) updateData.name = name;
   if (slug !== undefined) updateData.slug = slug;
-  if (tagType !== undefined) updateData.tagType = tagType;
+  if (tagGroupId !== undefined) {
+    updateData.tagGroupId = tagGroupId;
+    updateData.tagType = TAG_TYPES.GENERAL;
+  }
   if (icon !== undefined) updateData.icon = icon;
   if (color !== undefined) updateData.color = color;
   if (isActive !== undefined) updateData.isActive = isActive;
@@ -181,6 +193,7 @@ export const updateTag = async (id, data) => {
     where: { id },
     data: updateData,
     include: {
+      tagGroup: true,
       _count: {
         select: { placeTagLinks: true },
       },
@@ -226,7 +239,7 @@ export const getSuggestedTagsByCategory = async (categoryId) => {
   const categoryTags = await prisma.categoryTag.findMany({
     where: { categoryId },
     include: {
-      tag: true,
+      tag: { include: { tagGroup: true } },
     },
     orderBy: [{ isDefault: "desc" }, { tag: { usageCount: "desc" } }],
   });
@@ -249,6 +262,7 @@ export const getPopularTags = async (limit = 20, tagType = null) => {
 
   const tags = await prisma.placeTag.findMany({
     where,
+    include: { tagGroup: true },
     orderBy: {
       usageCount: "desc",
     },
@@ -304,18 +318,36 @@ export const recalculateUsageCount = async (tagId) => {
 
 // Bulk create tags
 export const bulkCreateTags = async (tags) => {
+  await Promise.all(
+    tags.map(async ({ tagGroupId }) => {
+      const tagGroup = await prisma.tagGroup.findFirst({
+        where: { id: tagGroupId, isActive: true },
+      });
+
+      if (!tagGroup) {
+        throw new ServiceError(
+          "Tag group is not available",
+          400,
+          ERROR_CODES.VALIDATION_ERROR,
+        );
+      }
+    }),
+  );
+
   const created = await prisma.$transaction(
     tags.map((tag) =>
       prisma.placeTag.create({
         data: {
           name: tag.name,
           slug: tag.slug,
-          tagType: tag.tagType || TAG_TYPES.GENERAL,
+          tagType: TAG_TYPES.GENERAL,
+          tagGroupId: tag.tagGroupId,
           icon: tag.icon || null,
           color: tag.color || "#6B7280",
           usageCount: 0,
           isActive: true,
         },
+        include: { tagGroup: true },
       }),
     ),
   );

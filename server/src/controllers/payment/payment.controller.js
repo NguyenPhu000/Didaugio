@@ -404,7 +404,7 @@ export async function refund(req, res, next) {
   try {
     const result = await paymentService.refundPayment(
       req.params.id,
-      { amount: req.body.amount, reason: req.body.reason },
+      { amount: req.body.amount, reason: req.body.reason, idempotencyKey: req.body.idempotencyKey },
       req.user.userId,
     );
 
@@ -428,6 +428,83 @@ export async function refund(req, res, next) {
         error.errorCode,
       );
     }
+    next(error);
+  }
+}
+
+/**
+ * GET /api/payments/by-booking/:bookingId
+ * Auth: booking owner or super-admin/admin.  This is read-only and returns
+ * the same public payment DTO as GET /:id.
+ */
+export async function getByBooking(req, res, next) {
+  try {
+    const payment = await paymentService.getPaymentByBookingId(req.params.bookingId, req.user);
+    return successResponse(res, {
+      id: payment.id,
+      bookingId: payment.bookingId,
+      amount: payment.amount,
+      currency: payment.currency,
+      paymentMethod: payment.paymentMethod,
+      transactionId: payment.transactionId,
+      transactionRef: payment.transactionRef,
+      bankCode: payment.bankCode,
+      status: payment.status,
+      paidAt: payment.paidAt,
+      refundAmount: payment.refundAmount,
+      refundedAt: payment.refundedAt,
+      refundReason: payment.refundReason,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+      booking: payment.booking
+        ? {
+            bookingCode: payment.booking.bookingCode,
+            status: payment.booking.status,
+            finalPrice: payment.booking.finalPrice,
+            serviceName: payment.booking.service?.name,
+            placeName: payment.booking.service?.place?.name,
+          }
+        : null,
+    });
+  } catch (error) {
+    if (error.name === "ServiceError") {
+      return errorResponse(res, error.statusCode, error.message, error.errorCode);
+    }
+    next(error);
+  }
+}
+
+/** Protected operational path: persist the outgoing SePay refund obligation before bank action. */
+export async function initiateSePayRefund(req, res, next) {
+  try {
+    const result = await paymentService.createPaymentRefundOrchestrator().initiateSePayBankRefund(
+      req.params.id,
+      { ...req.body, actorUserId: req.user.userId },
+    );
+    return successResponse(res, {
+      refundAttemptId: result.attempt.id,
+      status: result.status,
+      replayed: result.replayed,
+      transferReference: result.transferReference,
+    }, "Đã tạo lệnh hoàn SePay đang chờ xác nhận");
+  } catch (error) {
+    if (error.name === "ServiceError") return errorResponse(res, error.statusCode, error.message, error.errorCode);
+    next(error);
+  }
+}
+
+/** Protected, bounded recovery for a single pending manual refund after post-commit finalizer failure. */
+export async function recoverPendingManualRefund(req, res, next) {
+  try {
+    const result = await paymentService.createPaymentRefundOrchestrator().recoverPendingManualRefund(req.body.refundAttemptId);
+    return successResponse(res, {
+      refundAttemptId: result.attempt.id,
+      status: result.status,
+      replayed: result.replayed,
+      refundAmount: result.refundedAmount,
+    }, "Đã xử lý refund pending");
+  } catch (error) {
+    if (error.name === "ServiceError") return errorResponse(res, error.statusCode, error.message, error.errorCode);
     next(error);
   }
 }

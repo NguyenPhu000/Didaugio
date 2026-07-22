@@ -70,5 +70,5 @@ export const APP_META = {
   ADMIN_SUBTITLE: "ADMIN TERMINAL",
   HEADER_BADGE: "ADM-CORE",
   COPYRIGHT: `© ${new Date().getFullYear()} CAN THO SMART TOURISM`,
-  SUPPORT_EMAIL: "support@didaugio.com",
+  SUPPORT_EMAIL: "support@ipointgenie.com",
 };

@@ -54,6 +54,7 @@ export const createTrip = async (req, res, next) => {
     const finalStatus = ALLOWED_INITIAL_STATUSES.includes(status) ? status : "planned";
 
     const trip = await tripService.createTrip(getUserId(req), {
+      ...req.body,
       title,
       description,
       startDate,
@@ -91,24 +92,18 @@ export const getTripDetail = async (req, res, next) => {
     if (!id) {
       return res
         .status(400)
-        .json({ success: false, data: null, message: "ID khong hop le" });
+        .json({ success: false, data: null, message: "ID không hợp lệ" });
     }
-    const trip =
-      (await tripPlanService.getTripDetail({
-        tripId: id,
-        actorUserId: getUserId(req),
-      })) || (await tripService.getTripDetail(id, getUserId(req)));
-    if (!trip) {
-      return res.status(404).json({
-        success: false,
-        data: null,
-        message: "Khong tim thay chuyen di",
-      });
-    }
-    res.json({
+
+    const tripPlan = await tripPlanService.getTripDetail({
+      tripId: id,
+      actorUserId: getUserId(req),
+    });
+
+    return res.json({
       success: true,
-      data: trip,
-      message: "Lay chi tiet chuyen di thanh cong",
+      data: tripPlan,
+      message: "Lấy chi tiết chuyến đi thành công",
     });
   } catch (error) {
     next(error);

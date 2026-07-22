@@ -1,13 +1,10 @@
 export const TAG_TYPES = {
-  general: "General",
-  food: "Food",
-  travel: "Travel",
-  service: "Service",
-  activity: "Activity",
-  ambience: "Ambience",
-  price: "Price",
-  time: "Time",
-  ai_signal: "AI Signal",
+  general: "Chung",
+  feature: "Đặc điểm",
+  amenity: "Tiện ích",
+  cuisine: "Ẩm thực",
+  activity: "Hoạt động",
+  atmosphere: "Không gian",
 };
 
 export const TAG_COLOR_PRESETS = [
@@ -25,12 +22,9 @@ export const TAG_COLOR_PRESETS = [
 
 export const TAG_TYPE_COLORS = {
   general: "#6B7280",
-  food: "#F59E0B",
-  travel: "#3B82F6",
-  service: "#10B981",
+  feature: "#3B82F6",
+  amenity: "#10B981",
+  cuisine: "#F59E0B",
   activity: "#8B5CF6",
-  ambience: "#EC4899",
-  price: "#EF4444",
-  time: "#06B6D4",
-  ai_signal: "#F97316",
+  atmosphere: "#EC4899",
 };

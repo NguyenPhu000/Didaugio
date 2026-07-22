@@ -537,6 +537,8 @@
       "place": "Địa điểm",
       "service": "Dịch vụ",
       "quantity": "Số lượng",
+      "resource": "Tài nguyên",
+      "selectResource": "Chọn tài nguyên",
       "usageDate": "Ngày sử dụng",
       "selectTime": "Chọn giờ sử dụng",
       "selected": "Đã chọn",
@@ -582,6 +584,10 @@
       "note": "Yêu cầu đặc biệt (tùy chọn)"
     },
     "timeSlotsCount": "{{count}} khung giờ khả dụng",
+    "resources": {
+      "required": "Vui lòng chọn tài nguyên trước khi tiếp tục.",
+      "noneAvailable": "Không có tài nguyên khả dụng cho dịch vụ này."
+    },
     "slotUnavailableWarning": "Khung giờ này đã qua. Vui lòng chọn khung giờ khác.",
     "tripDescription": {
       "withService": "Đã đặt dịch vụ: {{service}}",
@@ -607,6 +613,10 @@
       "selectTrip": {
         "title": "Chọn một trip",
         "message": "Vui lòng chọn trip để liên kết booking này."
+      },
+      "resourceRequired": {
+        "title": "Cần chọn tài nguyên",
+        "message": "Vui lòng chọn tài nguyên khả dụng trước khi đặt chỗ."
       }
     },
     "errors": {

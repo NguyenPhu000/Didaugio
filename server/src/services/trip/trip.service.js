@@ -1,886 +1,366 @@
-
 import crypto from "node:crypto";
 import bcrypt from "bcrypt";
 import prisma from "../../config/prismaClient.js";
 import { BCRYPT_SALT_ROUNDS } from "../../config/constants.js";
-import routingService from "../routing/routing.service.js";
 import { uploadPlaceImage } from "../media/media.service.js";
 import { generateAndSaveTrip } from "./tripAiPlanner.service.js";
+import { assertTripAccess, CAPABILITIES } from "./tripAccessPolicy.service.js";
 
 export { generateAndSaveTrip };
 
-// ---------------------------------------------------------------------------
-// Shared helpers
-// ---------------------------------------------------------------------------
-
-const toInt = (value, fallback = null) => {
-  const number = parseInt(value, 10);
-  return Number.isNaN(number) ? fallback : number;
+const int = (value, fallback = null) => {
+  const result = Number.parseInt(value, 10);
+  return Number.isNaN(result) ? fallback : result;
 };
 
-const parsePagination = (query = {}) => {
-  const page = Math.max(toInt(query.page, 1), 1);
-  const limit = Math.min(Math.max(toInt(query.limit, 10), 1), 50);
-  const skip = (page - 1) * limit;
-  return { page, limit, skip };
-};
-
-/** Chuyển data URL base64 thành URL Cloudinary (giống event thumbnail). */
-const normalizeTripThumbnail = async (thumbnail) => {
-  if (thumbnail == null || thumbnail === "") return thumbnail;
-  if (typeof thumbnail === "string" && thumbnail.startsWith("data:image/")) {
-    const uploadResult = await uploadPlaceImage(thumbnail, "didaugio/trips");
-    return uploadResult.secureUrl;
+const normalizeCover = async (value) => {
+  if (value == null || value === "") return value;
+  if (typeof value === "string" && value.startsWith("data:image/")) {
+    return (await uploadPlaceImage(value, "didaugio/trips")).secureUrl;
   }
-  return thumbnail;
+  return value;
 };
 
-export const withSavedTripFlags = (items = [], savedTrips = []) => {
-  const savedTripIds = new Set(savedTrips.map((saved) => saved.tripId));
-  return items.map((trip) => ({
-    ...trip,
-    isSaved: savedTripIds.has(trip.id),
-  }));
-};
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
+const requestHash = (data) => crypto.createHash("sha256").update(JSON.stringify({
+  title: data.title || null,
+  description: data.description || null,
+  startDate: data.startDate || null,
+  endDate: data.endDate || null,
+  totalDays: int(data.totalDays, 1),
+  travelStyle: data.travelStyle || null,
+  groupSize: int(data.groupSize, 1),
+  placeIds: Array.isArray(data.placeIds) ? data.placeIds.map(Number) : [],
+  thumbnail: data.thumbnail || null,
+})).digest("hex");
 
 export const TRIP_PLACE_SELECT = {
   id: true,
   name: true,
+  slug: true,
   address: true,
   latitude: true,
   longitude: true,
   thumbnail: true,
+  ratingAvg: true,
+  category: { select: { id: true, name: true } },
+  district: { select: { id: true, name: true, code: true } },
+  ward: { select: { id: true, name: true, wardType: true } },
   images: {
     take: 1,
     orderBy: [{ isCover: "desc" }, { order: "asc" }],
     select: { secureUrl: true, thumbnailUrl: true, imageData: true },
   },
-  ratingAvg: true,
-  category: { select: { id: true, name: true } },
-  district: { select: { id: true, name: true, code: true } },
-  ward: { select: { id: true, name: true, wardType: true } },
 };
 
-// ---------------------------------------------------------------------------
-// Private helpers
-// ---------------------------------------------------------------------------
-
-const toKm2 = (meters) => {
-  const value = Number(meters);
-  if (!Number.isFinite(value) || value < 0) return null;
-  return Number((value / 1000).toFixed(2));
-};
-const recalculateDistancesForDay = async (tripId, dayNumber, prismaClient = prisma) => {
-  try {
-    const destinations = await prismaClient.tripDestination.findMany({
-      where: { tripId, dayNumber: toInt(dayNumber, 1) },
-      orderBy: { order: "asc" },
-      include: { place: true },
-    });
-
-    if (destinations.length === 0) return;
-
-    for (let i = 0; i < destinations.length; i++) {
-      const currentDest = destinations[i];
-
-      if (i === destinations.length - 1) {
-        await prismaClient.tripDestination.update({
-          where: { id: currentDest.id },
-          data: {
-            distanceToNext: null,
-            transportToNext: null,
-          },
-        });
-        continue;
-      }
-
-      const nextDest = destinations[i + 1];
-      const fromPlace = currentDest.place;
-      const toPlace = nextDest.place;
-
-      if (!fromPlace || !toPlace) continue;
-
-      let distanceKm = null;
-      try {
-        const routeResult = await routingService.calculate({
-          origin: {
-            lat: Number(fromPlace.latitude),
-            lng: Number(fromPlace.longitude),
-            name: fromPlace.name,
-          },
-          destination: {
-            lat: Number(toPlace.latitude),
-            lng: Number(toPlace.longitude),
-            name: toPlace.name,
-          },
-          mode: "motorcycle",
-          options: { alternatives: 0, steps: false },
-        });
-
-        const route = routeResult?.routes?.[0];
-        if (route) {
-          distanceKm = toKm2(route.distance);
-        }
-      } catch (err) {
-        console.error("Lỗi tính toán khoảng cách tự động: ", err.message);
-      }
-
-      await prismaClient.tripDestination.update({
-        where: { id: currentDest.id },
-        data: {
-          distanceToNext: distanceKm,
-        },
-      });
-    }
-  } catch (error) {
-    console.error("Lỗi recalculateDistancesForDay: ", error.message);
-  }
-};
-
-// ---------------------------------------------------------------------------
-// Exported functions
-// ---------------------------------------------------------------------------
-
-export const saveTrip = async (userId, tripId) => {
-  const trip = await prisma.trip.findUnique({ where: { id: tripId } });
-  if (!trip) {
-    const err = new Error("Không tìm thấy chuyến đi");
-    err.statusCode = 404;
-    throw err;
-  }
-
-  const saved = await prisma.savedTrip.upsert({
-    where: { userId_tripId: { userId, tripId } },
-    create: { userId, tripId },
-    update: {},
-  });
-
-  return saved;
-};
-
-export const unsaveTrip = async (userId, tripId) => {
-  await prisma.savedTrip.deleteMany({
-    where: { userId, tripId },
-  });
-  return { success: true };
-};
-
-export const getMySavedTrips = async (userId) => {
-  const saved = await prisma.savedTrip.findMany({
-    where: { userId },
-    include: {
-      trip: {
-        include: {
-          destinations: {
-            orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-            include: { place: { select: TRIP_PLACE_SELECT } },
-          },
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return saved.map((s) => ({ ...s.trip, savedAt: s.createdAt, isSaved: true }));
-};
-
-const TRIP_LIST_PLACE_SELECT = {
-  id: true,
-  name: true,
-  slug: true,
-  thumbnail: true,
-  category: { select: { id: true, name: true } },
-  district: { select: { id: true, name: true, code: true } },
-  ward: { select: { id: true, name: true, wardType: true } },
-  images: {
-    take: 1,
-    orderBy: [{ isCover: "desc" }, { order: "asc" }],
-    select: { secureUrl: true, thumbnailUrl: true },
+const planInclude = {
+  stops: {
+    orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
+    include: { place: { select: TRIP_PLACE_SELECT } },
   },
 };
 
-const toTripPlanListItem = (plan) => ({
+export const serializeTripPlan = (plan, isSaved = false) => ({
   id: plan.id,
   tripPlanId: plan.id,
   userId: plan.userId,
   title: plan.title,
-  description: plan.description ?? null,
-  thumbnail: plan.coverImage ?? null,
+  description: plan.description,
+  thumbnail: plan.coverImage,
+  coverImage: plan.coverImage,
   startDate: plan.startDate,
   endDate: plan.endDate,
   totalDays: plan.totalDays,
-  totalDistance: null,
-  totalDistanceM: plan.totalDistanceM ?? null,
-  estimatedCost: plan.estimatedCost ?? null,
-  travelStyle: null,
-  groupSize: 1,
+  totalDistance: plan.totalDistanceM == null ? null : Number((plan.totalDistanceM / 1000).toFixed(2)),
+  totalDistanceM: plan.totalDistanceM,
+  estimatedCost: plan.estimatedCost,
+  travelStyle: plan.metadata?.travelStyle ?? null,
+  groupSize: plan.metadata?.groupSize ?? 1,
   status: plan.status,
+  source: plan.source,
   isAiGenerated: plan.source === "ai_generated",
-  aiPrompt: null,
-  isPublic: false,
-  viewCount: 0,
-  cloneCount: 0,
+  isPublic: plan.metadata?.isPublic === true,
+  viewCount: plan.metadata?.viewCount ?? 0,
+  cloneCount: plan.metadata?.cloneCount ?? 0,
+  metadata: plan.metadata,
   createdAt: plan.createdAt,
   updatedAt: plan.updatedAt,
+  stops: plan.stops || [],
   destinations: (plan.stops || []).map((stop) => ({
-    id: stop.id,
+    ...stop,
     tripId: plan.id,
-    placeId: stop.placeId,
-    dayNumber: stop.dayNumber,
     order: stop.sequence,
-    startTime: stop.arrivalTime ?? null,
-    endTime: stop.departureTime ?? null,
-    durationMinutes: stop.durationMinutes ?? null,
-    note: stop.note ?? null,
-    transportToNext: stop.transportToNext ?? null,
-    distanceToNext:
-      stop.routeDistanceM == null ? null : toKm2(stop.routeDistanceM * 1000),
-    estimatedCost: stop.estimatedCost ?? null,
+    startTime: stop.arrivalTime,
+    endTime: stop.departureTime,
+    distanceToNext: stop.routeDistanceM == null ? null : Number((stop.routeDistanceM / 1000).toFixed(2)),
     status: stop.fulfillmentStatus,
-    visitedAt: stop.fulfilledAt ?? null,
-    place: stop.place,
+    visitedAt: stop.fulfilledAt,
   })),
-  isSaved: false,
+  isSaved,
 });
 
-export const makeTripListService = (prismaClient = prisma) => ({
+export const withSavedTripFlags = (items = [], savedTrips = []) => {
+  const ids = new Set(savedTrips.map((item) => item.tripId));
+  return items.map((item) => ({ ...item, isSaved: ids.has(item.id) }));
+};
+
+export const makeTripListService = (db = prisma) => ({
   async getMyTrips(userId, query = {}) {
-    const { page, limit, skip } = parsePagination(query);
+    const page = Math.max(int(query.page, 1), 1);
+    const limit = Math.min(Math.max(int(query.limit, 10), 1), 50);
     const where = { userId };
-    const [legacyTrips, tripPlans] = await Promise.all([
-      prismaClient.trip.findMany({
-        where,
-        orderBy: [{ updatedAt: "desc" }],
-        include: {
-          destinations: {
-            orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-            take: 6,
-            include: { place: { select: TRIP_LIST_PLACE_SELECT } },
-          },
-        },
-      }),
-      prismaClient.tripPlan.findMany({
-        where,
-        orderBy: [{ updatedAt: "desc" }],
-        include: {
-          stops: {
-            orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
-            take: 6,
-            include: { place: { select: TRIP_LIST_PLACE_SELECT } },
-          },
-        },
-      }),
+    const [plans, saved, total] = await Promise.all([
+      db.tripPlan.findMany({ where, orderBy: [{ updatedAt: "desc" }], skip: (page - 1) * limit, take: limit, include: planInclude }),
+      db.savedTrip.findMany({ where: { userId }, select: { tripId: true } }),
+      db.tripPlan.count({ where }),
     ]);
-
-    const legacyIds = new Set(legacyTrips.map((trip) => trip.id));
-    const tripIds = legacyTrips.map((trip) => trip.id);
-    const savedTrips =
-      tripIds.length > 0
-        ? await prismaClient.savedTrip.findMany({
-            where: { userId, tripId: { in: tripIds } },
-            select: { tripId: true },
-          })
-        : [];
-    const nativePlans = tripPlans
-      .filter((plan) => !legacyIds.has(Number(plan.metadata?.legacyTripId)))
-      .map(toTripPlanListItem);
-    const merged = [...withSavedTripFlags(legacyTrips, savedTrips), ...nativePlans]
-      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
     return {
-      data: merged.slice(skip, skip + limit),
-      pagination: {
-        page,
-        limit,
-        total: merged.length,
-        totalPages: Math.ceil(merged.length / limit),
-      },
+      data: withSavedTripFlags(plans.map((plan) => serializeTripPlan(plan)), saved),
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   },
 });
 
-export const getMyTrips = (userId, query = {}) =>
-  makeTripListService(prisma).getMyTrips(userId, query);
+export const getMyTrips = (userId, query) => makeTripListService().getMyTrips(userId, query);
 
-const legacyShadowWhere = (tripId, userId) => ({
-  userId,
-  metadata: { path: ["legacyTripId"], equals: tripId },
-});
-
-const TRIP_PLAN_STATUSES = new Set([
-  "draft",
-  "planned",
-  "active",
-  "paused",
-  "completed",
-  "cancelled",
-  "archived",
-]);
-const LEGACY_TRIP_PLAN_STATUS_MAP = {
-  upcoming: "planned",
-  "in-progress": "active",
-  canceled: "cancelled",
-};
-
-const toTripPlanCommonPatch = (data = {}) => ({
-  ...(data.title !== undefined && { title: data.title }),
-  ...(data.description !== undefined && { description: data.description }),
-  ...(data.startDate !== undefined && {
-    startDate: data.startDate ? new Date(data.startDate) : null,
-  }),
-  ...(data.endDate !== undefined && {
-    endDate: data.endDate ? new Date(data.endDate) : null,
-  }),
-  ...(data.totalDays !== undefined && { totalDays: toInt(data.totalDays, 1) }),
-  ...((TRIP_PLAN_STATUSES.has(data.status)
-    ? data.status
-    : LEGACY_TRIP_PLAN_STATUS_MAP[data.status]) && {
-    status:
-      LEGACY_TRIP_PLAN_STATUS_MAP[data.status] || data.status,
-  }),
-  ...(data.thumbnail !== undefined && { coverImage: data.thumbnail }),
-});
-
-export const syncLegacyTripShadowTx = async (tx, tripId, userId, data) => {
-  const patch = toTripPlanCommonPatch(data);
-  if (Object.keys(patch).length === 0) return null;
-  return tx.tripPlan.updateMany({
-    where: legacyShadowWhere(tripId, userId),
-    data: patch,
-  });
-};
-
-export const deleteLegacyTripAndShadowTx = async (tx, tripId, userId) => {
-  await tx.tripPlan.deleteMany({ where: legacyShadowWhere(tripId, userId) });
-  await tx.trip.delete({ where: { id: tripId } });
-};
-
-export const createTrip = async (userId, data) => {
-  const {
-    title,
-    description,
-    startDate,
-    endDate,
-    totalDays,
-    travelStyle,
-    groupSize,
-    status,
-    placeIds,
-    thumbnail,
-  } = data;
-
-  const normalizedThumbnail = await normalizeTripThumbnail(thumbnail);
-
-  return prisma.$transaction(async (tx) => {
-    const trip = await tx.trip.create({
-      data: {
-        userId,
-        title,
-        description,
-        startDate: startDate ? new Date(startDate) : null,
-        endDate: endDate ? new Date(endDate) : null,
-        totalDays: toInt(totalDays, 1),
-        travelStyle,
-        groupSize: toInt(groupSize, 1),
-        status: status || "upcoming",
-        ...(normalizedThumbnail !== undefined && normalizedThumbnail !== null
-          ? { thumbnail: normalizedThumbnail }
-          : {}),
-      },
-    });
-
-    if (Array.isArray(placeIds) && placeIds.length > 0) {
-      const destinations = placeIds.map((placeId, index) => ({
-        tripId: trip.id,
-        placeId: toInt(placeId),
-        dayNumber: 1,
-        order: index + 1,
-        status: "planned",
-      }));
-      await tx.tripDestination.createMany({ data: destinations });
-    }
-
-    return tx.trip.findUnique({
-      where: { id: trip.id },
-      include: {
-        destinations: {
-          orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-          include: { place: { select: TRIP_PLACE_SELECT } },
-        },
-      },
-    });
-  });
-};
-
-export const getTripDetail = async (id, userId) => {
-  const trip = await prisma.trip.findFirst({
-    where: { id, userId },
-    include: {
-      destinations: {
-        orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-        include: { place: { select: TRIP_PLACE_SELECT } },
-      },
-    },
-  });
-
-  if (!trip) return null;
-
-  const saved = userId
-    ? await prisma.savedTrip.findUnique({
-        where: { userId_tripId: { userId, tripId: id } },
-      })
-    : null;
-
-  return { ...trip, isSaved: !!saved };
-};
-
-export const updateTrip = async (id, userId, data) => {
-  const trip = await prisma.trip.findFirst({ where: { id, userId } });
-  if (!trip) {
-    const err = new Error("Không tìm thấy chuyến đi");
-    err.statusCode = 404;
-    throw err;
-  }
-  const {
-    title,
-    description,
-    startDate,
-    endDate,
-    totalDays,
-    travelStyle,
-    groupSize,
-    status,
-    thumbnail,
-  } = data;
-
-  const normalizedThumbnail =
-    thumbnail !== undefined ? await normalizeTripThumbnail(thumbnail) : undefined;
-
-  const legacyPatch = {
-    ...(title !== undefined && { title }),
-    ...(description !== undefined && { description }),
-    ...(startDate !== undefined && {
-      startDate: startDate ? new Date(startDate) : null,
-    }),
-    ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
-    ...(totalDays !== undefined && { totalDays: toInt(totalDays, 1) }),
-    ...(travelStyle !== undefined && { travelStyle }),
-    ...(groupSize !== undefined && { groupSize: toInt(groupSize, 1) }),
-    ...(status !== undefined && { status }),
-    ...(normalizedThumbnail !== undefined && { thumbnail: normalizedThumbnail }),
-  };
-
-  return prisma.$transaction(async (tx) => {
-    if (totalDays !== undefined) {
-      const parsedTotalDays = toInt(totalDays, 1);
-      if (parsedTotalDays < trip.totalDays) {
-        await tx.tripDestination.updateMany({
-          where: { tripId: id, dayNumber: { gt: parsedTotalDays } },
-          data: { dayNumber: parsedTotalDays },
-        });
-        await recalculateDistancesForDay(id, parsedTotalDays, tx);
+export async function createTrip(userId, data) {
+  const clientRequestId = data.clientRequestId || null;
+  const hash = clientRequestId ? requestHash(data) : null;
+  const normalizedCover = await normalizeCover(data.thumbnail);
+  const execute = async () => prisma.$transaction(async (tx) => {
+    if (clientRequestId) {
+      const replay = await tx.tripPlan.findUnique({
+        where: { userId_clientRequestId: { userId, clientRequestId } },
+        include: planInclude,
+      });
+      if (replay) {
+        if (replay.clientRequestHash !== hash) {
+          const error = new Error("Idempotency key đã được dùng cho nội dung khác");
+          error.statusCode = 409;
+          error.errorCode = "TRIP_CREATE_IDEMPOTENCY_CONFLICT";
+          throw error;
+        }
+        return serializeTripPlan(replay);
       }
     }
-    const updated = await tx.trip.update({
-      where: { id },
-      data: legacyPatch,
-      include: {
-        destinations: {
-          orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-          include: { place: { select: TRIP_PLACE_SELECT } },
-        },
-      },
-    });
-    await syncLegacyTripShadowTx(tx, id, userId, {
-      ...data,
-      ...(normalizedThumbnail !== undefined && { thumbnail: normalizedThumbnail }),
-    });
-    return updated;
-  });
-};
-
-export const deleteTrip = async (id, userId) => {
-  const trip = await prisma.trip.findFirst({ where: { id, userId } });
-  if (!trip) {
-    const err = new Error("Không tìm thấy chuyến đi");
-    err.statusCode = 404;
-    throw err;
-  }
-  await prisma.$transaction((tx) => deleteLegacyTripAndShadowTx(tx, id, userId));
-};
-
-export const duplicateTrip = async (id, userId) => {
-  const trip = await prisma.trip.findFirst({
-    where: { id, userId },
-    include: { destinations: true },
-  });
-  if (!trip) {
-    const err = new Error("Không tìm thấy chuyến đi");
-    err.statusCode = 404;
-    throw err;
-  }
-
-  return prisma.$transaction(async (tx) => {
-    const newTrip = await tx.trip.create({
+    const totalDays = int(data.totalDays, 1);
+    const startDate = data.startDate ? new Date(data.startDate) : new Date();
+    const endDate = data.endDate ? new Date(data.endDate) : new Date(startDate.getTime() + (totalDays - 1) * 86400000);
+    const plan = await tx.tripPlan.create({
       data: {
         userId,
-        title: `${trip.title} (Bản sao)`,
-        description: trip.description,
-        startDate: null,
-        endDate: null,
-        totalDays: trip.totalDays,
-        travelStyle: trip.travelStyle,
-        groupSize: trip.groupSize,
-        status: "upcoming",
-        thumbnail: trip.thumbnail,
+        title: data.title || "Chuyến đi mới",
+        description: data.description || null,
+        coverImage: normalizedCover,
+        startDate,
+        endDate,
+        totalDays,
+        status: "planned",
+        source: "manual",
+        clientRequestId,
+        clientRequestHash: hash,
+        metadata: { travelStyle: data.travelStyle || null, groupSize: int(data.groupSize, 1), isPublic: false },
       },
     });
-
-    if (trip.destinations?.length > 0) {
-      await tx.tripDestination.createMany({
-        data: trip.destinations.map((dest) => ({
-          tripId: newTrip.id,
-          placeId: dest.placeId,
-          dayNumber: dest.dayNumber,
-          order: dest.order,
-          startTime: null,
-          endTime: null,
-          durationMinutes: null,
-          note: dest.note,
-          transportToNext: null,
-          distanceToNext: null,
-          estimatedCost: null,
-          status: "planned",
+    if (Array.isArray(data.placeIds) && data.placeIds.length > 0) {
+      await tx.tripStop.createMany({
+        data: data.placeIds.map((placeId, index) => ({
+          tripId: plan.id,
+          placeId: int(placeId),
+          dayNumber: 1,
+          sequence: index + 1,
         })),
       });
     }
-
-    return tx.trip.findUnique({
-      where: { id: newTrip.id },
-      include: {
-        destinations: {
-          orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-          include: { place: { select: TRIP_PLACE_SELECT } },
-        },
-      },
-    });
+    return serializeTripPlan(await tx.tripPlan.findUnique({ where: { id: plan.id }, include: planInclude }));
   });
-};
 
-export const addDestination = async (
-  tripId,
-  userId,
-  { placeId, dayNumber, order, note, startTime, endTime, transportToNext, distanceToNext },
-) => {
-  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
-  if (!trip) {
-    const err = new Error("Không tìm thấy chuyến đi");
-    err.statusCode = 404;
-    throw err;
-  }
-
-  let targetOrder = toInt(order);
-  if (targetOrder === null || targetOrder === undefined) {
-    const maxDest = await prisma.tripDestination.findFirst({
-      where: { tripId, dayNumber: toInt(dayNumber, 1) },
-      orderBy: { order: "desc" },
-      select: { order: true },
+  try {
+    return await execute();
+  } catch (error) {
+    if (error?.code !== "P2002" || !clientRequestId) throw error;
+    const replay = await prisma.tripPlan.findUnique({
+      where: { userId_clientRequestId: { userId, clientRequestId } },
+      include: planInclude,
     });
-    targetOrder = maxDest ? maxDest.order + 1 : 1;
+    if (!replay || replay.clientRequestHash !== hash) {
+      const conflict = new Error("Idempotency key conflict");
+      conflict.statusCode = 409;
+      conflict.errorCode = "TRIP_CREATE_IDEMPOTENCY_CONFLICT";
+      throw conflict;
+    }
+    return serializeTripPlan(replay);
   }
+}
 
-  if (transportToNext) {
-    const previousDest = await prisma.tripDestination.findFirst({
-      where: { tripId, dayNumber: toInt(dayNumber, 1) },
-      orderBy: { order: "desc" },
-    });
-    if (previousDest) {
-      await prisma.tripDestination.update({
-        where: { id: previousDest.id },
-        data: { transportToNext },
-      });
+export async function updateTrip(id, userId, data) {
+  const plan = await prisma.tripPlan.findUnique({ where: { id } });
+  assertTripAccess(userId, plan, CAPABILITIES.EDIT);
+  const totalDays = data.totalDays === undefined ? plan.totalDays : int(data.totalDays, 1);
+  if (totalDays < plan.totalDays) {
+    const overflow = await prisma.tripStop.count({ where: { tripId: id, dayNumber: { gt: totalDays } } });
+    if (overflow > 0) {
+      const error = new Error("Hãy di chuyển các điểm dừng trước khi giảm số ngày");
+      error.statusCode = 409;
+      error.errorCode = "TRIP_DAYS_CONFLICT";
+      throw error;
     }
   }
+  const metadata = {
+    ...(plan.metadata && typeof plan.metadata === "object" ? plan.metadata : {}),
+    ...(data.travelStyle !== undefined && { travelStyle: data.travelStyle }),
+    ...(data.groupSize !== undefined && { groupSize: int(data.groupSize, 1) }),
+    ...(data.isPublic !== undefined && { isPublic: data.isPublic === true }),
+  };
+  const status = ({ upcoming: "planned", "in-progress": "active", canceled: "cancelled" })[data.status] || data.status;
+  const updated = await prisma.tripPlan.update({
+    where: { id },
+    data: {
+      ...(data.title !== undefined && { title: data.title }),
+      ...(data.description !== undefined && { description: data.description }),
+      ...(data.startDate && { startDate: new Date(data.startDate) }),
+      ...(data.endDate && { endDate: new Date(data.endDate) }),
+      ...(data.totalDays !== undefined && { totalDays }),
+      ...(status && { status }),
+      ...(data.thumbnail !== undefined && { coverImage: (await normalizeCover(data.thumbnail)) || null }),
+      metadata,
+    },
+    include: planInclude,
+  });
+  return serializeTripPlan(updated);
+}
 
-  const created = await prisma.tripDestination.create({
+export async function deleteTrip(id, userId) {
+  const plan = await prisma.tripPlan.findUnique({ where: { id } });
+  assertTripAccess(userId, plan, CAPABILITIES.DELETE);
+  await prisma.tripPlan.delete({ where: { id } });
+  return { success: true };
+}
+
+export async function duplicateTrip(id, userId) {
+  const source = await prisma.tripPlan.findUnique({ where: { id }, include: { stops: true } });
+  assertTripAccess(userId, source, CAPABILITIES.DUPLICATE);
+  return prisma.$transaction(async (tx) => {
+    const copy = await tx.tripPlan.create({
+      data: {
+        userId,
+        title: `${source.title} (Bản sao)`,
+        description: source.description,
+        coverImage: source.coverImage,
+        startDate: source.startDate,
+        endDate: source.endDate,
+        totalDays: source.totalDays,
+        status: "draft",
+        source: source.source,
+        estimatedCost: source.estimatedCost,
+        totalDistanceM: source.totalDistanceM,
+        metadata: source.metadata,
+      },
+    });
+    if (source.stops.length > 0) {
+      await tx.tripStop.createMany({
+        data: source.stops.map((stop) => ({
+          tripId: copy.id, placeId: stop.placeId, dayNumber: stop.dayNumber,
+          sequence: stop.sequence, title: stop.title, note: stop.note,
+          plannedDate: stop.plannedDate, arrivalTime: stop.arrivalTime,
+          departureTime: stop.departureTime, durationMinutes: stop.durationMinutes,
+          estimatedCost: stop.estimatedCost, transportToNext: stop.transportToNext,
+          fulfillmentStatus: "pending", metadata: stop.metadata,
+        })),
+      });
+    }
+    return serializeTripPlan(await tx.tripPlan.findUnique({ where: { id: copy.id }, include: planInclude }));
+  });
+}
+
+export async function saveTrip(userId, tripId) {
+  const plan = await prisma.tripPlan.findUnique({ where: { id: tripId } });
+  assertTripAccess(userId, plan, CAPABILITIES.SAVE);
+  return prisma.savedTrip.upsert({
+    where: { userId_tripId: { userId, tripId } },
+    create: { userId, tripId },
+    update: {},
+  });
+}
+
+export async function unsaveTrip(userId, tripId) {
+  await prisma.savedTrip.deleteMany({ where: { userId, tripId } });
+  return { success: true };
+}
+
+export async function getMySavedTrips(userId) {
+  const saved = await prisma.savedTrip.findMany({
+    where: { userId },
+    include: { trip: { include: planInclude } },
+    orderBy: { createdAt: "desc" },
+  });
+  return saved.map((item) => ({ ...serializeTripPlan(item.trip, true), savedAt: item.createdAt }));
+}
+
+export async function createTripShare(tripId, userId, data = {}) {
+  const plan = await prisma.tripPlan.findUnique({ where: { id: tripId } });
+  assertTripAccess(userId, plan, CAPABILITIES.SHARE);
+  return prisma.tripShare.create({
     data: {
       tripId,
-      placeId: toInt(placeId),
-      dayNumber: toInt(dayNumber, 1),
-      order: targetOrder,
-      note,
-      startTime: startTime ?? null,
-      endTime: endTime ?? null,
-      transportToNext: null,
-      distanceToNext: distanceToNext !== undefined && distanceToNext !== null ? Number(distanceToNext) : null,
-      status: "planned",
-    },
-  });
-
-  await recalculateDistancesForDay(tripId, dayNumber);
-
-  return prisma.tripDestination.findFirst({
-    where: { id: created.id },
-    include: { place: { select: TRIP_PLACE_SELECT } },
-  });
-};
-
-export const removeDestination = async (tripId, destId, userId) => {
-  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
-  if (!trip) {
-    const err = new Error("Không tìm thấy chuyến đi");
-    err.statusCode = 404;
-    throw err;
-  }
-  const dest = await prisma.tripDestination.findFirst({
-    where: { id: destId, tripId },
-  });
-  if (!dest) {
-    const err = new Error("Không tìm thấy địa điểm trong lịch trình");
-    err.statusCode = 404;
-    throw err;
-  }
-  await prisma.tripDestination.delete({ where: { id: destId } });
-
-  await recalculateDistancesForDay(tripId, dest.dayNumber);
-};
-
-export const reorderDestinations = async (tripId, userId, { dayNumber, orderedIds }) => {
-  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
-  if (!trip) {
-    const err = new Error("Khong tim thay chuyen di");
-    err.statusCode = 404;
-    throw err;
-  }
-  await prisma.$transaction(
-    orderedIds.map((destId, index) =>
-      prisma.tripDestination.update({
-        where: { id: toInt(destId) },
-        data: { order: index },
-      }),
-    ),
-  );
-
-  await recalculateDistancesForDay(tripId, dayNumber);
-
-  return prisma.tripDestination.findMany({
-    where: { tripId, dayNumber: toInt(dayNumber, 1) },
-    orderBy: { order: "asc" },
-    include: { place: { select: TRIP_PLACE_SELECT } },
-  });
-};
-
-export const updateDestination = async (tripId, destId, userId, data) => {
-  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
-  if (!trip) {
-    const err = new Error("Khong tim thay chuyen di");
-    err.statusCode = 404;
-    throw err;
-  }
-  const dest = await prisma.tripDestination.findFirst({ where: { id: destId, tripId } });
-  if (!dest) {
-    const err = new Error("Khong tim thay dia diem");
-    err.statusCode = 404;
-    throw err;
-  }
-  const updateData = {};
-  if (data.startTime !== undefined) updateData.startTime = data.startTime;
-  if (data.endTime !== undefined) updateData.endTime = data.endTime;
-  if (data.durationMinutes !== undefined) updateData.durationMinutes = toInt(data.durationMinutes);
-  if (data.note !== undefined) updateData.note = data.note;
-  if (data.transportToNext !== undefined) updateData.transportToNext = data.transportToNext;
-  if (data.distanceToNext !== undefined) updateData.distanceToNext = data.distanceToNext !== null ? Number(data.distanceToNext) : null;
-
-  await prisma.tripDestination.update({
-    where: { id: destId },
-    data: updateData,
-  });
-
-  await recalculateDistancesForDay(tripId, dest.dayNumber);
-
-  return prisma.tripDestination.findFirst({
-    where: { id: destId },
-    include: { place: { select: TRIP_PLACE_SELECT } },
-  });
-};
-
-export const moveDestination = async (tripId, destId, userId, { newDayNumber, newOrder }) => {
-  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
-  if (!trip) {
-    const err = new Error("Khong tim thay chuyen di");
-    err.statusCode = 404;
-    throw err;
-  }
-  const dest = await prisma.tripDestination.findFirst({ where: { id: destId, tripId } });
-  if (!dest) {
-    const err = new Error("Khong tim thay dia diem");
-    err.statusCode = 404;
-    throw err;
-  }
-  const oldDayNumber = dest.dayNumber;
-
-  await prisma.tripDestination.update({
-    where: { id: destId },
-    data: {
-      dayNumber: toInt(newDayNumber),
-      order: toInt(newOrder, 0),
-    },
-  });
-
-  await recalculateDistancesForDay(tripId, oldDayNumber);
-  await recalculateDistancesForDay(tripId, newDayNumber);
-
-  return prisma.tripDestination.findFirst({
-    where: { id: destId },
-    include: { place: { select: TRIP_PLACE_SELECT } },
-  });
-};
-
-// ---------------------------------------------------------------------------
-// TripShare Functions
-// ---------------------------------------------------------------------------
-
-const generateShareCode = () => {
-  return crypto.randomBytes(4).toString("hex");
-};
-
-export const createTripShare = async (tripId, userId, data = {}) => {
-  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
-  if (!trip) {
-    const err = new Error("Không tìm thấy chuyến đi");
-    err.statusCode = 404;
-    throw err;
-  }
-
-  const shareCode = generateShareCode();
-  // Hash password before storing
-  const hashedPassword = data.password
-    ? await bcrypt.hash(data.password, BCRYPT_SALT_ROUNDS)
-    : null;
-
-  const share = await prisma.tripShare.create({
-    data: {
-      tripId,
-      shareCode,
+      shareCode: crypto.randomBytes(12).toString("base64url"),
       shareType: data.shareType || "view",
-      password: hashedPassword,
+      password: data.password ? await bcrypt.hash(data.password, BCRYPT_SALT_ROUNDS) : null,
       expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
       maxAccess: data.maxAccess || null,
     },
   });
+}
 
-  return share;
-};
+export async function getTripShares(tripId, userId) {
+  const plan = await prisma.tripPlan.findUnique({ where: { id: tripId } });
+  assertTripAccess(userId, plan, CAPABILITIES.SHARE);
+  return prisma.tripShare.findMany({ where: { tripId }, orderBy: { createdAt: "desc" } });
+}
 
-export const getTripShares = async (tripId, userId) => {
-  const trip = await prisma.trip.findFirst({ where: { id: tripId, userId } });
-  if (!trip) {
-    const err = new Error("Không tìm thấy chuyến đi");
-    err.statusCode = 404;
-    throw err;
-  }
-
-  return prisma.tripShare.findMany({
-    where: { tripId },
-    orderBy: { createdAt: "desc" },
-  });
-};
-
-export const accessTripShare = async (shareCode, password = null) => {
-  const share = await prisma.tripShare.findUnique({
-    where: { shareCode },
-    include: {
-      trip: {
-        include: {
-          destinations: {
-            orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-            include: { place: { select: TRIP_PLACE_SELECT } },
-          },
-        },
-      },
-    },
-  });
-
-  if (!share || !share.isActive) {
-    const err = new Error("Link chia sẻ không tồn tại hoặc đã bị vô hiệu hóa");
-    err.statusCode = 404;
-    throw err;
-  }
-
-  if (share.expiresAt && new Date(share.expiresAt) < new Date()) {
-    const err = new Error("Link chia sẻ đã hết hạn");
-    err.statusCode = 410;
-    throw err;
-  }
-
-  if (share.maxAccess && share.accessCount >= share.maxAccess) {
-    const err = new Error("Link chia sẻ đã đạt giới hạn truy cập");
-    err.statusCode = 410;
-    throw err;
-  }
-
-  if (share.password) {
-    if (!password) {
-      const err = new Error("Cần mật khẩu để xem chuyến đi này");
-      err.statusCode = 403;
-      throw err;
+export async function accessTripShare(shareCode, password = null) {
+  return prisma.$transaction(async (tx) => {
+    let share = await tx.tripShare.findUnique({ where: { shareCode }, include: { trip: { include: planInclude } } });
+    if (share) {
+      await tx.$queryRaw`SELECT id FROM trip_shares WHERE id = ${share.id} FOR UPDATE`;
+      share = await tx.tripShare.findUnique({ where: { id: share.id }, include: { trip: { include: planInclude } } });
     }
-    const isMatch = await bcrypt.compare(password, share.password);
-    if (!isMatch) {
-      const err = new Error("Mật khẩu không đúng");
-      err.statusCode = 403;
-      throw err;
+    if (!share || !share.isActive) {
+      const error = new Error("Link chia sẻ không tồn tại hoặc đã bị vô hiệu hóa"); error.statusCode = 404; throw error;
     }
-  }
-
-  await prisma.tripShare.update({
-    where: { id: share.id },
-    data: { accessCount: { increment: 1 } },
+    if (share.expiresAt && share.expiresAt < new Date()) {
+      const error = new Error("Link chia sẻ đã hết hạn"); error.statusCode = 410; throw error;
+    }
+    if (share.maxAccess != null && share.accessCount >= share.maxAccess) {
+      const error = new Error("Link chia sẻ đã đạt giới hạn truy cập"); error.statusCode = 410; throw error;
+    }
+    if (share.password && (!password || !(await bcrypt.compare(password, share.password)))) {
+      const error = new Error("Mật khẩu không đúng"); error.statusCode = 403; throw error;
+    }
+    await tx.tripShare.update({ where: { id: share.id }, data: { accessCount: { increment: 1 } } });
+    return { trip: serializeTripPlan(share.trip), shareType: share.shareType };
   });
+}
 
-  return { trip: share.trip, shareType: share.shareType };
-};
-
-export const deleteTripShare = async (shareId, userId) => {
-  const share = await prisma.tripShare.findUnique({
-    where: { id: shareId },
-    include: { trip: true },
-  });
-
-  if (!share || share.trip.userId !== userId) {
-    const err = new Error("Không tìm thấy link chia sẻ");
-    err.statusCode = 404;
-    throw err;
+export async function deleteTripShare(shareId, userId) {
+  const share = await prisma.tripShare.findUnique({ where: { id: shareId }, include: { trip: true } });
+  if (!share) {
+    const error = new Error("Không tìm thấy link chia sẻ"); error.statusCode = 404; throw error;
   }
-
+  assertTripAccess(userId, share.trip, CAPABILITIES.SHARE);
   await prisma.tripShare.delete({ where: { id: shareId } });
   return { success: true };
-};
-
-// ---------------------------------------------------------------------------
-// Default export
-// ---------------------------------------------------------------------------
+}
 
 export default {
-  saveTrip,
-  unsaveTrip,
-  getMySavedTrips,
-  getMyTrips,
   generateAndSaveTrip,
+  getMyTrips,
   createTrip,
-  getTripDetail,
   updateTrip,
   deleteTrip,
   duplicateTrip,
-  addDestination,
-  removeDestination,
-  reorderDestinations,
-  updateDestination,
-  moveDestination,
+  saveTrip,
+  unsaveTrip,
+  getMySavedTrips,
   createTripShare,
   getTripShares,
   accessTripShare,

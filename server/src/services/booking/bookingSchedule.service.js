@@ -17,6 +17,7 @@ import {
   BOOKING_ACTION,
 } from "./bookingActionLog.service.js";
 import {
+  assertAvailability,
   checkAvailability,
   lockBookingRow,
 } from "./bookingAvailability.service.js";
@@ -26,7 +27,7 @@ import {
   assertBookingTransition,
   BOOKING_TRANSITION,
 } from "./bookingStateMachine.js";
-import { refundLedger } from "./financialCore.service.js";
+import { createCancelledRefundIntentInTransaction, finalizeCancelledRefund } from "./canonicalBookingRefund.service.js";
 
 const scheduleInclude = {
   service: {
@@ -255,35 +256,23 @@ export async function rescheduleBooking(
       serviceId: existing.serviceId,
       bookingAt: newAt,
       quantity: existing.quantity,
+      resourceId: existing.resourceId,
       excludeBookingId: existing.id,
     });
-    if (!avail.ok) {
-      throw new ServiceError(
-        "Khung giờ đã đủ slot (trùng lịch)",
-        409,
-        ERROR_CODES.CONFLICT,
-      );
-    }
-
+    assertAvailability(avail);
     const useDate = toUseDateOnly(newAt);
     const useTime = toUseTimeString(newAt);
 
     // Update startTime/endTime for RESOURCE model
-    const startTime =
-      existing.service?.bookingModel === "resource" ? newAt : null;
-    const endTime =
-      startTime && existing.service?.durationMinutes
-        ? new Date(newAt.getTime() + existing.service.durationMinutes * 60_000)
-        : null;
-
     const updated = await tx.booking.update({
       where: { id: existing.id },
       data: {
         bookingAt: newAt,
         useDate,
         useTime,
-        startTime,
-        endTime,
+        resourceId: avail.resourceId,
+        startTime: avail.startTime,
+        endTime: avail.endTime,
         ...(businessNote !== undefined && { businessNote }),
       },
       include: {
@@ -387,16 +376,10 @@ export async function quickApproveBooking(bookingId, actorUserId) {
       serviceId: existing.serviceId,
       bookingAt: at,
       quantity: existing.quantity,
+      resourceId: existing.resourceId,
       excludeBookingId: existing.id,
     });
-    if (!avail.ok) {
-      throw new ServiceError(
-        "Không đủ slot trong khung giờ này",
-        409,
-        ERROR_CODES.CONFLICT,
-      );
-    }
-
+    assertAvailability(avail);
     await tx.booking.update({
       where: { id: existing.id },
       data: {
@@ -428,10 +411,16 @@ export async function quickRejectBooking(
   cancelReason,
   actorUserId,
   businessNote = undefined,
+  overrides = {},
 ) {
-  await expirePendingBookings();
+  const cancellationPrisma = overrides.prisma || prisma;
+  const createRefundIntent = overrides.createCancelledRefundIntentInTransaction || createCancelledRefundIntentInTransaction;
+  const finalizeRefund = overrides.finalizeCancelledRefund || finalizeCancelledRefund;
+  const loadBooking = overrides.getById || getById;
+  const cancellationEvents = overrides.eventEmitter || eventEmitter;
+  await (overrides.expirePendingBookings || expirePendingBookings)();
 
-  await prisma.$transaction(async (tx) => {
+  const refundIntent = await cancellationPrisma.$transaction(async (tx) => {
     await lockBookingRow(tx, bookingId);
     const existing = await tx.booking.findUnique({
       where: { id: parseInt(bookingId, 10) },
@@ -467,10 +456,9 @@ export async function quickRejectBooking(
       },
     });
 
-    // Refund frozen balance if booking was paid
-    if (existing.paymentStatus === "paid" && existing.businessEarned > 0) {
-      await refundLedger(tx, existing.id, existing.businessId, existing.businessEarned, existing.commissionAmount || 0);
-    }
+    const intent = await createRefundIntent(tx, existing, {
+      actorUserId, reason: cancelReason || "Từ chối nhanh", idempotencyKey: `booking-quick-reject:${existing.id}`,
+    });
 
     await appendBookingActionLog(tx, {
       bookingId: existing.id,
@@ -481,10 +469,13 @@ export async function quickRejectBooking(
         businessNote: businessNote || null,
       },
     });
+    return intent?.attempt || null;
   });
 
-  const booking = await getById(bookingId);
-  eventEmitter.emit(EVENTS.BOOKING.REJECTED, {
+  await finalizeRefund(refundIntent);
+
+  const booking = await loadBooking(bookingId);
+  cancellationEvents.emit(EVENTS.BOOKING.REJECTED, {
     bookingId: booking.id,
     bookingCode: booking.bookingCode,
     rejectedBy: actorUserId,
@@ -535,6 +526,7 @@ export async function autoApproveIfMatchRules(bookingId) {
         serviceId: booking.serviceId,
         bookingAt: at,
         quantity: booking.quantity,
+        resourceId: booking.resourceId,
         excludeBookingId: booking.id,
       });
 

@@ -38,6 +38,7 @@ export const createTripSchema = z.object({
   status: z.enum(["planned"]).optional(),
   thumbnail: z.string().optional().nullable(),
   placeIds: z.array(z.coerce.number().int().positive()).optional(),
+  clientRequestId: z.string().min(8).max(100).optional(),
 });
 
 export const updateTripSchema = z.object({
@@ -60,6 +61,7 @@ export const updateTripSchema = z.object({
     .enum(["planned", "upcoming", "in-progress", "completed", "cancelled"])
     .optional(),
   thumbnail: z.string().optional().nullable(),
+  isPublic: z.boolean().optional(),
 });
 
 // ─── Destination schemas ────────────────────────────────────────────────────

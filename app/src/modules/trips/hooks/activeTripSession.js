@@ -9,6 +9,7 @@ export function normalizeServerTripSession(session) {
       visitedIds: [],
       isPaused: false,
       shouldClearActiveTrip: true,
+      version: Number(session.clientStateVersion || 0),
     };
   }
 
@@ -21,5 +22,6 @@ export function normalizeServerTripSession(session) {
   return {
     visitedIds,
     isPaused: status === "paused",
+    version: Number(session.clientStateVersion || 0),
   };
 }

@@ -2,12 +2,57 @@ import { BOOKING_STATUS } from "../../config/constants.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import prisma from "../../config/prismaClient.js";
 import {
+  combineUseDateAndTime,
   endOfMinuteUtc,
   startOfMinuteUtc,
+  toUseDateOnly,
 } from "../../utils/bookingTimeSlot.js";
 import ServiceError from "../../utils/serviceError.js";
+import {
+  allowsCapacityOverbooking,
+  buildBlockingBookingWhere,
+  normalizeRequestedResourceId,
+  resolveBufferMinutes,
+  resolveBookingModel,
+  resolveOccupiedDurationMinutes,
+  resolveOccupiedInterval,
+} from "./bookingPolicy.js";
 
 const ACTIVE_STATUSES = [BOOKING_STATUS.PENDING, BOOKING_STATUS.CONFIRMED];
+
+function assertAvailabilityInput(serviceId, dateStr) {
+  const normalizedServiceId = Number(serviceId);
+  if (!Number.isInteger(normalizedServiceId) || normalizedServiceId <= 0) {
+    throw new ServiceError("serviceId không hợp lệ", 400, "INVALID_PARAMS");
+  }
+
+  if (typeof dateStr !== "string") {
+    throw new ServiceError("Định dạng date không hợp lệ (YYYY-MM-DD)", 400, "INVALID_PARAMS");
+  }
+
+  try {
+    // This intentionally parses the calendar string before any database lookup.
+    combineUseDateAndTime(dateStr, "00:00");
+  } catch {
+    throw new ServiceError("Định dạng date không hợp lệ (YYYY-MM-DD)", 400, "INVALID_PARAMS");
+  }
+
+  return normalizedServiceId;
+}
+
+function vietnamDayBounds(dateStr) {
+  const start = combineUseDateAndTime(dateStr, "00:00");
+  return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
+}
+
+function formatVietnamTime(date) {
+  return date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Ho_Chi_Minh",
+  });
+}
 
 /**
  * @param {import("@prisma/client").Prisma.TransactionClient} tx
@@ -22,7 +67,7 @@ export async function lockBookingRow(tx, bookingId) {
  * Check resource overlap for RESOURCE booking model (tables, rooms, seats).
  * Two bookings overlap if: existing.startTime < new.endTime AND existing.endTime > new.startTime.
  * @param {import("@prisma/client").Prisma.TransactionClient} tx
- * @param {{ serviceId: number, startTime: Date, endTime: Date, resourceId?: number, excludeBookingId?: number }} payload
+ * @param {{ serviceId: number, startTime: Date, endTime: Date, resourceId: number, excludeBookingId?: number }} payload
  */
 export async function checkResourceOverlap(tx, payload) {
   const { serviceId, startTime, endTime, resourceId, excludeBookingId } = payload;
@@ -31,16 +76,13 @@ export async function checkResourceOverlap(tx, payload) {
     return { ok: true, overlappingBookings: [] };
   }
 
-  const where = {
+  const where = buildBlockingBookingWhere({
     serviceId,
-    status: { in: ACTIVE_STATUSES },
-    startTime: { not: null, lt: endTime },
-    endTime: { gt: startTime },
-  };
-
-  if (excludeBookingId) {
-    where.id = { not: excludeBookingId };
-  }
+    resourceId,
+    startTime,
+    endTime,
+    excludeBookingId,
+  });
 
   const overlapping = await tx.booking.findMany({
     where,
@@ -61,10 +103,10 @@ export async function checkResourceOverlap(tx, payload) {
 
 /**
  * @param {import("@prisma/client").Prisma.TransactionClient} tx
- * @param {{ serviceId: number; bookingAt: Date; quantity: number; excludeBookingId?: number }} payload
+ * @param {{ serviceId: number; bookingAt: Date; quantity: number; resourceId?: number; excludeBookingId?: number }} payload
  */
 export async function checkAvailability(tx, payload) {
-  const { serviceId, bookingAt, quantity, excludeBookingId } = payload;
+  const { serviceId, bookingAt, quantity, resourceId: requestedResourceId, excludeBookingId } = payload;
 
   // Lock service row to serialize concurrent booking requests for the same service.
   // Prevents race condition where two transactions read the same capacity count.
@@ -76,8 +118,10 @@ export async function checkAvailability(tx, payload) {
       id: true,
       maxCapacity: true,
       businessId: true,
+      placeId: true,
       bookingModel: true,
       slotDurationMinutes: true,
+      durationMinutes: true,
       bufferMinutes: true,
       allowOverbooking: true,
     },
@@ -86,9 +130,100 @@ export async function checkAvailability(tx, payload) {
     return { ok: false, used: 0, capacity: 0, reason: "NO_SERVICE" };
   }
 
+  if (resolveBookingModel(svc) === "resource") {
+    let resourceId;
+    try {
+      resourceId = normalizeRequestedResourceId(svc, requestedResourceId);
+    } catch (error) {
+      return {
+        ok: false,
+        used: 0,
+        capacity: 0,
+        reason: "RESOURCE_REQUIRED",
+      };
+    }
+
+    await tx.$executeRaw`SELECT id FROM place_resources WHERE id = ${resourceId} FOR UPDATE`;
+    const resource = await tx.placeResource.findUnique({
+      where: { id: resourceId },
+      select: {
+        id: true,
+        status: true,
+        serviceId: true,
+        placeId: true,
+        capacity: true,
+      },
+    });
+
+    if (
+      !resource ||
+      resource.status !== "active" ||
+      resource.serviceId !== svc.id ||
+      resource.placeId !== svc.placeId
+    ) {
+      return {
+        ok: false,
+        used: 0,
+        capacity: resource?.capacity ?? 0,
+        reason: "RESOURCE_INVALID",
+      };
+    }
+
+    if (Number.isInteger(resource.capacity) && resource.capacity > 0 && quantity > resource.capacity) {
+      return {
+        ok: false,
+        used: 0,
+        capacity: resource.capacity,
+        reason: "RESOURCE_INVALID",
+      };
+    }
+
+    const bookingDate = toUseDateOnly(bookingAt);
+    const blocked = await tx.businessBlockedDate.findFirst({
+      where: {
+        businessId: svc.businessId,
+        date: bookingDate,
+        OR: [{ serviceId: null }, { serviceId }],
+      },
+    });
+    if (blocked) {
+      return { ok: false, used: 0, capacity: 0, reason: "BLOCKED_DATE" };
+    }
+
+    const { startTime, endTime } = resolveOccupiedInterval(svc, bookingAt);
+    const overlapResult = await checkResourceOverlap(tx, {
+      serviceId,
+      startTime,
+      endTime,
+      resourceId,
+      excludeBookingId,
+    });
+
+    if (!overlapResult.ok) {
+      return {
+        ok: false,
+        used: 0,
+        capacity: resource.capacity ?? 1,
+        reason: "RESOURCE_OVERLAP",
+        resourceId,
+        startTime,
+        endTime,
+        overlappingBookings: overlapResult.overlappingBookings,
+      };
+    }
+
+    return {
+      ok: true,
+      used: 0,
+      capacity: resource.capacity ?? 1,
+      resourceId,
+      startTime,
+      endTime,
+    };
+  }
+
   // Check blocked dates
-  const bookingDate = new Date(bookingAt);
-  bookingDate.setUTCHours(0, 0, 0, 0);
+  const bookingDate = toUseDateOnly(bookingAt);
   const blocked = await tx.businessBlockedDate.findFirst({
     where: {
       businessId: svc.businessId,
@@ -100,33 +235,6 @@ export async function checkAvailability(tx, payload) {
     return { ok: false, used: 0, capacity: 0, reason: "BLOCKED_DATE" };
   }
 
-  // RESOURCE model: check overlap instead of capacity
-  if (svc.bookingModel === "resource") {
-    const startTime = new Date(bookingAt);
-    const bufferMs = (svc.bufferMinutes || 0) * 60_000;
-    const slotMs = (svc.slotDurationMinutes || svc.maxCapacity || 60) * 60_000;
-    const endTime = new Date(startTime.getTime() + bufferMs + slotMs);
-
-    const overlapResult = await checkResourceOverlap(tx, {
-      serviceId,
-      startTime,
-      endTime,
-      resourceId: svc.resourceId || undefined,
-      excludeBookingId,
-    });
-
-    if (!overlapResult.ok) {
-      return {
-        ok: false,
-        used: 0,
-        capacity: 1,
-        reason: "RESOURCE_OVERLAP",
-        overlappingBookings: overlapResult.overlappingBookings,
-      };
-    }
-    return { ok: true, used: 0, capacity: 1 };
-  }
-
   const cap = svc.maxCapacity ?? 999_999;
   const start = startOfMinuteUtc(new Date(bookingAt));
   const end = endOfMinuteUtc(start);
@@ -136,18 +244,62 @@ export async function checkAvailability(tx, payload) {
       serviceId,
       ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
       status: { in: ACTIVE_STATUSES },
+      deletedAt: null,
       bookingAt: { gte: start, lt: end },
     },
     _sum: { quantity: true },
   });
 
   const used = agg._sum.quantity || 0;
-  const effectiveCapacity = svc.allowOverbooking ? cap + 999_999 : cap;
+  const overbookingAllowed = allowsCapacityOverbooking(svc);
   return {
-    ok: used + quantity <= effectiveCapacity,
+    ok: overbookingAllowed || used + quantity <= cap,
     used,
-    capacity: effectiveCapacity,
+    capacity: cap,
+    resourceId: null,
+    startTime: null,
+    endTime: null,
+    ...(overbookingAllowed || used + quantity <= cap
+      ? {}
+      : { reason: "CAPACITY_EXCEEDED" }),
   };
+}
+
+/**
+ * Convert an availability failure into the stable API error contract.
+ * @param {{ ok: boolean; reason?: string }} availability
+ */
+export function assertAvailability(availability) {
+  if (availability.ok) return;
+
+  const failures = {
+    RESOURCE_REQUIRED: [
+      "Phải chọn tài nguyên cho dịch vụ này",
+      400,
+      ERROR_CODES.BOOKING_RESOURCE_REQUIRED,
+    ],
+    RESOURCE_INVALID: [
+      "Tài nguyên không hợp lệ cho dịch vụ hoặc địa điểm này",
+      400,
+      ERROR_CODES.BOOKING_RESOURCE_INVALID,
+    ],
+    RESOURCE_OVERLAP: [
+      "Tài nguyên đã được đặt trong khung giờ này",
+      409,
+      ERROR_CODES.BOOKING_SLOT_CONFLICT,
+    ],
+    CAPACITY_EXCEEDED: [
+      "Khung giờ đã hết chỗ",
+      409,
+      ERROR_CODES.BOOKING_CAPACITY_EXCEEDED,
+    ],
+  };
+  const [message, statusCode, errorCode] = failures[availability.reason] || [
+    "Khung giờ không còn khả dụng",
+    409,
+    ERROR_CODES.CONFLICT,
+  ];
+  throw new ServiceError(message, statusCode, errorCode);
 }
 
 /**
@@ -156,15 +308,19 @@ export async function checkAvailability(tx, payload) {
  * @param {string} dateStr - YYYY-MM-DD format
  */
 export async function getAvailableSlots(serviceId, dateStr) {
+  const normalizedServiceId = assertAvailabilityInput(serviceId, dateStr);
   const service = await prisma.businessService.findUnique({
-    where: { id: serviceId },
+    where: { id: normalizedServiceId },
     select: {
       id: true,
       maxCapacity: true,
       bookingModel: true,
       slotDurationMinutes: true,
+      durationMinutes: true,
       bufferMinutes: true,
+      allowOverbooking: true,
       businessId: true,
+      placeId: true,
     },
   });
 
@@ -172,8 +328,12 @@ export async function getAvailableSlots(serviceId, dateStr) {
     throw new ServiceError("Dịch vụ không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
+  const bookingModel = resolveBookingModel(service);
+  const slotDurationMinutes = resolveOccupiedDurationMinutes(service);
+  const bufferMinutes = resolveBufferMinutes(service);
+
   // Check if date is blocked
-  const bookingDate = new Date(`${dateStr}T00:00:00Z`);
+  const bookingDate = toUseDateOnly(dateStr);
   const blocked = await prisma.businessBlockedDate.findFirst({
     where: {
       businessId: service.businessId,
@@ -183,76 +343,127 @@ export async function getAvailableSlots(serviceId, dateStr) {
   });
 
   if (blocked) {
+    if (bookingModel === "resource") {
+      return {
+        date: dateStr,
+        serviceId: normalizedServiceId,
+        available: false,
+        reason: "BLOCKED_DATE",
+        bookingModel,
+        slotDurationMinutes,
+        bufferMinutes,
+        resources: [],
+      };
+    }
     return {
       date: dateStr,
-      serviceId,
+      serviceId: normalizedServiceId,
       available: false,
       reason: "BLOCKED_DATE",
       slots: [],
     };
   }
 
-  const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
-  const endOfDay = new Date(`${dateStr}T23:59:59.999Z`);
+  const { start: startOfDay, end: endOfDay } = vietnamDayBounds(dateStr);
   const cap = service.maxCapacity ?? 999_999;
+
+  if (bookingModel === "resource") {
+    const resources = (await prisma.placeResource.findMany({
+      where: {
+        serviceId: normalizedServiceId,
+        placeId: service.placeId,
+        status: "active",
+      },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        resourceType: true,
+        capacity: true,
+      },
+      orderBy: [{ position: "asc" }, { id: "asc" }],
+    })).filter((resource) =>
+      resource.status === undefined || (
+        resource.status === "active" &&
+        resource.serviceId === normalizedServiceId &&
+        resource.placeId === service.placeId
+      ),
+    );
+
+    const resourceIds = resources.map((resource) => resource.id);
+    const resourceBookings = resourceIds.length === 0
+      ? []
+      : await prisma.booking.findMany({
+        where: {
+          serviceId: normalizedServiceId,
+          resourceId: { in: resourceIds },
+          status: { in: ACTIVE_STATUSES },
+          deletedAt: null,
+          startTime: { not: null, lt: endOfDay },
+          endTime: { not: null, gt: startOfDay },
+        },
+        select: { resourceId: true, startTime: true, endTime: true },
+      });
+
+    const resourcesWithSlots = resources.map((resource) => ({
+      id: resource.id,
+      name: resource.name,
+      code: resource.code,
+      resourceType: resource.resourceType,
+      capacity: resource.capacity,
+      bookedSlots: resourceBookings
+        .filter((booking) => booking.resourceId === resource.id)
+        .map((booking) => ({
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+        })),
+    }));
+
+    return {
+      date: dateStr,
+      serviceId: normalizedServiceId,
+      available: resourcesWithSlots.length > 0,
+      bookingModel: "resource",
+      slotDurationMinutes,
+      bufferMinutes,
+      resources: resourcesWithSlots,
+    };
+  }
 
   const activeBookings = await prisma.booking.findMany({
     where: {
-      serviceId,
+      serviceId: normalizedServiceId,
       status: { in: ACTIVE_STATUSES },
-      bookingAt: { gte: startOfDay, lte: endOfDay },
+      deletedAt: null,
+      bookingAt: { gte: startOfDay, lt: endOfDay },
     },
     select: {
       bookingAt: true,
       quantity: true,
-      startTime: true,
-      endTime: true,
-      status: true,
     },
   });
 
-  if (service.bookingModel === "resource") {
-    const bookedSlots = activeBookings
-      .filter((b) => b.startTime && b.endTime)
-      .map((b) => ({
-        startTime: b.startTime,
-        endTime: b.endTime,
-      }));
-
-    return {
-      date: dateStr,
-      serviceId,
-      available: true,
-      bookingModel: "resource",
-      bookedSlots,
-      slotDurationMinutes: service.slotDurationMinutes,
-      bufferMinutes: service.bufferMinutes,
-    };
-  }
-
   const SLOT_INTERVAL_MINUTES = 30;
+  const overbookingAllowed = allowsCapacityOverbooking(service);
   const slots = [];
   const now = new Date();
-  const isToday = dateStr === now.toISOString().slice(0, 10);
+  const isToday = dateStr === toUseDateOnly(now).toISOString().slice(0, 10);
 
   for (let hour = 6; hour <= 21; hour++) {
     for (let minute = 0; minute < 60; minute += SLOT_INTERVAL_MINUTES) {
-      const slotStart = new Date(`${dateStr}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00.000Z`);
-      const slotEnd = new Date(slotStart.getTime() + (service.slotDurationMinutes || 60) * 60_000);
+      const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+      const slotStart = combineUseDateAndTime(dateStr, time);
 
       if (isToday && slotStart <= now) continue;
 
-      const overlappingBookings = activeBookings.filter((b) => {
-        const bStart = new Date(b.bookingAt);
-        const bEnd = new Date(bStart.getTime() + (service.slotDurationMinutes || 60) * 60_000);
-        return bStart < slotEnd && bEnd > slotStart;
-      });
-
-      const usedQty = overlappingBookings.reduce((sum, b) => sum + b.quantity, 0);
-      const available = usedQty < cap;
+      const usedQty = activeBookings
+        .filter((booking) => booking.bookingAt && startOfMinuteUtc(booking.bookingAt).getTime() === slotStart.getTime())
+        .reduce((sum, booking) => sum + booking.quantity, 0);
+      const available = overbookingAllowed || usedQty < cap;
 
       slots.push({
-        time: slotStart.toISOString(),
+        time: formatVietnamTime(slotStart),
+        startTime: slotStart.toISOString(),
         available,
         remaining: Math.max(0, cap - usedQty),
         capacity: cap,
@@ -262,7 +473,7 @@ export async function getAvailableSlots(serviceId, dateStr) {
 
   return {
     date: dateStr,
-    serviceId,
+    serviceId: normalizedServiceId,
     available: slots.some((s) => s.available),
     bookingModel: "capacity",
     slots,

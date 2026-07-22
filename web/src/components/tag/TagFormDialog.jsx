@@ -39,7 +39,6 @@ export default function TagFormDialog({ open, onClose, tag }) {
     name: "",
     slug: "",
     tagType: "general",
-    icon: "",
     color: "#6B7280",
     isActive: true,
   });
@@ -50,7 +49,6 @@ export default function TagFormDialog({ open, onClose, tag }) {
         name: tag.name || "",
         slug: tag.slug || "",
         tagType: tag.tagType || "general",
-        icon: tag.icon || "",
         color: tag.color || "#6B7280",
         isActive: tag.isActive !== undefined ? tag.isActive : true,
       });
@@ -59,7 +57,6 @@ export default function TagFormDialog({ open, onClose, tag }) {
         name: "",
         slug: "",
         tagType: "general",
-        icon: "",
         color: "#6B7280",
         isActive: true,
       });
@@ -161,9 +158,9 @@ export default function TagFormDialog({ open, onClose, tag }) {
                 <SelectValue placeholder={t("tags.selectTagType")} />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(TAG_TYPES).map(([value]) => (
+                {Object.entries(TAG_TYPES).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
-                    {t(`tags.types.${value}`)}
+                    {t(`tags.types.${value}`, { defaultValue: label })}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -197,17 +194,6 @@ export default function TagFormDialog({ open, onClose, tag }) {
                 ))}
               </div>
             </div>
-          </div>
-
-          {/* Icon (Optional) */}
-          <div className="space-y-2">
-            <Label htmlFor="icon">{t("tags.iconOptional")}</Label>
-            <Input
-              id="icon"
-              value={formData.icon}
-              onChange={(e) => handleChange("icon", e.target.value)}
-              placeholder="Lucide icon name"
-            />
           </div>
 
           {/* Active Status */}

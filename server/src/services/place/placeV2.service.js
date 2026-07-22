@@ -2,6 +2,7 @@ import prisma from "../../config/prismaClient.js";
 import { Prisma } from "@prisma/client";
 import ServiceError from "../../utils/serviceError.js";
 import { decodePlaceCursor, encodePlaceCursor } from "./placeCursor.js";
+import { isProvinceEnabled } from "../location/provinceRollout.js";
 
 const CURSOR_SECRET = process.env.PLACE_CURSOR_SECRET || process.env.JWT_SECRET;
 const APPROVED_WHERE = { deletedAt: null, status: "approved" };
@@ -22,6 +23,8 @@ const listSelect = {
   viewCount: true,
   isFeatured: true,
   markerUrl: true,
+  provinceCode: true,
+  administrativeWardCode: true,
   category: { select: categorySelect },
   images: { select: imageSelect, orderBy: [{ isCover: "desc" }, { order: "asc" }], take: 1 },
 };
@@ -72,6 +75,8 @@ export function toPlaceListDto(place) {
     ratingCount: place.ratingCount,
     isFeatured: place.isFeatured,
     markerUrl: place.markerUrl || null,
+    provinceCode: place.provinceCode,
+    wardCode: place.administrativeWardCode,
     imageUrl: image?.secureUrl || image?.thumbnailUrl || null,
     category: place.category,
   };
@@ -129,11 +134,44 @@ function cursorValues(place, sortBy) {
   }
 }
 
-function buildWhere(filters, cursor) {
-  const where = { ...APPROVED_WHERE };
+export function buildWhere(filters, cursor, datasetReleaseId) {
+  const where = {
+    ...APPROVED_WHERE,
+    provinceCode: filters.provinceCode,
+    administrativeLocationExceptions: {
+      none: { status: "open", datasetReleaseId },
+    },
+    province: {
+      is: { records: { some: { datasetReleaseId, isActive: true } } },
+    },
+  };
+  const releaseClauses = [];
+  if (filters.wardCode) {
+    where.administrativeWardCode = filters.wardCode;
+    where.administrativeWard = {
+      is: {
+        records: {
+          some: {
+            datasetReleaseId,
+            provinceCode: filters.provinceCode,
+            isActive: true,
+          },
+        },
+      },
+    };
+  } else {
+    releaseClauses.push({
+      OR: [
+        { administrativeWardCode: null },
+        {
+          administrativeWard: {
+            is: { records: { some: { datasetReleaseId, isActive: true } } },
+          },
+        },
+      ],
+    });
+  }
   if (filters.categoryId) where.categoryId = filters.categoryId;
-  if (filters.districtId) where.districtId = filters.districtId;
-  if (filters.wardId) where.wardId = filters.wardId;
   if (filters.priceRange && filters.priceRange !== "all") where.priceRange = filters.priceRange;
   if (filters.minRating != null) where.ratingAvg = { gte: filters.minRating };
   if (filters.isFeatured != null) where.isFeatured = filters.isFeatured;
@@ -143,15 +181,26 @@ function buildWhere(filters, cursor) {
     { address: { contains: filters.search, mode: "insensitive" } },
   ];
   const after = cursorClause(cursor, filters.sortBy);
-  if (after) where.AND = [after];
+  if (after) releaseClauses.push(after);
+  if (releaseClauses.length > 0) where.AND = releaseClauses;
   return where;
 }
 
 export async function listPlacesV2(filters) {
+  if (!isProvinceEnabled(filters.provinceCode)) {
+    throw new ServiceError("Tỉnh/thành chưa được mở trong đợt rollout này", 404, "PROVINCE_NOT_ENABLED");
+  }
+  const release = await prisma.administrativeDatasetRelease.findFirst({
+    where: { isActive: true },
+    select: { id: true },
+  });
+  if (!release) {
+    throw new ServiceError("Administrative dataset is not active", 503, "ADMINISTRATIVE_DATASET_UNAVAILABLE");
+  }
   const limit = Number(filters.limit) || 10;
   const cursor = filters.cursor ? decodePlaceCursor(filters.cursor, CURSOR_SECRET) : null;
   const records = await prisma.place.findMany({
-    where: buildWhere(filters, cursor),
+    where: buildWhere(filters, cursor, release.id),
     select: { ...listSelect, createdAt: true },
     orderBy: orderByFor(filters.sortBy),
     take: limit + 1,

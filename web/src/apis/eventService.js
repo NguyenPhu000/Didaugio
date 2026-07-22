@@ -79,13 +79,13 @@ export const getTripDetail = async (id) => {
 
 // Thêm địa điểm vào lịch trình chuyến đi
 export const addDestination = async (tripId, data) => {
-  const response = await api.post(`/profile/trips/${tripId}/destinations`, data);
+  const response = await api.post(`/profile/trips/${tripId}/stops`, data);
   return response;
 };
 
 // Xóa địa điểm khỏi lịch trình chuyến đi
 export const removeDestination = async (tripId, destId) => {
-  const response = await api.delete(`/profile/trips/${tripId}/destinations/${destId}`);
+  const response = await api.delete(`/profile/trips/${tripId}/stops/${destId}`);
   return response;
 };
 

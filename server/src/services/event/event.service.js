@@ -19,6 +19,21 @@ const EVENT_TRIP_PLACE_SELECT = {
   },
 };
 
+const stopAsDestination = (stop) => ({
+  ...stop,
+  order: stop.sequence,
+  startTime: stop.arrivalTime,
+  endTime: stop.departureTime,
+  distanceToNext: stop.routeDistanceM == null ? null : Number(stop.routeDistanceM) / 1000,
+});
+
+const normalizeEventTrip = (event) => {
+  if (event?.trip?.stops) {
+    event.trip.destinations = event.trip.stops.map(stopAsDestination);
+  }
+  return event;
+};
+
 // Helper chuyển đổi trang/limit
 const toInt = (value, fallback = null) => {
   const number = parseInt(value, 10);
@@ -55,7 +70,7 @@ export const createEvent = async (userId, data) => {
 
   // Nếu có tripId, kiểm tra sự tồn tại của Trip
   if (tripId) {
-    const existingTrip = await prisma.trip.findUnique({
+    const existingTrip = await prisma.tripPlan.findUnique({
       where: { id: tripId },
     });
     if (!existingTrip) {
@@ -192,7 +207,7 @@ export const updateEvent = async (eventId, data) => {
 
   if (tripId !== undefined) {
     if (tripId) {
-      const existingTrip = await prisma.trip.findUnique({
+      const existingTrip = await prisma.tripPlan.findUnique({
         where: { id: tripId },
       });
       if (!existingTrip) {
@@ -322,13 +337,13 @@ export const getEvents = async (filters = {}) => {
           select: {
             id: true,
             totalDays: true,
-            destinations: {
-              orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+            stops: {
+              orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
               select: {
                 id: true,
                 placeId: true,
                 dayNumber: true,
-                order: true,
+                sequence: true,
                 place: {
                   select: {
                     id: true,
@@ -361,7 +376,7 @@ export const getEvents = async (filters = {}) => {
   ]);
 
   return {
-    data: events,
+    data: events.map(normalizeEventTrip),
     pagination: {
       page: pageNum,
       limit: limitNum,
@@ -378,8 +393,8 @@ const getEventByIdLegacy = async (eventId, userId = null) => {
     include: {
       trip: {
         include: {
-          destinations: {
-            orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+          stops: {
+            orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
             include: {
               place: {
                 select: {
@@ -420,6 +435,7 @@ const getEventByIdLegacy = async (eventId, userId = null) => {
   }
 
   // 1. Thống kê active companion counts trên từng chặng (chỉ đếm updatedAt trong 5 phút trở lại)
+  normalizeEventTrip(event);
   const activeThreshold = new Date(Date.now() - 5 * 60 * 1000);
   const activeSessions = await prisma.activeSession.findMany({
     where: {
@@ -504,8 +520,8 @@ export const getEventById = async (eventId, userId = null) => {
     include: {
       trip: {
         include: {
-          destinations: {
-            orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+          stops: {
+            orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
             include: {
               place: {
                 select: {
@@ -545,6 +561,7 @@ export const getEventById = async (eventId, userId = null) => {
     );
   }
 
+  normalizeEventTrip(event);
   const activeThreshold = new Date(Date.now() - 5 * 60 * 1000);
   const activeSessions = await prisma.activeSession.findMany({
     where: {
@@ -670,11 +687,11 @@ export const joinEvent = async (eventId, userId) => {
     // 2. Clone Trip mẫu
     let clonedTrip = null;
     if (event.tripId) {
-      const tripSample = await tx.trip.findUnique({
+      const tripSample = await tx.tripPlan.findUnique({
         where: { id: event.tripId },
         include: {
-          destinations: {
-            orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+          stops: {
+            orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
             include: { place: { select: EVENT_TRIP_PLACE_SELECT } },
           },
         },
@@ -682,10 +699,7 @@ export const joinEvent = async (eventId, userId) => {
 
       if (tripSample) {
         const tripPlanSample = await tx.tripPlan.findFirst({
-          where: {
-            userId: tripSample.userId,
-            metadata: { path: ["legacyTripId"], equals: event.tripId },
-          },
+          where: { id: event.tripId },
           include: {
             stops: {
               orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
@@ -695,12 +709,12 @@ export const joinEvent = async (eventId, userId) => {
         });
 
         // Tạo Trip mới cho User
-        clonedTrip = await tx.trip.create({
+        clonedTrip = await tx.tripPlan.create({
           data: {
             userId: userId,
             title: `[Sự kiện] ${tripSample.title}`,
             description: tripSample.description || `Lịch trình được sao chép từ sự kiện "${event.title}"`,
-            thumbnail: resolveTripCloneThumbnail({
+            coverImage: resolveTripCloneThumbnail({
               event,
               tripSample,
               tripPlan: tripPlanSample,
@@ -708,42 +722,56 @@ export const joinEvent = async (eventId, userId) => {
             startDate: tripSample.startDate,
             endDate: tripSample.endDate,
             totalDays: tripSample.totalDays,
-            totalDistance: tripSample.totalDistance,
+            totalDistanceM: tripSample.totalDistanceM,
             estimatedCost: tripSample.estimatedCost,
-            travelStyle: tripSample.travelStyle,
-            groupSize: 1,
-            isAiGenerated: false,
+            source: "manual",
+            /* Legacy status removed by TripPlan cutover.
             status: "upcoming", // Trạng thái mặc định cho trip tham gia sự kiện
-            isPublic: false,
+            */
+            metadata: { ...(tripSample.metadata || {}), isPublic: false, clonedFromEventId: event.id },
+            status: "planned",
           },
         });
 
         // Tạo các TripDestination tương ứng
         const cloneRows = buildTripDestinationCloneRows({
           tripId: clonedTrip.id,
-          destinations: tripSample.destinations,
+          destinations: [],
           stops: tripPlanSample?.stops,
         });
 
         if (cloneRows.length > 0) {
-          await tx.tripDestination.createMany({
-            data: cloneRows,
+          await tx.tripStop.createMany({
+            data: cloneRows.map((row) => ({
+              tripId: clonedTrip.id,
+              placeId: row.placeId,
+              dayNumber: row.dayNumber,
+              sequence: row.order,
+              arrivalTime: row.startTime,
+              departureTime: row.endTime,
+              durationMinutes: row.durationMinutes,
+              note: row.note,
+              transportToNext: row.transportToNext,
+              routeDistanceM: row.distanceToNext == null ? null : Math.round(Number(row.distanceToNext) * 1000),
+              estimatedCost: row.estimatedCost,
+              fulfillmentStatus: "pending",
+            })),
           });
         }
 
         // Tăng cloneCount của Trip gốc
-        await tx.trip.update({
+        await tx.tripPlan.update({
           where: { id: event.tripId },
           data: {
-            cloneCount: { increment: 1 },
+            metadata: { ...(tripSample.metadata || {}), cloneCount: Number(tripSample.metadata?.cloneCount || 0) + 1 },
           },
         });
 
-        clonedTrip = await tx.trip.findUnique({
+        clonedTrip = await tx.tripPlan.findUnique({
           where: { id: clonedTrip.id },
           include: {
-            destinations: {
-              orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+            stops: {
+              orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
               include: { place: { select: EVENT_TRIP_PLACE_SELECT } },
             },
           },
@@ -758,7 +786,9 @@ export const joinEvent = async (eventId, userId) => {
 
   return {
     message: "Tham gia sự kiện thành công",
-    clonedTrip: result.clonedTrip,
+    clonedTrip: result.clonedTrip
+      ? { ...result.clonedTrip, destinations: (result.clonedTrip.stops || []).map(stopAsDestination) }
+      : null,
   };
 };
 
@@ -788,7 +818,7 @@ export const pingEvent = async (eventId, placeId, userId, location = {}) => {
     select: {
       trip: {
         select: {
-          destinations: {
+          stops: {
             select: {
               placeId: true,
               place: { select: { latitude: true, longitude: true } },
@@ -800,7 +830,7 @@ export const pingEvent = async (eventId, placeId, userId, location = {}) => {
   });
 
   validateEventCheckInTarget({
-    destinations: event?.trip?.destinations || [],
+    destinations: (event?.trip?.stops || []).map(stopAsDestination),
     placeId,
     latitude: location.latitude,
     longitude: location.longitude,
@@ -856,7 +886,7 @@ export const createMoment = async (eventId, userId, data) => {
     select: {
       trip: {
         select: {
-          destinations: {
+          stops: {
             select: {
               placeId: true,
               place: { select: { latitude: true, longitude: true } },
@@ -868,7 +898,7 @@ export const createMoment = async (eventId, userId, data) => {
   });
 
   validateEventCheckInTarget({
-    destinations: event?.trip?.destinations || [],
+    destinations: (event?.trip?.stops || []).map(stopAsDestination),
     placeId,
     latitude,
     longitude,

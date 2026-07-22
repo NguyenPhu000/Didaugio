@@ -177,3 +177,15 @@ server/test/validateSchema.test.js
 .superpowers/brainstorm/codex-map-focus-20260720/content/ward-focus-v2.html
 .superpowers/brainstorm/codex-map-focus-20260720/state/server-info
 /.worktrees/
+
+# Local planning, audit, and generated documentation are not source artifacts.
+/.superpowers/
+/docs/
+/server/docs/
+*.md
+
+# Test suites are retained locally and are not published with this branch.
+/server/test/
+**/__tests__/
+**/*.test.js
+**/*.test.jsx

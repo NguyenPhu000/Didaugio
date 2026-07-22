@@ -12,6 +12,10 @@ import {
   isAdminOrSuperAdminRole,
 } from "../../config/constants.js";
 import ServiceError from "../../utils/serviceError.js";
+import {
+  assertTripAccess,
+  CAPABILITIES,
+} from "./tripAccessPolicy.service.js";
 
 const TEMP_SEQUENCE_BASE = 100000;
 
@@ -81,9 +85,8 @@ const canManageTrip = (trip, actorUserId, actor) => {
 };
 
 const toLegacyDestination = (stop) => {
-  const legacyDestinationId = stop.metadata?.legacyDestinationId ?? null;
   return {
-    id: legacyDestinationId ?? stop.id,
+    id: stop.id,
     stopId: stop.id,
     tripId: stop.tripId,
     placeId: stop.placeId,
@@ -107,28 +110,28 @@ const toLegacyDestination = (stop) => {
   };
 };
 
-const normalizeTripPlanDetail = (tripPlan, { legacyTrip = null, isSaved = false } = {}) => ({
-  id: legacyTrip?.id ?? tripPlan.id,
+const normalizeTripPlanDetail = (tripPlan, { isSaved = false } = {}) => ({
+  id: tripPlan.id,
   tripPlanId: tripPlan.id,
   userId: tripPlan.userId,
   title: tripPlan.title,
   description: tripPlan.description,
-  thumbnail: legacyTrip?.thumbnail ?? tripPlan.coverImage,
+  thumbnail: tripPlan.coverImage,
   coverImage: tripPlan.coverImage,
   startDate: tripPlan.startDate,
   endDate: tripPlan.endDate,
   totalDays: tripPlan.totalDays,
-  totalDistance: legacyTrip?.totalDistance ?? null,
+  totalDistance: tripPlan.totalDistanceM == null ? null : Number((tripPlan.totalDistanceM / 1000).toFixed(2)),
   totalDistanceM: tripPlan.totalDistanceM,
   estimatedCost: tripPlan.estimatedCost,
-  travelStyle: legacyTrip?.travelStyle ?? null,
-  groupSize: legacyTrip?.groupSize ?? 1,
-  isAiGenerated: legacyTrip?.isAiGenerated ?? tripPlan.source === TRIP_PLAN_SOURCE.AI_GENERATED,
-  aiPrompt: legacyTrip?.aiPrompt ?? null,
+  travelStyle: tripPlan.metadata?.travelStyle ?? null,
+  groupSize: tripPlan.metadata?.groupSize ?? 1,
+  isAiGenerated: tripPlan.source === TRIP_PLAN_SOURCE.AI_GENERATED,
+  aiPrompt: tripPlan.metadata?.aiPrompt ?? null,
   status: tripPlan.status,
-  isPublic: legacyTrip?.isPublic ?? false,
-  viewCount: legacyTrip?.viewCount ?? 0,
-  cloneCount: legacyTrip?.cloneCount ?? 0,
+  isPublic: tripPlan.metadata?.isPublic === true,
+  viewCount: tripPlan.metadata?.viewCount ?? 0,
+  cloneCount: tripPlan.metadata?.cloneCount ?? 0,
   source: tripPlan.source,
   metadata: tripPlan.metadata,
   createdAt: tripPlan.createdAt,
@@ -142,9 +145,7 @@ const findStopByClientId = (stops, clientId) => {
   const id = Number(clientId);
   if (!Number.isInteger(id) || id <= 0) return null;
   return (
-    stops.find((stop) => Number(stop.id) === id) ||
-    stops.find((stop) => Number(stop.metadata?.legacyDestinationId) === id) ||
-    null
+    stops.find((stop) => Number(stop.id) === id) || null
   );
 };
 
@@ -185,160 +186,19 @@ export const makeTripPlanService = (prismaClient = prisma) => {
       },
     });
 
-  const createShadowTripPlan = async (tx, legacyTrip) => {
-    const startDate = legacyTrip.startDate || new Date();
-    const endDate = legacyTrip.endDate || startDate;
-    const plan = await tx.tripPlan.create({
-      data: {
-        userId: legacyTrip.userId,
-        title: legacyTrip.title,
-        description: legacyTrip.description,
-        coverImage: legacyTrip.thumbnail,
-        startDate,
-        endDate,
-        totalDays: legacyTrip.totalDays || 1,
-        status: legacyTrip.status === TRIP_PLAN_STATUS.COMPLETED
-          ? TRIP_PLAN_STATUS.COMPLETED
-          : TRIP_PLAN_STATUS.PLANNED,
-        source: legacyTrip.isAiGenerated
-          ? TRIP_PLAN_SOURCE.AI_GENERATED
-          : TRIP_PLAN_SOURCE.IMPORTED,
-        estimatedCost: legacyTrip.estimatedCost,
-        totalDistanceM:
-          legacyTrip.totalDistance == null
-            ? null
-            : Math.round(Number(legacyTrip.totalDistance) * 1000),
-        metadata: {
-          legacyTripId: legacyTrip.id,
-          createdFor: "mobile_contract_compat",
-        },
-      },
+  const resolveTripPlan = async (
+    tx,
+    { tripId, actorUserId, includeStops = false, capability = CAPABILITIES.EDIT },
+  ) => {
+    const tripPlan = await tx.tripPlan.findUnique({
+      where: { id: tripId },
+      ...(includeStops ? { include: { stops: {
+        orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
+        include: { place: { select: TRIP_PLAN_PLACE_SELECT } },
+      } } } : {}),
     });
-
-    if (legacyTrip.destinations?.length) {
-      // Normalize sequence trong trường hợp legacy data có cặp (dayNumber, order) trùng nhau
-      const seenKeys = new Map();
-      const stopsData = legacyTrip.destinations.map((dest) => {
-        const dayNum = dest.dayNumber ?? 1;
-        const rawSeq = dest.order ?? 0;
-        const key = `${dayNum}`;
-        const usedSeqs = seenKeys.get(key) ?? new Set();
-        let seq = rawSeq;
-        while (usedSeqs.has(seq)) seq += 1;
-        usedSeqs.add(seq);
-        seenKeys.set(key, usedSeqs);
-        return {
-          tripId: plan.id,
-          placeId: dest.placeId,
-          dayNumber: dayNum,
-          sequence: seq,
-          note: dest.note,
-          arrivalTime: dest.startTime,
-          departureTime: dest.endTime,
-          durationMinutes: dest.durationMinutes,
-          estimatedCost: dest.estimatedCost,
-          transportToNext: dest.transportToNext,
-          routeDistanceM:
-            dest.distanceToNext == null
-              ? null
-              : Math.round(Number(dest.distanceToNext) * 1000),
-          fulfillmentStatus:
-            dest.status === "visited"
-              ? TRIP_STOP_FULFILLMENT_STATUS.VISITED
-              : TRIP_STOP_FULFILLMENT_STATUS.PENDING,
-          fulfilledAt: dest.visitedAt,
-          metadata: { legacyDestinationId: dest.id },
-        };
-      });
-
-      await tx.tripStop.createMany({ data: stopsData, skipDuplicates: true });
-    }
-
-    return getTripPlanWithStops(tx, plan.id);
-  };
-
-  const resolveTripPlan = async (tx, { tripId, actorUserId, includeStops = false }) => {
-    let tripPlan = await tx.tripPlan.findFirst({
-      where: { id: tripId, userId: actorUserId },
-      ...(includeStops
-        ? {
-            include: {
-              stops: {
-                orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
-                include: { place: { select: TRIP_PLAN_PLACE_SELECT } },
-              },
-            },
-          }
-        : {}),
-    });
-
-    if (tripPlan) {
-      return { tripPlan, legacyTrip: null };
-    }
-
-    tripPlan = await tx.tripPlan.findFirst({
-      where: {
-        userId: actorUserId,
-        metadata: { path: ["legacyTripId"], equals: tripId },
-      },
-      ...(includeStops
-        ? {
-            include: {
-              stops: {
-                orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
-                include: { place: { select: TRIP_PLAN_PLACE_SELECT } },
-              },
-            },
-          }
-        : {}),
-    });
-
-    const legacyTrip = await tx.trip.findFirst({
-      where: { id: tripId, userId: actorUserId },
-      include: {
-        destinations: {
-          orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-          include: { place: { select: TRIP_PLAN_PLACE_SELECT } },
-        },
-      },
-    });
-
-    if (tripPlan) {
-      return {
-        tripPlan: includeStops ? tripPlan : await getTripPlanWithStops(tx, tripPlan.id),
-        legacyTrip,
-      };
-    }
-
-    if (!legacyTrip) {
-      return { tripPlan: null, legacyTrip: null };
-    }
-
-    try {
-      return {
-        tripPlan: await createShadowTripPlan(tx, legacyTrip),
-        legacyTrip,
-      };
-    } catch (err) {
-      // Race condition: một transaction đồng thời đã tạo shadow plan trước.
-      // Bắt P2002 (unique_constraint) và fallback fetch plan đã được tạo.
-      if (err?.code === "P2002") {
-        const existingPlan = await tx.tripPlan.findFirst({
-          where: {
-            userId: actorUserId,
-            metadata: { path: ["legacyTripId"], equals: tripId },
-          },
-          include: {
-            stops: {
-              orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
-              include: { place: { select: TRIP_PLAN_PLACE_SELECT } },
-            },
-          },
-        });
-        return { tripPlan: existingPlan, legacyTrip };
-      }
-      throw err;
-    }
+    assertTripAccess(actorUserId, tripPlan, capability);
+    return { tripPlan };
   };
 
   const getTripDetail = async ({ tripId, actorUserId }) =>
@@ -347,20 +207,16 @@ export const makeTripPlanService = (prismaClient = prisma) => {
         tripId,
         actorUserId,
         includeStops: true,
+        capability: CAPABILITIES.VIEW,
       });
 
       if (!tripPlan) return null;
 
-      const saved = legacyTrip
-        ? await tx.savedTrip.findUnique({
-            where: { userId_tripId: { userId: actorUserId, tripId: legacyTrip.id } },
-          })
-        : null;
-
-      return normalizeTripPlanDetail(tripPlan, {
-        legacyTrip,
-        isSaved: !!saved,
+      const saved = actorUserId == null ? null : await tx.savedTrip.findUnique({
+        where: { userId_tripId: { userId: actorUserId, tripId: tripPlan.id } },
       });
+
+      return normalizeTripPlanDetail(tripPlan, { isSaved: !!saved });
     });
 
   const linkBookingToTrip = async ({

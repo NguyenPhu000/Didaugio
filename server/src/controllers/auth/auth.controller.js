@@ -22,7 +22,7 @@ export const loginGoogle = async (req, res, next) => {
     res.json({
       success: true,
       data: result,
-      message: "Dang nhap Google thanh cong",
+      message: "Đăng nhập Google thành công",
     });
   } catch (error) {
     next(error);

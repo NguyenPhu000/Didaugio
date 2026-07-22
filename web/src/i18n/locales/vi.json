@@ -355,7 +355,7 @@
       "emailSentNote": "Chúng tôi đã gửi hướng dẫn khôi phục đến <strong>{{email}}</strong>",
       "checkSpam": "Kiểm tra thư mục Spam/Junk nếu không thấy email",
       "linkExpiry": "Link khôi phục sẽ hết hạn sau 1 giờ",
-      "contactSupport": "Liên hệ support@didaugio.com nếu cần hỗ trợ",
+      "contactSupport": "Liên hệ support@ipointgenie.com nếu cần hỗ trợ",
       "tryDifferentEmail": "THỬ EMAIL KHÁC",
       "needHelp": "CẦN HỖ TRỢ?"
     },
@@ -544,14 +544,11 @@
     "types": {
       "all": "Tất cả",
       "general": "Chung",
-      "food": "Ẩm thực",
-      "travel": "Du lịch",
-      "service": "Dịch vụ",
+      "feature": "Đặc điểm",
+      "amenity": "Tiện ích",
+      "cuisine": "Ẩm thực",
       "activity": "Hoạt động",
-      "ambience": "Không gian",
-      "price": "Giá cả",
-      "time": "Thời gian",
-      "ai_signal": "AI Signal"
+      "atmosphere": "Không gian"
     },
     "table": {
       "identity": "ĐỊNH DANH",

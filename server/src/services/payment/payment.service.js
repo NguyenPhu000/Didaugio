@@ -14,12 +14,167 @@ import * as momoService from "./momo.service.js";
 import * as sepayService from "./sepay.service.js";
 import * as sepayWebhookService from "./sepayWebhook.service.js";
 import * as webhookLogService from "./webhookLog.service.js";
+import {
+  buildSafeWebhookLogEntry,
+  PAYMENT_OBLIGATION_ERROR_CODES,
+  validateCallbackObligation,
+} from "./paymentCallbackObligation.policy.js";
 import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import * as bookingService from "../booking/booking.service.js";
 import { processPaymentLedger } from "../booking/financialCore.service.js";
+import { createPaymentTransition } from "./paymentTransition.service.js";
+import { createRefundTransition } from "./refundTransition.service.js";
 
 const PAYMENT_CODE_PREFIX = process.env.PAYMENT_CODE_PREFIX || "DDG";
 const PAYMENT_CODE_RANDOM_LENGTH = 7;
+
+const defaultPaymentCallbackDependencies = Object.freeze({
+  prisma,
+  logger,
+  vnpayService,
+  momoService,
+  webhookLogService,
+  eventEmitter,
+  EVENTS,
+  processPaymentLedger,
+  paymentTransition: null,
+});
+
+const defaultSePayBankWebhookDependencies = Object.freeze({
+  prisma,
+  logger,
+  sepayService,
+  sepayWebhookService,
+  webhookLogService,
+  eventEmitter,
+  EVENTS,
+  processPaymentLedger,
+  paymentTransition: null,
+});
+
+const defaultSePayRefundWebhookDependencies = Object.freeze({
+  prisma,
+  logger,
+  sepayService,
+  sepayWebhookService,
+  webhookLogService,
+  refundTransitionFactory: createRefundTransition,
+});
+
+export function createPaymentCallbackHandlers(overrides = {}) {
+  const dependencies = { ...defaultPaymentCallbackDependencies, ...overrides };
+  return {
+    processVNPayIPN: (query) =>
+      processVNPayIPNWithDependencies(query, dependencies),
+    processMoMoIPN: (body) => processMoMoIPNWithDependencies(body, dependencies),
+  };
+}
+
+export function createPaymentSePayBankWebhookHandlers(overrides = {}) {
+  const dependencies = { ...defaultSePayBankWebhookDependencies, ...overrides };
+  return {
+    processSePayBankWebhook: (body, headers, rawBody) =>
+      processSePayBankWebhookWithDependencies(body, headers, rawBody, dependencies),
+  };
+}
+
+export function createPaymentSePayRefundWebhookHandlers(overrides = {}) {
+  const dependencies = { ...defaultSePayRefundWebhookDependencies, ...overrides };
+  return {
+    processSePayRefundWebhook: (body, headers, rawBody) =>
+      processSePayRefundWebhookWithDependencies(body, headers, rawBody, dependencies),
+  };
+}
+
+/**
+ * Creates/refinalizes refund attempts for protected operational endpoints.
+ * SePay bank refunds are operator-initiated bank transfers: this records the
+ * canonical pending obligation first and returns its stable transfer reference.
+ */
+export function createPaymentRefundOrchestrator({ db = prisma, refundTransitionFactory = createRefundTransition } = {}) {
+  if (!db?.$transaction || !db?.refundAttempt) throw new Error("createPaymentRefundOrchestrator requires a Prisma client");
+  const transition = refundTransitionFactory({ prisma: db });
+
+  async function initiateSePayBankRefund(paymentId, { amount, reason, idempotencyKey, actorUserId } = {}) {
+    const normalizedPaymentId = Number(paymentId);
+    if (!Number.isInteger(normalizedPaymentId) || normalizedPaymentId <= 0) {
+      throw new ServiceError("Payment ID không hợp lệ", 400, ERROR_CODES.VALIDATION_ERROR);
+    }
+    const normalizedIdempotencyKey = String(idempotencyKey || "").trim();
+    if (!normalizedIdempotencyKey) throw new ServiceError("Idempotency key không hợp lệ", 400, ERROR_CODES.VALIDATION_ERROR);
+    return db.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw`
+        SELECT id, status, currency, transaction_ref
+        FROM payments WHERE id = ${normalizedPaymentId} LIMIT 1 FOR UPDATE
+      `;
+      const payment = rows?.[0];
+      if (!payment) throw new ServiceError("Không tìm thấy giao dịch", 404, ERROR_CODES.NOT_FOUND);
+      if (![PAYMENT_STATUS.PAID, PAYMENT_STATUS.PARTIALLY_REFUNDED].includes(payment.status)) {
+        throw new ServiceError("Chỉ có thể tạo lệnh hoàn SePay cho giao dịch đã thanh toán", 422, ERROR_CODES.VALIDATION_ERROR);
+      }
+      // Keep references opaque, deterministic, and short enough for bank transfer fields.
+      const transferReference = `SEPAY-REFUND-${payment.id}-${crypto.createHash("sha256").update(normalizedIdempotencyKey).digest("hex").slice(0, 24)}`;
+      const existing = await tx.refundAttempt.findUnique({ where: { idempotencyKey: normalizedIdempotencyKey } });
+      if (existing) {
+        if (existing.metadata?.transferReference !== transferReference) {
+          throw new ServiceError("Refund transfer reference conflicts with an existing attempt", 409, "REFUND_DUPLICATE");
+        }
+        const replay = await transition.createRefundIntentInTransaction(tx, {
+          paymentId: payment.id,
+          amount: Number(existing.amount),
+          currency: payment.currency,
+          source: "gateway",
+          gateway: "SEPAY_BANK",
+          idempotencyKey: normalizedIdempotencyKey,
+          actorUserId,
+          reason,
+          metadata: { channel: "sepay_bank_refund_initiation", transferReference },
+        });
+        return { ...replay, transferReference };
+      }
+      const conflictingReference = await tx.refundAttempt.findFirst({
+        where: { metadata: { path: ["transferReference"], equals: transferReference } },
+      });
+      if (conflictingReference) {
+        throw new ServiceError("Refund transfer reference conflicts with an existing attempt", 409, "REFUND_DUPLICATE");
+      }
+      const [collections, completedRefunds] = await Promise.all([
+        tx.paymentReceipt.aggregate({ where: { paymentId: payment.id, status: "succeeded" }, _sum: { amount: true } }),
+        tx.refundAttempt.aggregate({ where: { paymentId: payment.id, status: "succeeded" }, _sum: { amount: true } }),
+      ]);
+      // This only chooses a default amount; the shared transition owns the
+      // pending+succeeded reservation ceiling for every source.
+      const available = Number(collections?._sum?.amount || 0) - Number(completedRefunds?._sum?.amount || 0);
+      const canonicalAmount = amount === undefined ? available : Number(amount);
+      if (!Number.isSafeInteger(canonicalAmount) || canonicalAmount <= 0 || canonicalAmount > available) {
+        throw new ServiceError("Số tiền hoàn vượt quá số tiền đã thu", 422, "REFUND_EXCEEDS_COLLECTED");
+      }
+      const intent = await transition.createRefundIntentInTransaction(tx, {
+        paymentId: payment.id,
+        amount: canonicalAmount,
+        currency: payment.currency,
+        source: "gateway",
+        gateway: "SEPAY_BANK",
+        idempotencyKey: normalizedIdempotencyKey,
+        actorUserId,
+        reason,
+        metadata: { channel: "sepay_bank_refund_initiation", transferReference },
+      });
+      return { ...intent, transferReference };
+    });
+  }
+
+  async function recoverPendingManualRefund(refundAttemptId) {
+    const id = Number(refundAttemptId);
+    if (!Number.isInteger(id) || id <= 0) throw new ServiceError("Refund attempt ID không hợp lệ", 400, ERROR_CODES.VALIDATION_ERROR);
+    const attempt = await db.refundAttempt.findUnique({ where: { id } });
+    if (!attempt) throw new ServiceError("Không tìm thấy yêu cầu hoàn tiền", 404, ERROR_CODES.NOT_FOUND);
+    if (attempt.source !== "manual") throw new ServiceError("Chỉ có thể khôi phục refund thủ công", 409, "REFUND_INVALID_RESULT");
+    return transition.succeedRefundAttempt({ refundAttemptId: id });
+  }
+
+  return { initiateSePayBankRefund, recoverPendingManualRefund };
+}
 
 /**
  * Generate a short, user-friendly payment code.
@@ -233,19 +388,62 @@ export async function createCheckout({
  * Idempotent: if payment already "paid" or "fully_refunded", returns RspCode "02".
  */
 export async function processVNPayIPN(query) {
-  const webhookLogId = await webhookLogService.logWebhook({
-    gateway: "VNPAY",
-    payload: query,
-    signature: query.vnp_SecureHash || null,
-  });
+  return processVNPayIPNWithDependencies(
+    query,
+    defaultPaymentCallbackDependencies,
+  );
+}
+
+async function processVNPayIPNWithDependencies(query, dependencies) {
+  const {
+    prisma,
+    logger,
+    vnpayService,
+    webhookLogService,
+    eventEmitter,
+    EVENTS,
+    processPaymentLedger,
+    paymentTransition,
+  } = dependencies;
+
+  let verifyResult;
+  try {
+    verifyResult = vnpayService.verifyIpn(query);
+  } catch (error) {
+    const webhookLogId = await webhookLogService.logWebhook(
+      buildSafeWebhookLogEntry({
+        gateway: "VNPAY",
+        reference: query.vnp_TxnRef,
+        outcome: "verification_error",
+        hasSignature: Boolean(query.vnp_SecureHash),
+      }),
+    );
+    await webhookLogService.markError({
+      transactionRef: query.vnp_TxnRef || null,
+      webhookLogId,
+      errorMsg: "PAYMENT_SIGNATURE_VERIFICATION_ERROR",
+    });
+    logger.error("processVNPayIPN signature verification error", {
+      transactionRef: query.vnp_TxnRef,
+    });
+    return vnpayService.buildIpnResponse("99", "System error");
+  }
+
+  const webhookLogId = await webhookLogService.logWebhook(
+    buildSafeWebhookLogEntry({
+      gateway: "VNPAY",
+      reference: query.vnp_TxnRef,
+      outcome: verifyResult.valid ? "received" : "signature_invalid",
+      hasSignature: Boolean(query.vnp_SecureHash),
+    }),
+  );
 
   try {
-    const verifyResult = vnpayService.verifyIpn(query);
     if (!verifyResult.valid) {
       await webhookLogService.markError({
         transactionRef: query.vnp_TxnRef || null,
         webhookLogId,
-        errorMsg: verifyResult.error,
+        errorMsg: "PAYMENT_SIGNATURE_INVALID",
       });
       return vnpayService.buildIpnResponse(
         "97",
@@ -257,6 +455,7 @@ export async function processVNPayIPN(query) {
       transactionRef,
       responseCode,
       amount,
+      currency,
       bankCode,
       transactionNo,
       payDate,
@@ -264,7 +463,7 @@ export async function processVNPayIPN(query) {
 
     const result = await prisma.$transaction(async (tx) => {
       const locked = await tx.$queryRaw`
-        SELECT id, status, amount, booking_id
+        SELECT id, status, amount, currency, transaction_ref, booking_id
         FROM payments
         WHERE transaction_ref = ${transactionRef}
         LIMIT 1
@@ -276,6 +475,19 @@ export async function processVNPayIPN(query) {
       }
 
       const payment = locked[0];
+
+      const obligation = validateCallbackObligation({
+        gateway: "VNPAY",
+        payment,
+        callback: {
+          reference: transactionRef,
+          amount,
+          currency,
+        },
+      });
+      if (!obligation.valid) {
+        return { type: "OBLIGATION_MISMATCH", code: obligation.code };
+      }
 
       if (
         payment.status === PAYMENT_STATUS.PAID ||
@@ -302,77 +514,53 @@ export async function processVNPayIPN(query) {
         return { type: "FAILED", responseCode };
       }
 
-      const updatedPayment = await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: PAYMENT_STATUS.PAID,
-          paidAt: new Date(),
+      const transition = paymentTransition || createPaymentTransition({ processPaymentLedger });
+      const collection = await transition.recordSucceededReceipt(tx, {
+        paymentId: payment.id,
+        amount: Number(amount) / 100,
+        currency,
+        source: "gateway",
+        gateway: "VNPAY",
+        method: PAYMENT_METHODS.VNPAY,
+        idempotencyKey: `vnpay:${transactionNo || transactionRef}`,
+        externalTransactionId: transactionNo || transactionRef,
+        bankCode,
+        paymentData: {
+          responseCode,
           bankCode: bankCode || null,
-          transactionId: transactionNo || null,
-          paymentData: {
-            responseCode,
-            bankCode: bankCode || null,
-            transactionNo: transactionNo || null,
-            payDate: payDate || null,
-            gateway: "VNPAY",
-            processedAt: new Date().toISOString(),
-          },
-        },
-      });
-
-      // Update booking to paid_pending_confirm (NOT confirmed)
-      const bookingForTx = await tx.booking.update({
-        where: { id: payment.booking_id },
-        data: {
-          status: BOOKING_STATUS.PAID_PENDING_CONFIRM,
-          paymentStatus: PAYMENT_STATUS.PAID,
-          confirmedAt: null,
-        },
-        select: {
-          id: true,
-          businessId: true,
-          originalPrice: true,
-          discountAmount: true,
-          finalPrice: true,
-          service: {
-            select: { business: { select: { commissionRate: true } } },
-          },
-        },
-      });
-
-      // Process financial ledger (commission split + frozen balance)
-      const commissionRate =
-        Number(bookingForTx.service?.business?.commissionRate) || 10;
-      await processPaymentLedger(
-        tx,
-        bookingForTx.id,
-        bookingForTx.finalPrice,
-        commissionRate,
-        bookingForTx.businessId,
-      );
-
-      await tx.bookingActionLog.create({
-        data: {
-          bookingId: payment.booking_id,
-          action: "approve",
-          actorUserId: null,
-          metadata: { source: "payment_gateway", gateway: "VNPAY" },
+          transactionNo: transactionNo || null,
+          payDate: payDate || null,
+          gateway: "VNPAY",
+          processedAt: new Date().toISOString(),
         },
       });
 
       return {
-        type: "SUCCESS",
-        payment: updatedPayment,
+        type: collection.replayed ? "ALREADY_PROCESSED" : "SUCCESS",
         bookingId: payment.booking_id,
       };
     });
 
-    if (result.type && result.type !== "NOT_FOUND") {
+    if (result.type && result.type !== "NOT_FOUND" && result.type !== "OBLIGATION_MISMATCH") {
       await webhookLogService.markProcessed({ transactionRef, webhookLogId });
     }
 
     if (result.type === "NOT_FOUND") {
+      await webhookLogService.markError({
+        transactionRef: transactionRef || null,
+        webhookLogId,
+        errorMsg: PAYMENT_OBLIGATION_ERROR_CODES.REFERENCE_MISMATCH,
+      });
       return vnpayService.buildIpnResponse("01", "Order not found");
+    }
+
+    if (result.type === "OBLIGATION_MISMATCH") {
+      await webhookLogService.markError({
+        transactionRef: transactionRef || null,
+        webhookLogId,
+        errorMsg: result.code,
+      });
+      return vnpayService.buildIpnResponse("04", "Invalid callback obligation");
     }
 
     if (result.type === "ALREADY_PROCESSED") {
@@ -431,19 +619,62 @@ export async function processVNPayIPN(query) {
  * Idempotent: if payment already "paid" or "fully_refunded", returns resultCode 0.
  */
 export async function processMoMoIPN(body) {
-  const webhookLogId = await webhookLogService.logWebhook({
-    gateway: "MOMO",
-    payload: body,
-    signature: body.signature || null,
-  });
+  return processMoMoIPNWithDependencies(
+    body,
+    defaultPaymentCallbackDependencies,
+  );
+}
+
+async function processMoMoIPNWithDependencies(body, dependencies) {
+  const {
+    prisma,
+    logger,
+    momoService,
+    webhookLogService,
+    eventEmitter,
+    EVENTS,
+    processPaymentLedger,
+    paymentTransition,
+  } = dependencies;
+
+  let verifyResult;
+  try {
+    verifyResult = momoService.verifyIpnSignature(body);
+  } catch (error) {
+    const webhookLogId = await webhookLogService.logWebhook(
+      buildSafeWebhookLogEntry({
+        gateway: "MOMO",
+        reference: body.orderId,
+        outcome: "verification_error",
+        hasSignature: Boolean(body.signature),
+      }),
+    );
+    await webhookLogService.markError({
+      transactionRef: body.orderId || null,
+      webhookLogId,
+      errorMsg: "PAYMENT_SIGNATURE_VERIFICATION_ERROR",
+    });
+    logger.error("processMoMoIPN signature verification error", {
+      orderId: body.orderId,
+    });
+    return momoService.buildIpnResponse(1001, "System error");
+  }
+
+  const webhookLogId = await webhookLogService.logWebhook(
+    buildSafeWebhookLogEntry({
+      gateway: "MOMO",
+      reference: body.orderId,
+      outcome: verifyResult.valid ? "received" : "signature_invalid",
+      hasSignature: Boolean(body.signature),
+    }),
+  );
 
   try {
-    const verifyResult = momoService.verifyIpnSignature(body);
     if (!verifyResult.valid) {
       await webhookLogService.markError({
         transactionRef: body.orderId || null,
         webhookLogId,
-        errorMsg: verifyResult.error,
+        errorMsg: "PAYMENT_SIGNATURE_INVALID",
       });
       return momoService.buildIpnResponse(
         1000,
@@ -455,7 +686,7 @@ export async function processMoMoIPN(body) {
 
     const dbResult = await prisma.$transaction(async (tx) => {
       const locked = await tx.$queryRaw`
-        SELECT id, status, amount, booking_id
+        SELECT id, status, amount, currency, transaction_ref, booking_id
         FROM payments
         WHERE transaction_ref = ${orderId}
         LIMIT 1
@@ -467,6 +698,18 @@ export async function processMoMoIPN(body) {
       }
 
       const payment = locked[0];
+
+      const obligation = validateCallbackObligation({
+        gateway: "MOMO",
+        payment,
+        callback: {
+          reference: orderId,
+          amount,
+        },
+      });
+      if (!obligation.valid) {
+        return { type: "OBLIGATION_MISMATCH", code: obligation.code };
+      }
 
       if (
         payment.status === PAYMENT_STATUS.PAID ||
@@ -492,70 +735,36 @@ export async function processMoMoIPN(body) {
         return { type: "FAILED", resultCode };
       }
 
-      const updatedPayment = await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: PAYMENT_STATUS.PAID,
-          paidAt: new Date(),
-          transactionId: transId || null,
-          paymentData: {
-            resultCode,
-            message: message || null,
-            transId: transId || null,
-            gateway: "MOMO",
-            processedAt: new Date().toISOString(),
-          },
-        },
-      });
-
-      // Update booking to paid_pending_confirm (NOT confirmed)
-      const bookingForTx = await tx.booking.update({
-        where: { id: payment.booking_id },
-        data: {
-          status: BOOKING_STATUS.PAID_PENDING_CONFIRM,
-          paymentStatus: PAYMENT_STATUS.PAID,
-          confirmedAt: null,
-        },
-        select: {
-          id: true,
-          businessId: true,
-          originalPrice: true,
-          discountAmount: true,
-          finalPrice: true,
-          service: {
-            select: { business: { select: { commissionRate: true } } },
-          },
-        },
-      });
-
-      // Process financial ledger (commission split + frozen balance)
-      const commissionRate =
-        Number(bookingForTx.service?.business?.commissionRate) || 10;
-      await processPaymentLedger(
-        tx,
-        bookingForTx.id,
-        bookingForTx.finalPrice,
-        commissionRate,
-        bookingForTx.businessId,
-      );
-
-      await tx.bookingActionLog.create({
-        data: {
-          bookingId: payment.booking_id,
-          action: "approve",
-          actorUserId: null,
-          metadata: { source: "payment_gateway", gateway: "MOMO" },
+      const transition = paymentTransition || createPaymentTransition({ processPaymentLedger });
+      const collection = await transition.recordSucceededReceipt(tx, {
+        paymentId: payment.id,
+        amount: Number(amount),
+        currency: "VND",
+        source: "gateway",
+        gateway: "MOMO",
+        method: PAYMENT_METHODS.MOMO,
+        idempotencyKey: `momo:${transId || orderId}`,
+        externalTransactionId: transId || orderId,
+        paymentData: {
+          resultCode,
+          message: message || null,
+          transId: transId || null,
+          gateway: "MOMO",
+          processedAt: new Date().toISOString(),
         },
       });
 
       return {
-        type: "SUCCESS",
-        payment: updatedPayment,
+        type: collection.replayed ? "ALREADY_PROCESSED" : "SUCCESS",
         bookingId: payment.booking_id,
       };
     });
 
-    if (dbResult.type && dbResult.type !== "NOT_FOUND") {
+    if (
+      dbResult.type &&
+      dbResult.type !== "NOT_FOUND" &&
+      dbResult.type !== "OBLIGATION_MISMATCH"
+    ) {
       await webhookLogService.markProcessed({
         transactionRef: orderId,
         webhookLogId,
@@ -563,7 +772,21 @@ export async function processMoMoIPN(body) {
     }
 
     if (dbResult.type === "NOT_FOUND") {
+      await webhookLogService.markError({
+        transactionRef: orderId || null,
+        webhookLogId,
+        errorMsg: PAYMENT_OBLIGATION_ERROR_CODES.REFERENCE_MISMATCH,
+      });
       return momoService.buildIpnResponse(1000, "Order not found");
+    }
+
+    if (dbResult.type === "OBLIGATION_MISMATCH") {
+      await webhookLogService.markError({
+        transactionRef: orderId || null,
+        webhookLogId,
+        errorMsg: dbResult.code,
+      });
+      return momoService.buildIpnResponse(1000, "Invalid callback obligation");
     }
 
     if (dbResult.type === "ALREADY_PROCESSED") {
@@ -680,13 +903,17 @@ export async function processSePayIPN(body) {
         return { type: "AMOUNT_MISMATCH" };
       }
 
-      const updatedPayment = await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: PAYMENT_STATUS.PAID,
-          paidAt: new Date(),
-          transactionId: transactionId || orderId || null,
-          bankCode: sepayMethod || null,
+      const collection = await createPaymentTransition({ processPaymentLedger })
+        .recordSucceededReceipt(tx, {
+          paymentId: payment.id,
+          amount: Number(amount),
+          currency: "VND",
+          source: "gateway",
+          gateway: "SEPAY",
+          method: PAYMENT_METHODS.SEPAY,
+          idempotencyKey: `sepay:${transactionId || orderId || transactionRef}`,
+          externalTransactionId: transactionId || orderId || transactionRef,
+          bankCode: sepayMethod,
           paymentData: {
             sepayOrderId: orderId,
             transactionId,
@@ -695,50 +922,10 @@ export async function processSePayIPN(body) {
             gateway: "SEPAY",
             processedAt: new Date().toISOString(),
           },
-        },
-      });
-
-      const bookingForTx = await tx.booking.update({
-        where: { id: payment.booking_id },
-        data: {
-          status: BOOKING_STATUS.PAID_PENDING_CONFIRM,
-          paymentStatus: PAYMENT_STATUS.PAID,
-          confirmedAt: null,
-        },
-        select: {
-          id: true,
-          businessId: true,
-          originalPrice: true,
-          discountAmount: true,
-          finalPrice: true,
-          service: {
-            select: { business: { select: { commissionRate: true } } },
-          },
-        },
-      });
-
-      const commissionRate =
-        Number(bookingForTx.service?.business?.commissionRate) || 10;
-      await processPaymentLedger(
-        tx,
-        bookingForTx.id,
-        bookingForTx.finalPrice,
-        commissionRate,
-        bookingForTx.businessId,
-      );
-
-      await tx.bookingActionLog.create({
-        data: {
-          bookingId: payment.booking_id,
-          action: "approve",
-          actorUserId: null,
-          metadata: { source: "payment_gateway", gateway: "SEPAY" },
-        },
-      });
+        });
 
       return {
-        type: "SUCCESS",
-        payment: updatedPayment,
+        type: collection.replayed ? "ALREADY_PROCESSED" : "SUCCESS",
         bookingId: payment.booking_id,
       };
     });
@@ -817,34 +1004,93 @@ export async function processSePayIPN(body) {
  * @returns {Promise<{ success: boolean, message?: string }>}
  */
 export async function processSePayBankWebhook(body, headers = {}, rawBody = null) {
-  const webhookLogId = await webhookLogService.logWebhook({
-    gateway: "SEPAY_BANK",
-    payload: body,
-    signature: headers["x-sepay-signature"] || null,
-  });
+  return processSePayBankWebhookWithDependencies(
+    body,
+    headers,
+    rawBody,
+    defaultSePayBankWebhookDependencies,
+  );
+}
 
+function buildSePayBankWebhookLog(reference, outcome) {
+  return buildSafeWebhookLogEntry({
+    gateway: "SEPAY_BANK",
+    reference,
+    outcome,
+    hasSignature: true,
+  });
+}
+
+function validateSePayBankObligation(payment, { reference, amount }) {
+  const paymentReference = payment.transaction_ref ?? payment.transactionRef;
+  if (!reference || reference !== paymentReference) {
+    return { valid: false, code: PAYMENT_OBLIGATION_ERROR_CODES.REFERENCE_MISMATCH };
+  }
+  if (!Number.isSafeInteger(amount) || amount <= 0 || Number(payment.amount) !== amount) {
+    return { valid: false, code: PAYMENT_OBLIGATION_ERROR_CODES.AMOUNT_MISMATCH };
+  }
+  if (String(payment.currency || "").toUpperCase() !== "VND") {
+    return { valid: false, code: PAYMENT_OBLIGATION_ERROR_CODES.CURRENCY_MISMATCH };
+  }
+  return { valid: true, code: null };
+}
+
+async function processSePayBankWebhookWithDependencies(body, headers, rawBody, dependencies) {
+  const {
+    prisma,
+    logger,
+    sepayService,
+    sepayWebhookService,
+    webhookLogService,
+    eventEmitter,
+    EVENTS,
+    processPaymentLedger,
+    paymentTransition,
+  } = dependencies;
+  let webhookLogId = null;
   try {
-    // Verify HMAC-SHA256 signature if configured
     const signature = headers["x-sepay-signature"] || "";
     const timestamp = headers["x-sepay-timestamp"] || "";
     const bodyForSignature = rawBody || (typeof body === "string" ? body : JSON.stringify(body));
-
-    const sigResult = sepayWebhookService.verifyWebhookSignature(
-      bodyForSignature,
-      signature,
-      timestamp,
-    );
+    let sigResult;
+    try {
+      sigResult = sepayWebhookService.verifyWebhookSignature(
+        bodyForSignature,
+        signature,
+        timestamp,
+      );
+    } catch (error) {
+      webhookLogId = (await webhookLogService.logWebhook(
+        buildSePayBankWebhookLog(body?.code, "verification_error"),
+      ))?.id;
+      if (webhookLogId) {
+        await webhookLogService.markError({
+          transactionRef: body?.code || null,
+          webhookLogId,
+          errorMsg: "PAYMENT_SIGNATURE_VERIFICATION_ERROR",
+        });
+      }
+      logger.error("processSePayBankWebhook signature verification error", { code: body?.code || null });
+      return sepayService.buildIpnError("System error");
+    }
     if (!sigResult.valid) {
-      await webhookLogService.markError({
-        transactionRef: body?.code || null,
-        webhookLogId,
-        errorMsg: `Signature verification failed: ${sigResult.error}`,
-      });
+      webhookLogId = (await webhookLogService.logWebhook(
+        buildSePayBankWebhookLog(body?.code, "signature_invalid"),
+      ))?.id;
+      if (webhookLogId) {
+        await webhookLogService.markError({
+          transactionRef: body?.code || null,
+          webhookLogId,
+          errorMsg: "PAYMENT_SIGNATURE_INVALID",
+        });
+      }
       return sepayService.buildIpnError(sigResult.error);
     }
 
-    // Parse bank transaction
     const parseResult = sepayWebhookService.parseBankWebhook(body);
+    webhookLogId = (await webhookLogService.logWebhook(
+      buildSePayBankWebhookLog(body?.code, parseResult.valid ? "received" : "ignored"),
+    ))?.id;
     if (!parseResult.valid) {
       if (webhookLogId) {
         await webhookLogService.markError({
@@ -866,26 +1112,9 @@ export async function processSePayBankWebhook(body, headers = {}, rawBody = null
       referenceCode,
     } = parseResult.data;
 
-    // Idempotency: check if we already processed this SePay transaction
-    const existingWebhook = await prisma.paymentWebhookLog.findFirst({
-      where: {
-        gateway: "SEPAY_BANK",
-        processed: true,
-        payload: {
-          path: ["id"],
-          equals: sepayTransactionId,
-        },
-      },
-    });
-
-    if (existingWebhook) {
-      return sepayService.buildIpnSuccess();
-    }
-
     const result = await prisma.$transaction(async (tx) => {
-      // Match by code (= transactionRef in Payment table)
       const locked = await tx.$queryRaw`
-        SELECT id, status, amount, booking_id
+        SELECT id, status, amount, currency, transaction_ref, booking_id
         FROM payments
         WHERE transaction_ref = ${code}
         LIMIT 1
@@ -897,95 +1126,40 @@ export async function processSePayBankWebhook(body, headers = {}, rawBody = null
       }
 
       const payment = locked[0];
-
-      if (
-        payment.status === PAYMENT_STATUS.PAID ||
-        payment.status === PAYMENT_STATUS.FULLY_REFUNDED
-      ) {
-        return { type: "ALREADY_PROCESSED", status: payment.status };
-      }
-
-      // Verify amount matches
-      if (payment.amount !== transferAmount) {
-        logger.warn("SePay bank webhook amount mismatch", {
-          expected: payment.amount,
-          received: transferAmount,
-          code,
-        });
-        return {
-          type: "AMOUNT_MISMATCH",
-          expected: payment.amount,
-          received: transferAmount,
-        };
-      }
-
-      const updatedPayment = await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: PAYMENT_STATUS.PAID,
-          paidAt: new Date(),
-          transactionId: String(sepayTransactionId),
-          bankCode: gateway || null,
-          paymentData: {
-            sepayTransactionId,
-            gateway,
-            transactionDate,
-            referenceCode,
-            transferAmount,
-            source: "sepay_bank_webhook",
-            processedAt: new Date().toISOString(),
-          },
-        },
+      const obligation = validateSePayBankObligation(payment, {
+        reference: code,
+        amount: Number(transferAmount),
       });
+      if (!obligation.valid) return { type: "OBLIGATION_MISMATCH", code: obligation.code };
 
-      const bookingForTx = await tx.booking.update({
-        where: { id: payment.booking_id },
-        data: {
-          status: BOOKING_STATUS.PAID_PENDING_CONFIRM,
-          paymentStatus: PAYMENT_STATUS.PAID,
-          confirmedAt: null,
-        },
-        select: {
-          id: true,
-          businessId: true,
-          finalPrice: true,
-          service: {
-            select: { business: { select: { commissionRate: true } } },
-          },
-        },
-      });
-
-      const commissionRate =
-        Number(bookingForTx.service?.business?.commissionRate) || 10;
-      await processPaymentLedger(
-        tx,
-        bookingForTx.id,
-        bookingForTx.finalPrice,
-        commissionRate,
-        bookingForTx.businessId,
-      );
-
-      await tx.bookingActionLog.create({
-        data: {
-          bookingId: payment.booking_id,
-          action: "approve",
-          actorUserId: null,
-          metadata: {
-            source: "sepay_bank_webhook",
-            gateway,
-            sepayTransactionId,
-          },
+      const transition = paymentTransition || createPaymentTransition({ processPaymentLedger });
+      const collection = await transition.recordSucceededReceipt(tx, {
+        paymentId: payment.id,
+        transactionRef: code,
+        amount: Number(transferAmount),
+        currency: "VND",
+        source: "gateway",
+        gateway: "SEPAY_BANK",
+        method: PAYMENT_METHODS.SEPAY,
+        idempotencyKey: `sepay-bank:${sepayTransactionId}`,
+        externalTransactionId: String(sepayTransactionId),
+        bankCode: gateway || null,
+        paymentData: {
+          gateway,
+          transactionDate,
+          referenceCode,
+          source: "sepay_bank_webhook",
+          processedAt: new Date().toISOString(),
         },
       });
 
       return {
-        type: "SUCCESS",
-        payment: updatedPayment,
+        type: collection.replayed ? "ALREADY_PROCESSED" : "SUCCESS",
         bookingId: payment.booking_id,
       };
     });
 
-    if (result.type && result.type !== "NOT_FOUND" && webhookLogId) {
+    if (result.type && !["NOT_FOUND", "OBLIGATION_MISMATCH"].includes(result.type) && webhookLogId) {
       await webhookLogService.markProcessed({
         transactionRef: code,
         webhookLogId,
@@ -1000,11 +1174,14 @@ export async function processSePayBankWebhook(body, headers = {}, rawBody = null
       return sepayService.buildIpnSuccess();
     }
 
-    if (result.type === "ALREADY_PROCESSED") {
+    if (result.type === "OBLIGATION_MISMATCH") {
+      if (webhookLogId) {
+        await webhookLogService.markError({ transactionRef: code, webhookLogId, errorMsg: result.code });
+      }
       return sepayService.buildIpnSuccess();
     }
 
-    if (result.type === "AMOUNT_MISMATCH") {
+    if (result.type === "ALREADY_PROCESSED") {
       return sepayService.buildIpnSuccess();
     }
 
@@ -1038,10 +1215,7 @@ export async function processSePayBankWebhook(body, headers = {}, rawBody = null
       return sepayService.buildIpnSuccess();
     }
   } catch (error) {
-    logger.error("processSePayBankWebhook error", {
-      error: error.message,
-      body,
-    });
+    logger.error("processSePayBankWebhook error", { error: error.message, code: body?.code || null });
     if (webhookLogId) {
       await webhookLogService.markError({
         transactionRef: body?.code || null,
@@ -1057,12 +1231,16 @@ export async function processSePayBankWebhook(body, headers = {}, rawBody = null
  * Process SePay outgoing bank transaction webhook.
  * Matches money-out events to payout transfers or refunded payments.
  */
-export async function processSePayRefundWebhook(body, headers = {}, rawBody = null) {
-  const webhookLogId = await webhookLogService.logWebhook({
-    gateway: "SEPAY_BANK_REFUND",
-    payload: body,
-    signature: headers["x-sepay-signature"] || null,
-  });
+async function processSePayRefundWebhookWithDependencies(body, headers = {}, rawBody = null, dependencies) {
+  const {
+    prisma,
+    logger,
+    sepayService,
+    sepayWebhookService,
+    webhookLogService,
+    refundTransitionFactory,
+  } = dependencies;
+  let webhookLogId = null;
 
   try {
     const signature = headers["x-sepay-signature"] || "";
@@ -1075,13 +1253,14 @@ export async function processSePayRefundWebhook(body, headers = {}, rawBody = nu
       timestamp,
     );
     if (!sigResult.valid) {
-      await webhookLogService.markError({
-        transactionRef: body?.code || null,
-        webhookLogId,
-        errorMsg: `Signature verification failed: ${sigResult.error}`,
-      });
       return sepayService.buildIpnError(sigResult.error);
     }
+
+    webhookLogId = (await webhookLogService.logWebhook({
+      gateway: "SEPAY_BANK_REFUND",
+      payload: { id: body?.id || null, code: body?.code || null, transferAmount: Number(body?.transferAmount) || null, transferType: body?.transferType || null },
+      signature: null,
+    }))?.id || null;
 
     const parseResult = sepayWebhookService.parseRefundWebhook(body);
     if (!parseResult.valid) {
@@ -1204,44 +1383,45 @@ export async function processSePayRefundWebhook(body, headers = {}, rawBody = nu
 
         if (paymentRows?.length) {
           const payment = paymentRows[0];
-          const refundedAmount = Number(payment.refund_amount || 0);
-          if (refundedAmount > 0 && Number(transferAmount) > refundedAmount) {
-            logger.warn("SePay refund webhook payment amount exceeds refund", {
-              transactionRef: code,
-              refundedAmount,
-              received: transferAmount,
-            });
+          const callbackReference = String(referenceCode || "").trim();
+          const replay = await tx.refundAttempt.findFirst({
+            where: { gateway: "SEPAY_BANK", externalRefundId: String(sepayTransactionId) },
+          });
+          if (replay && (replay.paymentId !== payment.id || replay.amount !== Number(transferAmount))) {
             return { type: "AMOUNT_MISMATCH", transactionRef: code };
           }
-
-          const paymentData =
-            payment.payment_data && typeof payment.payment_data === "object"
-              ? payment.payment_data
-              : {};
-
-          await tx.payment.update({
-            where: { id: payment.id },
-            data: {
-              paymentData: {
-                ...paymentData,
-                refundTransfer: {
-                  sepayTransactionId,
-                  gateway,
-                  transactionDate,
-                  referenceCode,
-                  transferAmount,
-                  confirmedAt: new Date().toISOString(),
-                },
-              },
+          if (replay && replay.metadata?.transferReference !== callbackReference) {
+            return { type: "AMOUNT_MISMATCH", transactionRef: code };
+          }
+          if (replay?.status === "succeeded") return { type: "ALREADY_PROCESSED", transactionRef: code };
+          const attempt = await tx.refundAttempt.findFirst({
+            where: {
+              paymentId: payment.id,
+              status: "pending",
+              gateway: "SEPAY_BANK",
+              amount: Number(transferAmount),
+              currency: "VND",
+              metadata: { path: ["transferReference"], equals: callbackReference },
             },
           });
-
-          return { type: "PAYMENT_REFUND_CONFIRMED", transactionRef: code };
+          if (!attempt) return { type: "AMOUNT_MISMATCH", transactionRef: code };
+          return { type: "REFUND_PENDING", transactionRef: code, refundAttemptId: attempt.id };
         }
       }
 
       return { type: "NOT_FOUND", transactionRef: code };
     });
+
+    if (result.type === "REFUND_PENDING") {
+      const transition = refundTransitionFactory({ prisma });
+      await transition.succeedRefundAttempt({
+        refundAttemptId: result.refundAttemptId,
+        gateway: "SEPAY_BANK",
+        externalRefundId: String(sepayTransactionId),
+        metadata: { gateway, referenceCode: referenceCode || null, transactionDate: transactionDate || null, source: "sepay_refund_webhook" },
+      });
+      result.type = "PAYMENT_REFUND_CONFIRMED";
+    }
 
     if (result.type !== "NOT_FOUND" && webhookLogId) {
       await webhookLogService.markProcessed({
@@ -1275,6 +1455,15 @@ export async function processSePayRefundWebhook(body, headers = {}, rawBody = nu
   }
 }
 
+export async function processSePayRefundWebhook(body, headers = {}, rawBody = null) {
+  return processSePayRefundWebhookWithDependencies(
+    body,
+    headers,
+    rawBody,
+    defaultSePayRefundWebhookDependencies,
+  );
+}
+
 /**
  * Manual refund by Admin.
  * Delegates to bookingService.refund() which handles partial refund + commission adjustment.
@@ -1289,7 +1478,7 @@ export async function processSePayRefundWebhook(body, headers = {}, rawBody = nu
  */
 export async function refundPayment(
   paymentId,
-  { amount, reason } = {},
+  { amount, reason, idempotencyKey } = {},
   adminUserId,
 ) {
   const id = parseInt(paymentId, 10);
@@ -1314,7 +1503,7 @@ export async function refundPayment(
     );
   }
 
-  if (payment.status !== PAYMENT_STATUS.PAID) {
+  if (![PAYMENT_STATUS.PAID, PAYMENT_STATUS.PARTIALLY_REFUNDED].includes(payment.status)) {
     throw new ServiceError(
       "Chỉ có thể hoàn tiền đơn đã thanh toán",
       422,
@@ -1326,7 +1515,7 @@ export async function refundPayment(
 
   return bookingService.refund(
     payment.bookingId,
-    { refundAmount: refundAmt, refundReason: reason },
+    { refundAmount: refundAmt, refundReason: reason, idempotencyKey },
     adminUserId,
   );
 }
@@ -1582,6 +1771,68 @@ export async function getPaymentById(paymentId, { userId, roleId }) {
     throw new ServiceError("Payment không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
+  if (!isAdmin && payment.userId !== userId) {
+    throw new ServiceError(
+      "Bạn không có quyền xem payment này",
+      403,
+      ERROR_CODES.FORBIDDEN,
+    );
+  }
+
+  return payment;
+}
+
+/**
+ * Reads the latest payment obligation for one booking.  This deliberately
+ * applies the same owner/super-admin policy as getPaymentById; a booking id
+ * must never become a way to enumerate another user's payments.
+ */
+export async function getPaymentByBookingId(bookingId, { userId, roleId }) {
+  const id = Number(bookingId);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new ServiceError(
+      "Booking ID không hợp lệ",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+
+  const payment = await prisma.payment.findFirst({
+    where: { bookingId: id },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      bookingId: true,
+      userId: true,
+      amount: true,
+      currency: true,
+      paymentMethod: true,
+      transactionId: true,
+      transactionRef: true,
+      bankCode: true,
+      status: true,
+      paidAt: true,
+      refundAmount: true,
+      refundedAt: true,
+      refundReason: true,
+      createdAt: true,
+      updatedAt: true,
+      booking: {
+        select: {
+          bookingCode: true,
+          status: true,
+          finalPrice: true,
+          service: { select: { name: true, place: { select: { name: true } } } },
+        },
+      },
+    },
+  });
+
+  if (!payment) {
+    throw new ServiceError("Payment không tồn tại", 404, ERROR_CODES.NOT_FOUND);
+  }
+
+  const isAdmin = Number(roleId) <= 2;
   if (!isAdmin && payment.userId !== userId) {
     throw new ServiceError(
       "Bạn không có quyền xem payment này",
