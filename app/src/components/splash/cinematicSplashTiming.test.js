@@ -116,7 +116,7 @@ describe("cinematic splash media contract", () => {
 
     expect(source).toMatch(/muted\s*=\s*true/);
     expect(source).toMatch(/loop\s*=\s*false/);
-    expect(source).toContain("showsPlaybackControls={false}");
+    expect(source).toContain("nativeControls={false}");
     expect(source).toContain('resizeMode="cover"');
     expect(source).toContain('addListener("playToEnd"');
     expect(source).toContain('addListener("statusChange"');

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { removeDraftPreviewMessages } from "./aiPlannerStore";
+import { removeDraftPreviewMessages } from "./aiPlannerMessageHelpers";
 
 describe("aiPlannerStore helpers", () => {
   test("removes old draft preview messages but keeps normal conversation", () => {

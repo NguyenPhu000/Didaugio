@@ -5,8 +5,10 @@ import {
   normalizeMessageCreatedAt,
   trimPersistedMessages,
 } from "./aiPlannerRetention";
+import { removeDraftPreviewMessages } from "./aiPlannerMessageHelpers";
 
 export { trimPersistedMessages } from "./aiPlannerRetention";
+export { removeDraftPreviewMessages } from "./aiPlannerMessageHelpers";
 
 const { persist, createJSONStorage } = require("zustand/middleware");
 
@@ -41,19 +43,6 @@ function normalizeMessage(message) {
       ? message.suggestedPlaces
       : [],
   };
-}
-
-export function removeDraftPreviewMessages(messages) {
-  if (!Array.isArray(messages)) return [];
-  return messages.filter((message) => {
-    const isLegacyDraftPreview =
-      message?.role === "assistant" &&
-      (message?.source || "planner") === "planner" &&
-      Array.isArray(message?.suggestedPlaces) &&
-      message.suggestedPlaces.length > 0 &&
-      Array.isArray(message?.selectedPlaceIds);
-    return !message?.isDraftPreview && !isLegacyDraftPreview;
-  });
 }
 
 export const useAIPlannerStore = create(
