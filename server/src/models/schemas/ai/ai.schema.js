@@ -77,3 +77,19 @@ export const aiSpeechSchema = z.object({
   input: z.string().trim().min(1).max(1600),
   voice: z.string().trim().max(80).optional(),
 });
+
+const bcp47LanguageSchema = z
+  .string()
+  .trim()
+  .min(2)
+  .max(35)
+  .regex(
+    /^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|\d{3}))?(?:-[A-Za-z0-9]{5,8})*$/,
+    "language must be a bounded BCP-47 tag",
+  )
+  .transform((value) => value.toLowerCase());
+
+export const aiTranscriptionFieldsSchema = z.object({
+  language: bcp47LanguageSchema.optional().default("vi"),
+  prompt: z.string().trim().min(1).max(1600).optional(),
+});

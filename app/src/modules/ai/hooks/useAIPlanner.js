@@ -189,7 +189,12 @@ export function useAIPlanner() {
       setDraftPlan(null);
       setSelectedPlaceIds([]);
 
-      await previewMutation.mutateAsync(payload);
+      try {
+        await previewMutation.mutateAsync(payload);
+      } catch {
+        // React Query already ran onError; keep the UI error state local to
+        // the mutation instead of leaking a rejected event-handler promise.
+      }
     },
     [
       appendMessage,
@@ -243,8 +248,13 @@ export function useAIPlanner() {
       itineraryDraft: draftPlan.itinerary,
     };
 
-    const response = await confirmMutation.mutateAsync(payload);
-    return response?.data || null;
+    try {
+      const response = await confirmMutation.mutateAsync(payload);
+      return response?.data || null;
+    } catch {
+      // onError owns the user-visible message and retryable mutation state.
+      return null;
+    }
   }, [confirmMutation, draftPlan, lastPreferences, selectedPlaceIds]);
 
   const canConfirmSelection =

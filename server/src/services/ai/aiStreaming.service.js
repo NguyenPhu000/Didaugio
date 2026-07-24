@@ -13,8 +13,17 @@ const SSE_HEADERS = {
   "X-Accel-Buffering": "no",
 };
 
+export function encodeSseData(data) {
+  const lines = String(data ?? "").split(/\r\n|\r|\n/);
+  return `${lines.map((line) => `data: ${line}`).join("\n")}\n\n`;
+}
+
+export function buildSseErrorPayload(error) {
+  return `[ERROR] ${toAiServiceError(error).code}`;
+}
+
 function writeSSE(res, data) {
-  res.write(`data: ${data}\n\n`);
+  res.write(encodeSseData(data));
 }
 
 /**
@@ -52,7 +61,7 @@ export async function streamPlaceSummary(prompt, res) {
       startedAt,
       code: aiError.code,
     });
-    writeSSE(res, `[ERROR] ${aiError.code}`);
+    writeSSE(res, buildSseErrorPayload(aiError));
   } finally {
     res.end();
   }
@@ -97,7 +106,7 @@ export async function streamChat(messages, system, res) {
       startedAt,
       code: aiError.code,
     });
-    writeSSE(res, `[ERROR] ${aiError.code}`);
+    writeSSE(res, buildSseErrorPayload(aiError));
   } finally {
     res.end();
   }

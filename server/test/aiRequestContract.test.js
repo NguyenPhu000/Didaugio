@@ -6,7 +6,9 @@ import {
   aiHybridPlanSchema,
   aiPlaceSummarySchema,
   aiSpeechSchema,
+  aiTranscriptionFieldsSchema,
 } from "../src/models/schemas/ai/ai.schema.js";
+import { generateTripSchema } from "../src/models/schemas/trip/trip.schema.js";
 import { buildHybridPlanUserPrompt } from "../src/services/ai/hybridPlanner.service.js";
 import { getValidatedCoordinates } from "../src/controllers/ai/groqChat.controller.js";
 import { authenticate } from "../src/middlewares/authMiddleware.js";
@@ -178,5 +180,108 @@ test("Groq chat accepts zero-valued validated coordinates without unsafe aliases
   assert.equal(
     getValidatedCoordinates({ coords: { latitude: 10, longitude: 105 } }),
     null,
+  );
+});
+
+const validDraft = {
+  title: "Can Tho 2 ngay",
+  description: "Lich trinh xem truoc",
+  totalDays: 2,
+  estimatedCost: 2_000_000,
+  days: [
+    {
+      dayNumber: 1,
+      theme: "Trung tam",
+      destinations: [
+        {
+          placeId: 1,
+          order: 1,
+          startTime: "08:00",
+          endTime: "10:00",
+          durationMinutes: 120,
+          note: "Tham quan",
+          transportToNext: "Xe may",
+          distanceToNext: 2.5,
+          estimatedCost: 100_000,
+        },
+      ],
+    },
+  ],
+};
+
+test("trip confirmation accepts the real mobile preview shape and canonicalizes numeric budget", () => {
+  const parsed = generateTripSchema.parse({
+    totalDays: 2,
+    travelStyle: "budget",
+    groupSize: 2,
+    budget: 2_000_000,
+    notes: "Lich trinh 2 ngay cho 2 nguoi",
+    selectedPlaceIds: [1],
+    itineraryDraft: validDraft,
+  });
+
+  assert.equal(parsed.budget, "2000000");
+  assert.deepEqual(parsed.itineraryDraft, validDraft);
+  assert.equal(
+    generateTripSchema.parse({ budget: "  tiet kiem nhat co the  " }).budget,
+    "tiet kiem nhat co the",
+  );
+});
+
+test("trip confirmation rejects huge or structurally untrusted drafts and duplicate selections", () => {
+  assert.equal(
+    generateTripSchema.safeParse({
+      selectedPlaceIds: [1],
+      itineraryDraft: {
+        ...validDraft,
+        days: Array.from({ length: 31 }, (_, index) => ({
+          dayNumber: index + 1,
+          theme: "day",
+          destinations: validDraft.days[0].destinations,
+        })),
+      },
+    }).success,
+    false,
+  );
+
+  assert.equal(
+    generateTripSchema.safeParse({
+      selectedPlaceIds: [1, 1],
+      itineraryDraft: validDraft,
+    }).success,
+    false,
+  );
+
+  assert.equal(
+    generateTripSchema.safeParse({
+      selectedPlaceIds: [1],
+      itineraryDraft: { ...validDraft, injected: "not trusted" },
+    }).success,
+    false,
+  );
+});
+
+test("transcription multipart fields are bounded and normalized", () => {
+  assert.deepEqual(
+    aiTranscriptionFieldsSchema.parse({
+      language: " VI ",
+      prompt: "  Can Tho travel names  ",
+      ignored: "drop",
+    }),
+    { language: "vi", prompt: "Can Tho travel names" },
+  );
+  assert.equal(
+    aiTranscriptionFieldsSchema.safeParse({
+      language: "not_a_language",
+      prompt: "ok",
+    }).success,
+    false,
+  );
+  assert.equal(
+    aiTranscriptionFieldsSchema.safeParse({
+      language: "vi",
+      prompt: "x".repeat(1601),
+    }).success,
+    false,
   );
 });

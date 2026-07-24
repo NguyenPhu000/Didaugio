@@ -1,11 +1,13 @@
 import prisma from "../../config/prismaClient.js";
 import { GROQ_MODEL } from "../ai/groq.service.js";
+import { canUseHybridFallback } from "../ai/aiProviderPolicy.js";
 import {
   generateFallbackItinerary,
   generateItinerary,
 } from "../ai/itinerary.service.js";
 import routingService from "../routing/routing.service.js";
 import { normalizeItinerary } from "../../utils/itineraryFormatter.js";
+import ServiceError from "../../utils/serviceError.js";
 
 const MAX_TRIP_SUGGESTED_PLACES = 12;
 const isRoutingEnabled =
@@ -14,6 +16,19 @@ const isRoutingEnabled =
 const approvedPlaceWhere = {
   deletedAt: null,
   status: "approved",
+};
+
+export const canUseTripItineraryFallback = (error) =>
+  canUseHybridFallback(error);
+
+const createInvalidConfirmationError = () => {
+  const error = new ServiceError(
+    "Lich trinh xac nhan chua dia diem khong hop le",
+    400,
+    "AI_INVALID_REQUEST",
+  );
+  error.code = "AI_INVALID_REQUEST";
+  return error;
 };
 
 const toInt = (value, fallback = null) => {
@@ -57,7 +72,58 @@ const buildSuggestedPlaces = (days, placeById) => {
   return orderedIds.map((id) => placeById.get(id)).filter(Boolean);
 };
 
-const buildTripDestinations = ({
+export const assertAuthoritativeItineraryPlaces = (
+  itinerary,
+  allowedPlaceIds,
+) => {
+  const safeAllowedIds =
+    allowedPlaceIds instanceof Set ? allowedPlaceIds : new Set();
+
+  for (const day of itinerary?.days || []) {
+    for (const destination of day?.destinations || []) {
+      const placeId = toInt(destination?.placeId);
+      if (!placeId || !safeAllowedIds.has(placeId)) {
+        throw createInvalidConfirmationError();
+      }
+    }
+  }
+
+  return itinerary;
+};
+
+export const filterItineraryToSelectedPlaces = (
+  itinerary,
+  selectedPlaceIdSet,
+) => {
+  if (!(selectedPlaceIdSet instanceof Set) || selectedPlaceIdSet.size === 0) {
+    return itinerary;
+  }
+
+  const draftPlaceIds = new Set(
+    (itinerary?.days || []).flatMap((day) =>
+      (day?.destinations || [])
+        .map((destination) => toInt(destination?.placeId))
+        .filter(Boolean),
+    ),
+  );
+  for (const selectedPlaceId of selectedPlaceIdSet) {
+    if (!draftPlaceIds.has(selectedPlaceId)) {
+      throw createInvalidConfirmationError();
+    }
+  }
+
+  return {
+    ...itinerary,
+    days: (itinerary?.days || []).map((day) => ({
+      ...day,
+      destinations: (day?.destinations || []).filter((destination) =>
+        selectedPlaceIdSet.has(toInt(destination?.placeId)),
+      ),
+    })),
+  };
+};
+
+export const buildTripDestinations = ({
   tripId,
   days,
   allowedPlaceIds,
@@ -89,9 +155,7 @@ const buildTripDestinations = ({
         }
       }
 
-      if (selectedPlaceIdSet?.size && !selectedPlaceIdSet.has(placeId)) {
-        if (usedPlaceIds.has(placeId)) continue;
-      }
+      if (selectedPlaceIdSet?.size && !selectedPlaceIdSet.has(placeId)) continue;
 
       usedPlaceIds.add(placeId);
       destinations.push({
@@ -144,6 +208,7 @@ const enrichItineraryWithRouting = async ({
       }
       return true;
     });
+    day.destinations = dayDestinations;
 
     for (let i = 0; i < dayDestinations.length; i += 1) {
       dayDestinations[i].distanceToNext = null;
@@ -282,6 +347,14 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
 
   const placeById = new Map(places.map((place) => [place.id, place]));
   const placeIdSet = new Set(placeById.keys());
+  const normalizedSelectedPlaceIds = Array.isArray(selectedPlaceIds)
+    ? selectedPlaceIds.map((id) => toInt(id)).filter(Boolean)
+    : [];
+
+  if (normalizedSelectedPlaceIds.some((id) => !placeIdSet.has(id))) {
+    throw createInvalidConfirmationError();
+  }
+
   let rawItinerary =
     itineraryDraft && typeof itineraryDraft === "object"
       ? itineraryDraft
@@ -297,8 +370,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
       aiResult = await generateItinerary(preferences, places);
     } catch (err) {
       const errorCode = err?.errorCode || err?.code || "AI_ERROR";
-      const allowFallback =
-        errorCode === "QUOTA_EXCEEDED" || errorCode === "AI_UNAVAILABLE";
+      const allowFallback = canUseTripItineraryFallback(err);
 
       if (allowFallback) {
         aiResult = {
@@ -349,14 +421,10 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
       totalDays,
     );
   }
+  assertAuthoritativeItineraryPlaces(itinerary, placeIdSet);
 
   const suggestedPlaces = buildSuggestedPlaces(itinerary.days, placeById);
   const suggestedPlaceIds = suggestedPlaces.map((place) => place.id);
-  const normalizedSelectedPlaceIds = Array.isArray(selectedPlaceIds)
-    ? selectedPlaceIds
-        .map((id) => toInt(id))
-        .filter((id) => id && placeIdSet.has(id))
-    : [];
 
   const effectiveSelectedPlaceIds =
     normalizedSelectedPlaceIds.length > 0
@@ -366,6 +434,10 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
     effectiveSelectedPlaceIds.length > 0
       ? new Set(effectiveSelectedPlaceIds)
       : null;
+
+  if (!previewOnly && selectedPlaceIdSet?.size) {
+    itinerary = filterItineraryToSelectedPlaces(itinerary, selectedPlaceIdSet);
+  }
 
   const { itinerary: enrichedItinerary, tripRoutingSummary } = isRoutingEnabled
     ? await enrichItineraryWithRouting({

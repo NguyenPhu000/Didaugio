@@ -45,4 +45,14 @@ describe("normalizeConversationMessages", () => {
       result.reduce((total, message) => total + message.content.length, 0),
     ).toBeLessThanOrEqual(16000);
   });
+
+  it("trims content and drops empty or whitespace-only messages", () => {
+    expect(
+      normalizeConversationMessages([
+        { role: "user", content: "   " },
+        { role: "assistant", text: "\n\t" },
+        { role: "user", content: "  noi dung hop le  " },
+      ]),
+    ).toEqual([{ role: "user", content: "noi dung hop le" }]);
+  });
 });

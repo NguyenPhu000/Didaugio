@@ -173,16 +173,108 @@ export const reorderTripStopsSchema = z.object({
     }),
 });
 
+const boundedMoneySchema = z.number().finite().min(0).max(1_000_000_000);
+const nullableTimeSchema = z
+  .string()
+  .regex(timeHmRegex, "Thoi gian phai theo dinh dang HH:mm")
+  .nullable();
+
+const itineraryDraftDestinationSchema = z
+  .object({
+    placeId: z.coerce.number().int().positive(),
+    order: z.coerce.number().int().min(1).max(120),
+    startTime: nullableTimeSchema,
+    endTime: nullableTimeSchema,
+    durationMinutes: z.coerce.number().int().min(1).max(24 * 60).nullable(),
+    note: z.string().max(500).nullable(),
+    transportToNext: z.string().max(100).nullable(),
+    distanceToNext: z.number().finite().min(0).max(50_000).nullable().optional(),
+    estimatedCost: boundedMoneySchema.nullable(),
+  })
+  .strict();
+
+const itineraryDraftDaySchema = z
+  .object({
+    dayNumber: z.coerce.number().int().min(1).max(30),
+    theme: z.string().trim().min(1).max(200),
+    destinations: z.array(itineraryDraftDestinationSchema).max(12),
+  })
+  .strict();
+
+export const itineraryDraftSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200),
+    description: z.string().trim().max(1000).nullable(),
+    totalDays: z.coerce.number().int().min(1).max(30),
+    estimatedCost: boundedMoneySchema.nullable(),
+    days: z.array(itineraryDraftDaySchema).min(1).max(30),
+  })
+  .strict()
+  .superRefine((draft, ctx) => {
+    const seenDays = new Set();
+    let destinationCount = 0;
+
+    draft.days.forEach((day, index) => {
+      destinationCount += day.destinations.length;
+      if (seenDays.has(day.dayNumber)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["days", index, "dayNumber"],
+          message: "Ngay trong lich trinh khong duoc trung lap",
+        });
+      }
+      seenDays.add(day.dayNumber);
+
+      if (day.dayNumber > draft.totalDays) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["days", index, "dayNumber"],
+          message: "Ngay vuot qua tong so ngay cua lich trinh",
+        });
+      }
+    });
+
+    if (destinationCount > 120) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["days"],
+        message: "Lich trinh co qua nhieu dia diem",
+      });
+    }
+  });
+
+const budgetSchema = z.union([
+  z
+    .number()
+    .finite()
+    .min(0)
+    .max(1_000_000_000)
+    .transform((value) => String(Math.round(value))),
+  z.string().trim().min(1).max(50),
+]);
+
+const selectedPlaceIdsSchema = z
+  .array(z.coerce.number().int().positive())
+  .max(120)
+  .superRefine((ids, ctx) => {
+    if (new Set(ids).size !== ids.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Danh sach dia diem khong duoc trung lap",
+      });
+    }
+  });
+
 export const generateTripSchema = z.object({
   totalDays: z.coerce.number().int().min(1).max(30).default(1),
   travelStyle: z.string().max(50).optional(),
   groupSize: z.coerce.number().int().min(1).max(50).default(1),
-  budget: z.string().max(50).optional(),
+  budget: budgetSchema.optional(),
   categoryId: z.coerce.number().int().positive().optional(),
   notes: z.string().max(500).optional(),
   previewOnly: z.boolean().optional(),
-  selectedPlaceIds: z.array(z.coerce.number().int().positive()).optional(),
-  itineraryDraft: z.any().optional(),
+  selectedPlaceIds: selectedPlaceIdsSchema.optional(),
+  itineraryDraft: itineraryDraftSchema.optional(),
 });
 
 // ─── TripShare schemas ──────────────────────────────────────────────────────

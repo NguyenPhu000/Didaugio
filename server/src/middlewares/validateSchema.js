@@ -1,7 +1,11 @@
 import { ZodError } from "zod";
 import { ERROR_CODES } from "../config/messages.js";
 
-export const validateSchema = (schema, source = "body") => {
+export const validateSchema = (
+  schema,
+  source = "body",
+  { errorCode = ERROR_CODES.VALIDATION_ERROR } = {},
+) => {
   return async (req, res, next) => {
     try {
       if (req[source] == null || typeof req[source] !== "object") {
@@ -37,7 +41,7 @@ export const validateSchema = (schema, source = "body") => {
           success: false,
           data: null,
           message: "Dữ liệu không hợp lệ",
-          errorCode: ERROR_CODES.VALIDATION_ERROR,
+          errorCode,
           errors: formattedErrors,
         });
       }
@@ -54,7 +58,15 @@ export const validateSchema = (schema, source = "body") => {
 };
 
 export const validateBody = (schema) => validateSchema(schema, "body");
+export const validateAiBody = (schema) =>
+  validateSchema(schema, "body", { errorCode: "AI_INVALID_REQUEST" });
 export const validateQuery = (schema) => validateSchema(schema, "query");
 export const validateParams = (schema) => validateSchema(schema, "params");
 
-export default { validateSchema, validateBody, validateQuery, validateParams };
+export default {
+  validateSchema,
+  validateBody,
+  validateAiBody,
+  validateQuery,
+  validateParams,
+};

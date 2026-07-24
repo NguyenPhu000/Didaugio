@@ -37,7 +37,10 @@ export function normalizeConversationMessages(messages) {
     if (message?.role !== "user" && message?.role !== "assistant") continue;
 
     const rawContent = message.text ?? message.content ?? "";
-    const content = String(rawContent).slice(0, MAX_AI_MESSAGE_CHARS);
+    const content = String(rawContent)
+      .trim()
+      .slice(0, MAX_AI_MESSAGE_CHARS);
+    if (!content) continue;
     const remainingChars = MAX_AI_TOTAL_CHARS - totalChars;
     const boundedContent = content.slice(0, remainingChars);
 

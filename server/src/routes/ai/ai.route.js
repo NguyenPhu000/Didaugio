@@ -11,13 +11,14 @@ import {
   handleGroqChat,
   handleHybridPlan,
 } from "../../controllers/ai/index.js";
-import { validateBody } from "../../middlewares/validateSchema.js";
+import { validateAiBody } from "../../middlewares/validateSchema.js";
 import {
   aiChatSchema,
   aiHybridPlanSchema,
   aiNavigateSchema,
   aiPlaceSummarySchema,
   aiSpeechSchema,
+  aiTranscriptionFieldsSchema,
 } from "../../models/index.js";
 
 const router = express.Router();
@@ -31,33 +32,34 @@ router.use(aiUserLimiter);
 
 router.post(
   "/place-summary",
-  validateBody(aiPlaceSummarySchema),
+  validateAiBody(aiPlaceSummarySchema),
   handlePlaceSummaryStream,
 );
-router.post("/chat", validateBody(aiChatSchema), handleChat);
+router.post("/chat", validateAiBody(aiChatSchema), handleChat);
 router.post(
   "/groq-chat",
-  validateBody(aiChatSchema),
+  validateAiBody(aiChatSchema),
   handleGroqChat,
 );
 router.post(
   "/voice/transcribe",
   voiceUpload.single("audio"),
+  validateAiBody(aiTranscriptionFieldsSchema),
   handleVoiceTranscribe,
 );
 router.post(
   "/voice/speech",
-  validateBody(aiSpeechSchema),
+  validateAiBody(aiSpeechSchema),
   handleVoiceSpeech,
 );
 router.post(
   "/hybrid-plan",
-  validateBody(aiHybridPlanSchema),
+  validateAiBody(aiHybridPlanSchema),
   handleHybridPlan,
 );
 router.post(
   "/navigate",
-  validateBody(aiNavigateSchema),
+  validateAiBody(aiNavigateSchema),
   handleNavigate,
 );
 

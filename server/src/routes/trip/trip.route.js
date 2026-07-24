@@ -1,7 +1,11 @@
 import express from "express";
 import tripController from "../../controllers/trip/trip.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
-import { validateBody } from "../../middlewares/validateSchema.js";
+import {
+  validateAiBody,
+  validateBody,
+} from "../../middlewares/validateSchema.js";
+import { aiUserLimiter } from "../../middlewares/rateLimitMiddleware.js";
 import {
   createTripSchema,
   updateTripSchema,
@@ -27,7 +31,8 @@ router.get("/trips", authenticate, tripController.getMyTrips);
 router.post(
   "/trips/generate",
   authenticate,
-  validateBody(generateTripSchema),
+  aiUserLimiter,
+  validateAiBody(generateTripSchema),
   tripController.generateTrip,
 );
 router.post(
