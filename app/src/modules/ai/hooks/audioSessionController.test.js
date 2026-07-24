@@ -37,6 +37,40 @@ describe("audioSessionController", () => {
     expect(gate.isLocked()).toBe(false);
   });
 
+  it("queues cleanup behind an active transition without allowing a parallel call", async () => {
+    let release;
+    const calls = [];
+    const gate = createAsyncGate();
+    const activeTransition = gate.run(
+      () => new Promise((resolve) => {
+        calls.push("recording-mode:start");
+        release = () => {
+          calls.push("recording-mode:end");
+          resolve();
+        };
+      }),
+    );
+    await Promise.resolve();
+
+    const cleanup = gate.enqueue(async () => {
+      calls.push("idle-mode");
+    });
+
+    expect(await gate.run(vi.fn())).toBe(false);
+    expect(calls).toEqual(["recording-mode:start"]);
+
+    release();
+    await activeTransition;
+    await cleanup;
+
+    expect(calls).toEqual([
+      "recording-mode:start",
+      "recording-mode:end",
+      "idle-mode",
+    ]);
+    expect(gate.isLocked()).toBe(false);
+  });
+
   it("unlocks after a transition throws", async () => {
     const gate = createAsyncGate();
 

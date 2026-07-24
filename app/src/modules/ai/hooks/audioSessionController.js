@@ -11,19 +11,31 @@ export const IDLE_AUDIO_MODE = Object.freeze({
 });
 
 export function createAsyncGate() {
-  let locked = false;
+  let userTransitionActive = false;
+  let queuedTransitions = 0;
+  let tail = Promise.resolve();
+
+  const schedule = (task, onSettled) => {
+    const operation = tail.then(task);
+    tail = operation.catch(() => {});
+    return operation.finally(onSettled);
+  };
 
   return {
-    isLocked: () => locked,
+    isLocked: () => userTransitionActive || queuedTransitions > 0,
     run: async (task) => {
-      if (locked) return false;
+      if (userTransitionActive || queuedTransitions > 0) return false;
 
-      locked = true;
-      try {
-        return await task();
-      } finally {
-        locked = false;
-      }
+      userTransitionActive = true;
+      return schedule(task, () => {
+        userTransitionActive = false;
+      });
+    },
+    enqueue: (task) => {
+      queuedTransitions += 1;
+      return schedule(task, () => {
+        queuedTransitions -= 1;
+      });
     },
   };
 }
