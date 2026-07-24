@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import safeAsyncStorage from "../utils/safeAsyncStorage";
 import { createRandomId } from "../utils/createRandomId";
-import { trimPersistedMessages } from "./aiPlannerRetention";
+import {
+  normalizeMessageCreatedAt,
+  trimPersistedMessages,
+} from "./aiPlannerRetention";
 
 export { trimPersistedMessages } from "./aiPlannerRetention";
 
@@ -24,9 +27,7 @@ function normalizePlaceIds(ids) {
 function normalizeMessage(message) {
   if (!message || typeof message !== "object") return null;
 
-  const createdAt = message.createdAt
-    ? new Date(message.createdAt).toISOString()
-    : new Date().toISOString();
+  const createdAt = normalizeMessageCreatedAt(message.createdAt);
 
   return {
     ...message,

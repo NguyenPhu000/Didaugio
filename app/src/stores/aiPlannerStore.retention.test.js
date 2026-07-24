@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { trimPersistedMessages } from "./aiPlannerRetention";
+import {
+  normalizeMessageCreatedAt,
+  trimPersistedMessages,
+} from "./aiPlannerRetention";
 
 describe("trimPersistedMessages", () => {
   it("drops messages older than seven days and caps retained history", () => {
@@ -18,5 +21,11 @@ describe("trimPersistedMessages", () => {
 
     expect(result).toHaveLength(20);
     expect(result.some((message) => message.id === "0")).toBe(false);
+  });
+
+  it("falls back to the current timestamp for an invalid message timestamp", () => {
+    const now = new Date("2026-07-24T00:00:00.000Z");
+
+    expect(normalizeMessageCreatedAt("not-a-date", now)).toBe(now.toISOString());
   });
 });
