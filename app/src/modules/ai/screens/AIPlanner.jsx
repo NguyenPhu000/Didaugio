@@ -160,9 +160,16 @@ export function AIPlanner() {
 
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [chatError, setChatError] = useState(null);
+  const [voiceError, setVoiceError] = useState(null);
 
   const isLoading = isPlannerLoading || isChatLoading;
-  const error = plannerError || chatError;
+  const activeError = plannerError
+    ? { source: "planner", message: plannerError }
+    : chatError
+      ? { source: "chat", message: chatError }
+      : voiceError
+        ? { source: "voice", message: voiceError }
+        : null;
   const handleSendRef = useRef(null);
   const {
     status: voiceStatus,
@@ -180,7 +187,7 @@ export function AIPlanner() {
     onTranscript: (text) => {
       handleSendRef.current?.(text, { inputMode: "voice" });
     },
-    onError: setChatError,
+    onError: setVoiceError,
     t,
   });
 
@@ -243,6 +250,7 @@ export function AIPlanner() {
       const message = (text ?? inputText).trim();
       if (!message || isLoading) return;
       setInputText("");
+      setVoiceError(null);
 
       const intent = detectGenieIntent(message);
       const shouldSpeakReply = options.inputMode === "voice";
@@ -283,7 +291,7 @@ export function AIPlanner() {
   }, [canConfirmSelection, confirmSelectedPlaces, isConfirming]);
 
   const handleRetryChat = useCallback(async () => {
-    if (isLoading || !chatError) return;
+    if (isLoading || activeError?.source !== "chat") return;
 
     setIsChatLoading(true);
     setChatError(null);
@@ -294,7 +302,7 @@ export function AIPlanner() {
     } finally {
       setIsChatLoading(false);
     }
-  }, [chatError, isLoading, retryLastMessage, t]);
+  }, [activeError, isLoading, retryLastMessage, t]);
 
   const handleOpenPlace = useCallback(
     (place) => {
@@ -536,16 +544,16 @@ export function AIPlanner() {
               </View>
             ) : null}
 
-            {error ? (
+            {activeError ? (
               <View className="flex-row items-center self-center rounded-xl border border-red-100 bg-red-50 px-4 py-2.5">
                 <MaterialIconsRounded name="error-outline" size={14} color="#EF4444" />
                 <Text
                   className="ml-2 flex-1 text-xs text-red-500"
                   style={{ fontFamily: TOKENS.font.medium }}
                 >
-                  {error}
+                  {activeError.message}
                 </Text>
-                {chatError ? (
+                {activeError.source === "chat" ? (
                   <Pressable onPress={handleRetryChat} disabled={isLoading} className="ml-3">
                     <Text
                       className="text-xs text-red-600"

@@ -120,20 +120,27 @@ export function useGroqChat() {
   );
 
   const abortRef = useRef(null);
-  const lastFailedMessageRef = useRef(null);
+  const lastFailedRequestRef = useRef(null);
 
   const sendMessage = useCallback(
     async (text, options = {}) => {
-      // Lấy fresh state từ store để tránh race condition khi gửi tin nhắn liên tục
-      const freshMessages = useAIPlannerStore.getState().messages.filter((m) => m.source === "chat");
       const appendUserMessage = options.appendUserMessage !== false;
-      const payload = buildApiPayload(
-        appendUserMessage ? freshMessages : freshMessages.slice(0, -1),
-        text,
-      );
+      const retryRequest = options.retryRequest;
+      let request = retryRequest;
 
-      if (appendUserMessage) {
-        appendMessage({ role: "user", content: text, source: "chat" });
+      if (!request) {
+        // Lấy fresh state từ store để tránh race condition khi gửi tin nhắn liên tục
+        const freshMessages = useAIPlannerStore
+          .getState()
+          .messages.filter((message) => message.source === "chat");
+        const payload = buildApiPayload(freshMessages, text);
+        const messages = payload.messages.map(({ role, content }) => ({ role, content }));
+        const id = `chat-${Date.now()}`;
+
+        request = { id, text, messages };
+        if (appendUserMessage) {
+          appendMessage({ id, role: "user", content: text, source: "chat" });
+        }
       }
 
       if (abortRef.current) abortRef.current.abort();
@@ -142,10 +149,6 @@ export function useGroqChat() {
       const isPlaceQuery = PLACE_QUERY_PATTERN.test(text);
 
       try {
-        const cleanMessages = payload.messages.map(({ role, content }) => ({
-          role,
-          content,
-        }));
         const safeContext = {
           currentCoords: sessionContext.currentLocation,
           currentCity: sessionContext.currentCity,
@@ -157,7 +160,7 @@ export function useGroqChat() {
 
         const response = await apiClient.post(
           ENDPOINTS.ai.groqChat,
-          { messages: cleanMessages, context: safeContext },
+          { messages: request.messages, context: safeContext },
           { signal: abortRef.current.signal, timeout: AI_REQUEST_TIMEOUT },
         );
 
@@ -173,14 +176,14 @@ export function useGroqChat() {
           actions: normalized.actions,
           source: "chat",
         });
-        lastFailedMessageRef.current = null;
+        lastFailedRequestRef.current = null;
 
         return { reply, relatedPlaces };
       } catch (err) {
         if (err?.name === "CanceledError" || err?.name === "AbortError") {
           return null;
         }
-        lastFailedMessageRef.current = text;
+        lastFailedRequestRef.current = request;
         throw new Error(getFriendlyErrorMessage(err, t));
       }
     },
@@ -192,9 +195,12 @@ export function useGroqChat() {
   }, []);
 
   const retryLastMessage = useCallback(() => {
-    const text = lastFailedMessageRef.current;
-    if (!text) return Promise.resolve(null);
-    return sendMessage(text, { appendUserMessage: false });
+    const request = lastFailedRequestRef.current;
+    if (!request) return Promise.resolve(null);
+    return sendMessage(request.text, {
+      appendUserMessage: false,
+      retryRequest: request,
+    });
   }, [sendMessage]);
 
   return {
