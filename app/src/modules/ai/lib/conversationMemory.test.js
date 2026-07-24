@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-
-vi.mock("@/i18n", () => ({
-  default: { t: () => "" },
-}));
 import {
   MAX_AI_MESSAGE_CHARS,
   normalizeConversationMessages,
 } from "./conversationMemory";
+
+vi.mock("@/i18n", () => ({
+  default: { t: () => "" },
+}));
 
 describe("normalizeConversationMessages", () => {
   it("keeps only safe roles and bounded content", () => {

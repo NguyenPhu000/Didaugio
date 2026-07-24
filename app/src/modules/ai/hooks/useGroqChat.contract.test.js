@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useGroqChat } from "./useGroqChat";
 
 const mocks = vi.hoisted(() => {
   const state = {
@@ -76,8 +77,6 @@ vi.mock("../../../api/endpoints", () => ({
 }));
 vi.mock("../../../api/client", () => ({ default: mocks.apiClient }));
 vi.mock("../../../constants/api", () => ({ AI_REQUEST_TIMEOUT: 1000 }));
-
-import { useGroqChat } from "./useGroqChat";
 
 const source = readFileSync(
   fileURLToPath(new URL("./useGroqChat.js", import.meta.url)),

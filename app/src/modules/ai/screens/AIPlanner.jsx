@@ -163,13 +163,12 @@ export function AIPlanner() {
   const [voiceError, setVoiceError] = useState(null);
 
   const isLoading = isPlannerLoading || isChatLoading;
-  const activeError = plannerError
-    ? { source: "planner", message: plannerError }
-    : chatError
-      ? { source: "chat", message: chatError }
-      : voiceError
-        ? { source: "voice", message: voiceError }
-        : null;
+  const activeError = useMemo(() => {
+    if (plannerError) return { source: "planner", message: plannerError };
+    if (chatError) return { source: "chat", message: chatError };
+    if (voiceError) return { source: "voice", message: voiceError };
+    return null;
+  }, [chatError, plannerError, voiceError]);
   const handleSendRef = useRef(null);
   const {
     status: voiceStatus,
