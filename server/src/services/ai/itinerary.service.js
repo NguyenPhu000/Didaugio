@@ -4,44 +4,15 @@
  */
 import crypto from "crypto";
 import prisma from "../../config/prismaClient.js";
-import { z } from "zod";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
 import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
 import { kMeansClustering, solveNearestNeighborTSP } from "../../utils/clustering.js";
 import { validateAndCorrectItinerary } from "../../utils/itineraryFormatter.js";
-import {
-  assertItineraryPlaceIds,
-  createAiInvalidOutputError,
-} from "./aiOutputGuard.js";
+import { buildValidatedCachedItineraryResult, parseAndValidateItineraryOutput } from "./itineraryOutput.js";
 
 const DEFAULT_DESTINATIONS_PER_DAY = 3;
 const START_TIME_SLOTS = ["08:00", "11:00", "14:30"];
-
-const ItineraryDestinationSchema = z.object({
-  placeId: z.number().int(),
-  order: z.number().int(),
-  startTime: z.string(),
-  endTime: z.string(),
-  durationMinutes: z.number().int(),
-  note: z.string(),
-  transportToNext: z.string(),
-  estimatedCost: z.number(),
-});
-
-const ItineraryDaySchema = z.object({
-  dayNumber: z.number().int(),
-  theme: z.string(),
-  destinations: z.array(ItineraryDestinationSchema),
-});
-
-const ItinerarySchema = z.object({
-  title: z.string(),
-  description: z.string(),
-  totalDays: z.number().int(),
-  estimatedCost: z.number(),
-  days: z.array(ItineraryDaySchema),
-});
 
 function toPositiveInt(value, fallback = 1) {
   const parsed = Number.parseInt(value, 10);
@@ -278,14 +249,8 @@ export async function generateItinerary(preferences, places) {
     const cached = await prisma.cachedItinerary.findUnique({
       where: { filterHash },
     });
-    if (cached) {
-      return {
-        parsed: cached.itineraryData,
-        raw: JSON.stringify(cached.itineraryData),
-        tokensUsed: 0,
-        responseTimeMs: 0,
-      };
-    }
+    const cachedResult = buildValidatedCachedItineraryResult(cached, places);
+    if (cachedResult) return cachedResult;
   } catch {
     // Bỏ qua lỗi đọc cache và gọi trực tiếp AI
   }
@@ -337,43 +302,7 @@ export async function generateItinerary(preferences, places) {
 
   const responseTimeMs = Date.now() - start;
 
-  let parsed;
-  try {
-    parsed = JSON.parse(rawText);
-  } catch {
-    try {
-      const repaired = repairTruncatedJson(rawText);
-      parsed = JSON.parse(repaired);
-    } catch {
-      const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/) || rawText.match(/(\{[\s\S]*\})/);
-      if (jsonMatch?.[1]) {
-        try {
-          const repairedInner = repairTruncatedJson(jsonMatch[1].trim());
-          parsed = JSON.parse(repairedInner);
-        } catch {
-          throw new ServiceError(
-            "AI trả về JSON không hợp lệ và không thể tự phục hồi",
-            502,
-            ERROR_CODES.VALIDATION_ERROR,
-          );
-        }
-      } else {
-        throw new ServiceError(
-          "AI trả về JSON không hợp lệ và không tìm thấy cấu trúc JSON phù hợp",
-          502,
-          ERROR_CODES.VALIDATION_ERROR,
-        );
-      }
-    }
-  }
-
-  try {
-    parsed = ItinerarySchema.parse(parsed);
-    parsed.days = assertItineraryPlaceIds(parsed.days, places);
-  } catch (err) {
-    if (err?.code === "AI_INVALID_OUTPUT") throw err;
-    throw createAiInvalidOutputError();
-  }
+  let parsed = parseAndValidateItineraryOutput(rawText, places);
 
   // 1. Validate và co kéo thời gian khớp giờ mở cửa thực tế
   parsed.days = validateAndCorrectItinerary(parsed.days, places);
@@ -430,52 +359,4 @@ export async function generateItinerary(preferences, places) {
   }
 
   return { parsed, raw: rawText, tokensUsed, responseTimeMs };
-}
-
-function repairTruncatedJson(jsonStr) {
-  let str = jsonStr.trim();
-  str = str.replace(/^```json\s*/i, "").replace(/```$/, "");
-  
-  const stack = [];
-  let inString = false;
-  let escaped = false;
-  
-  for (let i = 0; i < str.length; i++) {
-    const char = str[i];
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (char === "\\") {
-      escaped = true;
-      continue;
-    }
-    if (char === '"') {
-      inString = !inString;
-      continue;
-    }
-    if (inString) continue;
-    
-    if (char === '{' || char === '[') {
-      stack.push(char);
-    } else if (char === '}') {
-      if (stack[stack.length - 1] === '{') stack.pop();
-    } else if (char === ']') {
-      if (stack[stack.length - 1] === '[') stack.pop();
-    }
-  }
-  
-  if (inString) {
-    str += '"';
-  }
-  
-  str = str.replace(/,\s*$/, "");
-  
-  while (stack.length > 0) {
-    const last = stack.pop();
-    if (last === '{') str += '}';
-    else if (last === '[') str += ']';
-  }
-  
-  return str;
 }

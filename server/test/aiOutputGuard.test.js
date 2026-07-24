@@ -4,6 +4,10 @@ import {
   assertItineraryPlaceIds,
   validateHybridPlanOutput,
 } from "../src/services/ai/aiOutputGuard.js";
+import {
+  buildValidatedCachedItineraryResult,
+  parseAndValidateItineraryOutput,
+} from "../src/services/ai/itineraryOutput.js";
 
 const places = [{ id: 1 }, { id: "2" }, { id: 3 }];
 
@@ -33,6 +37,34 @@ function assertInvalidOutput(callback) {
     assert.equal(error.code, "AI_INVALID_OUTPUT");
     return true;
   });
+}
+
+function validItinerary(overrides = {}) {
+  return {
+    title: "Một ngày ở Cần Thơ",
+    description: "Lịch trình hợp lệ",
+    totalDays: 1,
+    estimatedCost: 100000,
+    days: [
+      {
+        dayNumber: 1,
+        theme: "Khám phá",
+        destinations: [
+          {
+            placeId: 1,
+            order: 1,
+            startTime: "08:00",
+            endTime: "10:00",
+            durationMinutes: 120,
+            note: "Tham quan",
+            transportToNext: "Đi bộ",
+            estimatedCost: 100000,
+          },
+        ],
+      },
+    ],
+    ...overrides,
+  };
 }
 
 test("hybrid output accepts only bounded, allow-listed numeric IDs", () => {
@@ -111,4 +143,38 @@ test("itinerary days reject unknown IDs while preserving valid multi-day repeats
   assertInvalidOutput(() =>
     assertItineraryPlaceIds([{ dayNumber: 1, destinations: [{ placeId: "1" }] }], places),
   );
+});
+
+test("unparseable itinerary provider output maps to AI_INVALID_OUTPUT", () => {
+  assertInvalidOutput(() =>
+    parseAndValidateItineraryOutput("this is not itinerary JSON", places),
+  );
+});
+
+test("only a validated cache hit is returned without mutating cached data", () => {
+  const validCache = { itineraryData: validItinerary() };
+  const originalCache = structuredClone(validCache);
+  const validResult = buildValidatedCachedItineraryResult(validCache, places);
+
+  assert.deepEqual(validResult, {
+    parsed: validItinerary(),
+    raw: JSON.stringify(validItinerary()),
+    tokensUsed: 0,
+    responseTimeMs: 0,
+  });
+  assert.deepEqual(validCache, originalCache);
+
+  const invalidResult = buildValidatedCachedItineraryResult(
+    {
+      itineraryData: validItinerary({
+        days: [{
+          ...validItinerary().days[0],
+          destinations: [{ ...validItinerary().days[0].destinations[0], placeId: 999 }],
+        }],
+      }),
+    },
+    places,
+  );
+
+  assert.equal(invalidResult, null);
 });
