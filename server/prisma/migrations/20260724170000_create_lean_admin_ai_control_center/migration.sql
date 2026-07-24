@@ -1,3 +1,5 @@
+BEGIN;
+
 -- Existing credentials must be reconciled by an operator instead of being
 -- silently discarded before any migration mutation is applied.
 DO $$
@@ -153,3 +155,5 @@ JOIN "permissions" p ON p.name IN (
 )
 WHERE r.name = 'admin'
 ON CONFLICT ("role_id", "permission_id") DO NOTHING;
+
+COMMIT;
