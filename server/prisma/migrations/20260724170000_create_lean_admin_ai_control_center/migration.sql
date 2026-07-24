@@ -1,17 +1,5 @@
--- AlterTable
-ALTER TABLE "api_keys_management"
-  ADD COLUMN "key_suffix" TEXT,
-  ADD COLUMN "updated_at" TIMESTAMP(3);
-
-UPDATE "api_keys_management"
-SET "updated_at" = CURRENT_TIMESTAMP
-WHERE "updated_at" IS NULL;
-
-ALTER TABLE "api_keys_management"
-  ALTER COLUMN "updated_at" SET NOT NULL;
-
 -- Existing credentials must be reconciled by an operator instead of being
--- silently discarded before service_name becomes a unique identifier.
+-- silently discarded before any migration mutation is applied.
 DO $$
 BEGIN
   IF EXISTS (
@@ -24,6 +12,18 @@ BEGIN
     RAISE EXCEPTION 'duplicate non-null service names block AI credential migration';
   END IF;
 END $$;
+
+-- AlterTable
+ALTER TABLE "api_keys_management"
+  ADD COLUMN "key_suffix" TEXT,
+  ADD COLUMN "updated_at" TIMESTAMP(3);
+
+UPDATE "api_keys_management"
+SET "updated_at" = CURRENT_TIMESTAMP
+WHERE "updated_at" IS NULL;
+
+ALTER TABLE "api_keys_management"
+  ALTER COLUMN "updated_at" SET NOT NULL;
 
 -- CreateTable
 CREATE TABLE "ai_configs" (
