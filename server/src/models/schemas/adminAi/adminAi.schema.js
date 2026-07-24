@@ -64,10 +64,18 @@ export const normalizeKeyword = (value, diacriticInsensitive = false) => {
   return diacriticInsensitive ? stripsVietnameseDiacritics(normalized) : normalized;
 };
 
+const isApprovedGroqOrigin = (value) => {
+  try {
+    return new URL(value).origin === "https://api.groq.com";
+  } catch {
+    return false;
+  }
+};
+
 const providerSchema = z.object({
   adapter: z.literal("groq"),
   baseUrl: z.string().url().max(300).refine(
-    (value) => new URL(value).origin === "https://api.groq.com",
+    isApprovedGroqOrigin,
     "Groq base URL is not approved",
   ),
   model: z.string().trim().min(1).max(160),
@@ -96,7 +104,7 @@ const contextSchema = z.object({
 
 const safetySchema = z.object({
   blockedKeywords: z.array(z.string().trim().min(1).max(120)).max(500),
-  matchMode: z.enum(["exact", "substring"]),
+  matchMode: z.literal("substring"),
   diacriticInsensitive: z.boolean(),
   safeResponse: z.string().trim().min(1).max(1000),
 }).strict();
