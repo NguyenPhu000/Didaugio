@@ -8,10 +8,10 @@ import { generateHybridPlan } from "../../services/ai/hybridPlanner.service.js";
  */
 export const handleHybridPlan = async (req, res) => {
   try {
-    const { coords, currentCoords } = req.body;
-    const gpsCoords = currentCoords || coords;
+    const { currentCoords } = req.body;
+    const gpsCoords = currentCoords;
 
-    if (!gpsCoords || !gpsCoords.latitude || !gpsCoords.longitude) {
+    if (!gpsCoords) {
       return res.status(400).json({
         success: false,
         data: null,
