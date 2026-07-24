@@ -31,6 +31,11 @@ import {
 } from "../lib/genieAssistantExperience";
 import { TOKENS } from "../../../constants/design-tokens";
 import CustomAlertModal from "../../../components/composed/CustomAlertModal";
+import {
+  clearGenieRequestErrors,
+  resolveGenieActiveError,
+  sendItineraryWithVoiceFeedback,
+} from "../lib/genieRequestFlow";
 
 const ACCENT = "#3478F6";
 const SUGGESTION_COLORS = ["#0EA5E9", "#F97316", "#10B981", "#8B5CF6"];
@@ -141,6 +146,7 @@ export function AIPlanner() {
     isLoading: isPlannerLoading,
     isConfirming,
     error: plannerError,
+    clearError: clearPlannerError,
     sendMessage,
     draftPlan,
     selectedPlaceIds,
@@ -163,12 +169,11 @@ export function AIPlanner() {
   const [voiceError, setVoiceError] = useState(null);
 
   const isLoading = isPlannerLoading || isChatLoading;
-  const activeError = useMemo(() => {
-    if (plannerError) return { source: "planner", message: plannerError };
-    if (chatError) return { source: "chat", message: chatError };
-    if (voiceError) return { source: "voice", message: voiceError };
-    return null;
-  }, [chatError, plannerError, voiceError]);
+  const activeError = useMemo(
+    () =>
+      resolveGenieActiveError({ plannerError, chatError, voiceError }),
+    [chatError, plannerError, voiceError],
+  );
   const handleSendRef = useRef(null);
   const {
     status: voiceStatus,
@@ -249,19 +254,25 @@ export function AIPlanner() {
       const message = (text ?? inputText).trim();
       if (!message || isLoading) return;
       setInputText("");
-      setVoiceError(null);
+      clearGenieRequestErrors({
+        clearPlannerError,
+        setChatError,
+        setVoiceError,
+      });
 
       const intent = detectGenieIntent(message);
       const shouldSpeakReply = options.inputMode === "voice";
 
       if (intent === GENIE_INTENT_TYPES.ITINERARY) {
-        await sendMessage(message);
-        if (shouldSpeakReply) {
-          speakText(t("aiPlanner.voiceItineraryQueued"));
-        }
+        await sendItineraryWithVoiceFeedback({
+          message,
+          inputMode: options.inputMode,
+          sendMessage,
+          speakText,
+          successText: t("aiPlanner.voiceItineraryQueued"),
+        });
       } else {
         setIsChatLoading(true);
-        setChatError(null);
         try {
           const result = await sendChatMessage(message);
           if (shouldSpeakReply && result?.reply) {
@@ -276,7 +287,15 @@ export function AIPlanner() {
 
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
     },
-    [inputText, isLoading, sendMessage, sendChatMessage, speakText, t],
+    [
+      clearPlannerError,
+      inputText,
+      isLoading,
+      sendMessage,
+      sendChatMessage,
+      speakText,
+      t,
+    ],
   );
 
   useEffect(() => {

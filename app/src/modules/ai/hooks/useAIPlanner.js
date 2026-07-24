@@ -8,6 +8,7 @@ import {
 } from "../api/aiApi";
 import { mapAIError } from "../lib/mapAIError";
 import { inferPlannerPreferences } from "../lib/plannerPreferences";
+import { normalizePlannerNotes } from "../lib/plannerText";
 import { useAIPlannerStore } from "../../../stores/aiPlannerStore";
 import { TRIP_QUERY_KEYS } from "../../../constants/trip-query-keys";
 
@@ -166,23 +167,27 @@ export function useAIPlanner() {
 
   const sendMessage = useCallback(
     async (userText, preferences = {}) => {
-      if (!userText.trim() && !preferences.totalDays) return;
+      const rawText = String(userText ?? "");
+      const trimmedText = rawText.trim();
+      if (!trimmedText && !preferences.totalDays) {
+        return { success: false };
+      }
 
       const userMsg = {
         id: Date.now().toString(),
         role: "user",
-        text: userText,
+        text: rawText,
         createdAt: new Date(),
       };
       appendMessage(userMsg);
 
-      const inferred = inferPlannerPreferences(userText);
+      const inferred = inferPlannerPreferences(rawText);
       const payload = {
         totalDays: preferences.totalDays ?? inferred.totalDays ?? 1,
         travelStyle: preferences.travelStyle ?? inferred.travelStyle,
         groupSize: preferences.groupSize ?? inferred.groupSize ?? 1,
         budget: preferences.budget ?? inferred.budget,
-        notes: userText.trim(),
+        notes: normalizePlannerNotes(rawText),
       };
 
       setLastPreferences(payload);
@@ -190,10 +195,12 @@ export function useAIPlanner() {
       setSelectedPlaceIds([]);
 
       try {
-        await previewMutation.mutateAsync(payload);
+        const response = await previewMutation.mutateAsync(payload);
+        return { success: true, data: response?.data ?? null };
       } catch {
         // React Query already ran onError; keep the UI error state local to
         // the mutation instead of leaking a rejected event-handler promise.
+        return { success: false };
       }
     },
     [
@@ -262,6 +269,11 @@ export function useAIPlanner() {
 
   const activeError = confirmMutation.error || previewMutation.error;
 
+  const clearError = useCallback(() => {
+    previewMutation.reset();
+    confirmMutation.reset();
+  }, [confirmMutation, previewMutation]);
+
   const reset = useCallback(() => {
     resetPlannerState();
     previewMutation.reset();
@@ -274,6 +286,7 @@ export function useAIPlanner() {
     isPreviewLoading: previewMutation.isPending,
     isConfirming: confirmMutation.isPending,
     error: activeError ? mapAIError(activeError) : null,
+    clearError,
     sendMessage,
     draftPlan,
     selectedPlaceIds,

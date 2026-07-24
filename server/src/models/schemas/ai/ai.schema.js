@@ -59,7 +59,7 @@ export const aiChatSchema = z
 
 export const aiHybridPlanSchema = z.object({
   currentCoords: coordinatesSchema,
-  userPrompt: z.string().trim().min(1).max(4000).optional(),
+  userPrompt: z.string().trim().min(1).max(500).optional(),
 });
 
 export const aiPlaceSummarySchema = z.object({

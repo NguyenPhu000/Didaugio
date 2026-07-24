@@ -74,6 +74,13 @@ test("AI coordinates must be valid geographic coordinates", () => {
   );
   assert.equal(
     aiHybridPlanSchema.safeParse({
+      currentCoords: { latitude: 10, longitude: 105 },
+      userPrompt: "x".repeat(501),
+    }).success,
+    false,
+  );
+  assert.equal(
+    aiHybridPlanSchema.safeParse({
       currentCoords: { latitude: "10.03", longitude: "105.78" },
     }).success,
     true,
@@ -100,6 +107,21 @@ test("AI chat strips unknown context keys", () => {
 
   assert.equal(parsed.context.currentCity, "Cáº§n ThÆ¡");
   assert.equal("systemPlaces" in parsed.context, false);
+});
+
+test("AI chat accepts the mobile store's sanitized initial context", () => {
+  const parsed = aiChatSchema.parse({
+    messages: [{ role: "user", content: "hello" }],
+    context: {
+      visitedPlaceIds: [],
+      isPlaceQuery: false,
+    },
+  });
+
+  assert.deepEqual(parsed.context, {
+    visitedPlaceIds: [],
+    isPlaceQuery: false,
+  });
 });
 
 test("AI place summary and speech requests apply bounded parsed input", () => {
@@ -225,6 +247,10 @@ test("trip confirmation accepts the real mobile preview shape and canonicalizes 
   assert.equal(
     generateTripSchema.parse({ budget: "  tiet kiem nhat co the  " }).budget,
     "tiet kiem nhat co the",
+  );
+  assert.equal(
+    generateTripSchema.safeParse({ notes: "x".repeat(500) }).success,
+    true,
   );
 });
 

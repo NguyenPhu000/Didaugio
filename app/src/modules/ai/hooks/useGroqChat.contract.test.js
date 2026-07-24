@@ -99,6 +99,23 @@ describe("useGroqChat routing contract", () => {
     mocks.sessionContext.visitedPlaceIds = [1, 2];
   });
 
+  it("omits null optional store context while preserving valid empty and false values", async () => {
+    mocks.sessionContext.currentLocation = null;
+    mocks.sessionContext.currentCity = null;
+    mocks.sessionContext.timeOfDay = null;
+    mocks.sessionContext.preferences = null;
+    mocks.sessionContext.visitedPlaceIds = [];
+    mocks.apiClient.post.mockResolvedValueOnce({});
+
+    const chat = useGroqChat();
+    await chat.sendMessage("hello");
+
+    expect(mocks.apiClient.post.mock.calls[0][1].context).toEqual({
+      visitedPlaceIds: [],
+      isPlaceQuery: false,
+    });
+  });
+
   it("is chat-only", () => {
     expect(source).not.toContain("ITINERARY_PATTERN");
     expect(source).not.toContain("hybrid-plan");

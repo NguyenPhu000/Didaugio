@@ -1,33 +1,8 @@
-import { z } from "zod";
 import {
   assertItineraryPlaceIds,
   createAiInvalidOutputError,
 } from "./aiOutputGuard.js";
-
-const itineraryDestinationSchema = z.object({
-  placeId: z.number().int(),
-  order: z.number().int(),
-  startTime: z.string(),
-  endTime: z.string(),
-  durationMinutes: z.number().int(),
-  note: z.string(),
-  transportToNext: z.string(),
-  estimatedCost: z.number(),
-});
-
-const itineraryDaySchema = z.object({
-  dayNumber: z.number().int(),
-  theme: z.string(),
-  destinations: z.array(itineraryDestinationSchema),
-});
-
-const itinerarySchema = z.object({
-  title: z.string(),
-  description: z.string(),
-  totalDays: z.number().int(),
-  estimatedCost: z.number(),
-  days: z.array(itineraryDaySchema),
-});
+import { itineraryPreviewSchema } from "../../models/schemas/trip/itineraryPreview.schema.js";
 
 function repairTruncatedJson(jsonStr) {
   let str = jsonStr.trim();
@@ -89,7 +64,14 @@ function parseItineraryJson(rawText) {
 }
 
 function validateParsedItineraryOutput(parsed, places) {
-  const result = itinerarySchema.safeParse(parsed);
+  const hasProviderDistance = (parsed?.days || []).some((day) =>
+    (day?.destinations || []).some((destination) =>
+      Object.hasOwn(destination || {}, "distanceToNext"),
+    ),
+  );
+  if (hasProviderDistance) throw createAiInvalidOutputError();
+
+  const result = itineraryPreviewSchema.safeParse(parsed);
   if (!result.success) throw createAiInvalidOutputError();
 
   return {

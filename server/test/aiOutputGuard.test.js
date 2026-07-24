@@ -8,6 +8,7 @@ import {
   buildValidatedCachedItineraryResult,
   parseAndValidateItineraryOutput,
 } from "../src/services/ai/itineraryOutput.js";
+import { itineraryDraftSchema } from "../src/models/schemas/trip/trip.schema.js";
 
 const places = [{ id: 1 }, { id: "2" }, { id: 3 }];
 
@@ -149,6 +150,47 @@ test("unparseable itinerary provider output maps to AI_INVALID_OUTPUT", () => {
   assertInvalidOutput(() =>
     parseAndValidateItineraryOutput("this is not itinerary JSON", places),
   );
+});
+
+test("provider itinerary output is never looser than the confirmation preview contract", () => {
+  const valid = validItinerary();
+  const parsed = parseAndValidateItineraryOutput(JSON.stringify(valid), places);
+  assert.equal(itineraryDraftSchema.safeParse(parsed).success, true);
+
+  for (const invalid of [
+    validItinerary({ title: "x".repeat(201) }),
+    validItinerary({
+      days: [
+        {
+          ...valid.days[0],
+          destinations: [
+            {
+              ...valid.days[0].destinations[0],
+              startTime: "morning",
+              endTime: "later",
+            },
+          ],
+        },
+      ],
+    }),
+    validItinerary({
+      days: [
+        {
+          ...valid.days[0],
+          destinations: [
+            {
+              ...valid.days[0].destinations[0],
+              distanceToNext: 999,
+            },
+          ],
+        },
+      ],
+    }),
+  ]) {
+    assertInvalidOutput(() =>
+      parseAndValidateItineraryOutput(JSON.stringify(invalid), places),
+    );
+  }
 });
 
 test("only a validated cache hit is returned without mutating cached data", () => {

@@ -112,7 +112,9 @@ describe("useAIPlanner mutation boundaries", () => {
       throw error;
     });
 
-    await expect(planner.sendMessage("lap lich 2 ngay")).resolves.toBeUndefined();
+    await expect(planner.sendMessage("lap lich 2 ngay")).resolves.toEqual({
+      success: false,
+    });
 
     expect(mocks.mutations[0].mutateAsync).toHaveBeenCalledOnce();
     expect(mocks.state.appendMessage).toHaveBeenCalledTimes(2);
@@ -121,6 +123,23 @@ describe("useAIPlanner mutation boundaries", () => {
       text: "request failed",
       isError: true,
     });
+  });
+
+  it("returns success and caps every planner notes payload at a safe 500 code units", async () => {
+    const planner = useAIPlanner();
+    const longTranscript = `${"x".repeat(498)}😀${"y".repeat(100)}`;
+    mocks.mutations[0].mutateAsync.mockResolvedValueOnce({
+      data: { previewOnly: true },
+    });
+
+    await expect(planner.sendMessage(longTranscript)).resolves.toEqual({
+      success: true,
+      data: { previewOnly: true },
+    });
+
+    const payload = mocks.mutations[0].mutateAsync.mock.calls[0][0];
+    expect(payload.notes.length).toBe(500);
+    expect(payload.notes.endsWith("\ud83d")).toBe(false);
   });
 
   it("handles a rejected confirmation without rethrowing and preserves its request", async () => {

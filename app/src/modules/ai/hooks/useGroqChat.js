@@ -8,6 +8,7 @@ import { normalizeGenieResponse } from "../lib/genieAssistantExperience";
 import { ENDPOINTS } from "../../../api/endpoints";
 import apiClient from "../../../api/client";
 import { AI_REQUEST_TIMEOUT } from "../../../constants/api";
+import { buildSafeChatContext } from "../lib/chatContext";
 
 const MAX_SUGGESTED_PLACES = 6;
 
@@ -149,14 +150,7 @@ export function useGroqChat() {
         const id = `chat-${Date.now()}`;
         const body = snapshotValue({
           messages,
-          context: {
-            currentCoords: sessionContext.currentLocation,
-            currentCity: sessionContext.currentCity,
-            timeOfDay: sessionContext.timeOfDay,
-            preferences: sessionContext.preferences,
-            visitedPlaceIds: sessionContext.visitedPlaceIds,
-            isPlaceQuery,
-          },
+          context: buildSafeChatContext(sessionContext, isPlaceQuery),
         });
 
         request = { id, text, body };
