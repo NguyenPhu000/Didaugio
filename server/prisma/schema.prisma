@@ -131,6 +131,8 @@ model User {
   updatedAt               DateTime                 @updatedAt @map("updated_at")
   deletedAt               DateTime?                @map("deleted_at")
   aiPromptHistories       AiPromptHistory[]
+  aiConfigsUpdated        AiConfig[]               @relation("AiConfigUpdatedBy")
+  aiConfigVersionsCreated AiConfigVersion[]        @relation("AiConfigVersionCreatedBy")
   auditLogs               AuditLog[]
   banners                 BannerMarketing[]
   bookingActionLogs       BookingActionLog[]
@@ -268,16 +270,82 @@ model SystemConfig {
 
 model ApiKeyManagement {
   id           Int       @id @default(autoincrement())
-  serviceName  String    @map("service_name")
-  apiKey       String    @unique @map("api_key")
+  serviceName  String    @unique @map("service_name")
+  apiKey       String    @map("api_key") @db.Text
+  keySuffix    String?   @map("key_suffix")
   monthlyLimit Int       @default(1000) @map("monthly_limit")
   currentUsage Int       @default(0) @map("current_usage")
   resetDay     Int       @default(1) @map("reset_day")
   status       String    @default("active")
   expiresAt    DateTime? @map("expires_at")
   createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   @@map("api_keys_management")
+}
+
+model AiConfig {
+  id              Int               @id @default(autoincrement())
+  key             String            @unique
+  activeVersionId Int?              @unique @map("active_version_id")
+  draftVersionId  Int?              @unique @map("draft_version_id")
+  status          String            @default("active")
+  revision        Int               @default(0)
+  updatedBy       Int?              @map("updated_by")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  versions        AiConfigVersion[] @relation("AiConfigVersions")
+  activeVersion   AiConfigVersion?  @relation("ActiveAiConfigVersion", fields: [activeVersionId], references: [id], onDelete: SetNull)
+  draftVersion    AiConfigVersion?  @relation("DraftAiConfigVersion", fields: [draftVersionId], references: [id], onDelete: SetNull)
+  updatedByUser   User?             @relation("AiConfigUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@map("ai_configs")
+}
+
+model AiConfigVersion {
+  id            Int       @id @default(autoincrement())
+  aiConfigId    Int       @map("ai_config_id")
+  version       Int
+  status        String
+  configData    Json      @map("config_data")
+  changeReason  String    @map("change_reason")
+  createdBy     Int?      @map("created_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  publishedAt   DateTime? @map("published_at")
+  aiConfig      AiConfig  @relation("AiConfigVersions", fields: [aiConfigId], references: [id], onDelete: Cascade)
+  activeFor     AiConfig? @relation("ActiveAiConfigVersion")
+  draftFor      AiConfig? @relation("DraftAiConfigVersion")
+  createdByUser User?     @relation("AiConfigVersionCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@unique([aiConfigId, version])
+  @@index([aiConfigId, status])
+  @@map("ai_config_versions")
+}
+
+model AiRequestLog {
+  id               Int      @id @default(autoincrement())
+  requestId        String   @unique @map("request_id")
+  anonymousUserRef String?  @map("anonymous_user_ref")
+  feature          String
+  provider         String
+  model            String
+  configVersion    Int?     @map("config_version")
+  inputTokens      Int?     @map("input_tokens")
+  outputTokens     Int?     @map("output_tokens")
+  latencyMs        Int?     @map("latency_ms")
+  status           String
+  errorCode        String?  @map("error_code")
+  safetyBlocked    Boolean  @default(false) @map("safety_blocked")
+  feedback         String?
+  feedbackReason   String?  @map("feedback_reason")
+  isTest           Boolean  @default(false) @map("is_test")
+  createdAt        DateTime @default(now()) @map("created_at")
+  expiresAt        DateTime @map("expires_at")
+
+  @@index([createdAt])
+  @@index([isTest, createdAt])
+  @@index([feature, status, createdAt])
+  @@map("ai_request_logs")
 }
 
 model AuditLog {
