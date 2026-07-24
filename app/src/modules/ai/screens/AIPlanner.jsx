@@ -154,6 +154,7 @@ export function AIPlanner() {
 
   const {
     sendMessage: sendChatMessage,
+    retryLastMessage,
     clearConversation: clearChatConversation,
   } = useGroqChat();
 
@@ -280,6 +281,20 @@ export function AIPlanner() {
     await confirmSelectedPlaces();
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
   }, [canConfirmSelection, confirmSelectedPlaces, isConfirming]);
+
+  const handleRetryChat = useCallback(async () => {
+    if (isLoading || !chatError) return;
+
+    setIsChatLoading(true);
+    setChatError(null);
+    try {
+      await retryLastMessage();
+    } catch (err) {
+      setChatError(err?.message || t('aiPlanner.chatErrorFallback'));
+    } finally {
+      setIsChatLoading(false);
+    }
+  }, [chatError, isLoading, retryLastMessage, t]);
 
   const handleOpenPlace = useCallback(
     (place) => {
@@ -530,6 +545,16 @@ export function AIPlanner() {
                 >
                   {error}
                 </Text>
+                {chatError ? (
+                  <Pressable onPress={handleRetryChat} disabled={isLoading} className="ml-3">
+                    <Text
+                      className="text-xs text-red-600"
+                      style={{ fontFamily: TOKENS.font.semibold }}
+                    >
+                      {t("common.retry")}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
             ) : null}
 

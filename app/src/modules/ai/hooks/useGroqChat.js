@@ -11,9 +11,6 @@ import { AI_REQUEST_TIMEOUT } from "../../../constants/api";
 
 const MAX_SUGGESTED_PLACES = 6;
 
-/** Regex phát hiện yêu cầu lịch trình → ưu tiên gọi hybrid-plan (dùng word boundary cho tiếng Anh) */
-const ITINERARY_PATTERN = /(lịch trình|lên lịch|kế hoạch|\bitinerary\b|\bplan\b|lộ trình|chặng đi)/i;
-
 /** Regex phát hiện truy vấn liên quan địa điểm (gợi ý, ăn gì, chơi gì...) */
 const PLACE_QUERY_PATTERN = /(suggest|gợi ý|đi đâu|ăn gì|chơi gì|check.?in|review|quán|nhà hàng|cafe|cà phê|khách sạn|chợ|bãi biển|du lịch|tham quan)/i;
 
@@ -123,97 +120,67 @@ export function useGroqChat() {
   );
 
   const abortRef = useRef(null);
+  const lastFailedMessageRef = useRef(null);
 
   const sendMessage = useCallback(
-    async (text) => {
+    async (text, options = {}) => {
       // Lấy fresh state từ store để tránh race condition khi gửi tin nhắn liên tục
       const freshMessages = useAIPlannerStore.getState().messages.filter((m) => m.source === "chat");
-      const payload = buildApiPayload(freshMessages, text);
+      const appendUserMessage = options.appendUserMessage !== false;
+      const payload = buildApiPayload(
+        appendUserMessage ? freshMessages : freshMessages.slice(0, -1),
+        text,
+      );
 
-      appendMessage({ role: "user", content: text, source: "chat" });
+      if (appendUserMessage) {
+        appendMessage({ role: "user", content: text, source: "chat" });
+      }
 
       if (abortRef.current) abortRef.current.abort();
       abortRef.current = new AbortController();
 
-      const isItineraryRequest = ITINERARY_PATTERN.test(text);
       const isPlaceQuery = PLACE_QUERY_PATTERN.test(text);
-      const hasCoords = sessionContext.currentLocation?.latitude && sessionContext.currentLocation?.longitude;
 
       try {
-        let response;
+        const cleanMessages = payload.messages.map(({ role, content }) => ({
+          role,
+          content,
+        }));
+        const safeContext = {
+          currentCoords: sessionContext.currentLocation,
+          currentCity: sessionContext.currentCity,
+          timeOfDay: sessionContext.timeOfDay,
+          preferences: sessionContext.preferences,
+          visitedPlaceIds: sessionContext.visitedPlaceIds,
+          isPlaceQuery,
+        };
 
-        if (isItineraryRequest && hasCoords) {
-          response = await apiClient.post(
-            "/api/ai/hybrid-plan",
-            {
-              currentCoords: sessionContext.currentLocation,
-            },
-            {
-              signal: abortRef.current.signal,
-              timeout: AI_REQUEST_TIMEOUT,
-            }
-          );
+        const response = await apiClient.post(
+          ENDPOINTS.ai.groqChat,
+          { messages: cleanMessages, context: safeContext },
+          { signal: abortRef.current.signal, timeout: AI_REQUEST_TIMEOUT },
+        );
 
-          const planData = response?.data?.data;
-          if (!planData || !planData.timeline) {
-            throw new Error(t("aiChat.invalidItineraryData"));
-          }
+        const normalized = normalizeGenieResponse(response);
+        const reply = normalized.reply || extractReply(response) || t("aiChat.noReplyContent");
+        const relatedPlaces = normalizePlaces(normalized.suggestedPlaces);
 
-          const replyMessage = t("aiChat.itineraryReady");
+        appendMessage({
+          role: "assistant",
+          content: reply,
+          suggestedPlaces: relatedPlaces,
+          quickReplies: normalized.quickReplies,
+          actions: normalized.actions,
+          source: "chat",
+        });
+        lastFailedMessageRef.current = null;
 
-          appendMessage({
-            role: "assistant",
-            content: replyMessage,
-            hybridPlan: planData,
-            source: "chat",
-          });
-
-          return { reply: replyMessage, hybridPlan: planData };
-        } else {
-          const cleanMessages = payload.messages.map(({ role, content }) => ({
-            role,
-            content,
-          }));
-
-          response = await apiClient.post(
-            ENDPOINTS.ai.groqChat,
-            {
-              messages: cleanMessages,
-              context: {
-                currentCoords: sessionContext.currentLocation,
-                currentCity: sessionContext.currentCity,
-                timeOfDay: sessionContext.timeOfDay,
-                preferences: sessionContext.preferences,
-                travelPreferences: sessionContext.userProfile?.travelPreferences,
-                visitedPlaceIds: sessionContext.visitedPlaceIds,
-                isPlaceQuery,
-              },
-            },
-            {
-              signal: abortRef.current.signal,
-              timeout: AI_REQUEST_TIMEOUT,
-            },
-          );
-
-          const normalized = normalizeGenieResponse(response);
-          const reply = normalized.reply || extractReply(response) || t("aiChat.noReplyContent");
-          const relatedPlaces = normalizePlaces(normalized.suggestedPlaces);
-
-          appendMessage({
-            role: "assistant",
-            content: reply,
-            suggestedPlaces: relatedPlaces,
-            quickReplies: normalized.quickReplies,
-            actions: normalized.actions,
-            source: "chat",
-          });
-
-          return { reply, relatedPlaces };
-        }
+        return { reply, relatedPlaces };
       } catch (err) {
         if (err?.name === "CanceledError" || err?.name === "AbortError") {
           return null;
         }
+        lastFailedMessageRef.current = text;
         throw new Error(getFriendlyErrorMessage(err, t));
       }
     },
@@ -224,5 +191,17 @@ export function useGroqChat() {
     abortRef.current?.abort();
   }, []);
 
-  return { sendMessage, abort, clearConversation: clearChatMessages, conversationMemory };
+  const retryLastMessage = useCallback(() => {
+    const text = lastFailedMessageRef.current;
+    if (!text) return Promise.resolve(null);
+    return sendMessage(text, { appendUserMessage: false });
+  }, [sendMessage]);
+
+  return {
+    sendMessage,
+    retryLastMessage,
+    abort,
+    clearConversation: clearChatMessages,
+    conversationMemory,
+  };
 }

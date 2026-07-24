@@ -7,6 +7,7 @@ import {
   getMyTripsApi,
 } from "../api/aiApi";
 import { mapAIError } from "../lib/mapAIError";
+import { inferPlannerPreferences } from "../lib/plannerPreferences";
 import { useAIPlannerStore } from "../../../stores/aiPlannerStore";
 import { TRIP_QUERY_KEYS } from "../../../constants/trip-query-keys";
 
@@ -51,21 +52,6 @@ function buildPreviewMessage(payload, selectedCount, t) {
     selectedLine +
     costLine
   );
-}
-
-function inferPlannerPreferences(text = "") {
-  const dayMatch = text.match(/(\d{1,2})\s*(ngày|day)/i);
-  const groupMatch = text.match(/(\d{1,2})\s*(người|person|people)/i);
-
-  const totalDays = Number(dayMatch?.[1]);
-  const groupSize = Number(groupMatch?.[1]);
-
-  return {
-    totalDays:
-      Number.isFinite(totalDays) && totalDays > 0 ? Math.min(totalDays, 14) : undefined,
-    groupSize:
-      Number.isFinite(groupSize) && groupSize > 0 ? Math.min(groupSize, 12) : undefined,
-  };
 }
 
 export function useAIPlanner() {
@@ -192,11 +178,11 @@ export function useAIPlanner() {
 
       const inferred = inferPlannerPreferences(userText);
       const payload = {
-        totalDays: preferences.totalDays || inferred.totalDays || 1,
-        travelStyle: preferences.travelStyle,
-        groupSize: preferences.groupSize || inferred.groupSize || 1,
-        budget: preferences.budget,
-        notes: userText,
+        totalDays: preferences.totalDays ?? inferred.totalDays ?? 1,
+        travelStyle: preferences.travelStyle ?? inferred.travelStyle,
+        groupSize: preferences.groupSize ?? inferred.groupSize ?? 1,
+        budget: preferences.budget ?? inferred.budget,
+        notes: userText.trim(),
       };
 
       setLastPreferences(payload);

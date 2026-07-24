@@ -22,6 +22,18 @@ describe("genie assistant experience helpers", () => {
     );
   });
 
+  test("keeps point-to-point route questions in chat", () => {
+    expect(
+      detectGenieIntent("Chỉ tôi lộ trình từ khách sạn ra bến Ninh Kiều"),
+    ).toBe(GENIE_INTENT_TYPES.CHAT);
+  });
+
+  test("routes explicit multi-day planning to itinerary", () => {
+    expect(detectGenieIntent("Lên lịch 3 ngày giá rẻ cho 2 người")).toBe(
+      GENIE_INTENT_TYPES.ITINERARY,
+    );
+  });
+
   test("detects place discovery intent for nearby food prompts", () => {
     expect(detectGenieIntent("Gợi ý quán ăn gần đây")).toBe(
       GENIE_INTENT_TYPES.PLACE_DISCOVERY,
