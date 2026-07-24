@@ -8,7 +8,7 @@ import { generateHybridPlan } from "../../services/ai/hybridPlanner.service.js";
  */
 export const handleHybridPlan = async (req, res) => {
   try {
-    const { currentCoords } = req.body;
+    const { currentCoords, userPrompt } = req.body;
     const gpsCoords = currentCoords;
 
     if (!gpsCoords) {
@@ -60,7 +60,8 @@ export const handleHybridPlan = async (req, res) => {
     const planResult = await generateHybridPlan(
       { latitude: lat, longitude: lng },
       travelPreferences,
-      nearbyPlaces
+      nearbyPlaces,
+      userPrompt,
     );
 
     return res.status(200).json({

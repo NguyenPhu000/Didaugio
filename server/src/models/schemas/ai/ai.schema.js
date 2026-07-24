@@ -1,8 +1,18 @@
 import { z } from "zod";
 
+const numericCoordinateSchema = (minimum, maximum) =>
+  z.preprocess(
+    (value) => {
+      if (typeof value === "number") return value;
+      if (typeof value === "string" && value.trim() !== "") return Number(value);
+      return Number.NaN;
+    },
+    z.number().finite().min(minimum).max(maximum),
+  );
+
 const coordinatesSchema = z.object({
-  latitude: z.coerce.number().finite().min(-90).max(90),
-  longitude: z.coerce.number().finite().min(-180).max(180),
+  latitude: numericCoordinateSchema(-90, 90),
+  longitude: numericCoordinateSchema(-180, 180),
 });
 
 const messageSchema = z.object({

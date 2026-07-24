@@ -7,6 +7,16 @@ import {
   findRelatedPlacesByKeywords 
 } from "../../utils/spatialQuery.js";
 
+export function getValidatedCoordinates(context = {}) {
+  const coords = context.currentCoords;
+  if (!coords) return null;
+
+  const { latitude, longitude } = coords;
+  return Number.isFinite(latitude) && Number.isFinite(longitude)
+    ? { latitude, longitude }
+    : null;
+}
+
 /**
  * POST /api/ai/groq-chat
  * Handles chat via Groq Cloud AI Gateway.
@@ -38,11 +48,10 @@ export const handleGroqChat = async (req, res) => {
     // 2. Tìm địa điểm lân cận bằng Spatial Query nếu client gửi tọa độ
     let systemPlaces = [];
     let locationContext = null;
-    const currentCoords = context.currentCoords || context.coords;
+    const currentCoords = getValidatedCoordinates(context);
 
-    if (currentCoords && currentCoords.latitude && currentCoords.longitude) {
-      const lat = parseFloat(currentCoords.latitude);
-      const lng = parseFloat(currentCoords.longitude);
+    if (currentCoords) {
+      const { latitude: lat, longitude: lng } = currentCoords;
       
       if (!isNaN(lat) && !isNaN(lng)) {
         // Spatial query với Bounding Box pre-filter

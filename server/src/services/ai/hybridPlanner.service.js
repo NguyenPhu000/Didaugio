@@ -15,6 +15,12 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+export function buildHybridPlanUserPrompt(basePrompt, userRequest = "") {
+  return userRequest
+    ? `${basePrompt}\nUser request: ${userRequest}`
+    : basePrompt;
+}
+
 /**
  * Gọi AI sắp xếp thứ tự và lập kế hoạch ngân sách dựa trên danh sách địa điểm thật từ DB
  * @param {Object} coords Tọa độ hiện tại của user
@@ -22,7 +28,7 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
  * @param {Array} places Danh sách các địa điểm gần nhất lấy từ DB
  * @returns {Promise<Object>} Lịch trình và dự toán chi phí sạch
  */
-export async function generateHybridPlan(coords, preferences, places) {
+export async function generateHybridPlan(coords, preferences, places, userRequest = "") {
   if (!Array.isArray(places) || places.length === 0) {
     throw new Error("Danh sách địa điểm đầu vào trống.");
   }
@@ -101,11 +107,13 @@ ${JSON.stringify(placesContext)}
 
 Hãy chọn 3-4 địa điểm phù hợp nhất, sắp xếp tuyến đường tối ưu, và trả về JSON chuẩn.`;
 
+  const fullUserPrompt = buildHybridPlanUserPrompt(userPrompt, userRequest);
+
   const completion = await client.chat.completions.create({
     model: GROQ_MODEL,
     messages: [
       { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
+      { role: "user", content: fullUserPrompt },
     ],
     temperature: 0.2, // Nhiệt độ thấp để đảm bảo output định dạng JSON chính xác
     max_tokens: 2000,

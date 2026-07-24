@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   aiChatSchema,
@@ -6,6 +7,26 @@ import {
   aiPlaceSummarySchema,
   aiSpeechSchema,
 } from "../src/models/schemas/ai/ai.schema.js";
+import { buildHybridPlanUserPrompt } from "../src/services/ai/hybridPlanner.service.js";
+import { getValidatedCoordinates } from "../src/controllers/ai/groqChat.controller.js";
+import aiRouter from "../src/routes/ai/ai.route.js";
+
+async function validateRouteBody(path, body) {
+  const routeLayer = aiRouter.stack.find(
+    (layer) => layer.route?.path === path && layer.route.methods.post,
+  );
+  assert.ok(routeLayer, `POST ${path} must exist`);
+  assert.equal(routeLayer.route.stack[0].handle.name, "authenticate");
+
+  const validateLayer = routeLayer.route.stack[1];
+  const req = { body };
+  let nextCalled = false;
+  await validateLayer.handle(req, {}, () => {
+    nextCalled = true;
+  });
+  assert.equal(nextCalled, true, `${path} must validate before its handler`);
+  return req.body;
+}
 
 test("AI chat rejects client system roles and oversized content", () => {
   assert.equal(
@@ -52,6 +73,18 @@ test("AI coordinates must be valid geographic coordinates", () => {
   );
 });
 
+test("AI coordinates reject coercion-only values", () => {
+  for (const coordinate of [null, false, "", "   "]) {
+    assert.equal(
+      aiHybridPlanSchema.safeParse({
+        currentCoords: { latitude: coordinate, longitude: 105.78 },
+      }).success,
+      false,
+      `latitude ${JSON.stringify(coordinate)} must be rejected`,
+    );
+  }
+});
+
 test("AI chat strips unknown context keys", () => {
   const parsed = aiChatSchema.parse({
     messages: [{ role: "user", content: "Äƒn gÃ¬" }],
@@ -73,4 +106,72 @@ test("AI place summary and speech requests apply bounded parsed input", () => {
   );
   assert.equal(aiSpeechSchema.safeParse({ input: " ".repeat(2) }).success, false);
   assert.equal(aiSpeechSchema.safeParse({ input: "x".repeat(1601) }).success, false);
+});
+
+test("hybrid planner includes the validated user request in its provider prompt", () => {
+  const prompt = buildHybridPlanUserPrompt(
+    "Trusted planner context",
+    "LÃªn lá»‹ch 3 ngÃ y giÃ¡ ráº» cho 2 ngÆ°á»i",
+  );
+
+  assert.match(prompt, /Trusted planner context/);
+  assert.match(prompt, /LÃªn lá»‹ch 3 ngÃ y giÃ¡ ráº» cho 2 ngÆ°á»i/);
+});
+
+test("hybrid controller forwards the sanitized user request to the planner", () => {
+  const controllerSource = readFileSync(
+    new URL("../src/controllers/ai/hybridPlanner.controller.js", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(controllerSource, /const \{ currentCoords, userPrompt \} = req\.body/);
+  assert.match(controllerSource, /generateHybridPlan\([\s\S]*nearbyPlaces,[\s\S]*userPrompt,/);
+});
+
+test("AI JSON routes sanitize bodies after authentication and before handlers", async () => {
+  const chatBody = {
+    messages: [{ role: "user", content: "Xin chÃ o" }],
+    context: { currentCity: "Cáº§n ThÆ¡", systemPlaces: [{ id: 1 }] },
+    ignored: true,
+  };
+  const expectedChatBody = {
+    messages: [{ role: "user", content: "Xin chÃ o" }],
+    context: { currentCity: "Cáº§n ThÆ¡" },
+    stream: false,
+  };
+
+  assert.deepEqual(await validateRouteBody("/chat", chatBody), expectedChatBody);
+  assert.deepEqual(
+    await validateRouteBody("/groq-chat", chatBody),
+    expectedChatBody,
+  );
+  assert.deepEqual(
+    await validateRouteBody("/place-summary", {
+      placeId: "9",
+      context: { ignored: true },
+    }),
+    { placeId: 9, context: {} },
+  );
+  assert.deepEqual(
+    await validateRouteBody("/voice/speech", { input: "  hello  ", ignored: true }),
+    { input: "hello" },
+  );
+  assert.deepEqual(
+    await validateRouteBody("/hybrid-plan", {
+      currentCoords: { latitude: "0", longitude: "105.78", ignored: true },
+      coords: { latitude: 1, longitude: 1 },
+    }),
+    { currentCoords: { latitude: 0, longitude: 105.78 } },
+  );
+});
+
+test("Groq chat accepts zero-valued validated coordinates without unsafe aliases", () => {
+  assert.deepEqual(
+    getValidatedCoordinates({ currentCoords: { latitude: 0, longitude: 105.78 } }),
+    { latitude: 0, longitude: 105.78 },
+  );
+  assert.equal(
+    getValidatedCoordinates({ coords: { latitude: 10, longitude: 105 } }),
+    null,
+  );
 });
