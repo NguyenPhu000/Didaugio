@@ -365,7 +365,8 @@ Suggested role defaults:
 
 - Super Admin: all capabilities.
 - Admin: view, manage draft, logs, test; publish only when explicitly granted.
-- Staff: view and test.
+
+Only Super Admin and Admin participate in the Admin AI module in phase one. Accounts without an explicitly granted AI permission cannot see its navigation or call its APIs.
 
 Every endpoint enforces permissions on the backend. Sidebar and button visibility are convenience only.
 
@@ -405,7 +406,7 @@ Every endpoint enforces permissions on the backend. Sidebar and button visibilit
 
 ### End-to-end
 
-- Staff can view and test but cannot mutate.
+- Accounts without AI permissions cannot see the module or call its APIs.
 - Admin can save a draft but cannot publish without permission.
 - Super Admin can replace a key, test, publish, roll back, and operate the kill switch.
 - Mobile keeps working through invalid drafts and provider incidents.
