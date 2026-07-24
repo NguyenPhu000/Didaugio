@@ -1,6 +1,34 @@
 import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
 import { parseAiJsonObject } from "./aiJsonParser.js";
-import { AI_PROVIDER_TIMEOUT_MS, normalizeProviderMessages } from "./aiProviderPolicy.js";
+import {
+  AI_PROVIDER_TIMEOUT_MS,
+  logAiProviderEvent,
+  normalizeProviderMessages,
+  toAiServiceError,
+} from "./aiProviderPolicy.js";
+
+export async function requestNavigationCompletion({ client, prompt, feature }) {
+  const startedAt = Date.now();
+  try {
+    const completion = await client.chat.completions.create({
+      model: GROQ_MODEL,
+      messages: normalizeProviderMessages([{ role: "user", content: prompt }]),
+      temperature: 0.3,
+      max_tokens: 800,
+    }, { timeout: AI_PROVIDER_TIMEOUT_MS });
+    logAiProviderEvent({ feature, model: GROQ_MODEL, startedAt, completion });
+    return completion;
+  } catch (error) {
+    const aiError = toAiServiceError(error);
+    logAiProviderEvent({
+      feature,
+      model: GROQ_MODEL,
+      startedAt,
+      code: aiError.code,
+    });
+    throw aiError;
+  }
+}
 
 class AINavigationService {
   async getNavigationAdvice(payload = {}) {
@@ -14,12 +42,11 @@ class AINavigationService {
 
     try {
       const client = createGroqClient();
-      const completion = await client.chat.completions.create({
-        model: GROQ_MODEL,
-        messages: normalizeProviderMessages([{ role: "user", content: prompt }]),
-        temperature: 0.3,
-        max_tokens: 800,
-      }, { timeout: AI_PROVIDER_TIMEOUT_MS });
+      const completion = await requestNavigationCompletion({
+        client,
+        prompt,
+        feature: "navigation-route-advice",
+      });
       const text = completion.choices[0]?.message?.content || "";
       const parsed = this._tryParseJson(text);
 
@@ -54,12 +81,11 @@ class AINavigationService {
 
     try {
       const client = createGroqClient();
-      const completion = await client.chat.completions.create({
-        model: GROQ_MODEL,
-        messages: normalizeProviderMessages([{ role: "user", content: prompt }]),
-        temperature: 0.3,
-        max_tokens: 800,
-      }, { timeout: AI_PROVIDER_TIMEOUT_MS });
+      const completion = await requestNavigationCompletion({
+        client,
+        prompt,
+        feature: "navigation-waypoint-order",
+      });
       const text = completion.choices[0]?.message?.content || "";
       const parsed = this._tryParseJson(text);
       const orderedIndexes = this._sanitizeWaypointIndexes(

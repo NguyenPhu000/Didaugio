@@ -7,6 +7,7 @@ import {
   normalizeProviderMessages,
   toAiServiceError,
 } from "../src/services/ai/aiProviderPolicy.js";
+import { requestNavigationCompletion } from "../src/services/ai/aiNavigation.service.js";
 
 test("provider messages remove client system roles and bound retained content", () => {
   const normalized = normalizeProviderMessages([
@@ -61,6 +62,60 @@ test("hybrid fallback is reserved for availability failures, not invalid provide
   assert.equal(canUseHybridFallback({ status: 503 }), true);
   assert.equal(canUseHybridFallback({ code: "AI_INVALID_OUTPUT", statusCode: 502 }), false);
   assert.equal(canUseHybridFallback({ status: 400 }), false);
+});
+
+test("navigation provider calls emit metadata-only success and stable failure events", async () => {
+  const events = [];
+  const originalInfo = console.info;
+  console.info = (...args) => events.push(args);
+
+  try {
+    const completion = { usage: { total_tokens: 21 }, choices: [{ finish_reason: "stop" }] };
+    const client = {
+      chat: { completions: { create: async (_request, options) => {
+        assert.deepEqual(options, { timeout: AI_PROVIDER_TIMEOUT_MS });
+        return completion;
+      } } },
+    };
+
+    assert.equal(
+      await requestNavigationCompletion({
+        client,
+        prompt: "private navigation prompt",
+        feature: "navigation-route-advice",
+      }),
+      completion,
+    );
+
+    await assert.rejects(
+      requestNavigationCompletion({
+        client: { chat: { completions: { create: async () => { throw { status: 503 }; } } } },
+        prompt: "private failure prompt",
+        feature: "navigation-waypoint-order",
+      }),
+      (error) => error.code === "AI_UNAVAILABLE",
+    );
+  } finally {
+    console.info = originalInfo;
+  }
+
+  assert.deepEqual(events[0][0], "[AI]");
+  assert.deepEqual(events[0][1], {
+    feature: "navigation-route-advice",
+    model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    latencyMs: events[0][1].latencyMs,
+    totalTokens: 21,
+    finishReason: "stop",
+  });
+  assert.deepEqual(events[1][1], {
+    feature: "navigation-waypoint-order",
+    model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    latencyMs: events[1][1].latencyMs,
+    totalTokens: null,
+    finishReason: null,
+    code: "AI_UNAVAILABLE",
+  });
+  assert.equal(JSON.stringify(events).includes("private"), false);
 });
 
 test("every Groq provider integration uses the shared timeout and avoids raw-error logs", () => {
