@@ -8,6 +8,10 @@ import {
 import routingService from "../routing/routing.service.js";
 import { normalizeItinerary } from "../../utils/itineraryFormatter.js";
 import ServiceError from "../../utils/serviceError.js";
+import {
+  ITINERARY_MONEY_MAX,
+  itineraryPreviewSchema,
+} from "../../models/schemas/trip/itineraryPreview.schema.js";
 
 const MAX_TRIP_SUGGESTED_PLACES = 12;
 const isRoutingEnabled =
@@ -40,6 +44,13 @@ const toKm2 = (meters) => {
   const value = Number(meters);
   if (!Number.isFinite(value) || value < 0) return null;
   return Number((value / 1000).toFixed(2));
+};
+
+const normalizeConfirmedMoney = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) return null;
+  return Math.min(Math.round(number), ITINERARY_MONEY_MAX);
 };
 
 const buildSuggestedPlaces = (days, placeById) => {
@@ -112,15 +123,72 @@ export const filterItineraryToSelectedPlaces = (
     }
   }
 
+  let estimatedCost = 0;
+  const days = (itinerary?.days || [])
+    .map((day) => {
+      const destinations = (day?.destinations || [])
+        .filter((destination) =>
+          selectedPlaceIdSet.has(toInt(destination?.placeId)),
+        )
+        .map((destination) => {
+          const normalizedCost = normalizeConfirmedMoney(
+            destination?.estimatedCost,
+          );
+          if (normalizedCost === null) {
+            return { ...destination, estimatedCost: null };
+          }
+
+          const boundedCost = Math.min(
+            normalizedCost,
+            Math.max(ITINERARY_MONEY_MAX - estimatedCost, 0),
+          );
+          estimatedCost += boundedCost;
+          return { ...destination, estimatedCost: boundedCost };
+        });
+
+      return {
+        ...day,
+        destinations,
+      };
+    })
+    .filter((day) => day.destinations.length > 0);
+
   return {
     ...itinerary,
-    days: (itinerary?.days || []).map((day) => ({
-      ...day,
-      destinations: (day?.destinations || []).filter((destination) =>
-        selectedPlaceIdSet.has(toInt(destination?.placeId)),
-      ),
-    })),
+    estimatedCost,
+    days,
   };
+};
+
+export const validateConfirmedItinerary = (
+  itinerary,
+  allowedPlaceIds,
+  selectedPlaceIdSet,
+) => {
+  const result = itineraryPreviewSchema.safeParse(itinerary);
+  if (!result.success) throw createInvalidConfirmationError();
+
+  assertAuthoritativeItineraryPlaces(result.data, allowedPlaceIds);
+
+  if (selectedPlaceIdSet instanceof Set && selectedPlaceIdSet.size > 0) {
+    const retainedPlaceIds = new Set();
+    for (const day of result.data.days) {
+      for (const destination of day.destinations) {
+        if (!selectedPlaceIdSet.has(destination.placeId)) {
+          throw createInvalidConfirmationError();
+        }
+        retainedPlaceIds.add(destination.placeId);
+      }
+    }
+
+    for (const selectedPlaceId of selectedPlaceIdSet) {
+      if (!retainedPlaceIds.has(selectedPlaceId)) {
+        throw createInvalidConfirmationError();
+      }
+    }
+  }
+
+  return result.data;
 };
 
 export const buildTripDestinations = ({
@@ -465,6 +533,12 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
       tripRoutingSummary,
     };
   }
+
+  itinerary = validateConfirmedItinerary(
+    itinerary,
+    placeIdSet,
+    selectedPlaceIdSet,
+  );
 
   const trip = await prisma.$transaction(async (tx) => {
     const created = await tx.tripPlan.create({
