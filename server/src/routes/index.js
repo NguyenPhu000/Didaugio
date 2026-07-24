@@ -58,11 +58,9 @@ import {
   refreshLimiter,
   recoveryLimiter,
   routingLimiter,
-  aiNavigateLimiter,
   navigationLimiter,
   navigationTelemetryLimiter,
   changePasswordLimiter,
-  groqChatLimiter,
   documentDownloadLimiter,
 } from "../middlewares/rateLimitMiddleware.js";
 
@@ -79,9 +77,6 @@ export const registerRateLimiters = (app) => {
   app.use("/api/auth/resend-verification-public", recoveryLimiter);
   app.use("/api/auth/change-password", changePasswordLimiter);
   app.use("/api/routes", routingLimiter);
-  app.use("/api/ai/navigate", aiNavigateLimiter);
-  app.use("/api/ai/groq-chat", groqChatLimiter);
-  app.use("/api/ai/voice", groqChatLimiter);
   app.use("/api/navigation/navigate", navigationLimiter);
   app.use("/api/navigation/telemetry", navigationTelemetryLimiter);
   app.use("/api/documents/download", documentDownloadLimiter);

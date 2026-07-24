@@ -1,5 +1,6 @@
 import rateLimit from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
+import { isIP } from "node:net";
 import { getRedisClient } from "../config/redisClient.js";
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -7,6 +8,44 @@ export const buildRateLimitStoreOptions = (client, namespace) => ({
   prefix: `rl:${namespace}:`,
   sendCommand: (...args) => client.sendCommand(args),
 });
+
+const normalizeUserId = (value) => {
+  if (typeof value === "number") {
+    return Number.isSafeInteger(value) && value > 0 ? String(value) : null;
+  }
+
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim();
+  return normalized.length > 0 && normalized.length <= 128 ? normalized : null;
+};
+
+const normalizeIp = (value) => {
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim().toLowerCase();
+  const ipv4MappedAddress = normalized.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
+  const candidate = ipv4MappedAddress ? ipv4MappedAddress[1] : normalized;
+
+  return isIP(candidate) ? candidate : null;
+};
+
+/**
+ * Prefer an authenticated account identity. IP is only the fallback for
+ * callers that deliberately run without authentication.
+ */
+export const buildAiRateLimitKey = (req = {}) => {
+  const user = req?.user;
+  if (user && typeof user === "object" && !Array.isArray(user)) {
+    for (const candidate of [user.userId, user.id]) {
+      const userId = normalizeUserId(candidate);
+      if (userId) return `user:${userId}`;
+    }
+  }
+
+  const ip = normalizeIp(req?.ip) || normalizeIp(req?.socket?.remoteAddress);
+  return `ip:${ip || "unknown"}`;
+};
 
 /**
  * Factory function to create rate limiters with standardized config.
@@ -18,6 +57,7 @@ export const buildRateLimitStoreOptions = (client, namespace) => ({
  * @param {number} options.prodDefault - Default max requests in production
  * @param {number} [options.windowMs=60000] - Time window in milliseconds
  * @param {string} options.message - User-facing rate limit message
+ * @param {(req: import("express").Request) => string} [options.keyGenerator]
  */
 const createLimiter = ({
   envKey,
@@ -26,11 +66,14 @@ const createLimiter = ({
   namespace = envKey?.toLowerCase() || "api",
   windowMs = 60 * 1000,
   message,
+  keyGenerator,
 }) => {
   const envValue = envKey ? process.env[envKey] : undefined;
   const maxFromEnv = envValue ? Number(envValue) : undefined;
   const fallback = isProduction ? prodDefault : devDefault;
-  const max = Number.isFinite(maxFromEnv) ? maxFromEnv : fallback;
+  const max = Number.isSafeInteger(maxFromEnv) && maxFromEnv > 0
+    ? maxFromEnv
+    : fallback;
 
   let limiter;
   return (req, res, next) => {
@@ -46,6 +89,7 @@ const createLimiter = ({
         standardHeaders: true,
         legacyHeaders: false,
         store,
+        ...(keyGenerator ? { keyGenerator } : {}),
         message: {
           success: false,
           data: null,
@@ -112,13 +156,6 @@ export const routingLimiter = createLimiter({
   message: "Qua nhieu yeu cau dinh tuyen, vui long thu lai sau",
 });
 
-export const aiNavigateLimiter = createLimiter({
-  namespace: "ai-navigate",
-  devDefault: 240,
-  prodDefault: 60,
-  message: "Qua nhieu yeu cau AI dieu huong, vui long thu lai sau",
-});
-
 export const navigationLimiter = createLimiter({
   namespace: "navigation",
   devDefault: 360,
@@ -140,11 +177,13 @@ export const changePasswordLimiter = createLimiter({
   message: "Qua nhieu yeu cau doi mat khau, vui long thu lai sau 15 phut",
 });
 
-export const groqChatLimiter = createLimiter({
+export const aiUserLimiter = createLimiter({
   envKey: "GROQ_CHAT_RATE_LIMIT_MAX",
+  namespace: "ai-user",
   devDefault: 300,
   prodDefault: 60,
   message: "Qua nhieu yeu cau tro ly AI, vui long thu lai sau",
+  keyGenerator: buildAiRateLimitKey,
 });
 
 export const documentUploadLimiter = createLimiter({

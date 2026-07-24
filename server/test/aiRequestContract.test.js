@@ -9,16 +9,21 @@ import {
 } from "../src/models/schemas/ai/ai.schema.js";
 import { buildHybridPlanUserPrompt } from "../src/services/ai/hybridPlanner.service.js";
 import { getValidatedCoordinates } from "../src/controllers/ai/groqChat.controller.js";
+import { authenticate } from "../src/middlewares/authMiddleware.js";
+import { aiUserLimiter } from "../src/middlewares/rateLimitMiddleware.js";
 import aiRouter from "../src/routes/ai/ai.route.js";
 
 async function validateRouteBody(path, body) {
+  const routerMiddleware = aiRouter.stack.filter((layer) => !layer.route);
+  assert.equal(routerMiddleware[0]?.handle, authenticate);
+  assert.equal(routerMiddleware[1]?.handle, aiUserLimiter);
+
   const routeLayer = aiRouter.stack.find(
     (layer) => layer.route?.path === path && layer.route.methods.post,
   );
   assert.ok(routeLayer, `POST ${path} must exist`);
-  assert.equal(routeLayer.route.stack[0].handle.name, "authenticate");
 
-  const validateLayer = routeLayer.route.stack[1];
+  const validateLayer = routeLayer.route.stack[0];
   const req = { body };
   let nextCalled = false;
   await validateLayer.handle(req, {}, () => {
