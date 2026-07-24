@@ -1,5 +1,9 @@
 import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
 import { parseAiJsonObject } from "./aiJsonParser.js";
+import {
+  createAiInvalidOutputError,
+  validateHybridPlanOutput,
+} from "./aiOutputGuard.js";
 
 function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
   const R = 6371; // Earth's radius in km
@@ -123,15 +127,11 @@ Hãy chọn 3-4 địa điểm phù hợp nhất, sắp xếp tuyến đường 
 
   let planData;
   try {
-    planData = parseAiJsonObject(rawText);
+    planData = validateHybridPlanOutput(parseAiJsonObject(rawText), places);
   } catch (err) {
     console.error("[Groq JSON Parsing Failed] Raw Text:", rawText);
-    throw new Error("Không thể parse dữ liệu lịch trình từ AI.");
-  }
-
-  // Validate cấu trúc cơ bản
-  if (!planData.tripSummary || !Array.isArray(planData.timeline)) {
-    throw new Error("Dữ liệu lịch trình từ AI sai cấu trúc yêu cầu.");
+    if (err?.code === "AI_INVALID_OUTPUT") throw err;
+    throw createAiInvalidOutputError();
   }
 
   // 2. Tính toán khoảng cách địa lý (Haversine) và thời gian di chuyển thực tế tại Server
@@ -141,11 +141,11 @@ Hãy chọn 3-4 địa điểm phù hợp nhất, sắp xếp tuyến đường 
     const nextItem = timeline[i + 1];
 
     // Lấy thông tin tọa độ địa điểm hiện tại từ danh sách DB ban đầu
-    const currentPlace = places.find((p) => p.id === currentItem.placeId);
+    const currentPlace = places.find((p) => Number(p.id) === currentItem.placeId);
     currentItem.place = currentPlace || null;
 
     if (nextItem) {
-      const nextPlace = places.find((p) => p.id === nextItem.placeId);
+      const nextPlace = places.find((p) => Number(p.id) === nextItem.placeId);
       if (currentPlace && nextPlace && currentPlace.latitude && currentPlace.longitude && nextPlace.latitude && nextPlace.longitude) {
         const dist = calculateHaversineDistance(
           parseFloat(currentPlace.latitude),

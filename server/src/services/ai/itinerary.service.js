@@ -10,6 +10,10 @@ import ServiceError from "../../utils/serviceError.js";
 import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
 import { kMeansClustering, solveNearestNeighborTSP } from "../../utils/clustering.js";
 import { validateAndCorrectItinerary } from "../../utils/itineraryFormatter.js";
+import {
+  assertItineraryPlaceIds,
+  createAiInvalidOutputError,
+} from "./aiOutputGuard.js";
 
 const DEFAULT_DESTINATIONS_PER_DAY = 3;
 const START_TIME_SLOTS = ["08:00", "11:00", "14:30"];
@@ -361,6 +365,14 @@ export async function generateItinerary(preferences, places) {
         );
       }
     }
+  }
+
+  try {
+    parsed = ItinerarySchema.parse(parsed);
+    parsed.days = assertItineraryPlaceIds(parsed.days, places);
+  } catch (err) {
+    if (err?.code === "AI_INVALID_OUTPUT") throw err;
+    throw createAiInvalidOutputError();
   }
 
   // 1. Validate và co kéo thời gian khớp giờ mở cửa thực tế
