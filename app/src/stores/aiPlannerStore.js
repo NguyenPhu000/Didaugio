@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import safeAsyncStorage from "../utils/safeAsyncStorage";
 import { createRandomId } from "../utils/createRandomId";
+import { trimPersistedMessages } from "./aiPlannerRetention";
+
+export { trimPersistedMessages } from "./aiPlannerRetention";
 
 const { persist, createJSONStorage } = require("zustand/middleware");
-
-const MAX_MESSAGES = 60;
 
 function createInitialState() {
   return {
@@ -13,11 +14,6 @@ function createInitialState() {
     selectedPlaceIds: [],
     lastPreferences: null,
   };
-}
-
-function trimMessages(messages) {
-  if (!Array.isArray(messages)) return [];
-  return messages.slice(-MAX_MESSAGES);
 }
 
 function normalizePlaceIds(ids) {
@@ -69,7 +65,7 @@ export const useAIPlannerStore = create(
           const normalized = normalizeMessage(message);
           if (!normalized) return { messages: s.messages };
           return {
-            messages: trimMessages([...s.messages, normalized]),
+            messages: trimPersistedMessages([...s.messages, normalized]),
           };
         }),
 
@@ -81,7 +77,7 @@ export const useAIPlannerStore = create(
           });
           if (!normalized) return { messages: s.messages };
           return {
-            messages: trimMessages([
+            messages: trimPersistedMessages([
               ...removeDraftPreviewMessages(s.messages),
               normalized,
             ]),
@@ -90,8 +86,10 @@ export const useAIPlannerStore = create(
 
       setMessages: (messages) =>
         set({
-          messages: trimMessages(
-            messages.map(normalizeMessage).filter(Boolean),
+          messages: trimPersistedMessages(
+            (Array.isArray(messages) ? messages : [])
+              .map(normalizeMessage)
+              .filter(Boolean),
           ),
         }),
 
@@ -99,7 +97,9 @@ export const useAIPlannerStore = create(
 
       clearChatMessages: () =>
         set((s) => ({
-          messages: s.messages.filter((m) => m.source !== "chat"),
+          messages: trimPersistedMessages(
+            s.messages.filter((m) => m.source !== "chat"),
+          ),
         })),
 
       setDraftPlan: (draftPlan) => set({ draftPlan: draftPlan || null }),
@@ -124,7 +124,7 @@ export const useAIPlannerStore = create(
       name: "ai-planner-store",
       storage: createJSONStorage(() => safeAsyncStorage),
       partialize: (s) => ({
-        messages: trimMessages(s.messages),
+        messages: trimPersistedMessages(s.messages),
         draftPlan: s.draftPlan,
         selectedPlaceIds: normalizePlaceIds(s.selectedPlaceIds),
         lastPreferences: s.lastPreferences,
@@ -139,6 +139,11 @@ export const useAIPlannerStore = create(
         }
         return persistedState;
       },
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...persistedState,
+        messages: trimPersistedMessages(persistedState?.messages),
+      }),
       version: 2,
     },
   ),
