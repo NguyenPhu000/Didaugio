@@ -34,6 +34,14 @@ describe("genie assistant experience helpers", () => {
     );
   });
 
+  test("routes travel-journey prompts to itinerary preview", () => {
+    expect(
+      detectGenieIntent(
+        "h\u00e0nh tr\u00ecnh du l\u1ecbch C\u1ea7n Th\u01a1",
+      ),
+    ).toBe(GENIE_INTENT_TYPES.ITINERARY);
+  });
+
   test("detects place discovery intent for nearby food prompts", () => {
     expect(detectGenieIntent("Gợi ý quán ăn gần đây")).toBe(
       GENIE_INTENT_TYPES.PLACE_DISCOVERY,

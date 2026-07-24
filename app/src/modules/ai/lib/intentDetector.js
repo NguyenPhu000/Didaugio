@@ -16,6 +16,9 @@ const INTENTS = {
   OPEN_HOURS: /giờ mở cửa|mấy giờ|đóng cửa|còn mở|lúc nào|thứ mấy/i,
 };
 
+const TRAVEL_JOURNEY_PATTERN =
+  /h\u00e0nh tr\u00ecnh du l\u1ecbch/i;
+
 export const INTENT_TYPES = Object.freeze({
   NAVIGATE: "NAVIGATE",
   BOOK: "BOOK",
@@ -39,6 +42,9 @@ export function detectIntent(text) {
   if (!text || typeof text !== "string") return INTENT_TYPES.GENERAL;
 
   const trimmed = text.trim();
+  if (TRAVEL_JOURNEY_PATTERN.test(trimmed)) {
+    return INTENT_TYPES.SCHEDULE;
+  }
   for (const [intent, pattern] of Object.entries(INTENTS)) {
     if (pattern.test(trimmed)) return intent;
   }
@@ -57,6 +63,12 @@ export function detectAllIntents(text) {
   const matched = Object.entries(INTENTS)
     .filter(([, pattern]) => pattern.test(trimmed))
     .map(([intent]) => intent);
+  if (
+    TRAVEL_JOURNEY_PATTERN.test(trimmed) &&
+    !matched.includes(INTENT_TYPES.SCHEDULE)
+  ) {
+    matched.push(INTENT_TYPES.SCHEDULE);
+  }
 
   return matched.length > 0 ? matched : [INTENT_TYPES.GENERAL];
 }
