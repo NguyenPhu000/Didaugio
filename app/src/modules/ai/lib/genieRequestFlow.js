@@ -32,3 +32,17 @@ export async function sendItineraryWithVoiceFeedback({
   }
   return result;
 }
+
+export async function confirmSelectionWithFreshErrors({
+  clearPlannerError,
+  setChatError,
+  setVoiceError,
+  confirmSelectedPlaces,
+}) {
+  clearGenieRequestErrors({
+    clearPlannerError,
+    setChatError,
+    setVoiceError,
+  });
+  return confirmSelectedPlaces();
+}

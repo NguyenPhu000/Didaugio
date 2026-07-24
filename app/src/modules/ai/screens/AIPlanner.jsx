@@ -33,6 +33,7 @@ import { TOKENS } from "../../../constants/design-tokens";
 import CustomAlertModal from "../../../components/composed/CustomAlertModal";
 import {
   clearGenieRequestErrors,
+  confirmSelectionWithFreshErrors,
   resolveGenieActiveError,
   sendItineraryWithVoiceFeedback,
 } from "../lib/genieRequestFlow";
@@ -304,9 +305,19 @@ export function AIPlanner() {
 
   const handleConfirmSelection = useCallback(async () => {
     if (!canConfirmSelection || isConfirming) return;
-    await confirmSelectedPlaces();
+    await confirmSelectionWithFreshErrors({
+      clearPlannerError,
+      setChatError,
+      setVoiceError,
+      confirmSelectedPlaces,
+    });
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
-  }, [canConfirmSelection, confirmSelectedPlaces, isConfirming]);
+  }, [
+    canConfirmSelection,
+    clearPlannerError,
+    confirmSelectedPlaces,
+    isConfirming,
+  ]);
 
   const handleRetryChat = useCallback(async () => {
     if (isLoading || activeError?.source !== "chat") return;

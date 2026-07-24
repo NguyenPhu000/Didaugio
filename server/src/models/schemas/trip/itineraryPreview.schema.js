@@ -1,7 +1,12 @@
 import { z } from "zod";
 
 const timeHmRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-const boundedMoneySchema = z.number().finite().min(0).max(1_000_000_000);
+export const ITINERARY_MONEY_MAX = 1_000_000_000;
+const boundedMoneySchema = z
+  .number()
+  .finite()
+  .min(0)
+  .max(ITINERARY_MONEY_MAX);
 const nullableTimeSchema = z
   .string()
   .regex(timeHmRegex, "Thoi gian phai theo dinh dang HH:mm")

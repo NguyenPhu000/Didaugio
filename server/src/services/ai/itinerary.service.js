@@ -15,6 +15,10 @@ import {
 import { kMeansClustering, solveNearestNeighborTSP } from "../../utils/clustering.js";
 import { validateAndCorrectItinerary } from "../../utils/itineraryFormatter.js";
 import { buildValidatedCachedItineraryResult, parseAndValidateItineraryOutput } from "./itineraryOutput.js";
+import {
+  ITINERARY_MONEY_MAX,
+  itineraryPreviewSchema,
+} from "../../models/schemas/trip/itineraryPreview.schema.js";
 
 const DEFAULT_DESTINATIONS_PER_DAY = 3;
 const START_TIME_SLOTS = ["08:00", "11:00", "14:30"];
@@ -64,7 +68,10 @@ function estimateDestinationCost(
     );
   }
 
-  return Math.max(30000, Math.round(estimated));
+  return Math.min(
+    ITINERARY_MONEY_MAX,
+    Math.max(30000, Math.round(estimated)),
+  );
 }
 
 function buildDayTheme(dayNumber, travelStyle) {
@@ -127,12 +134,18 @@ export function generateFallbackItinerary(preferences = {}, places = []) {
           );
         const durationMinutes = slot === destinationsPerDay - 1 ? 150 : 120;
         const endTime = addMinutesToTime(startTime, durationMinutes);
-        const estimatedCost = estimateDestinationCost(
+        const rawEstimatedCost = estimateDestinationCost(
           place,
           groupSize,
           budgetPerPerson,
           totalDays,
           destinationsPerDay,
+        );
+        // Cap against the remaining preview budget so the total continues to
+        // equal the sum of its destination-level cost breakdown.
+        const estimatedCost = Math.min(
+          rawEstimatedCost,
+          Math.max(ITINERARY_MONEY_MAX - totalEstimatedCost, 0),
         );
 
         totalEstimatedCost += estimatedCost;
@@ -160,14 +173,14 @@ export function generateFallbackItinerary(preferences = {}, places = []) {
     };
   });
 
-  return {
+  return itineraryPreviewSchema.parse({
     title: `Lịch trình ${totalDays} ngày ở Cần Thơ`,
     description:
       "Lịch trình dự phòng được tạo từ dữ liệu địa điểm hiện có khi AI tạm thời không khả dụng.",
     totalDays,
     estimatedCost: totalEstimatedCost,
     days,
-  };
+  });
 }
 
 // ─── Itinerary generation ─────────────────────────────────────────────────────
