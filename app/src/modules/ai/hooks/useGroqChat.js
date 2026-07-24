@@ -82,6 +82,16 @@ function getFriendlyErrorMessage(err, t) {
   return mapAIError(err);
 }
 
+function snapshotValue(value) {
+  if (Array.isArray(value)) return value.map(snapshotValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, snapshotValue(item)]),
+    );
+  }
+  return value;
+}
+
 export function useGroqChat() {
   const { t } = useTranslation();
   const sessionContext = useAIContextStore((s) => s.sessionContext);
@@ -126,6 +136,7 @@ export function useGroqChat() {
     async (text, options = {}) => {
       const appendUserMessage = options.appendUserMessage !== false;
       const retryRequest = options.retryRequest;
+      const isPlaceQuery = PLACE_QUERY_PATTERN.test(text);
       let request = retryRequest;
 
       if (!request) {
@@ -136,8 +147,19 @@ export function useGroqChat() {
         const payload = buildApiPayload(freshMessages, text);
         const messages = payload.messages.map(({ role, content }) => ({ role, content }));
         const id = `chat-${Date.now()}`;
+        const body = snapshotValue({
+          messages,
+          context: {
+            currentCoords: sessionContext.currentLocation,
+            currentCity: sessionContext.currentCity,
+            timeOfDay: sessionContext.timeOfDay,
+            preferences: sessionContext.preferences,
+            visitedPlaceIds: sessionContext.visitedPlaceIds,
+            isPlaceQuery,
+          },
+        });
 
-        request = { id, text, messages };
+        request = { id, text, body };
         if (appendUserMessage) {
           appendMessage({ id, role: "user", content: text, source: "chat" });
         }
@@ -146,21 +168,10 @@ export function useGroqChat() {
       if (abortRef.current) abortRef.current.abort();
       abortRef.current = new AbortController();
 
-      const isPlaceQuery = PLACE_QUERY_PATTERN.test(text);
-
       try {
-        const safeContext = {
-          currentCoords: sessionContext.currentLocation,
-          currentCity: sessionContext.currentCity,
-          timeOfDay: sessionContext.timeOfDay,
-          preferences: sessionContext.preferences,
-          visitedPlaceIds: sessionContext.visitedPlaceIds,
-          isPlaceQuery,
-        };
-
         const response = await apiClient.post(
           ENDPOINTS.ai.groqChat,
-          { messages: request.messages, context: safeContext },
+          request.body,
           { signal: abortRef.current.signal, timeout: AI_REQUEST_TIMEOUT },
         );
 

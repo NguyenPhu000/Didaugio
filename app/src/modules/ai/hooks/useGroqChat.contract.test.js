@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => {
 
   return {
     apiClient: { post: vi.fn() },
+    sessionContext: {},
     state,
   };
 });
@@ -37,7 +38,7 @@ vi.mock("react-i18next", () => ({
 vi.mock("../../../stores/aiContextStore", () => ({
   useAIContextStore: (selector) =>
     selector({
-      sessionContext: {},
+      sessionContext: mocks.sessionContext,
       conversationMemory: [],
       clearConversation: vi.fn(),
     }),
@@ -92,6 +93,11 @@ describe("useGroqChat routing contract", () => {
     mocks.state.messages.length = 0;
     mocks.state.appendMessage.mockClear();
     mocks.apiClient.post.mockReset();
+    mocks.sessionContext.currentLocation = { latitude: 10.03, longitude: 105.78 };
+    mocks.sessionContext.currentCity = "Can Tho";
+    mocks.sessionContext.timeOfDay = "morning";
+    mocks.sessionContext.preferences = { travelStyle: "budget" };
+    mocks.sessionContext.visitedPlaceIds = [1, 2];
   });
 
   it("is chat-only", () => {
@@ -118,13 +124,16 @@ describe("useGroqChat routing contract", () => {
       content: "intervening request",
       source: "chat",
     });
+    mocks.sessionContext.currentLocation = { latitude: 21.03, longitude: 105.85 };
+    mocks.sessionContext.currentCity = "Ha Noi";
+    mocks.sessionContext.timeOfDay = "evening";
+    mocks.sessionContext.preferences = { travelStyle: "luxury" };
+    mocks.sessionContext.visitedPlaceIds = [9];
     mocks.apiClient.post.mockResolvedValueOnce({});
 
     await chat.retryLastMessage();
 
-    expect(mocks.apiClient.post.mock.calls[1][1].messages).toEqual(
-      originalRequest.messages,
-    );
+    expect(mocks.apiClient.post.mock.calls[1][1]).toEqual(originalRequest);
     expect(
       mocks.state.messages.filter(
         (message) => message.role === "user" && message.content === "original request",
