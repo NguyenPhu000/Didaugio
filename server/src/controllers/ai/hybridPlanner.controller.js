@@ -1,6 +1,7 @@
 import prisma from "../../config/prismaClient.js";
 import { findPlacesNearby } from "../../utils/spatialQuery.js";
 import { generateHybridPlan } from "../../services/ai/hybridPlanner.service.js";
+import { toAiServiceError } from "../../services/ai/aiProviderPolicy.js";
 
 /**
  * POST /api/ai/hybrid-plan
@@ -70,12 +71,11 @@ export const handleHybridPlan = async (req, res) => {
       message: "Tạo lịch trình thành công",
     });
   } catch (error) {
-    const isQuotaError =
-      error?.status === 429 || /quota|rate.?limit|too many requests/i.test(error?.message || "");
-    const isUnavailable =
-      error?.status === 503 || /service unavailable|overloaded/i.test(error?.message || "");
+    const aiError = toAiServiceError(error);
+    const isQuotaError = aiError.code === "QUOTA_EXCEEDED";
+    const isUnavailable = aiError.code === "AI_UNAVAILABLE";
 
-    console.error("[HybridPlanError]", error?.status || "", (error?.message || "").split("\n")[0]);
+    console.info("[AI]", { feature: "hybrid-plan-controller", code: aiError.code });
 
     if (isQuotaError) {
       return res.status(429).json({
@@ -95,11 +95,11 @@ export const handleHybridPlan = async (req, res) => {
       });
     }
 
-    return res.status(error.statusCode || 500).json({
+    return res.status(aiError.statusCode || 502).json({
       success: false,
       data: null,
-      message: error.message || "Lỗi hệ thống khi tạo lịch trình du lịch.",
-      errorCode: error.code || "INTERNAL_ERROR",
+      message: "Không thể tạo lịch trình AI vào lúc này.",
+      errorCode: aiError.code,
     });
   }
 };

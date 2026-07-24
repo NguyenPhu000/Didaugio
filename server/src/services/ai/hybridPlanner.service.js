@@ -4,6 +4,13 @@ import {
   createAiInvalidOutputError,
   validateHybridPlanOutput,
 } from "./aiOutputGuard.js";
+import {
+  AI_PROVIDER_TIMEOUT_MS,
+  canUseHybridFallback,
+  logAiProviderEvent,
+  toAiServiceError,
+} from "./aiProviderPolicy.js";
+import { generateHybridFallback } from "./hybridPlannerFallback.js";
 
 function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
   const R = 6371; // Earth's radius in km
@@ -36,8 +43,6 @@ export async function generateHybridPlan(coords, preferences, places, userReques
   if (!Array.isArray(places) || places.length === 0) {
     throw new Error("Danh sách địa điểm đầu vào trống.");
   }
-
-  const client = createGroqClient();
 
   // Helper format giá readable
   const fmtPrice = (v) => {
@@ -113,7 +118,11 @@ Hãy chọn 3-4 địa điểm phù hợp nhất, sắp xếp tuyến đường 
 
   const fullUserPrompt = buildHybridPlanUserPrompt(userPrompt, userRequest);
 
-  const completion = await client.chat.completions.create({
+  const startedAt = Date.now();
+  let completion;
+  try {
+    const client = createGroqClient();
+    completion = await client.chat.completions.create({
     model: GROQ_MODEL,
     messages: [
       { role: "system", content: systemPrompt },
@@ -121,6 +130,26 @@ Hãy chọn 3-4 địa điểm phù hợp nhất, sắp xếp tuyến đường 
     ],
     temperature: 0.2, // Nhiệt độ thấp để đảm bảo output định dạng JSON chính xác
     max_tokens: 2000,
+    }, { timeout: AI_PROVIDER_TIMEOUT_MS });
+  } catch (error) {
+    const aiError = toAiServiceError(error);
+    logAiProviderEvent({
+      feature: "hybrid-plan",
+      model: GROQ_MODEL,
+      startedAt,
+      code: aiError.code,
+    });
+    if (canUseHybridFallback(aiError)) {
+      return generateHybridFallback(places);
+    }
+    throw aiError;
+  }
+
+  logAiProviderEvent({
+    feature: "hybrid-plan",
+    model: GROQ_MODEL,
+    startedAt,
+    completion,
   });
 
   const rawText = completion.choices[0]?.message?.content || "";
@@ -129,7 +158,6 @@ Hãy chọn 3-4 địa điểm phù hợp nhất, sắp xếp tuyến đường 
   try {
     planData = validateHybridPlanOutput(parseAiJsonObject(rawText), places);
   } catch (err) {
-    console.error("[Groq JSON Parsing Failed] Raw Text:", rawText);
     if (err?.code === "AI_INVALID_OUTPUT") throw err;
     throw createAiInvalidOutputError();
   }

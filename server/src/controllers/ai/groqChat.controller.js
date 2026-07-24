@@ -1,4 +1,5 @@
 import { chatWithGroq } from "../../services/ai/groq.service.js";
+import { toAiServiceError } from "../../services/ai/aiProviderPolicy.js";
 import prisma from "../../config/prismaClient.js";
 import { 
   findPlacesNearby, 
@@ -86,10 +87,6 @@ export const handleGroqChat = async (req, res) => {
 
     const { reply, suggestedPlaceIds } = await chatWithGroq(messages, enrichedContext);
 
-    console.log("[GroqChat] Reply length:", reply?.length, "Reply preview:", reply?.substring(0, 100));
-    console.log("[GroqChat] suggestedPlaceIds:", suggestedPlaceIds);
-    console.log("[GroqChat] Messages sent:", messages.length, "System places:", systemPlaces.length);
-
     // 5. Khớp các địa điểm được AI gợi ý
     let responsePlaces = [];
     if (suggestedPlaceIds.length > 0) {
@@ -110,14 +107,11 @@ export const handleGroqChat = async (req, res) => {
       message: "Thành công",
     });
   } catch (error) {
-    const isQuotaError =
-      error?.status === 429 || /quota|rate.?limit|too many requests/i.test(error?.message || "");
-    const isUnavailable =
-      error?.status === 503 || /service unavailable|overloaded/i.test(error?.message || "");
+    const aiError = toAiServiceError(error);
+    const errorCode = aiError.code;
+    console.info("[AI]", { feature: "chat-controller", code: errorCode });
 
-    console.error("[GroqChat]", error?.status || "", (error?.message || "").split("\n")[0]);
-
-    if (isQuotaError) {
+    if (errorCode === "QUOTA_EXCEEDED") {
       return res.status(429).json({
         success: false,
         data: null,
@@ -126,7 +120,7 @@ export const handleGroqChat = async (req, res) => {
       });
     }
 
-    if (isUnavailable) {
+    if (errorCode === "AI_UNAVAILABLE") {
       return res.status(503).json({
         success: false,
         data: null,
@@ -135,11 +129,20 @@ export const handleGroqChat = async (req, res) => {
       });
     }
 
-    return res.status(500).json({
+    if (errorCode === "AI_TIMEOUT") {
+      return res.status(504).json({
+        success: false,
+        data: null,
+        message: "Trợ lý AI phản hồi quá lâu, vui lòng thử lại sau.",
+        errorCode,
+      });
+    }
+
+    return res.status(aiError.statusCode || 502).json({
       success: false,
       data: null,
       message: "Trợ lý AI đang gặp sự cố, vui lòng thử lại sau.",
-      errorCode: "AI_ERROR",
+      errorCode,
     });
   }
 };

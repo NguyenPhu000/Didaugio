@@ -3,6 +3,12 @@
  * Uses the official Groq SDK.
  */
 import Groq from "groq-sdk";
+import {
+  AI_PROVIDER_TIMEOUT_MS,
+  logAiProviderEvent,
+  normalizeProviderMessages,
+  toAiServiceError,
+} from "./aiProviderPolicy.js";
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 const GROQ_MODEL = process.env.GROQ_MODEL_NAME || "meta-llama/llama-4-scout-17b-16e-instruct";
@@ -171,19 +177,40 @@ function buildGroqSystemPrompt(context = {}) {
  * @returns {Promise<{ reply: string, suggestedPlaceIds: Array }>}
  */
 export async function chatWithGroq(messages, context = {}) {
-  const client = createGroqClient();
   const systemPrompt = buildGroqSystemPrompt(context);
+  const normalizedMessages = normalizeProviderMessages(messages);
+  const startedAt = Date.now();
+  let completion;
 
-  const completion = await client.chat.completions.create({
-    model: GROQ_MODEL,
-    messages: [{ role: "system", content: systemPrompt }, ...messages],
-    temperature: 0.6,
-    max_tokens: 2000,
-  });
+  try {
+    const client = createGroqClient();
+    completion = await client.chat.completions.create(
+      {
+        model: GROQ_MODEL,
+        messages: [{ role: "system", content: systemPrompt }, ...normalizedMessages],
+        temperature: 0.6,
+        max_tokens: 2000,
+      },
+      { timeout: AI_PROVIDER_TIMEOUT_MS },
+    );
+  } catch (error) {
+    const aiError = toAiServiceError(error);
+    logAiProviderEvent({
+      feature: "chat",
+      model: GROQ_MODEL,
+      startedAt,
+      code: aiError.code,
+    });
+    throw aiError;
+  }
 
   const replyText = completion.choices[0]?.message?.content || "";
-  console.log("[Groq] Raw reply length:", replyText.length, "Preview:", replyText.substring(0, 150));
-  console.log("[Groq] Choices:", completion.choices?.length, "Finish reason:", completion.choices[0]?.finish_reason);
+  logAiProviderEvent({
+    feature: "chat",
+    model: GROQ_MODEL,
+    startedAt,
+    completion,
+  });
 
   // Extract [PLACES: id1, id2] tag from response
   let finalReply = replyText;

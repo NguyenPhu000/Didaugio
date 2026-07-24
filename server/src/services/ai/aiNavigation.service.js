@@ -1,5 +1,6 @@
 import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
 import { parseAiJsonObject } from "./aiJsonParser.js";
+import { AI_PROVIDER_TIMEOUT_MS, normalizeProviderMessages } from "./aiProviderPolicy.js";
 
 class AINavigationService {
   async getNavigationAdvice(payload = {}) {
@@ -15,10 +16,10 @@ class AINavigationService {
       const client = createGroqClient();
       const completion = await client.chat.completions.create({
         model: GROQ_MODEL,
-        messages: [{ role: "user", content: prompt }],
+        messages: normalizeProviderMessages([{ role: "user", content: prompt }]),
         temperature: 0.3,
         max_tokens: 800,
-      });
+      }, { timeout: AI_PROVIDER_TIMEOUT_MS });
       const text = completion.choices[0]?.message?.content || "";
       const parsed = this._tryParseJson(text);
 
@@ -55,10 +56,10 @@ class AINavigationService {
       const client = createGroqClient();
       const completion = await client.chat.completions.create({
         model: GROQ_MODEL,
-        messages: [{ role: "user", content: prompt }],
+        messages: normalizeProviderMessages([{ role: "user", content: prompt }]),
         temperature: 0.3,
         max_tokens: 800,
-      });
+      }, { timeout: AI_PROVIDER_TIMEOUT_MS });
       const text = completion.choices[0]?.message?.content || "";
       const parsed = this._tryParseJson(text);
       const orderedIndexes = this._sanitizeWaypointIndexes(

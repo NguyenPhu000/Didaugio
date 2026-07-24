@@ -7,6 +7,11 @@ import prisma from "../../config/prismaClient.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
 import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
+import {
+  AI_PROVIDER_TIMEOUT_MS,
+  logAiProviderEvent,
+  toAiServiceError,
+} from "./aiProviderPolicy.js";
 import { kMeansClustering, solveNearestNeighborTSP } from "../../utils/clustering.js";
 import { validateAndCorrectItinerary } from "../../utils/itineraryFormatter.js";
 import { buildValidatedCachedItineraryResult, parseAndValidateItineraryOutput } from "./itineraryOutput.js";
@@ -268,36 +273,24 @@ export async function generateItinerary(preferences, places) {
       temperature: 0.5,
       max_tokens: 2000,
       response_format: { type: "json_object" },
-    });
+    }, { timeout: AI_PROVIDER_TIMEOUT_MS });
     rawText = completion.choices[0]?.message?.content || "";
     tokensUsed = completion.usage?.total_tokens ?? null;
+    logAiProviderEvent({
+      feature: "itinerary",
+      model: GROQ_MODEL,
+      startedAt: start,
+      completion,
+    });
   } catch (err) {
-    const isQuotaError =
-      err?.status === 429 || /quota|rate.?limit|too many requests/i.test(err?.message || "");
-    const isUnavailable =
-      err?.status === 503 || /service unavailable|overloaded/i.test(err?.message || "");
-
-    if (isQuotaError) {
-      throw new ServiceError(
-        "AI đã chạm giới hạn tần suất. Vui lòng thử lại sau.",
-        429,
-        "QUOTA_EXCEEDED",
-      );
-    }
-
-    if (isUnavailable) {
-      throw new ServiceError(
-        "Dịch vụ AI tạm thời không khả dụng.",
-        503,
-        "AI_UNAVAILABLE",
-      );
-    }
-
-    throw new ServiceError(
-      err?.message || "Lỗi khi gọi AI API",
-      err?.status || 503,
-      "AI_ERROR",
-    );
+    const aiError = toAiServiceError(err);
+    logAiProviderEvent({
+      feature: "itinerary",
+      model: GROQ_MODEL,
+      startedAt: start,
+      code: aiError.code,
+    });
+    throw aiError;
   }
 
   const responseTimeMs = Date.now() - start;

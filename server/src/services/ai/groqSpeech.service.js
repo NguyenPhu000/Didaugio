@@ -1,5 +1,10 @@
 import { toFile } from "groq-sdk";
 import { createGroqClient } from "./groq.service.js";
+import {
+  AI_PROVIDER_TIMEOUT_MS,
+  logAiProviderEvent,
+  toAiServiceError,
+} from "./aiProviderPolicy.js";
 
 export const GROQ_TRANSCRIPTION_MODEL =
   process.env.GROQ_TRANSCRIPTION_MODEL || "whisper-large-v3-turbo";
@@ -93,7 +98,6 @@ export function buildGroqSpeechRequest({ input, voice = GROQ_TTS_VOICE } = {}) {
 
 export async function transcribeWithGroq({ file, language, prompt }) {
   validateTranscriptionFile(file);
-  const client = createGroqClient();
   const upload = await toFile(file.buffer, file.originalname || "voice.wav", {
     type: file.mimetype,
   });
@@ -102,8 +106,29 @@ export async function transcribeWithGroq({ file, language, prompt }) {
     language,
     prompt,
   });
+  const startedAt = Date.now();
+  let transcription;
 
-  const transcription = await client.audio.transcriptions.create(request);
+  try {
+    const client = createGroqClient();
+    transcription = await client.audio.transcriptions.create(request, {
+      timeout: AI_PROVIDER_TIMEOUT_MS,
+    });
+  } catch (error) {
+    const aiError = toAiServiceError(error);
+    logAiProviderEvent({
+      feature: "transcription",
+      model: request.model,
+      startedAt,
+      code: aiError.code,
+    });
+    throw aiError;
+  }
+  logAiProviderEvent({
+    feature: "transcription",
+    model: request.model,
+    startedAt,
+  });
   return {
     text: transcription?.text || "",
     model: request.model,
@@ -113,9 +138,29 @@ export async function transcribeWithGroq({ file, language, prompt }) {
 
 export async function synthesizeSpeechWithGroq({ input, voice }) {
   const cleanInput = validateSpeechInput(input);
-  const client = createGroqClient();
   const request = buildGroqSpeechRequest({ input: cleanInput, voice });
-  const response = await client.audio.speech.create(request);
+  const startedAt = Date.now();
+  let response;
+  try {
+    const client = createGroqClient();
+    response = await client.audio.speech.create(request, {
+      timeout: AI_PROVIDER_TIMEOUT_MS,
+    });
+  } catch (error) {
+    const aiError = toAiServiceError(error);
+    logAiProviderEvent({
+      feature: "speech",
+      model: request.model,
+      startedAt,
+      code: aiError.code,
+    });
+    throw aiError;
+  }
+  logAiProviderEvent({
+    feature: "speech",
+    model: request.model,
+    startedAt,
+  });
   const buffer = Buffer.from(await response.arrayBuffer());
   return {
     buffer,

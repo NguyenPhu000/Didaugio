@@ -4,6 +4,7 @@ import {
   streamChat,
 } from "../../services/ai/aiStreaming.service.js";
 import { chatWithGroq } from "../../services/ai/groq.service.js";
+import { toAiServiceError } from "../../services/ai/aiProviderPolicy.js";
 import {
   synthesizeSpeechWithGroq,
   transcribeWithGroq,
@@ -45,7 +46,7 @@ export const handlePlaceSummaryStream = async (req, res) => {
     await streamPlaceSummary(prompt, res);
   } catch (err) {
     const status = err?.status || 500;
-    console.error("[PlaceSummary]", err?.message || "");
+    console.info("[AI]", { feature: "place-summary", status });
     if (!res.headersSent) {
       res.status(status).json({
         success: false,
@@ -109,12 +110,11 @@ export const handleChat = async (req, res) => {
       message: "Thành công",
     });
   } catch (err) {
-    const isQuotaError =
-      err?.status === 429 || /quota|rate.?limit|too many requests/i.test(err?.message || "");
-    const isUnavailable =
-      err?.status === 503 || /service unavailable|overloaded/i.test(err?.message || "");
+    const aiError = toAiServiceError(err);
+    const isQuotaError = aiError.code === "QUOTA_EXCEEDED";
+    const isUnavailable = aiError.code === "AI_UNAVAILABLE";
 
-    console.error("[Chat]", err?.status || "", (err?.message || "").split("\n")[0]);
+    console.info("[AI]", { feature: "chat", status: err?.status ?? err?.statusCode ?? 500 });
 
     if (isQuotaError) {
       return res.status(429).json({
@@ -134,11 +134,20 @@ export const handleChat = async (req, res) => {
       });
     }
 
-    return res.status(500).json({
+    if (aiError.code === "AI_TIMEOUT") {
+      return res.status(504).json({
+        success: false,
+        data: null,
+        message: "Trợ lý AI phản hồi quá lâu, vui lòng thử lại sau.",
+        errorCode: "AI_TIMEOUT",
+      });
+    }
+
+    return res.status(aiError.statusCode || 502).json({
       success: false,
       data: null,
       message: "Trợ lý AI đang gặp sự cố, vui lòng thử lại sau.",
-      errorCode: "AI_ERROR",
+      errorCode: aiError.code,
     });
   }
 };
@@ -162,7 +171,7 @@ export const handleVoiceTranscribe = async (req, res) => {
     });
   } catch (err) {
     const status = err?.status || err?.statusCode || 500;
-    console.error("[VoiceTranscribe]", status, (err?.message || "").split("\n")[0]);
+    console.info("[AI]", { feature: "transcription", status, code: err?.code || err?.errorCode || null });
     return res.status(status).json({
       success: false,
       data: null,
@@ -193,7 +202,7 @@ export const handleVoiceSpeech = async (req, res) => {
     return res.send(result.buffer);
   } catch (err) {
     const status = err?.status || err?.statusCode || 500;
-    console.error("[VoiceSpeech]", status, (err?.message || "").split("\n")[0]);
+    console.info("[AI]", { feature: "speech", status, code: err?.code || err?.errorCode || null });
     return res.status(status).json({
       success: false,
       data: null,
