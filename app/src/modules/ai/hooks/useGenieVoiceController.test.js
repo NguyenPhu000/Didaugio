@@ -188,6 +188,29 @@ describe("useGenieVoice audio lifecycle", () => {
     expect(mocks.speech.speak).toHaveBeenCalledTimes(1);
   });
 
+  it("restores idle mode and reports a stable error when speech stop fails before recording", async () => {
+    mocks.speech.stop.mockRejectedValue(new Error("speech native failure"));
+    const voice = useGenieVoice();
+
+    await expect(voice.startRecording()).resolves.toBe(false);
+
+    expect(mocks.requestPermission).not.toHaveBeenCalled();
+    expect(mocks.setAudioMode).toHaveBeenCalledWith(IDLE_AUDIO_MODE);
+    expect(mocks.stateSetters[0]).toHaveBeenLastCalledWith("error");
+    expect(mocks.stateSetters[4]).toHaveBeenLastCalledWith("VOICE_SESSION_FAILED");
+  });
+
+  it("returns a stable error instead of rejecting when speech stop fails before speaking", async () => {
+    mocks.speech.stop.mockRejectedValue(new Error("speech native failure"));
+    const voice = useGenieVoice();
+
+    await expect(voice.speakText("xin chào")).resolves.toBe(false);
+
+    expect(mocks.speech.speak).not.toHaveBeenCalled();
+    expect(mocks.stateSetters[0]).toHaveBeenLastCalledWith("error");
+    expect(mocks.stateSetters[4]).toHaveBeenLastCalledWith("VOICE_SESSION_FAILED");
+  });
+
   it("ignores stale callbacks from speech superseded by a newer utterance", async () => {
     const voice = useGenieVoice();
 

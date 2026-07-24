@@ -142,10 +142,11 @@ export function useGenieVoice() {
       setSafely(setTranscript, "");
       setSafely(setVoiceLevel, 0);
       speechSessionRef.current += 1;
-      await Speech.stop();
-      if (!mountedGuardRef.current.isMounted()) return false;
 
       try {
+        await Speech.stop();
+        if (!mountedGuardRef.current.isMounted()) return false;
+
         const started = await startAudioRecording({
           requestPermission: requestRecordingPermissionsAsync,
           setAudioMode: setAudioModeAsync,
@@ -237,45 +238,54 @@ export function useGenieVoice() {
 
       const speechSession = speechSessionRef.current + 1;
       speechSessionRef.current = speechSession;
-      await Speech.stop();
-      if (
-        !mountedGuardRef.current.isMounted()
-        || speechSessionRef.current !== speechSession
-      ) {
+
+      try {
+        await Speech.stop();
+        if (
+          !mountedGuardRef.current.isMounted()
+          || speechSessionRef.current !== speechSession
+        ) {
+          return false;
+        }
+
+        setVoiceStatus(VOICE_STATUS.SPEAKING);
+        setSafely(setError, null);
+        setSafely(setVoiceLevel, 0.7);
+
+        const isCurrentSpeech = () => (
+          mountedGuardRef.current.isMounted()
+          && speechSessionRef.current === speechSession
+        );
+
+        Speech.speak(cleanText, {
+          language: "vi-VN",
+          rate: 0.9,
+          pitch: 1.02,
+          onDone: () => {
+            if (!isCurrentSpeech()) return;
+            setSafely(setVoiceLevel, 0);
+            setVoiceStatus(VOICE_STATUS.IDLE);
+          },
+          onStopped: () => {
+            if (!isCurrentSpeech()) return;
+            setSafely(setVoiceLevel, 0);
+            setVoiceStatus(VOICE_STATUS.IDLE);
+          },
+          onError: () => {
+            if (!isCurrentSpeech()) return;
+            setSafely(setError, "Voice playback failed");
+            setSafely(setVoiceLevel, 0);
+            setVoiceStatus(VOICE_STATUS.ERROR);
+          },
+        });
+        return true;
+      } catch {
+        if (speechSessionRef.current !== speechSession) return false;
+        setSafely(setError, VOICE_SESSION_FAILED);
+        setSafely(setVoiceLevel, 0);
+        setVoiceStatus(VOICE_STATUS.ERROR);
         return false;
       }
-
-      setVoiceStatus(VOICE_STATUS.SPEAKING);
-      setSafely(setError, null);
-      setSafely(setVoiceLevel, 0.7);
-
-      const isCurrentSpeech = () => (
-        mountedGuardRef.current.isMounted()
-        && speechSessionRef.current === speechSession
-      );
-
-      Speech.speak(cleanText, {
-        language: "vi-VN",
-        rate: 0.9,
-        pitch: 1.02,
-        onDone: () => {
-          if (!isCurrentSpeech()) return;
-          setSafely(setVoiceLevel, 0);
-          setVoiceStatus(VOICE_STATUS.IDLE);
-        },
-        onStopped: () => {
-          if (!isCurrentSpeech()) return;
-          setSafely(setVoiceLevel, 0);
-          setVoiceStatus(VOICE_STATUS.IDLE);
-        },
-        onError: () => {
-          if (!isCurrentSpeech()) return;
-          setSafely(setError, "Voice playback failed");
-          setSafely(setVoiceLevel, 0);
-          setVoiceStatus(VOICE_STATUS.ERROR);
-        },
-      });
-      return true;
     });
   }, [setSafely, setVoiceStatus]);
 
