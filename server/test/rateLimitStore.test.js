@@ -41,6 +41,36 @@ test("AI limiter falls back to a normalized socket IP without trusting headers",
   );
 });
 
+test("AI limiter canonicalizes equivalent IPv6 forms into one fallback bucket", () => {
+  const compressed = buildAiRateLimitKey({ ip: "2001:db8::1" });
+  const expanded = buildAiRateLimitKey({ ip: "2001:0DB8:0:0:0:0:0:1" });
+  const bracketedWithPort = buildAiRateLimitKey({ ip: "[2001:0db8:0:0:0:0:0:1]:443" });
+
+  assert.equal(compressed, "ip:2001:db8::1");
+  assert.equal(expanded, compressed);
+  assert.equal(bracketedWithPort, compressed);
+  assert.equal(buildAiRateLimitKey({ ip: "::" }), "ip:::");
+});
+
+test("AI limiter normalizes zones and IPv4-mapped IPv6 without creating bypass keys", () => {
+  assert.equal(
+    buildAiRateLimitKey({ ip: "[fe80:0:0:0:0:0:0:1%eth0]:8443" }),
+    "ip:fe80::1",
+  );
+  assert.equal(
+    buildAiRateLimitKey({ ip: "[::FFFF:192.0.2.77]:8443" }),
+    "ip:192.0.2.77",
+  );
+  assert.equal(
+    buildAiRateLimitKey({ ip: "0:0:0:0:0:ffff:c000:24d" }),
+    "ip:192.0.2.77",
+  );
+  assert.equal(
+    buildAiRateLimitKey({ ip: "not an ip", socket: { remoteAddress: "also invalid" } }),
+    "ip:unknown",
+  );
+});
+
 test("AI limiter never stringifies malformed user IDs into a shared user bucket", () => {
   assert.equal(
     buildAiRateLimitKey({ user: { id: { valueOf: () => 7 } }, ip: "10.0.0.7" }),

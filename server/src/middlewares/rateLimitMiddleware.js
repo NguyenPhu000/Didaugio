@@ -1,6 +1,6 @@
 import rateLimit from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
-import { isIP } from "node:net";
+import { isIP, SocketAddress } from "node:net";
 import { getRedisClient } from "../config/redisClient.js";
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -23,11 +23,35 @@ const normalizeUserId = (value) => {
 const normalizeIp = (value) => {
   if (typeof value !== "string") return null;
 
-  const normalized = value.trim().toLowerCase();
-  const ipv4MappedAddress = normalized.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
-  const candidate = ipv4MappedAddress ? ipv4MappedAddress[1] : normalized;
+  let candidate = value.trim().toLowerCase();
+  const bracketedAddress = candidate.match(/^\[([^\]]+)\](?::\d+)?$/);
+  if (bracketedAddress) candidate = bracketedAddress[1];
 
-  return isIP(candidate) ? candidate : null;
+  const ipv4WithPort = candidate.match(/^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/);
+  if (ipv4WithPort) candidate = ipv4WithPort[1];
+
+  const zoneIndex = candidate.indexOf("%");
+  if (zoneIndex >= 0) candidate = candidate.slice(0, zoneIndex);
+
+  const family = isIP(candidate);
+  if (!family) return null;
+
+  let normalized = candidate;
+  if (family === 6) {
+    try {
+      normalized = new SocketAddress({
+        address: candidate,
+        port: 0,
+        family: "ipv6",
+      }).address;
+    } catch {
+      return null;
+    }
+  }
+
+  const ipv4MappedAddress = normalized.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
+
+  return ipv4MappedAddress ? ipv4MappedAddress[1] : normalized;
 };
 
 /**
