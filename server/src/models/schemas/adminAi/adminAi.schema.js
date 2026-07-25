@@ -165,6 +165,19 @@ export const aiKillSwitchSchema = z.object({
   reason: changeReasonSchema,
 }).strict();
 
+export const aiOverviewQuerySchema = z.object({
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+}).strict().superRefine(({ from, to }, context) => {
+  if (from && to && new Date(from).getTime() > new Date(to).getTime()) {
+    context.addIssue({
+      code: "custom",
+      path: ["to"],
+      message: "to must not be earlier than from",
+    });
+  }
+});
+
 const queryBooleanSchema = z.preprocess((value) => {
   if (value === "true") return true;
   if (value === "false") return false;

@@ -7,6 +7,7 @@ import {
   aiDraftUpdateSchema,
   aiKillSwitchSchema,
   aiLogsQuerySchema,
+  aiOverviewQuerySchema,
   aiPublishSchema,
   aiRollbackSchema,
   aiTestRequestSchema,
@@ -29,7 +30,7 @@ const requireAdminAiRole = (req, res, next) => {
 
 router.use(authenticate);
 router.use(requireAdminAiRole);
-router.get("/overview", hasPermission("ai.view"), controller.getOverview);
+router.get("/overview", hasPermission("ai.view"), validateQuery(aiOverviewQuerySchema), controller.getOverview);
 router.get("/config", hasPermission("ai.view"), controller.getConfig);
 router.put("/config/draft", hasPermission("ai.config.manage"), validateBody(aiDraftUpdateSchema), controller.saveDraft);
 router.post("/config/test", hasPermission("ai.test.run"), validateBody(aiTestRequestSchema), controller.testConfig);
