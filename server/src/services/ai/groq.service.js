@@ -156,38 +156,36 @@ function buildGroqSystemPrompt(context = {}, configuredPrompt = "") {
     parts.push(`Đã xem: ${context.visitedPlaceIds.slice(-5).join(", ")}`);
   }
 
-  // 4. RAG Places Context từ DB
+  // 4. RAG Places Context từ DB (Dạng văn bản rõ ràng cho LLM)
   if (Array.isArray(context.systemPlaces) && context.systemPlaces.length > 0) {
-    const minifiedPlaces = context.systemPlaces.map((p) => {
-      const entry = {
-        i: p.id,
-        n: p.name,
-        c: p.categoryName || p.category?.name || "Địa điểm",
-        a: p.address || "",
-        r: p.ratingAvg ? Number(p.ratingAvg) : 0,
-        p: formatPriceRange(p.priceFrom, p.priceTo),
-      };
-      if (p.shortDescription) entry.sd = p.shortDescription.substring(0, 80);
-      if (p.distance != null) entry.dist = `${p.distance.toFixed(1)}km`;
-      return entry;
-    });
-
-    // Nhóm địa điểm theo danh mục để AI dễ gợi ý theo loại
-    const groupedByCategory = {};
-    for (const p of minifiedPlaces) {
-      if (!groupedByCategory[p.c]) groupedByCategory[p.c] = [];
-      groupedByCategory[p.c].push(p);
-    }
+    const allowedNames = context.systemPlaces.map((p) => `"${p.name}"`).join(", ");
+    const formattedPlaceLines = context.systemPlaces.map((p) => {
+      let line = `- ID ${p.id}: "${p.name}" (Danh mục: ${p.categoryName || p.category?.name || "Địa điểm"}`;
+      if (p.address) line += `, Địa chỉ: ${p.address}`;
+      const priceStr = formatPriceRange(p.priceFrom, p.priceTo);
+      if (priceStr) line += `, Giá: ${priceStr}`;
+      if (p.ratingAvg) line += `, Đánh giá: ${p.ratingAvg}/5`;
+      if (p.shortDescription) line += `, Mô tả: ${p.shortDescription.substring(0, 80)}`;
+      line += `)`;
+      return line;
+    }).join("\n");
 
     parts.push(
-      `\nQUAN TRỌNG: Bạn CHỈ ĐƯỢC PHÉP giới thiệu/gợi ý các địa điểm có trong danh sách dưới đây. Tuyệt đối KHÔNG tự ý bịa tên hoặc lấy địa điểm khác bên ngoài. Nếu khách hỏi địa điểm ngoài danh sách, hãy trả lời rằng "Hiện tại Genie chưa có thông tin địa điểm này nè" và gợi ý sang địa điểm có sẵn.`,
-      `Danh sách địa điểm (i=ID, n=Tên, c=Danh mục, a=Địa chỉ, r=Rating 0-5, p=Giá đã format, sd=Mô tả ngắn, dist=Khoảng cách):`,
-      JSON.stringify(minifiedPlaces),
-      `\nNhóm theo danh mục:`,
-      JSON.stringify(groupedByCategory),
-      `\nKhi gợi ý địa điểm, LUÔN kết thúc bằng dòng: [PLACES: id1, id2, ...]`,
+      `\nQUY TẮC CHỐNG BỊA ĐẶT KHẮC NGHIỆT (ZERO HALLUCINATION):`,
+      `DANH SÁCH TÊN ĐỊA ĐIỂM DUY NHẤT ĐƯỢC PHÉP NHẮC TỚI: [ ${allowedNames} ]`,
+      `TUYỆT ĐỐI KHÔNG TỰ NÓI HOẶC BỊA BẤT KỲ TÊN QUÁN/ĐỊA ĐIỂM NÀO KHÁC BÊN NGOÀI DANH SÁCH TRÊN (ví dụ: không được bịa "Quán bún Cái Bè", "Quán bún Bè", hay bất kỳ quán nào không có trong danh sách trên).`,
+      `Nếu người dùng hỏi món ăn/quán mà trong CSDL không có, hãy trả lời thẳng thắn: "Hiện tại Genie chưa có thông tin quán này trong hệ thống Cần Thơ nè" và gợi ý 1 trong các quán có sẵn trong danh sách CSDL dưới đây.`,
+      `\nDANH SÁCH CHI TIẾT ĐỊA ĐIỂM CSDL:`,
+      formattedPlaceLines,
+      `\nKhi gợi ý địa điểm từ danh sách trên, LUÔN đính kèm dòng: [PLACES: id1, id2, ...] ở cuối câu trả lời.`,
+    );
+  } else {
+    parts.push(
+      `\nQUY TẮC CHỐNG BỊA ĐẶT: Hiện tại CSDL chưa có địa điểm nào phù hợp. Bạn KHÔNG ĐƯỢC BỊA NÓI bất kỳ tên quán/địa điểm nào. Hãy thông báo: "Genie chưa tìm thấy địa điểm phù hợp trong CSDL nè" và hỏi lại nhu cầu của người dùng.`,
     );
   }
+
+  parts.push(`\nLƯU Ý BẮT BUỘC CUỐI CÙNG: Không bao giờ nhắc đến bất kỳ tên địa điểm nào nằm ngoài danh sách CSDL trên.`);
 
   return parts.join("\n");
 }
