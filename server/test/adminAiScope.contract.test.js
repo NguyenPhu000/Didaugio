@@ -1,3 +1,5 @@
+if (!process.env.JWT_SECRET) process.env.JWT_SECRET = "test-secret-key-12345678901234567890";
+if (!process.env.FIELD_ENCRYPTION_KEY) process.env.FIELD_ENCRYPTION_KEY = "12345678901234567890123456789012";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
