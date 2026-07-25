@@ -91,6 +91,11 @@ function conflictRevision(error) {
   return null;
 }
 
+function mutationErrorMessage(error) {
+  const data = error?.data ?? error?.response?.data ?? {};
+  return data.message ?? error?.message ?? "Không thể hoàn tất thao tác AI.";
+}
+
 function ConfigLoading() {
   return (
     <div
@@ -158,11 +163,18 @@ function ConfigurationWorkspace({ permissions }) {
   const [rollbackOpen, setRollbackOpen] = useState(false);
   const [conflict, setConflict] = useState(null);
   const [operationError, setOperationError] = useState(null);
+  const [publishError, setPublishError] = useState(null);
+  const [rollbackError, setRollbackError] = useState(null);
   const config = unwrapResponse(configQuery.data);
 
-  const runMutation = async (mutation, payload, closeDialog) => {
+  const runMutation = async (
+    mutation,
+    payload,
+    { closeDialog, setDialogError } = {},
+  ) => {
     setConflict(null);
     setOperationError(null);
+    setDialogError?.(null);
     try {
       await mutation.mutateAsync(payload);
       closeDialog?.();
@@ -172,7 +184,8 @@ function ConfigurationWorkspace({ permissions }) {
         setConflict(newerRevision);
         closeDialog?.();
       } else {
-        setOperationError(error);
+        if (setDialogError) setDialogError(error);
+        else setOperationError(error);
       }
     }
   };
@@ -213,10 +226,20 @@ function ConfigurationWorkspace({ permissions }) {
             : undefined
         }
         onPublish={
-          permissions.publish ? () => setPublishOpen(true) : undefined
+          permissions.publish
+            ? () => {
+                setPublishError(null);
+                setPublishOpen(true);
+              }
+            : undefined
         }
         onRollback={
-          permissions.publish ? () => setRollbackOpen(true) : undefined
+          permissions.publish
+            ? () => {
+                setRollbackError(null);
+                setRollbackOpen(true);
+              }
+            : undefined
         }
         isSaving={saveDraftMutation.isPending}
       />
@@ -224,27 +247,37 @@ function ConfigurationWorkspace({ permissions }) {
         <>
           <AiPublishDialog
             open={publishOpen}
-            onOpenChange={setPublishOpen}
+            onOpenChange={(open) => {
+              setPublishOpen(open);
+              if (!open) setPublishError(null);
+            }}
             revision={config.revision}
             currentVersion={config.activeVersion?.version}
             draftVersion={config.draftVersion?.version}
             isPending={publishMutation.isPending}
+            errorMessage={mutationErrorMessage(publishError)}
             onConfirm={(payload) =>
-              runMutation(publishMutation, payload, () =>
-                setPublishOpen(false),
-              )
+              runMutation(publishMutation, payload, {
+                closeDialog: () => setPublishOpen(false),
+                setDialogError: setPublishError,
+              })
             }
           />
           <AiRollbackDialog
             open={rollbackOpen}
-            onOpenChange={setRollbackOpen}
+            onOpenChange={(open) => {
+              setRollbackOpen(open);
+              if (!open) setRollbackError(null);
+            }}
             currentVersion={config.activeVersion?.version}
             versions={config.versions}
             isPending={rollbackMutation.isPending}
+            errorMessage={mutationErrorMessage(rollbackError)}
             onConfirm={(payload) =>
-              runMutation(rollbackMutation, payload, () =>
-                setRollbackOpen(false),
-              )
+              runMutation(rollbackMutation, payload, {
+                closeDialog: () => setRollbackOpen(false),
+                setDialogError: setRollbackError,
+              })
             }
           />
         </>
@@ -260,6 +293,7 @@ function SafetyWorkspace({ permissions, runtime }) {
   const [killDialogOpen, setKillDialogOpen] = useState(false);
   const [conflict, setConflict] = useState(null);
   const [operationError, setOperationError] = useState(null);
+  const [killSwitchError, setKillSwitchError] = useState(null);
   const config = unwrapResponse(configQuery.data);
   const killSwitchEnabled = runtime?.status === "disabled";
 
@@ -276,12 +310,12 @@ function SafetyWorkspace({ permissions, runtime }) {
   };
 
   const updateKillSwitch = async (payload) => {
-    setOperationError(null);
+    setKillSwitchError(null);
     try {
       await killSwitchMutation.mutateAsync(payload);
       setKillDialogOpen(false);
     } catch (error) {
-      setOperationError(error);
+      setKillSwitchError(error);
     }
   };
 
@@ -327,9 +361,13 @@ function SafetyWorkspace({ permissions, runtime }) {
       {permissions.killSwitch && (
         <AiKillSwitchDialog
           open={killDialogOpen}
-          onOpenChange={setKillDialogOpen}
+          onOpenChange={(open) => {
+            setKillDialogOpen(open);
+            if (!open) setKillSwitchError(null);
+          }}
           enabled={!killSwitchEnabled}
           isPending={killSwitchMutation.isPending}
+          errorMessage={mutationErrorMessage(killSwitchError)}
           onConfirm={updateKillSwitch}
         />
       )}
@@ -348,6 +386,20 @@ function TestLabWorkspace() {
       // React Query owns the rendered validation/provider error state.
     }
   };
+
+  if (configQuery.isLoading) return <ConfigLoading />;
+  if (configQuery.isError || !config) {
+    return (
+      <AiEmptyState
+        isError
+        title="Không tải được cấu hình Test Lab"
+        description="Chưa có phiên bản cấu hình tin cậy, nên Test Lab không gửi request."
+        actionLabel="Tải lại cấu hình"
+        onAction={configQuery.refetch}
+      />
+    );
+  }
+
   return (
     <AiTestLabPanel
       onRun={runTest}

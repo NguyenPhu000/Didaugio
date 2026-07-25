@@ -753,6 +753,64 @@ describe("AdminAiPage", () => {
     expect(mocks.publishMutation.mutateAsync).toHaveBeenCalledOnce();
   });
 
+  it("keeps a rejected publish error reachable inside the open dialog", async () => {
+    const user = userEvent.setup();
+    mocks.permissions = new Set(["ai.view", "ai.config.publish"]);
+    mocks.publishMutation.mutateAsync.mockRejectedValueOnce(
+      new Error("Provider is unavailable"),
+    );
+
+    render(<AdminAiPage />);
+    await user.click(screen.getByRole("tab", { name: "Cấu hình" }));
+    await user.click(screen.getByRole("button", { name: "Phát hành" }));
+    await user.type(
+      screen.getByLabelText("Lý do phát hành"),
+      "Draft đã kiểm thử",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Xác nhận phát hành" }),
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Provider is unavailable",
+    );
+    expect(
+      within(dialog).getByRole("heading", { name: "Phát hành draft" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a rejected rollback error reachable inside the open dialog", async () => {
+    const user = userEvent.setup();
+    mocks.permissions = new Set(["ai.view", "ai.config.publish"]);
+    mocks.rollbackMutation.mutateAsync.mockRejectedValueOnce(
+      new Error("Rollback is unavailable"),
+    );
+
+    render(<AdminAiPage />);
+    await user.click(screen.getByRole("tab", { name: "Cấu hình" }));
+    await user.click(screen.getByRole("button", { name: "Rollback" }));
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Phiên bản đích" }),
+      "2",
+    );
+    await user.type(
+      screen.getByLabelText("Lý do rollback"),
+      "Khôi phục snapshot cũ",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Xác nhận rollback" }),
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Rollback is unavailable",
+    );
+    expect(
+      within(dialog).getByRole("heading", { name: "Rollback cấu hình" }),
+    ).toBeInTheDocument();
+  });
+
   it("mounts Test Lab only on its permitted tab and forwards the bounded request", async () => {
     const user = userEvent.setup();
     mocks.permissions = new Set(["ai.view", "ai.test.run"]);
@@ -771,6 +829,42 @@ describe("AdminAiPage", () => {
       context: {},
     });
     expect(mocks.saveDraftMutation.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("withholds Test Lab execution while configuration versions load or fail", async () => {
+    const user = userEvent.setup();
+    mocks.permissions = new Set(["ai.view", "ai.test.run"]);
+    mocks.configResult = {
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      refetch: vi.fn(),
+    };
+
+    const { rerender } = render(<AdminAiPage />);
+    await user.click(screen.getByRole("tab", { name: "Test Lab" }));
+
+    expect(
+      screen.getByRole("status", { name: "Đang tải cấu hình AI" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Chạy test" }),
+    ).not.toBeInTheDocument();
+
+    mocks.configResult = {
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch: vi.fn(),
+    };
+    rerender(<AdminAiPage />);
+
+    expect(
+      screen.getByText("Không tải được cấu hình Test Lab"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Chạy test" }),
+    ).not.toBeInTheDocument();
   });
 
   it("routes the kill switch only through its typed confirmation dialog", async () => {
@@ -797,5 +891,36 @@ describe("AdminAiPage", () => {
       reason: "Provider lỗi diện rộng",
     });
     expect(mocks.saveDraftMutation.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("keeps a rejected kill-switch error reachable inside the open dialog", async () => {
+    const user = userEvent.setup();
+    mocks.permissions = new Set(["ai.view", "ai.kill_switch.manage"]);
+    mocks.killSwitchMutation.mutateAsync.mockRejectedValueOnce(
+      new Error("Kill switch is unavailable"),
+    );
+
+    render(<AdminAiPage />);
+    await user.click(screen.getByRole("tab", { name: "An toàn" }));
+    await user.click(screen.getByRole("button", { name: "Tắt AI" }));
+    await user.type(
+      screen.getByLabelText("Lý do thay đổi kill switch"),
+      "Provider lỗi diện rộng",
+    );
+    await user.type(
+      screen.getByLabelText("Nhập TAT AI để xác nhận"),
+      "TAT AI",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Xác nhận tắt AI" }),
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Kill switch is unavailable",
+    );
+    expect(
+      within(dialog).getByRole("heading", { name: "Tắt AI runtime" }),
+    ).toBeInTheDocument();
   });
 });

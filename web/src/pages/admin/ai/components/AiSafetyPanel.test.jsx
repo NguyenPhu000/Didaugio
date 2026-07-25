@@ -128,6 +128,61 @@ describe("AiSafetyPanel", () => {
     expect(screen.getByText("1 / 500 từ khóa")).toBeInTheDocument();
   });
 
+  it("exposes a duplicate created by diacritic folding to the toggle and save action", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <AiSafetyPanel
+        config={{
+          ...CONFIG_RESPONSE,
+          draftVersion: {
+            ...CONFIG_RESPONSE.draftVersion,
+            configData: {
+              ...SAFETY_CONFIG,
+              safety: {
+                ...SAFETY_CONFIG.safety,
+                blockedKeywords: ["tu cam", "từ cấm"],
+                diacriticInsensitive: false,
+              },
+            },
+          },
+        }}
+        permissions={{ manage: true, killSwitch: false }}
+        onSaveDraft={vi.fn()}
+      />,
+    );
+
+    const toggle = screen.getByRole("checkbox", {
+      name: /Không phân biệt dấu/,
+    });
+    await user.click(toggle);
+
+    const alert = screen.getByRole("alert");
+    const save = screen.getByRole("button", { name: "Lưu safety draft" });
+    expect(alert).toHaveTextContent("Từ khóa đã tồn tại");
+    expect(alert).toHaveAttribute("id", "ai-safety-error");
+    expect(toggle).toHaveAttribute("aria-describedby", "ai-safety-error");
+    expect(save).toHaveAttribute("aria-describedby", "ai-safety-error");
+    expect(save).toBeDisabled();
+  });
+
+  it("shows a visible focus ring when the hidden CSV input receives keyboard focus", () => {
+    render(
+      <AiSafetyPanel
+        config={CONFIG_RESPONSE}
+        permissions={{ manage: true, killSwitch: false }}
+        onSaveDraft={vi.fn()}
+      />,
+    );
+
+    const fileInput = screen.getByLabelText("Nhập CSV");
+    expect(fileInput.parentElement).toHaveClass(
+      "focus-within:ring-2",
+      "focus-within:ring-ring",
+      "focus-within:ring-offset-2",
+    );
+  });
+
   it("exports the current keyword set as client-side CSV", () => {
     render(
       <AiSafetyPanel
@@ -183,6 +238,42 @@ describe("AiSafetyPanel", () => {
         },
       },
     });
+  });
+
+  it("rejects a safety save when an unrelated snapshot section is invalid", async () => {
+    const user = userEvent.setup();
+    const saveDraft = vi.fn();
+
+    render(
+      <AiSafetyPanel
+        config={{
+          ...CONFIG_RESPONSE,
+          draftVersion: {
+            ...CONFIG_RESPONSE.draftVersion,
+            configData: {
+              ...SAFETY_CONFIG,
+              provider: {
+                ...SAFETY_CONFIG.provider,
+                model: "",
+              },
+            },
+          },
+        }}
+        permissions={{ manage: true, killSwitch: false }}
+        onSaveDraft={saveDraft}
+      />,
+    );
+
+    await user.type(
+      screen.getByLabelText("Lý do thay đổi safety"),
+      "Kiểm tra snapshot đầy đủ",
+    );
+    await user.click(screen.getByRole("button", { name: "Lưu safety draft" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "snapshot cấu hình",
+    );
+    expect(saveDraft).not.toHaveBeenCalled();
   });
 
   it("does not render keyword or kill-switch mutation controls without permission", () => {

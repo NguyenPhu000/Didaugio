@@ -36,8 +36,14 @@ import {
 function createQueryHarness() {
   const queryClient = new QueryClient({
     defaultOptions: {
-      mutations: { retry: false },
-      queries: { retry: false },
+      mutations: { retry: 1 },
+      queries: {
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
+        retry: 2,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: "always",
+      },
     },
   });
 
@@ -228,4 +234,57 @@ describe("admin AI query contracts", () => {
       false,
     );
   });
+
+  it.each([
+    ["save draft", useSaveAiDraft, "saveDraft"],
+    ["test configuration", useTestAiConfig, "testConfig"],
+    ["publish", usePublishAiConfig, "publishConfig"],
+    ["rollback", useRollbackAiConfig, "rollbackConfig"],
+    ["kill switch", useUpdateAiKillSwitch, "updateKillSwitch"],
+  ])(
+    "never retries the %s mutation after a 409 under production defaults",
+    async (_label, useMutationHook, serviceMethod) => {
+      const conflict = {
+        status: 409,
+        data: {
+          errorCode: "AI_CONFIG_CONFLICT",
+          currentRevision: 9,
+        },
+      };
+      adminAiService[serviceMethod].mockRejectedValue(conflict);
+      const { wrapper } = createQueryHarness();
+      const { result } = renderHook(() => useMutationHook(), { wrapper });
+
+      await act(async () => {
+        await expect(result.current.mutateAsync({})).rejects.toBe(conflict);
+      });
+
+      expect(adminAiService[serviceMethod]).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each([
+    ["save draft", useSaveAiDraft, "saveDraft"],
+    ["test configuration", useTestAiConfig, "testConfig"],
+    ["publish", usePublishAiConfig, "publishConfig"],
+    ["rollback", useRollbackAiConfig, "rollbackConfig"],
+    ["kill switch", useUpdateAiKillSwitch, "updateKillSwitch"],
+  ])(
+    "never retries the %s mutation after a non-conflict failure under production defaults",
+    async (_label, useMutationHook, serviceMethod) => {
+      const failure = Object.assign(new Error("provider unavailable"), {
+        status: 503,
+        data: { errorCode: "AI_PROVIDER_UNAVAILABLE" },
+      });
+      adminAiService[serviceMethod].mockRejectedValue(failure);
+      const { wrapper } = createQueryHarness();
+      const { result } = renderHook(() => useMutationHook(), { wrapper });
+
+      await act(async () => {
+        await expect(result.current.mutateAsync({})).rejects.toBe(failure);
+      });
+
+      expect(adminAiService[serviceMethod]).toHaveBeenCalledTimes(1);
+    },
+  );
 });

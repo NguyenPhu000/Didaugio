@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Textarea } from "@/components/ui/textarea";
 import { toAiConfigForm, toAiDraftPayload } from "../adminAiForm";
+import { isValidAiConfigSnapshot } from "../adminAiValidation";
 
 const CONTEXT_SOURCES = [
   ["coarseLocation", "Coarse location"],
@@ -42,112 +43,18 @@ const CONTEXT_FIELDS = [
   ["weather", "Weather"],
   ["openingStatus", "Opening status"],
 ];
-const REGISTERED_SOURCE_VALUES = new Set(
-  CONTEXT_SOURCES.map(([value]) => value),
-);
-const REGISTERED_FIELD_VALUES = new Set(
-  CONTEXT_FIELDS.map(([value]) => value),
-);
-
-const numberInRange = (value, minimum, maximum, integer = false) =>
-  Number.isFinite(value) &&
-  value >= minimum &&
-  value <= maximum &&
-  (!integer || Number.isInteger(value));
-
-function isApprovedGroqUrl(value) {
-  try {
-    return new URL(value).origin === "https://api.groq.com";
-  } catch {
-    return false;
-  }
-}
-
-function isValidConfig(config, providerSecret) {
-  if (!config?.provider || !config?.modelParameters || !config?.prompts) {
-    return false;
-  }
-  if (
-    config.provider.adapter !== "groq" ||
-    !isApprovedGroqUrl(config.provider.baseUrl) ||
-    config.provider.baseUrl.length > 300 ||
-    !config.provider.model?.trim() ||
-    config.provider.model.trim().length > 160 ||
-    !config.provider.secretReference?.trim() ||
-    config.provider.secretReference.trim().length > 100
-  ) {
-    return false;
-  }
-  const parameters = config.modelParameters;
-  if (
-    !numberInRange(parameters.temperature, 0, 1) ||
-    !numberInRange(parameters.topP, 0, 1) ||
-    !numberInRange(parameters.maxTokens, 256, 4096, true) ||
-    !numberInRange(parameters.timeoutMs, 3000, 30000, true)
-  ) {
-    return false;
-  }
-  if (
-    Object.values(config.prompts).some(
-      (prompt) => !prompt?.trim() || prompt.trim().length > 12000,
-    )
-  ) {
-    return false;
-  }
-  if (
-    !numberInRange(config.context?.maxTokens, 256, 4000, true) ||
-    !numberInRange(config.context?.freshnessTtl, 0, 86400, true) ||
-    !numberInRange(config.quotas?.freeDailyRequests, 0, 10000, true) ||
-    !numberInRange(config.quotas?.premiumDailyRequests, 0, 10000, true) ||
-    !config.fallback?.maintenanceMessage?.trim() ||
-    config.fallback.maintenanceMessage.trim().length > 1000 ||
-    typeof config.fallback.staticPlannerEnabled !== "boolean"
-  ) {
-    return false;
-  }
-  const enabledSources = config.context?.enabledSources;
-  const fieldAllowlist = config.context?.fieldAllowlist;
-  if (
-    !Array.isArray(enabledSources) ||
-    enabledSources.length > REGISTERED_SOURCE_VALUES.size ||
-    new Set(enabledSources).size !== enabledSources.length ||
-    enabledSources.some((source) => !REGISTERED_SOURCE_VALUES.has(source)) ||
-    !Array.isArray(fieldAllowlist) ||
-    fieldAllowlist.length > REGISTERED_FIELD_VALUES.size ||
-    new Set(fieldAllowlist).size !== fieldAllowlist.length ||
-    fieldAllowlist.some((field) => !REGISTERED_FIELD_VALUES.has(field))
-  ) {
-    return false;
-  }
-  const safety = config.safety;
-  if (
-    safety?.matchMode !== "substring" ||
-    typeof safety.diacriticInsensitive !== "boolean" ||
-    !safety.safeResponse?.trim() ||
-    safety.safeResponse.trim().length > 1000 ||
-    !Array.isArray(safety.blockedKeywords) ||
-    safety.blockedKeywords.length > 500 ||
-    safety.blockedKeywords.some(
-      (keyword) =>
-        !String(keyword).trim() || String(keyword).trim().length > 120,
-    )
-  ) {
-    return false;
-  }
-  const secret = providerSecret.trim();
+const isValidProviderSecret = (value) => {
+  const secret = value.trim();
   return !secret || (secret.length >= 20 && secret.length <= 500);
-}
+};
 
-function SectionHeading({ index, title, description }) {
+function SectionHeading({ title, description }) {
   return (
-    <div className="mb-5 grid gap-2 border-b border-black/15 pb-4 sm:grid-cols-[4rem_1fr] dark:border-white/15">
-      <p className="font-mono text-xs font-bold text-primary">/{index}</p>
-      <div>
-        <h3 className="text-sm font-bold uppercase tracking-wide">{title}</h3>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          {description}
-        </p>
-      </div>
+    <div className="mb-5 border-b border-black/15 pb-4 dark:border-white/15">
+      <h3 className="text-sm font-bold uppercase tracking-wide">{title}</h3>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+        {description}
+      </p>
     </div>
   );
 }
@@ -231,7 +138,9 @@ function AiConfigurationPanelForm({
   const [reason, setReason] = useState("");
   const canManage = permissions.manage === true;
   const canRotateSecret = canManage && permissions.secrets === true;
-  const formValid = isValidConfig(configData, providerSecret);
+  const formValid =
+    isValidAiConfigSnapshot(configData) &&
+    (!canRotateSecret || isValidProviderSecret(providerSecret));
 
   const setSectionValue = (section, field, value) => {
     setConfigData((current) => ({
@@ -263,7 +172,10 @@ function AiConfigurationPanelForm({
     if (!canManage || !formValid || reason.trim().length < 5) return;
     onSaveDraft(
       toAiDraftPayload(
-        { configData, providerSecret },
+        {
+          configData,
+          providerSecret: canRotateSecret ? providerSecret : "",
+        },
         mappedForm.revision,
         reason.trim(),
       ),
@@ -293,7 +205,6 @@ function AiConfigurationPanelForm({
         <form onSubmit={submitDraft}>
           <section className="p-5 sm:p-6">
             <SectionHeading
-              index="01"
               title="Provider"
               description="Groq là adapter cố định trong Phase 1. Base URL chỉ chấp nhận origin đã phê duyệt."
             />
@@ -365,7 +276,6 @@ function AiConfigurationPanelForm({
 
           <section className="border-t border-black/15 p-5 sm:p-6 dark:border-white/15">
             <SectionHeading
-              index="02"
               title="Model parameters"
               description="Giới hạn phía trình duyệt khớp contract runtime phía server."
             />
@@ -423,7 +333,6 @@ function AiConfigurationPanelForm({
 
           <section className="border-t border-black/15 p-5 sm:p-6 dark:border-white/15">
             <SectionHeading
-              index="03"
               title="Prompts"
               description="Ba prompt phục vụ Chat, Planner và Voice; mỗi prompt có tối đa 12.000 ký tự."
             />
@@ -452,7 +361,6 @@ function AiConfigurationPanelForm({
 
           <section className="border-t border-black/15 p-5 sm:p-6 dark:border-white/15">
             <SectionHeading
-              index="04"
               title="Context policy"
               description="Chỉ nguồn và trường đã đăng ký mới có thể đi vào runtime context."
             />
@@ -502,7 +410,6 @@ function AiConfigurationPanelForm({
 
           <section className="border-t border-black/15 p-5 sm:p-6 dark:border-white/15">
             <SectionHeading
-              index="05"
               title="Quota & fallback"
               description="Daily request caps và hành vi bảo trì giữ runtime có đường lui rõ ràng."
             />
@@ -644,9 +551,11 @@ function AiConfigurationPanelForm({
 }
 
 export default function AiConfigurationPanel(props) {
+  const canRotateSecret =
+    props.permissions?.manage === true && props.permissions?.secrets === true;
   return (
     <AiConfigurationPanelForm
-      key={props.config?.revision ?? "unloaded"}
+      key={`${props.config?.revision ?? "unloaded"}:${canRotateSecret}`}
       {...props}
     />
   );

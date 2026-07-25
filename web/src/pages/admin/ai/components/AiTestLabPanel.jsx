@@ -87,19 +87,20 @@ function redactPrompt(value, context) {
   return value;
 }
 
-function displayValue(value) {
-  if (value === null || value === undefined || value === "") return "—";
-  return typeof value === "string" ? value : JSON.stringify(value, null, 2);
-}
-
 function validationMessage(error) {
-  const errors = error?.data?.errors;
+  const data = error?.data ?? error?.response?.data ?? {};
+  const errors = data.errors;
   if (Array.isArray(errors) && errors.length > 0) {
     return errors
       .map((item) => `${item.field || "request"}: ${item.message}`)
       .join(" · ");
   }
   return error?.message ?? "";
+}
+
+function errorCode(error) {
+  const data = error?.data ?? error?.response?.data ?? {};
+  return error?.errorCode ?? error?.code ?? data.errorCode ?? "";
 }
 
 function ResultMetric({ label, value }) {
@@ -127,8 +128,10 @@ export default function AiTestLabPanel({
   const [budget, setBudget] = useState("");
   const [partySize, setPartySize] = useState("");
   const [tripDuration, setTripDuration] = useState("");
+  const sourceReady = Number.isSafeInteger(sourceVersions[source]);
 
   const valid =
+    sourceReady &&
     message.trim().length >= 1 &&
     message.trim().length <= 4000 &&
     currentCity.trim().length <= 120 &&
@@ -138,7 +141,7 @@ export default function AiTestLabPanel({
 
   const submit = (event) => {
     event.preventDefault();
-    if (!valid || isRunning) return;
+    if (!valid || !sourceReady || isRunning) return;
     const context = {};
     if (currentCity.trim()) context.currentCity = currentCity.trim();
     if (budget !== "") context.budget = Number(budget);
@@ -153,27 +156,24 @@ export default function AiTestLabPanel({
   };
 
   const provider = result?.provider ?? {};
-  const version =
-    result?.configVersion ??
-    result?.version ??
-    provider.version ??
-    sourceVersions[source] ??
-    "—";
-  const reply =
-    result?.reply ??
-    result?.result ??
-    result?.structuredResult ??
-    result?.providerResult;
-  const safety =
-    result?.safety ??
-    result?.safetyResult ??
-    (result?.safetyBlocked === undefined
-      ? null
-      : { blocked: result.safetyBlocked });
+  const version = sourceVersions[source] ?? "—";
   const prompt = result
     ? redactPrompt(result.renderedPrompt, result.context)
     : null;
   const errorText = validationMessage(error);
+  const safetyError = error
+    ? errorCode(error) === "AI_SAFETY_BLOCKED"
+      ? "Blocked"
+      : "Not evaluated (request error)"
+    : "";
+  const safetyOutcome = result
+    ? provider.status === "success"
+      ? "Passed"
+      : `Error (${provider.status ?? "unknown"})`
+    : "";
+  const unavailableMessage = sourceReady
+    ? ""
+    : `${source === "draft" ? "Draft" : "Published"} snapshot chưa sẵn sàng.`;
 
   return (
     <Card className="rounded-none border-black/20 shadow-none dark:border-white/20">
@@ -297,12 +297,24 @@ export default function AiTestLabPanel({
             </div>
           </fieldset>
 
+          {unavailableMessage && (
+            <p
+              role="alert"
+              className="border-l-4 border-primary bg-primary/10 px-3 py-2 text-sm"
+            >
+              {unavailableMessage}
+            </p>
+          )}
+
           {errorText && (
             <p
               role="alert"
               className="border-l-4 border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive"
             >
-              {errorText}
+              <span className="block font-mono text-[10px] font-bold uppercase tracking-wide">
+                Safety: {safetyError}
+              </span>
+              <span className="mt-1 block">{errorText}</span>
             </p>
           )}
 
@@ -372,7 +384,13 @@ export default function AiTestLabPanel({
                 />
                 <ResultMetric
                   label="Safety"
-                  value={displayValue(safety)}
+                  value={safetyOutcome}
+                />
+                <ResultMetric
+                  label="Result"
+                  value={`${provider.status ?? "—"} · ${
+                    provider.finishReason ?? "—"
+                  }`}
                 />
               </dl>
 
@@ -396,22 +414,6 @@ export default function AiTestLabPanel({
                 </pre>
               </div>
 
-              <div className="border-t border-black/20 pt-5 dark:border-white/20">
-                <p className="font-mono text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Result
-                </p>
-                <pre className="mt-2 whitespace-pre-wrap break-words text-sm">
-                  {displayValue(reply)}
-                </pre>
-                {result.validationError && (
-                  <p
-                    role="alert"
-                    className="mt-3 text-sm text-destructive"
-                  >
-                    {displayValue(result.validationError)}
-                  </p>
-                )}
-              </div>
             </div>
           )}
         </section>

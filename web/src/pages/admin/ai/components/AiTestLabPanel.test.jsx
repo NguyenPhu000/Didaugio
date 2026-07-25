@@ -8,7 +8,11 @@ describe("AiTestLabPanel", () => {
     const user = userEvent.setup();
     const runTest = vi.fn();
     const { rerender } = render(
-      <AiTestLabPanel onRun={runTest} result={undefined} />,
+      <AiTestLabPanel
+        onRun={runTest}
+        result={undefined}
+        sourceVersions={{ draft: 9, published: 8 }}
+      />,
     );
 
     await user.selectOptions(
@@ -37,9 +41,9 @@ describe("AiTestLabPanel", () => {
     rerender(
       <AiTestLabPanel
         onRun={runTest}
+        sourceVersions={{ draft: 9, published: 8 }}
         result={{
           requestId: "test-1",
-          configVersion: 8,
           context: { currentCity: "Đà Nẵng", partySize: 3 },
           renderedPrompt: {
             system: "Planner context: Đà Nẵng, party 3",
@@ -52,31 +56,42 @@ describe("AiTestLabPanel", () => {
             outputTokens: 18,
             latencyMs: 640,
             status: "success",
+            finishReason: "stop",
           },
-          reply: "Lịch trình đã tạo",
-          safety: { blocked: false, result: "passed" },
-          validationError: null,
         }}
       />,
     );
 
-    expect(screen.getByText("Lịch trình đã tạo")).toBeInTheDocument();
     expect(screen.getByText("groq / llama / v8")).toBeInTheDocument();
     expect(screen.getByText("42 in / 18 out")).toBeInTheDocument();
     expect(screen.getByText("640 ms")).toBeInTheDocument();
+    expect(screen.getByText("success · stop")).toBeInTheDocument();
+    expect(screen.getByText("Passed")).toBeInTheDocument();
     expect(screen.getByText(/MASKED/)).toBeInTheDocument();
     expect(screen.getByText(/REDACTED_TEST_MESSAGE/)).toBeInTheDocument();
     expect(screen.queryByText(/Đà Nẵng/)).not.toBeInTheDocument();
-
-    rerender(<AiTestLabPanel onRun={runTest} result={undefined} />);
     expect(screen.queryByText("Lịch trình đã tạo")).not.toBeInTheDocument();
+
+    rerender(
+      <AiTestLabPanel
+        onRun={runTest}
+        result={undefined}
+        sourceVersions={{ draft: 9, published: 8 }}
+      />,
+    );
+    expect(screen.queryByText("Kết quả provider")).not.toBeInTheDocument();
   });
 
   it("blocks invalid optional context bounds before a test mutation", async () => {
     const user = userEvent.setup();
     const runTest = vi.fn();
 
-    render(<AiTestLabPanel onRun={runTest} />);
+    render(
+      <AiTestLabPanel
+        onRun={runTest}
+        sourceVersions={{ draft: 9, published: 8 }}
+      />,
+    );
 
     await user.type(screen.getByLabelText("Tin nhắn thử"), "Xin chào");
     await user.type(screen.getByLabelText("Số người"), "21");
@@ -89,6 +104,7 @@ describe("AiTestLabPanel", () => {
     render(
       <AiTestLabPanel
         onRun={vi.fn()}
+        sourceVersions={{ draft: 9, published: 8 }}
         error={{
           message: "Context không hợp lệ",
           data: {
@@ -124,11 +140,57 @@ describe("AiTestLabPanel", () => {
             inputTokens: 1,
             outputTokens: 2,
             latencyMs: 10,
+            status: "success",
+            finishReason: "length",
           },
         }}
       />,
     );
 
     expect(screen.getByText("groq / llama / v9")).toBeInTheDocument();
+    expect(screen.getByText("success · length")).toBeInTheDocument();
+  });
+
+  it("labels a safety-blocked server rejection in the explicit error area", () => {
+    render(
+      <AiTestLabPanel
+        onRun={vi.fn()}
+        sourceVersions={{ draft: 9, published: 8 }}
+        error={{
+          message: "Yêu cầu này không thể được xử lý.",
+          data: {
+            errorCode: "AI_SAFETY_BLOCKED",
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Safety: Blocked",
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Yêu cầu này không thể được xử lý.",
+    );
+    expect(screen.queryByText("Kết quả provider")).not.toBeInTheDocument();
+  });
+
+  it("disables execution when the selected configuration version is unavailable", async () => {
+    const user = userEvent.setup();
+    const runTest = vi.fn();
+
+    render(
+      <AiTestLabPanel
+        onRun={runTest}
+        sourceVersions={{ published: 8 }}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Tin nhắn thử"), "Xin chào");
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Draft snapshot chưa sẵn sàng",
+    );
+    expect(screen.getByRole("button", { name: "Chạy test" })).toBeDisabled();
+    expect(runTest).not.toHaveBeenCalled();
   });
 });

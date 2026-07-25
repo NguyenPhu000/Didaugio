@@ -20,6 +20,7 @@ export default function AiPublishDialog({
   draftVersion,
   onConfirm,
   isPending = false,
+  errorMessage = "",
 }) {
   const [reason, setReason] = useState("");
 
@@ -52,6 +53,14 @@ export default function AiPublishDialog({
 
         <form onSubmit={confirm}>
           <div className="space-y-5 p-5">
+            {errorMessage && (
+              <p
+                role="alert"
+                className="border-l-4 border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              >
+                {errorMessage}
+              </p>
+            )}
             <div className="border-y border-black/20 py-4 text-center dark:border-white/20">
               <p className="font-mono text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                 Published → Draft

@@ -18,6 +18,7 @@ export default function AiKillSwitchDialog({
   enabled,
   onConfirm,
   isPending = false,
+  errorMessage = "",
 }) {
   const [reason, setReason] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -56,6 +57,14 @@ export default function AiKillSwitchDialog({
 
         <form onSubmit={confirm}>
           <div className="space-y-5 p-5">
+            {errorMessage && (
+              <p
+                role="alert"
+                className="border-l-4 border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              >
+                {errorMessage}
+              </p>
+            )}
             <div className="space-y-2">
               <Label
                 htmlFor="ai-kill-reason"

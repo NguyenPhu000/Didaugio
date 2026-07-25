@@ -119,6 +119,44 @@ describe("AiConfigurationPanel", () => {
     expect(screen.getByLabelText("API key mới")).toHaveValue("");
   });
 
+  it("clears and omits a replacement secret when secrets permission is revoked at the same revision", async () => {
+    const user = userEvent.setup();
+    const saveDraft = vi.fn();
+    const { rerender } = render(
+      <AiConfigurationPanel
+        config={CONFIG_RESPONSE}
+        permissions={{ manage: true, publish: false, secrets: true }}
+        onSaveDraft={saveDraft}
+      />,
+    );
+
+    await user.type(
+      screen.getByLabelText("API key mới"),
+      "gsk_1234567890123456",
+    );
+
+    rerender(
+      <AiConfigurationPanel
+        config={CONFIG_RESPONSE}
+        permissions={{ manage: true, publish: false, secrets: false }}
+        onSaveDraft={saveDraft}
+      />,
+    );
+
+    expect(screen.queryByLabelText("API key mới")).not.toBeInTheDocument();
+    await user.type(
+      screen.getByLabelText("Lý do thay đổi"),
+      "Quyền secrets đã bị thu hồi",
+    );
+    await user.click(screen.getByRole("button", { name: "Lưu draft" }));
+
+    expect(saveDraft).toHaveBeenCalledWith({
+      revision: 4,
+      configData: VALID_CONFIG,
+      changeReason: "Quyền secrets đã bị thu hồi",
+    });
+  });
+
   it("does not render the secret rotation control without secrets permission", () => {
     render(
       <AiConfigurationPanel
@@ -206,6 +244,90 @@ describe("AiConfigurationPanel", () => {
     );
 
     expect(screen.getByRole("button", { name: "Lưu draft" })).toBeDisabled();
+  });
+
+  it("rejects a full snapshot with a missing required prompt", async () => {
+    const user = userEvent.setup();
+    const { voice: _voice, ...missingVoicePrompt } = VALID_CONFIG.prompts;
+
+    render(
+      <AiConfigurationPanel
+        config={{
+          ...CONFIG_RESPONSE,
+          draftVersion: {
+            ...CONFIG_RESPONSE.draftVersion,
+            configData: {
+              ...VALID_CONFIG,
+              prompts: missingVoicePrompt,
+            },
+          },
+        }}
+        permissions={{ manage: true, publish: false, secrets: false }}
+        onSaveDraft={vi.fn()}
+      />,
+    );
+
+    await user.type(
+      screen.getByLabelText("Lý do thay đổi"),
+      "Kiểm tra prompt bắt buộc",
+    );
+
+    expect(screen.getByRole("button", { name: "Lưu draft" })).toBeDisabled();
+  });
+
+  it("rejects a full snapshot with an extra prompt key", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <AiConfigurationPanel
+        config={{
+          ...CONFIG_RESPONSE,
+          draftVersion: {
+            ...CONFIG_RESPONSE.draftVersion,
+            configData: {
+              ...VALID_CONFIG,
+              prompts: {
+                ...VALID_CONFIG.prompts,
+                summarize: "Unsupported prompt",
+              },
+            },
+          },
+        }}
+        permissions={{ manage: true, publish: false, secrets: false }}
+        onSaveDraft={vi.fn()}
+      />,
+    );
+
+    await user.type(
+      screen.getByLabelText("Lý do thay đổi"),
+      "Kiểm tra prompt không hỗ trợ",
+    );
+
+    expect(screen.getByRole("button", { name: "Lưu draft" })).toBeDisabled();
+  });
+
+  it("uses named configuration groups without hanging ordinal labels", () => {
+    render(
+      <AiConfigurationPanel
+        config={CONFIG_RESPONSE}
+        permissions={{ manage: false, publish: false, secrets: false }}
+      />,
+    );
+
+    for (const heading of [
+      "Provider",
+      "Model parameters",
+      "Prompts",
+      "Context policy",
+      "Quota & fallback",
+    ]) {
+      expect(
+        screen.getByRole("heading", { name: heading }),
+      ).toBeInTheDocument();
+    }
+    for (const ordinal of ["/01", "/02", "/03", "/04", "/05"]) {
+      expect(screen.queryByText(ordinal)).not.toBeInTheDocument();
+    }
   });
 
   it("serializes controlled edits from every configuration section", async () => {

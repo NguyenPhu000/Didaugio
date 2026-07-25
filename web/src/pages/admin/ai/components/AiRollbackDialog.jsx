@@ -19,6 +19,7 @@ export default function AiRollbackDialog({
   versions = [],
   onConfirm,
   isPending = false,
+  errorMessage = "",
 }) {
   const [targetVersion, setTargetVersion] = useState("");
   const [reason, setReason] = useState("");
@@ -66,6 +67,14 @@ export default function AiRollbackDialog({
 
         <form onSubmit={confirm}>
           <div className="space-y-5 p-5">
+            {errorMessage && (
+              <p
+                role="alert"
+                className="border-l-4 border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              >
+                {errorMessage}
+              </p>
+            )}
             <div className="space-y-2">
               <Label
                 htmlFor="ai-rollback-version"

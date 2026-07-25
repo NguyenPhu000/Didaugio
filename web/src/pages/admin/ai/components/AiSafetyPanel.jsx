@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Textarea } from "@/components/ui/textarea";
 import { toAiConfigForm, toAiDraftPayload } from "../adminAiForm";
+import { isValidAiConfigSnapshot } from "../adminAiValidation";
 
 function collapseWhitespace(value) {
   let output = "";
@@ -104,10 +105,11 @@ function toKeywordCsv(keywords) {
   return ["keyword", ...rows].join("\r\n");
 }
 
-function ErrorMessage({ message }) {
+function ErrorMessage({ message, id }) {
   if (!message) return null;
   return (
     <p
+      id={id}
       role="alert"
       className="border-l-4 border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive"
     >
@@ -143,6 +145,7 @@ function AiSafetyPanelForm({
     keywords,
     diacriticInsensitive,
   );
+  const visibleError = validationError || keywordError;
   const csvHref = useMemo(
     () =>
       `data:text/csv;charset=utf-8,${encodeURIComponent(
@@ -191,17 +194,6 @@ function AiSafetyPanelForm({
       keywords,
       diacriticInsensitive,
     );
-    if (
-      !canManage ||
-      error ||
-      !safeResponse.trim() ||
-      safeResponse.trim().length > 1000 ||
-      reason.trim().length < 5
-    ) {
-      setValidationError(error ?? "Kiểm tra phản hồi và lý do thay đổi.");
-      return;
-    }
-
     const nextConfig = {
       ...mappedForm.configData,
       safety: {
@@ -211,6 +203,19 @@ function AiSafetyPanelForm({
         safeResponse: safeResponse.trim(),
       },
     };
+    if (
+      !canManage ||
+      error ||
+      !isValidAiConfigSnapshot(nextConfig) ||
+      reason.trim().length < 5
+    ) {
+      setValidationError(
+        error ??
+          "Kiểm tra toàn bộ snapshot cấu hình và lý do thay đổi.",
+      );
+      return;
+    }
+
     onSaveDraft(
       toAiDraftPayload(
         { configData: nextConfig, providerSecret: "" },
@@ -291,7 +296,10 @@ function AiSafetyPanelForm({
                 </div>
               )}
 
-              <ErrorMessage message={validationError} />
+              <ErrorMessage
+                id="ai-safety-error"
+                message={visibleError}
+              />
 
               <div className="divide-y divide-black/10 border-y border-black/15 dark:divide-white/10 dark:border-white/15">
                 {keywords.length === 0 ? (
@@ -332,7 +340,7 @@ function AiSafetyPanelForm({
 
               <div className="flex flex-wrap gap-2">
                 {canManage && (
-                  <label className="inline-flex h-9 cursor-pointer items-center gap-2 border border-input px-3 text-sm font-medium">
+                  <label className="inline-flex h-9 cursor-pointer items-center gap-2 border border-input px-3 text-sm font-medium focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
                     <Upload aria-hidden="true" className="size-4" />
                     Nhập CSV
                     <input
@@ -358,6 +366,9 @@ function AiSafetyPanelForm({
                 <input
                   type="checkbox"
                   checked={diacriticInsensitive}
+                  aria-describedby={
+                    visibleError ? "ai-safety-error" : undefined
+                  }
                   onChange={(event) => {
                     setDiacriticInsensitive(event.target.checked);
                     setValidationError("");
@@ -413,6 +424,9 @@ function AiSafetyPanelForm({
                 <Button
                   type="submit"
                   loading={isSaving}
+                  aria-describedby={
+                    visibleError ? "ai-safety-error" : undefined
+                  }
                   disabled={
                     isSaving ||
                     Boolean(keywordError) ||

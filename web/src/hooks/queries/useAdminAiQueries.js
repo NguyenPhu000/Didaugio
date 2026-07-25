@@ -30,6 +30,7 @@ export function useSaveAiDraft() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: adminAiService.saveDraft,
+    retry: false,
     onSuccess: () => invalidate(queryClient, [adminAiKeys.config]),
   });
 }
@@ -38,6 +39,7 @@ export function useTestAiConfig() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: adminAiService.testConfig,
+    retry: false,
     onSuccess: () => invalidate(queryClient, [adminAiKeys.logsRoot]),
   });
 }
@@ -46,6 +48,7 @@ export function usePublishAiConfig() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: adminAiService.publishConfig,
+    retry: false,
     onSuccess: () => invalidate(queryClient, [adminAiKeys.config, adminAiKeys.overview]),
   });
 }
@@ -54,6 +57,7 @@ export function useRollbackAiConfig() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: adminAiService.rollbackConfig,
+    retry: false,
     onSuccess: () => invalidate(queryClient, [adminAiKeys.config, adminAiKeys.overview]),
   });
 }
@@ -62,6 +66,7 @@ export function useUpdateAiKillSwitch() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: adminAiService.updateKillSwitch,
+    retry: false,
     onSuccess: () => invalidate(queryClient, [adminAiKeys.overview]),
   });
 }
