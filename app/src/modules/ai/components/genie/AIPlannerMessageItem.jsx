@@ -69,11 +69,7 @@ const styles = StyleSheet.create({
   },
 });
 
-<<<<<<< HEAD
-export const AIPlannerMessageItem = memo(function AIPlannerMessageItem({
-=======
 function AIPlannerMessageItemComponent({
->>>>>>> codex/lean-admin-ai
   canConfirmSelection,
   clearSelectedPlaces,
   draftPlan,
@@ -440,12 +436,8 @@ function AIPlannerMessageItemComponent({
       ) : null}
     </View>
   );
-<<<<<<< HEAD
-});
-=======
 }
 
 export const AIPlannerMessageItem = memo(
   AIPlannerMessageItemComponent,
 );
->>>>>>> codex/lean-admin-ai
