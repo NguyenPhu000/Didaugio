@@ -28,29 +28,6 @@ test("provider messages remove client system roles and bound retained content", 
   assert.equal(AI_PROVIDER_TIMEOUT_MS > 0, true);
 });
 
-test("provider errors map quota, unavailable, timeout, and generic failures to stable codes", () => {
-  assert.deepEqual(
-    pickError(toAiServiceError({ status: 429, message: "rate limit" })),
-    { code: "QUOTA_EXCEEDED", statusCode: 429 },
-  );
-  assert.deepEqual(
-    pickError(toAiServiceError({ statusCode: 503, message: "overloaded" })),
-    { code: "AI_UNAVAILABLE", statusCode: 503 },
-  );
-  assert.deepEqual(
-    pickError(toAiServiceError({ name: "TimeoutError", message: "timed out" })),
-    { code: "AI_TIMEOUT", statusCode: 504 },
-  );
-  assert.deepEqual(
-    pickError(toAiServiceError({ code: "ECONNABORTED", cause: { message: "timeout" } })),
-    { code: "AI_TIMEOUT", statusCode: 504 },
-  );
-  assert.deepEqual(
-    pickError(toAiServiceError({ status: 500, message: "provider detail" })),
-    { code: "AI_ERROR", statusCode: 502 },
-  );
-});
-
 test("provider policy preserves stable application errors", () => {
   const original = Object.assign(new Error("invalid output"), {
     code: "AI_INVALID_OUTPUT",
@@ -115,27 +92,7 @@ test("provider URL policy accepts the approved Groq origin and rejects alternate
     );
   }
 });
-
-test("provider failures never expose upstream messages through stable errors", () => {
-  const rawMessage = "upstream secret token and request body";
-  const error = toAiServiceError({ status: 500, message: rawMessage });
-
-  assert.deepEqual(
-    {
-      code: error.code,
-      statusCode: error.statusCode,
-      message: error.message,
-    },
-    {
-      code: "AI_ERROR",
-      statusCode: 502,
-      message: "AI provider request failed.",
-    },
-  );
-  assert.equal(error.message.includes(rawMessage), false);
-});
-
-test("navigation provider calls emit metadata-only success and stable failure events", async () => {
+test("navigation provider calls emit metadata-only success events", async () => {
   const events = [];
   const originalInfo = console.info;
   console.info = (...args) => events.push(args);
@@ -165,16 +122,6 @@ test("navigation provider calls emit metadata-only success and stable failure ev
       }),
       completion,
     );
-
-    await assert.rejects(
-      requestNavigationCompletion({
-        client: { chat: { completions: { create: async () => { throw { status: 503 }; } } } },
-        prompt: "private failure prompt",
-        feature: "navigation-waypoint-order",
-        providerOptions,
-      }),
-      (error) => error.code === "AI_UNAVAILABLE",
-    );
   } finally {
     console.info = originalInfo;
   }
@@ -187,15 +134,179 @@ test("navigation provider calls emit metadata-only success and stable failure ev
     totalTokens: 21,
     finishReason: "stop",
   });
-  assert.deepEqual(events[1][1], {
-    feature: "navigation-waypoint-order",
-    model: "meta-llama/llama-4-scout-17b-16e-instruct",
-    latencyMs: events[1][1].latencyMs,
-    totalTokens: null,
-    finishReason: null,
-    code: "AI_UNAVAILABLE",
-  });
   assert.equal(JSON.stringify(events).includes("private"), false);
+});
+
+test("navigation provider failures expose only exact public errors and metadata for direct and nested causes", async () => {
+  const cases = [
+    {
+      label: "timeout",
+      upstreamError: (sentinel) => ({
+        name: "TimeoutError",
+        message: sentinel,
+      }),
+      expected: {
+        code: "AI_TIMEOUT",
+        errorCode: "AI_TIMEOUT",
+        statusCode: 504,
+        message: "AI provider request timed out.",
+      },
+    },
+    {
+      label: "nested timeout",
+      upstreamError: (sentinel) => ({
+        message: "outer provider failure",
+        cause: { code: "ETIMEDOUT", message: sentinel },
+      }),
+      expected: {
+        code: "AI_TIMEOUT",
+        errorCode: "AI_TIMEOUT",
+        statusCode: 504,
+        message: "AI provider request timed out.",
+      },
+    },
+    {
+      label: "quota",
+      upstreamError: (sentinel) => ({ status: 429, message: sentinel }),
+      expected: {
+        code: "QUOTA_EXCEEDED",
+        errorCode: "QUOTA_EXCEEDED",
+        statusCode: 429,
+        message: "AI provider quota exceeded.",
+      },
+    },
+    {
+      label: "nested quota",
+      upstreamError: (sentinel) => ({
+        message: "outer provider failure",
+        cause: { statusCode: 429, message: sentinel },
+      }),
+      expected: {
+        code: "QUOTA_EXCEEDED",
+        errorCode: "QUOTA_EXCEEDED",
+        statusCode: 429,
+        message: "AI provider quota exceeded.",
+      },
+    },
+    {
+      label: "unavailable",
+      upstreamError: (sentinel) => ({ status: 503, message: sentinel }),
+      expected: {
+        code: "AI_UNAVAILABLE",
+        errorCode: "AI_UNAVAILABLE",
+        statusCode: 503,
+        message: "AI provider is unavailable.",
+      },
+    },
+    {
+      label: "nested unavailable",
+      upstreamError: (sentinel) => ({
+        message: "outer provider failure",
+        cause: { statusCode: 503, message: sentinel },
+      }),
+      expected: {
+        code: "AI_UNAVAILABLE",
+        errorCode: "AI_UNAVAILABLE",
+        statusCode: 503,
+        message: "AI provider is unavailable.",
+      },
+    },
+    {
+      label: "generic",
+      upstreamError: (sentinel) => ({ status: 500, message: sentinel }),
+      expected: {
+        code: "AI_ERROR",
+        errorCode: "AI_ERROR",
+        statusCode: 502,
+        message: "AI provider request failed.",
+      },
+    },
+    {
+      label: "nested generic",
+      upstreamError: (sentinel) => ({
+        message: "outer provider failure",
+        cause: { statusCode: 500, message: sentinel },
+      }),
+      expected: {
+        code: "AI_ERROR",
+        errorCode: "AI_ERROR",
+        statusCode: 502,
+        message: "AI provider request failed.",
+      },
+    },
+  ];
+  const providerOptions = {
+    model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    temperature: 0.3,
+    topP: 0.9,
+    maxTokens: 800,
+    timeoutMs: 12_345,
+  };
+  const events = [];
+  const originalInfo = console.info;
+  console.info = (...args) => events.push(args);
+
+  try {
+    for (const [index, providerCase] of cases.entries()) {
+      const sentinel = `PRIVATE_${index}_${providerCase.label.replaceAll(" ", "_")}`;
+      const beforeEvents = events.length;
+      let returnedError;
+      try {
+        await requestNavigationCompletion({
+          client: {
+            chat: {
+              completions: {
+                create: async () => {
+                  throw providerCase.upstreamError(sentinel);
+                },
+              },
+            },
+          },
+          prompt: `private prompt ${sentinel}`,
+          feature: `navigation-${index}`,
+          providerOptions,
+        });
+        assert.fail(`${providerCase.label} must reject`);
+      } catch (error) {
+        returnedError = error;
+      }
+
+      const publicError = {
+        code: returnedError.code,
+        errorCode: returnedError.errorCode,
+        statusCode: returnedError.statusCode,
+        message: returnedError.message,
+      };
+      assert.deepEqual(publicError, providerCase.expected, providerCase.label);
+      assert.equal(
+        JSON.stringify({
+          ...publicError,
+          stack: returnedError.stack,
+          cause: returnedError.cause,
+        }).includes(sentinel),
+        false,
+        `${providerCase.label} returned output must redact upstream details`,
+      );
+
+      assert.equal(events.length, beforeEvents + 1);
+      assert.deepEqual(events.at(-1)[0], "[AI]");
+      assert.deepEqual(events.at(-1)[1], {
+        feature: `navigation-${index}`,
+        model: providerOptions.model,
+        latencyMs: events.at(-1)[1].latencyMs,
+        totalTokens: null,
+        finishReason: null,
+        code: providerCase.expected.code,
+      });
+      assert.equal(
+        JSON.stringify(events.at(-1)).includes(sentinel),
+        false,
+        `${providerCase.label} logged output must redact upstream details`,
+      );
+    }
+  } finally {
+    console.info = originalInfo;
+  }
 });
 
 test("every Groq provider integration uses the published timeout and avoids raw-error logs", () => {
@@ -232,7 +343,3 @@ test("every Groq provider integration uses the published timeout and avoids raw-
     assert.doesNotMatch(source, /console\.(?:log|error|warn)\([^\n]*(?:message|reply|raw)/i);
   }
 });
-
-function pickError(error) {
-  return { code: error.code, statusCode: error.statusCode };
-}

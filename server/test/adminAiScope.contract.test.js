@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
+import { Router } from "express";
 import { DEFAULT_AI_CONFIG } from "../src/config/defaultAiConfig.js";
 import {
   aiConfigDataSchema,
 } from "../src/models/schemas/adminAi/adminAi.schema.js";
 import adminAiRouter from "../src/routes/adminAi/adminAi.route.js";
+import { registerApiRoutes } from "../src/routes/index.js";
 import {
   evaluateKeywordSafety,
 } from "../src/services/ai/runtime/aiKeywordSafety.js";
@@ -14,17 +16,17 @@ const schema = readFileSync(
   new URL("../prisma/schema.prisma", import.meta.url),
   "utf8",
 );
-const migration = readFileSync(
-  new URL(
-    "../prisma/migrations/20260724170000_create_lean_admin_ai_control_center/migration.sql",
-    import.meta.url,
-  ),
-  "utf8",
-);
-const routeSource = readFileSync(
-  new URL("../src/routes/adminAi/adminAi.route.js", import.meta.url),
-  "utf8",
-);
+const migrationsUrl = new URL("../prisma/migrations/", import.meta.url);
+const migrationSources = readdirSync(migrationsUrl, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .sort((left, right) => left.name.localeCompare(right.name))
+  .map((entry) => ({
+    name: entry.name,
+    sql: readFileSync(
+      new URL(`${entry.name}/migration.sql`, migrationsUrl),
+      "utf8",
+    ),
+  }));
 const safetySources = [
   "../src/models/schemas/adminAi/adminAi.schema.js",
   "../src/services/ai/runtime/aiKeywordSafety.js",
@@ -55,10 +57,17 @@ function normalizedSql(value) {
   return value.replace(/\s+/g, " ").trim();
 }
 
-test("the schema contains exactly the three new AI models plus the legitimate legacy history", () => {
-  const allAiModels = [...schema.matchAll(/^model\s+(Ai[A-Za-z0-9]+)\s+\{/gm)]
+function aiModelInventory(schemaSource) {
+  return [...schemaSource.matchAll(
+    /^model\s+([A-Za-z_][A-Za-z0-9_]*)\s+\{/gm,
+  )]
     .map(([, model]) => model)
+    .filter((model) => model.startsWith("Ai"))
     .sort();
+}
+
+function assertExactAiModels(schemaSource) {
+  const allAiModels = aiModelInventory(schemaSource);
   const introducedModels = allAiModels
     .filter((model) => model !== "AiPromptHistory")
     .sort();
@@ -69,38 +78,71 @@ test("the schema contains exactly the three new AI models plus the legitimate le
     [...APPROVED_MODELS, "AiPromptHistory"].sort(),
     "an additional Ai* model must not be hidden by the legacy-model allowance",
   );
-});
+}
 
-test("the Admin AI router exposes exactly the eight approved method and path pairs", () => {
-  const routes = adminAiRouter.stack
-    .filter((layer) => layer.route)
-    .flatMap((layer) =>
-      Object.keys(layer.route.methods).map(
-        (method) => `${method.toUpperCase()} ${layer.route.path}`,
-      ),
-    )
-    .sort();
+function routeInventory(router, ancestors = new Set()) {
+  assert.equal(
+    ancestors.has(router),
+    false,
+    "router nesting must not contain a cycle",
+  );
+  const nextAncestors = new Set(ancestors);
+  nextAncestors.add(router);
+  const routes = [];
 
+  for (const layer of router.stack ?? []) {
+    if (layer.route) {
+      const paths = Array.isArray(layer.route.path)
+        ? layer.route.path
+        : [layer.route.path];
+      for (const path of paths) {
+        for (const method of Object.keys(layer.route.methods)) {
+          routes.push(`${method.toUpperCase()} ${path}`);
+        }
+      }
+      continue;
+    }
+    if (Array.isArray(layer.handle?.stack)) {
+      routes.push(...routeInventory(layer.handle, nextAncestors));
+    }
+  }
+  return routes.sort();
+}
+
+function assertExactAdminAiRoutes(router) {
+  const routes = routeInventory(router);
   assert.deepEqual(routes, APPROVED_ROUTES);
   assert.equal(routes.length, 8);
-  assert.match(routeSource, /router\.use\(authenticate\)/);
-});
+}
 
-test("the migration seeds exactly seven AI permissions for only the approved role grants", () => {
-  const permissionInsert = migration.match(
-    /INSERT INTO "permissions"[\s\S]*?ON CONFLICT \("name"\) DO NOTHING;/,
-  )?.[0];
-  assert.ok(permissionInsert, "AI permission seed must exist");
+function aiPermissionInventory(sources) {
+  const permissions = [];
+  for (const { sql } of sources) {
+    const inserts = sql.match(/INSERT\s+INTO\s+"permissions"[\s\S]*?;/gi) ?? [];
+    for (const insert of inserts) {
+      permissions.push(
+        ...[...insert.matchAll(/'(ai\.[A-Za-z0-9_.-]+)'/g)]
+          .map(([, permission]) => permission),
+      );
+    }
+  }
+  return [...new Set(permissions)].sort();
+}
 
-  const permissions = [...permissionInsert.matchAll(/\('(ai\.[a-z_.]+)'/g)]
-    .map(([, permission]) => permission)
-    .sort();
+function aiRoleGrantInventory(sources) {
+  return sources.flatMap(({ sql }) =>
+    (sql.match(/INSERT\s+INTO\s+"role_permissions"[\s\S]*?;/gi) ?? [])
+      .filter((grant) => /ai\.|p\.module\s*=\s*'ai'/i.test(grant))
+      .map(normalizedSql),
+  );
+}
+
+function assertExactAiPermissions(sources) {
+  const permissions = aiPermissionInventory(sources);
   assert.deepEqual(permissions, APPROVED_PERMISSIONS);
   assert.equal(permissions.length, 7);
 
-  const grants = [...migration.matchAll(
-    /INSERT INTO "role_permissions"[\s\S]*?ON CONFLICT \("role_id", "permission_id"\) DO NOTHING;/g,
-  )].map(([grant]) => normalizedSql(grant));
+  const grants = aiRoleGrantInventory(sources);
   assert.equal(grants.length, 2);
   assert.match(grants[0], /WHERE r\.name = 'super_admin' AND p\.module = 'ai'/);
   assert.match(grants[1], /WHERE r\.name = 'admin'/);
@@ -115,6 +157,92 @@ test("the migration seeds exactly seven AI permissions for only the approved rol
     "ai.test.run",
     "ai.view",
   ]);
+}
+
+function adminAiMountInventory(registerRoutes) {
+  const uses = [];
+  registerRoutes({
+    use(...args) {
+      uses.push(args);
+    },
+  });
+  return uses
+    .filter(([, ...handlers]) => handlers.includes(adminAiRouter))
+    .map(([path]) => path);
+}
+
+function assertSingleAdminAiMount(registerRoutes) {
+  assert.deepEqual(
+    adminAiMountInventory(registerRoutes),
+    ["/api/v1/admin/ai"],
+  );
+}
+
+test("the schema contains exactly the three new AI models plus the legitimate legacy history", () => {
+  assertExactAiModels(schema);
+});
+
+test("model inventory rejects legal underscore identifiers that the prior regex missed", () => {
+  const mutated = `${schema}
+model Ai_Extra {
+  id Int @id
+}`;
+
+  assert.deepEqual(
+    aiModelInventory(mutated).filter((model) => model === "Ai_Extra"),
+    ["Ai_Extra"],
+  );
+  assert.throws(() => assertExactAiModels(mutated));
+});
+
+test("the recursively enumerated Admin AI router exposes exactly eight routes", () => {
+  assertExactAdminAiRoutes(adminAiRouter);
+});
+
+test("route inventory rejects endpoints hidden in a mounted child router", () => {
+  const child = Router();
+  child.get("/extra", (_req, res) => res.sendStatus(204));
+  const mutated = Router();
+  mutated.use(adminAiRouter);
+  mutated.use("/nested", child);
+
+  assert.equal(routeInventory(mutated).includes("GET /extra"), true);
+  assert.throws(() => assertExactAdminAiRoutes(mutated));
+});
+
+test("Admin AI has one top-level mount at the approved API path", () => {
+  assertSingleAdminAiMount(registerApiRoutes);
+});
+
+test("top-level mount inventory rejects a second Admin AI mount", () => {
+  const mutatedRegistration = (app) => {
+    registerApiRoutes(app);
+    app.use("/api/v1/admin/ai-shadow", adminAiRouter);
+  };
+
+  assert.throws(() => assertSingleAdminAiMount(mutatedRegistration));
+});
+
+test("all migrations seed exactly seven AI permissions for only approved roles", () => {
+  assertExactAiPermissions(migrationSources);
+});
+
+test("permission inventory rejects a secondary AI insert in a later migration", () => {
+  const mutatedSources = [
+    ...migrationSources,
+    {
+      name: "99999999999999_mutation",
+      sql: `
+        INSERT INTO "permissions"
+          ("name", "display_name", "module")
+        VALUES ('ai.extra', 'Extra', 'ai')
+        ON CONFLICT ("name") DO NOTHING;
+      `,
+    },
+  ];
+
+  assert.equal(aiPermissionInventory(mutatedSources).includes("ai.extra"), true);
+  assert.throws(() => assertExactAiPermissions(mutatedSources));
 });
 
 test("Phase 1 safety accepts substring only and treats regex syntax as literal text", () => {
