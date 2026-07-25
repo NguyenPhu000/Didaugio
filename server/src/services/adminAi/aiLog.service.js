@@ -5,6 +5,22 @@ import logger from "../../config/logger.js";
 
 const RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 const PRUNE_INTERVAL_MS = 60 * 60 * 1000;
+const REDIS_QUOTA_RESERVATION_SCRIPT = `
+local persisted = tonumber(ARGV[1])
+local dailyLimit = tonumber(ARGV[2])
+local ttlSeconds = tonumber(ARGV[3])
+local current = tonumber(redis.call("GET", KEYS[1]) or "0")
+local effective = math.max(current, persisted)
+
+if effective >= dailyLimit then
+  redis.call("SET", KEYS[1], effective, "EX", ttlSeconds)
+  return {0, effective}
+end
+
+local reserved = effective + 1
+redis.call("SET", KEYS[1], reserved, "EX", ttlSeconds)
+return {1, reserved}
+`;
 const LOG_SELECT = Object.freeze({
   requestId: true,
   feature: true,
@@ -65,6 +81,7 @@ export function createAiLogService({
   now = Date.now,
 }) {
   let lastPruneAt = Number.NEGATIVE_INFINITY;
+  const quotaLocks = new Map();
 
   function anonymousUserRef(userId) {
     if (userId == null) return null;
@@ -93,48 +110,69 @@ export function createAiLogService({
     }
   }
 
-  async function reserveProductionQuota({
-    reference,
-    dailyLimit,
-    timestamp,
-  }) {
-    const limit = Number.isSafeInteger(dailyLimit) ? dailyLimit : 0;
-    if (limit <= 0) throw quotaError();
+  async function withQuotaLock(key, operation) {
+    const previous = quotaLocks.get(key) ?? Promise.resolve();
+    let release;
+    const current = new Promise((resolve) => {
+      release = resolve;
+    });
+    quotaLocks.set(key, current);
+    await previous;
+    try {
+      return await operation();
+    } finally {
+      release();
+      if (quotaLocks.get(key) === current) quotaLocks.delete(key);
+    }
+  }
 
-    const { start, end } = utcDayBounds(timestamp);
+  function productionCountWhere(reference, start, end) {
+    return {
+      anonymousUserRef: reference,
+      isTest: false,
+      createdAt: { gte: start, lt: end },
+    };
+  }
+
+  async function tryRedisReservation({
+    reference,
+    limit,
+    timestamp,
+    start,
+    end,
+  }) {
     const redis = redisProvider?.();
-    if (redis?.isReady === true) {
-      const day = start.toISOString().slice(0, 10);
-      const key = `ai-quota:${day}:${reference}`;
-      let count;
-      try {
-        count = await redis.incr(key);
-        if (count === 1) {
-          const ttlSeconds = Math.max(
-            1,
-            Math.ceil((end.getTime() - timestamp) / 1000),
-          );
-          await redis.expire(key, ttlSeconds);
-        }
-      } catch (error) {
-        logger.warn("[AI] Redis quota reservation failed; using database", {
-          error: error.message,
-        });
-      }
-      if (count !== undefined) {
-        if (count > limit) throw quotaError();
-        return;
-      }
+    if (redis?.isReady !== true || typeof redis.eval !== "function") {
+      return false;
     }
 
-    const count = await client.aiRequestLog.count({
-      where: {
-        anonymousUserRef: reference,
-        isTest: false,
-        createdAt: { gte: start, lt: end },
-      },
-    });
-    if (count >= limit) throw quotaError();
+    try {
+      const persistedCount = await client.aiRequestLog.count({
+        where: productionCountWhere(reference, start, end),
+      });
+      const day = start.toISOString().slice(0, 10);
+      const key = `ai-quota:${day}:${reference}`;
+      const ttlSeconds = Math.max(
+        1,
+        Math.ceil((end.getTime() - timestamp) / 1000),
+      );
+      const result = await redis.eval(REDIS_QUOTA_RESERVATION_SCRIPT, {
+        keys: [key],
+        arguments: [
+          String(persistedCount),
+          String(limit),
+          String(ttlSeconds),
+        ],
+      });
+      if (Number(result?.[0]) !== 1) throw quotaError();
+      return true;
+    } catch (error) {
+      if (error?.code === "AI_DAILY_QUOTA_EXCEEDED") throw error;
+      logger.warn("[AI] Atomic Redis quota reservation failed; using database", {
+        error: error.message,
+      });
+      return false;
+    }
   }
 
   async function reserveAiRequest({
@@ -149,28 +187,47 @@ export function createAiLogService({
   }) {
     const timestamp = now();
     const reference = anonymousUserRef(userId);
-    if (!isTest) {
-      await reserveProductionQuota({
-        reference,
-        dailyLimit,
-        timestamp,
+    const data = {
+      requestId,
+      anonymousUserRef: reference,
+      feature,
+      provider,
+      model,
+      configVersion: configVersion ?? null,
+      status: "started",
+      safetyBlocked: false,
+      isTest: Boolean(isTest),
+      expiresAt: new Date(timestamp + RETENTION_MS),
+    };
+    const createStartedRow = () =>
+      client.aiRequestLog.create({ data });
+
+    let row;
+    if (isTest) {
+      row = await createStartedRow();
+    } else {
+      const limit = Number.isSafeInteger(dailyLimit) ? dailyLimit : 0;
+      if (limit <= 0) throw quotaError();
+      const { start, end } = utcDayBounds(timestamp);
+      const lockKey = `${start.toISOString()}:${reference}`;
+      row = await withQuotaLock(lockKey, async () => {
+        const redisReserved = await tryRedisReservation({
+          reference,
+          limit,
+          timestamp,
+          start,
+          end,
+        });
+        if (redisReserved) return createStartedRow();
+
+        const count = await client.aiRequestLog.count({
+          where: productionCountWhere(reference, start, end),
+        });
+        if (count >= limit) throw quotaError();
+        return createStartedRow();
       });
     }
 
-    const row = await client.aiRequestLog.create({
-      data: {
-        requestId,
-        anonymousUserRef: reference,
-        feature,
-        provider,
-        model,
-        configVersion: configVersion ?? null,
-        status: "started",
-        safetyBlocked: false,
-        isTest: Boolean(isTest),
-        expiresAt: new Date(timestamp + RETENTION_MS),
-      },
-    });
     await maybePruneExpiredLogs();
     return row;
   }

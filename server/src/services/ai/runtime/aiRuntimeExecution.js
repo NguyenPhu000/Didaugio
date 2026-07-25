@@ -20,6 +20,7 @@ const RUNTIME_ERROR_CODES = new Set([
   "AI_SAFETY_BLOCKED",
   "AI_DAILY_QUOTA_EXCEEDED",
   "AI_LOG_KEY_UNAVAILABLE",
+  "AI_REQUEST_LOG_UNAVAILABLE",
   "AI_SECRET_UNAVAILABLE",
 ]);
 
@@ -39,6 +40,14 @@ function stableRuntimeError(error) {
     return error;
   }
   return toAiServiceError(error);
+}
+
+function requestLogUnavailableError() {
+  return runtimeError(
+    "AI request logging is unavailable.",
+    503,
+    "AI_REQUEST_LOG_UNAVAILABLE",
+  );
 }
 
 function outputText(result) {
@@ -147,48 +156,53 @@ export function createAiRuntimeExecutionService({
   resolveSecret = resolveProviderSecret,
   executeTestProvider = executeGroqConfigTest,
 } = {}) {
-  async function executeAiRequest({
+  async function executeWithValidatedRuntime({
     feature,
     user,
     isTest = false,
     inputText,
     context,
     operation,
-    runtimeOverride,
-  }) {
-    const runtime = runtimeOverride ?? await getRuntime();
+  }, runtime) {
     if (runtime.status !== "active") throw unavailableRuntime(runtime);
 
     const id = requestId();
     const startedAt = now();
     const { configData } = runtime;
-    await logs.reserveAiRequest({
-      requestId: id,
-      userId: user?.userId,
-      feature,
-      provider: configData.provider.adapter,
-      model: configData.provider.model,
-      configVersion: runtime.version,
-      dailyLimit: configData.quotas.freeDailyRequests,
-      isTest,
-    });
+    try {
+      await logs.reserveAiRequest({
+        requestId: id,
+        userId: user?.userId,
+        feature,
+        provider: configData.provider.adapter,
+        model: configData.provider.model,
+        configVersion: runtime.version,
+        dailyLimit: configData.quotas.freeDailyRequests,
+        isTest,
+      });
+    } catch (error) {
+      const code = error?.code ?? error?.errorCode;
+      if (RUNTIME_ERROR_CODES.has(code)) throw stableRuntimeError(error);
+      throw requestLogUnavailableError();
+    }
 
-    let completed = false;
+    async function completeOnce(metadata) {
+      try {
+        await logs.completeAiRequest(id, metadata);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    let result;
+    let tokens = { inputTokens: null, outputTokens: null };
     try {
       const inputSafety = evaluateKeywordSafety(
         inputText,
         configData.safety,
       );
       if (inputSafety.blocked) {
-        await logs.completeAiRequest(id, {
-          inputTokens: null,
-          outputTokens: null,
-          latencyMs: now() - startedAt,
-          status: "blocked",
-          errorCode: "AI_SAFETY_BLOCKED",
-          safetyBlocked: true,
-        });
-        completed = true;
         throw runtimeError(
           configData.safety.safeResponse,
           422,
@@ -200,56 +214,70 @@ export function createAiRuntimeExecutionService({
         context,
         configData.context,
       );
-      const result = await operation({
+      result = await operation({
         configData,
         inputText,
         context: allowedContext,
         requestId: id,
       });
-      const tokens = tokenMetadata(result);
+      tokens = tokenMetadata(result);
       const outputSafety = evaluateKeywordSafety(
         outputText(result),
         configData.safety,
       );
       if (outputSafety.blocked) {
-        await logs.completeAiRequest(id, {
-          ...tokens,
-          latencyMs: now() - startedAt,
-          status: "blocked",
-          errorCode: "AI_SAFETY_BLOCKED",
-          safetyBlocked: true,
-        });
-        completed = true;
         throw runtimeError(
           configData.safety.safeResponse,
           422,
           "AI_SAFETY_BLOCKED",
         );
       }
-
-      await logs.completeAiRequest(id, {
-        ...tokens,
-        latencyMs: now() - startedAt,
-        status: "success",
-        errorCode: null,
-        safetyBlocked: false,
-      });
-      completed = true;
-      return { requestId: id, result };
     } catch (error) {
       const stableError = stableRuntimeError(error);
-      if (!completed) {
-        await logs.completeAiRequest(id, {
-          inputTokens: null,
-          outputTokens: null,
-          latencyMs: now() - startedAt,
-          status: "error",
-          errorCode: stableError.code,
-          safetyBlocked: false,
-        });
-      }
+      const safetyBlocked = stableError.code === "AI_SAFETY_BLOCKED";
+      await completeOnce({
+        ...tokens,
+        latencyMs: now() - startedAt,
+        status: safetyBlocked ? "blocked" : "error",
+        errorCode: stableError.code,
+        safetyBlocked,
+      });
       throw stableError;
     }
+
+    const completionWritten = await completeOnce({
+      ...tokens,
+      latencyMs: now() - startedAt,
+      status: "success",
+      errorCode: null,
+      safetyBlocked: false,
+    });
+    if (!completionWritten) throw requestLogUnavailableError();
+    return { requestId: id, result };
+  }
+
+  async function executeAiRequest({
+    feature,
+    user,
+    isTest = false,
+    inputText,
+    context,
+    operation,
+  }) {
+    let runtime;
+    try {
+      runtime = await getRuntime();
+    } catch (error) {
+      throw stableRuntimeError(error);
+    }
+    return executeWithValidatedRuntime({
+      feature,
+      user,
+      isTest,
+      inputText,
+      context,
+      operation,
+    }, runtime);
   }
 
   async function runAiConfigTest(
@@ -279,13 +307,12 @@ export function createAiRuntimeExecutionService({
       killSwitch: { enabled: false, message: null, updatedAt: null },
     };
     const allowedContext = buildAllowedContext(context, configData.context);
-    const execution = await executeAiRequest({
+    const execution = await executeWithValidatedRuntime({
       feature,
       user: actor,
       isTest: true,
       inputText: message,
       context,
-      runtimeOverride: runtime,
       operation: async (operationInput) => {
         const secret = await resolveSecret(
           configData.provider.secretReference,
@@ -296,7 +323,7 @@ export function createAiRuntimeExecutionService({
           secret,
         });
       },
-    });
+    }, runtime);
     const providerResult = execution.result;
 
     return {

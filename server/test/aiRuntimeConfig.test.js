@@ -189,24 +189,45 @@ function logClientFixture({ productionCount = 0, rows = [] } = {}) {
   };
 }
 
+function atomicRedisFixture() {
+  let value = null;
+  const calls = [];
+  return {
+    redis: {
+      isReady: true,
+      eval: async (_script, { keys, arguments: values }) => {
+        const persistedCount = Number(values[0]);
+        const dailyLimit = Number(values[1]);
+        calls.push({
+          key: keys[0],
+          persistedCount,
+          dailyLimit,
+          ttlSeconds: Number(values[2]),
+        });
+        const current = Math.max(value ?? 0, persistedCount);
+        if (current >= dailyLimit) {
+          value = current;
+          return [0, current];
+        }
+        value = current + 1;
+        return [1, value];
+      },
+    },
+    calls,
+    loseKey() {
+      value = null;
+    },
+  };
+}
+
 test("log reservation HMACs source user ids, reserves Redis quota, and persists metadata only", async () => {
   const now = Date.parse("2026-07-25T03:00:00.000Z");
   const fixture = logClientFixture();
-  const redisCalls = [];
-  let reservations = 0;
-  const redis = {
-    isReady: true,
-    incr: async (key) => {
-      redisCalls.push(["incr", key]);
-      reservations += 1;
-      return reservations;
-    },
-    expire: async (key, ttl) => redisCalls.push(["expire", key, ttl]),
-  };
+  const redisFixture = atomicRedisFixture();
   const encryptionKey = "11".repeat(32);
   const logs = createAiLogService({
     client: fixture.client,
-    redisProvider: () => redis,
+    redisProvider: () => redisFixture.redis,
     encryptionKey,
     now: () => now,
   });
@@ -241,8 +262,10 @@ test("log reservation HMACs source user ids, reserves Redis quota, and persists 
     expiresAt: new Date("2026-10-23T03:00:00.000Z"),
   });
   assert.equal(JSON.stringify(fixture.calls).includes("must never"), false);
-  assert.match(redisCalls[0][1], /^ai-quota:2026-07-25:/);
-  assert.equal(redisCalls[0][1].includes("123"), false);
+  assert.match(redisFixture.calls[0].key, /^ai-quota:2026-07-25:/);
+  assert.equal(redisFixture.calls[0].key.includes("123"), false);
+  assert.equal(redisFixture.calls[0].persistedCount, 0);
+  assert.equal(redisFixture.calls[0].ttlSeconds, 75_600);
 
   await logs.reserveAiRequest({
     requestId: "request-2",
@@ -279,9 +302,9 @@ test("test rows bypass production quota while retaining isTest metadata", async 
     client: fixture.client,
     redisProvider: () => ({
       isReady: true,
-      incr: async () => {
+      eval: async () => {
         redisReservations += 1;
-        return 100;
+        return [0, 100];
       },
     }),
     encryptionKey: "22".repeat(32),
@@ -326,6 +349,273 @@ test("database quota fallback counts today's production rows before starting a r
   );
   assert.equal(fixture.calls.count, 1);
   assert.equal(fixture.calls.creates.length, 0);
+});
+
+test("database quota fallback serializes concurrent same-user count and create", async () => {
+  const rows = [];
+  let countCalls = 0;
+  let releaseFirstCount;
+  let firstCountEntered;
+  const firstCountGate = new Promise((resolve) => {
+    releaseFirstCount = resolve;
+  });
+  const firstCountSeen = new Promise((resolve) => {
+    firstCountEntered = resolve;
+  });
+  const client = {
+    aiRequestLog: {
+      count: async () => {
+        countCalls += 1;
+        const observed = rows.length;
+        if (countCalls === 1) {
+          firstCountEntered();
+          await firstCountGate;
+        }
+        return observed;
+      },
+      create: async ({ data }) => {
+        rows.push(data);
+        return data;
+      },
+      deleteMany: async () => ({ count: 0 }),
+    },
+  };
+  const logs = createAiLogService({
+    client,
+    redisProvider: () => ({ isReady: false }),
+    encryptionKey: "34".repeat(32),
+  });
+  const input = (requestId) => ({
+    requestId,
+    userId: 10,
+    feature: "chat",
+    provider: "groq",
+    model: "model-a",
+    configVersion: 1,
+    dailyLimit: 1,
+    isTest: false,
+  });
+
+  const first = logs.reserveAiRequest(input("concurrent-1"));
+  await firstCountSeen;
+  const second = logs.reserveAiRequest(input("concurrent-2"));
+  await new Promise((resolve) => setImmediate(resolve));
+  releaseFirstCount();
+  const settled = await Promise.allSettled([first, second]);
+
+  assert.equal(
+    settled.filter((result) => result.status === "fulfilled").length,
+    1,
+  );
+  assert.equal(
+    settled.filter(
+      (result) =>
+        result.status === "rejected" &&
+        result.reason.code === "AI_DAILY_QUOTA_EXCEEDED",
+    ).length,
+    1,
+  );
+  assert.equal(rows.length, 1);
+});
+
+test("Redis recovery seeds quota from rows created during database fallback", async () => {
+  const rows = [];
+  let redisReady = false;
+  const redisFixture = atomicRedisFixture();
+  const client = {
+    aiRequestLog: {
+      count: async () => rows.length,
+      create: async ({ data }) => {
+        rows.push(data);
+        return data;
+      },
+      deleteMany: async () => ({ count: 0 }),
+    },
+  };
+  const logs = createAiLogService({
+    client,
+    redisProvider: () => ({
+      ...redisFixture.redis,
+      isReady: redisReady,
+    }),
+    encryptionKey: "35".repeat(32),
+  });
+  const input = (requestId) => ({
+    requestId,
+    userId: 11,
+    feature: "chat",
+    provider: "groq",
+    model: "model-a",
+    configVersion: 1,
+    dailyLimit: 1,
+    isTest: false,
+  });
+
+  await logs.reserveAiRequest(input("database-first"));
+  redisReady = true;
+
+  await assert.rejects(
+    logs.reserveAiRequest(input("redis-after-recovery")),
+    (error) => error.code === "AI_DAILY_QUOTA_EXCEEDED",
+  );
+  assert.equal(rows.length, 1);
+  assert.equal(redisFixture.calls[0].persistedCount, 1);
+});
+
+test("a degraded fallback and recovered Redis cannot reserve concurrently", async () => {
+  const rows = [];
+  let evalFails = true;
+  let countCalls = 0;
+  let fallbackCountEntered;
+  let releaseFallbackCount;
+  const fallbackCountSeen = new Promise((resolve) => {
+    fallbackCountEntered = resolve;
+  });
+  const fallbackCountGate = new Promise((resolve) => {
+    releaseFallbackCount = resolve;
+  });
+  let redisValue = null;
+  const redis = {
+    isReady: true,
+    eval: async (_script, { arguments: values }) => {
+      if (evalFails) throw new Error("temporary Redis failure");
+      const persisted = Number(values[0]);
+      const limit = Number(values[1]);
+      const current = Math.max(redisValue ?? 0, persisted);
+      if (current >= limit) return [0, current];
+      redisValue = current + 1;
+      return [1, redisValue];
+    },
+  };
+  const client = {
+    aiRequestLog: {
+      count: async () => {
+        countCalls += 1;
+        const observed = rows.length;
+        if (countCalls === 2) {
+          fallbackCountEntered();
+          await fallbackCountGate;
+        }
+        return observed;
+      },
+      create: async ({ data }) => {
+        rows.push(data);
+        return data;
+      },
+      deleteMany: async () => ({ count: 0 }),
+    },
+  };
+  const logs = createAiLogService({
+    client,
+    redisProvider: () => redis,
+    encryptionKey: "38".repeat(32),
+  });
+  const input = (requestId) => ({
+    requestId,
+    userId: 14,
+    feature: "chat",
+    provider: "groq",
+    model: "model-a",
+    configVersion: 1,
+    dailyLimit: 1,
+    isTest: false,
+  });
+
+  const degraded = logs.reserveAiRequest(input("degraded-source"));
+  await fallbackCountSeen;
+  evalFails = false;
+  const recovered = logs.reserveAiRequest(input("recovered-source"));
+  await new Promise((resolve) => setImmediate(resolve));
+  releaseFallbackCount();
+  const settled = await Promise.allSettled([degraded, recovered]);
+
+  assert.equal(
+    settled.filter((result) => result.status === "fulfilled").length,
+    1,
+  );
+  assert.equal(
+    settled.filter(
+      (result) =>
+        result.status === "rejected" &&
+        result.reason.code === "AI_DAILY_QUOTA_EXCEEDED",
+    ).length,
+    1,
+  );
+  assert.equal(rows.length, 1);
+});
+
+test("Redis lost-key recovery seeds from persisted rows before reserving", async () => {
+  const rows = [];
+  const redisFixture = atomicRedisFixture();
+  const client = {
+    aiRequestLog: {
+      count: async () => rows.length,
+      create: async ({ data }) => {
+        rows.push(data);
+        return data;
+      },
+      deleteMany: async () => ({ count: 0 }),
+    },
+  };
+  const logs = createAiLogService({
+    client,
+    redisProvider: () => redisFixture.redis,
+    encryptionKey: "36".repeat(32),
+  });
+  const input = (requestId) => ({
+    requestId,
+    userId: 12,
+    feature: "chat",
+    provider: "groq",
+    model: "model-a",
+    configVersion: 1,
+    dailyLimit: 1,
+    isTest: false,
+  });
+
+  await logs.reserveAiRequest(input("before-key-loss"));
+  redisFixture.loseKey();
+
+  await assert.rejects(
+    logs.reserveAiRequest(input("after-key-loss")),
+    (error) => error.code === "AI_DAILY_QUOTA_EXCEEDED",
+  );
+  assert.equal(rows.length, 1);
+  assert.equal(redisFixture.calls[1].persistedCount, 1);
+});
+
+test("split INCR success and EXPIRE failure is not accepted as a Redis reservation", async () => {
+  const fixture = logClientFixture({ productionCount: 0 });
+  let increments = 0;
+  const logs = createAiLogService({
+    client: fixture.client,
+    redisProvider: () => ({
+      isReady: true,
+      incr: async () => {
+        increments += 1;
+        return increments;
+      },
+      expire: async () => {
+        throw new Error("raw expiry storage failure");
+      },
+    }),
+    encryptionKey: "37".repeat(32),
+  });
+
+  await logs.reserveAiRequest({
+    requestId: "expiry-fallback",
+    userId: 13,
+    feature: "chat",
+    provider: "groq",
+    model: "model-a",
+    configVersion: 1,
+    dailyLimit: 1,
+    isTest: false,
+  });
+
+  assert.equal(increments, 0);
+  assert.equal(fixture.calls.count, 1);
+  assert.equal(fixture.calls.creates.length, 1);
 });
 
 test("completion records only token, latency, status, error, and safety metadata", async () => {
@@ -405,6 +695,53 @@ function runtimeExecutionFixture({
   };
   return { calls, service, operation, inputText };
 }
+
+test("production runtime cannot use an override to bypass the kill switch", async () => {
+  let operations = 0;
+  let reservations = 0;
+  const service = createAiRuntimeExecutionService({
+    getRuntime: async () => ({
+      status: "disabled",
+      version: null,
+      configData: null,
+      killSwitch: {
+        enabled: true,
+        message: "Runtime disabled",
+        updatedAt: "2026-07-25T00:00:00.000Z",
+      },
+    }),
+    logs: {
+      reserveAiRequest: async () => {
+        reservations += 1;
+      },
+      completeAiRequest: async () => {},
+    },
+  });
+
+  await assert.rejects(
+    service.executeAiRequest({
+      feature: "chat",
+      user: { userId: 55 },
+      isTest: false,
+      inputText: "Gợi ý điểm đến",
+      context: {},
+      operation: async () => {
+        operations += 1;
+        return { outputText: "must not run" };
+      },
+      runtimeOverride: {
+        status: "active",
+        version: 99,
+        configData: DEFAULT_AI_CONFIG,
+        killSwitch: { enabled: false, message: null, updatedAt: null },
+      },
+    }),
+    (error) => error.code === "AI_DISABLED",
+  );
+
+  assert.equal(operations, 0);
+  assert.equal(reservations, 0);
+});
 
 test("runtime reserves the free Mobile quota even for admin-shaped users", async () => {
   const fixture = runtimeExecutionFixture();
@@ -740,6 +1077,126 @@ test("runtime replaces provider failures with stable errors before logging or re
     JSON.stringify(fixture.calls.completions).includes("provider leaked"),
     false,
   );
+});
+
+test("reservation storage failure is normalized before provider execution", async () => {
+  let operations = 0;
+  let completions = 0;
+  const service = createAiRuntimeExecutionService({
+    getRuntime: async () => ({
+      status: "active",
+      version: 5,
+      configData: DEFAULT_AI_CONFIG,
+      killSwitch: { enabled: false, message: null, updatedAt: null },
+    }),
+    logs: {
+      reserveAiRequest: async () => {
+        throw new Error("raw reservation database details");
+      },
+      completeAiRequest: async () => {
+        completions += 1;
+      },
+    },
+  });
+
+  await assert.rejects(
+    service.executeAiRequest({
+      feature: "chat",
+      user: { userId: 55 },
+      isTest: false,
+      inputText: "Gợi ý điểm đến",
+      context: {},
+      operation: async () => {
+        operations += 1;
+        return { outputText: "must not run" };
+      },
+    }),
+    (error) =>
+      error.code === "AI_REQUEST_LOG_UNAVAILABLE" &&
+      error.statusCode === 503 &&
+      error.message === "AI request logging is unavailable." &&
+      !error.message.includes("raw reservation"),
+  );
+  assert.equal(operations, 0);
+  assert.equal(completions, 0);
+});
+
+test("completion storage failure cannot replace a stable provider failure", async () => {
+  let completions = 0;
+  const service = createAiRuntimeExecutionService({
+    getRuntime: async () => ({
+      status: "active",
+      version: 5,
+      configData: DEFAULT_AI_CONFIG,
+      killSwitch: { enabled: false, message: null, updatedAt: null },
+    }),
+    logs: {
+      reserveAiRequest: async () => {},
+      completeAiRequest: async () => {
+        completions += 1;
+        throw new Error("raw completion database details");
+      },
+    },
+  });
+
+  await assert.rejects(
+    service.executeAiRequest({
+      feature: "chat",
+      user: { userId: 55 },
+      isTest: false,
+      inputText: "Gợi ý điểm đến",
+      context: {},
+      operation: async () => {
+        throw new Error("raw provider response details");
+      },
+    }),
+    (error) =>
+      error.code === "AI_ERROR" &&
+      error.message === "AI provider request failed." &&
+      !error.message.includes("raw completion") &&
+      !error.message.includes("raw provider"),
+  );
+  assert.equal(completions, 1);
+});
+
+test("success completion failure returns one stable logging error without retry", async () => {
+  let completions = 0;
+  const service = createAiRuntimeExecutionService({
+    getRuntime: async () => ({
+      status: "active",
+      version: 5,
+      configData: DEFAULT_AI_CONFIG,
+      killSwitch: { enabled: false, message: null, updatedAt: null },
+    }),
+    logs: {
+      reserveAiRequest: async () => {},
+      completeAiRequest: async () => {
+        completions += 1;
+        throw new Error("raw success completion database details");
+      },
+    },
+  });
+
+  await assert.rejects(
+    service.executeAiRequest({
+      feature: "chat",
+      user: { userId: 55 },
+      isTest: false,
+      inputText: "Gợi ý điểm đến",
+      context: {},
+      operation: async () => ({
+        outputText: "Kết quả an toàn",
+        inputTokens: 4,
+        outputTokens: 5,
+      }),
+    }),
+    (error) =>
+      error.code === "AI_REQUEST_LOG_UNAVAILABLE" &&
+      error.statusCode === 503 &&
+      error.message === "AI request logging is unavailable." &&
+      !error.message.includes("raw success"),
+  );
+  assert.equal(completions, 1);
 });
 
 test("Test Lab uses the selected snapshot, logs isTest, and returns no message, secret, or provider output", async () => {
