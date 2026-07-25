@@ -50,7 +50,7 @@ export const handlePlaceSummaryStream = async (req, res) => {
     }
 
     const execution = await executeAiRequest({
-      feature: "voice",
+      feature: "voice-introduction",
       user: {
         userId: req.user?.userId || req.user?.id || null,
       },
@@ -270,7 +270,7 @@ export const handleVoiceTranscribe = async (req, res) => {
     const language = req.body?.language || "vi";
     const prompt = req.body?.prompt;
     const execution = await executeAiRequest({
-      feature: "voice",
+      feature: "voice-transcription",
       user: {
         userId: req.user?.userId || req.user?.id || null,
       },
@@ -321,7 +321,7 @@ export const handleVoiceSpeech = async (req, res) => {
   try {
     const input = req.body?.input;
     const execution = await executeAiRequest({
-      feature: "voice",
+      feature: "voice-speech",
       user: {
         userId: req.user?.userId || req.user?.id || null,
       },

@@ -13,6 +13,8 @@ import {
   getActiveAiRuntime,
 } from "./aiRuntimeConfig.js";
 import { evaluateKeywordSafety } from "./aiKeywordSafety.js";
+import { renderConfiguredPrompt } from "../../../lib/promptBuilder.js";
+import { isRateableAiFeature } from "../aiFeedbackPolicy.js";
 
 const RUNTIME_ERROR_CODES = new Set([
   "AI_DISABLED",
@@ -22,6 +24,7 @@ const RUNTIME_ERROR_CODES = new Set([
   "AI_LOG_KEY_UNAVAILABLE",
   "AI_REQUEST_LOG_UNAVAILABLE",
   "AI_SECRET_UNAVAILABLE",
+  "AI_INVALID_REQUEST",
 ]);
 
 function runtimeError(message, statusCode, code) {
@@ -110,7 +113,7 @@ async function executeGroqConfigTest({
   configData,
   feature,
   inputText,
-  context,
+  renderedSystemPrompt,
   secret,
 }) {
   const startedAt = Date.now();
@@ -118,12 +121,6 @@ async function executeGroqConfigTest({
     apiKey: secret,
     baseURL: configData.provider.baseUrl,
   });
-  const renderedSystemPrompt = [
-    configData.prompts[feature],
-    Object.keys(context).length > 0
-      ? `Allowed context:\n${JSON.stringify(context)}`
-      : null,
-  ].filter(Boolean).join("\n\n");
   const completion = await client.chat.completions.create(
     {
       model: configData.provider.model,
@@ -246,11 +243,14 @@ export function createAiRuntimeExecutionService({
       throw stableError;
     }
 
+    const rateable = !isTest && isRateableAiFeature(feature);
+    const hasRateableOutput = outputText(result).trim().length > 0;
+    const emptyRateableOutput = rateable && !hasRateableOutput;
     const completionWritten = await completeOnce({
       ...tokens,
       latencyMs: now() - startedAt,
-      status: "success",
-      errorCode: null,
+      status: emptyRateableOutput ? "error" : "success",
+      errorCode: emptyRateableOutput ? "AI_EMPTY_OUTPUT" : null,
       safetyBlocked: false,
     });
     if (!completionWritten) throw requestLogUnavailableError();
@@ -259,7 +259,9 @@ export function createAiRuntimeExecutionService({
       : null;
     return {
       requestId: id,
-      ...(requestLogId ? { requestLogId } : {}),
+      ...(rateable && hasRateableOutput && requestLogId
+        ? { requestLogId }
+        : {}),
       result,
     };
   }
@@ -322,6 +324,10 @@ export function createAiRuntimeExecutionService({
       inputText: message,
       context,
       operation: async (operationInput) => {
+        const renderedSystemPrompt = renderConfiguredPrompt(
+          configData.prompts[feature],
+          operationInput.context,
+        );
         const secret = await resolveSecret(
           configData.provider.secretReference,
         );
@@ -329,6 +335,7 @@ export function createAiRuntimeExecutionService({
           ...operationInput,
           feature,
           secret,
+          renderedSystemPrompt,
         });
       },
     }, runtime);
@@ -337,7 +344,10 @@ export function createAiRuntimeExecutionService({
     return {
       requestId: execution.requestId,
       renderedPrompt: {
-        system: configData.prompts[feature],
+        system: renderConfiguredPrompt(
+          configData.prompts[feature],
+          allowedContext,
+        ),
         user: "[REDACTED_TEST_MESSAGE]",
       },
       context: allowedContext,

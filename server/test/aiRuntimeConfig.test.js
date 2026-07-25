@@ -1284,6 +1284,69 @@ test("Test Lab uses the selected snapshot, logs isTest, and returns no message, 
   assert.equal(serialized.includes("private@example.com"), false);
 });
 
+test("Test Lab rejects unknown prompt variables before secret or provider access", async () => {
+  const calls = {
+    completions: [],
+    secrets: 0,
+    providers: 0,
+  };
+  const configData = {
+    ...DEFAULT_AI_CONFIG,
+    prompts: {
+      ...DEFAULT_AI_CONFIG.prompts,
+      chat: "Welcome to {{unknownVariable}}",
+    },
+  };
+  const service = createAiRuntimeExecutionService({
+    loadSnapshot: async () => ({ version: 12, configData }),
+    resolveSecret: async () => {
+      calls.secrets += 1;
+      return "must-not-resolve";
+    },
+    executeTestProvider: async () => {
+      calls.providers += 1;
+      return { outputText: "must not run" };
+    },
+    logs: {
+      reserveAiRequest: async () => ({ id: 15 }),
+      completeAiRequest: async (...input) => calls.completions.push(input),
+    },
+    requestId: () => "invalid-test-lab-prompt",
+    now: () => 1_000,
+  });
+
+  await assert.rejects(
+    service.runAiConfigTest(
+      {
+        source: "draft",
+        feature: "chat",
+        message: "private test message",
+        context: {},
+      },
+      { userId: 70 },
+    ),
+    (error) =>
+      error.code === "AI_INVALID_REQUEST" &&
+      error.statusCode === 400,
+  );
+
+  assert.equal(calls.secrets, 0);
+  assert.equal(calls.providers, 0);
+  assert.equal(calls.completions.length, 1);
+  assert.deepEqual(calls.completions[0][1], {
+    inputTokens: null,
+    outputTokens: null,
+    latencyMs: 0,
+    status: "error",
+    errorCode: "AI_INVALID_REQUEST",
+    safetyBlocked: false,
+  });
+  assert.equal(
+    JSON.stringify(calls.completions).includes("unknownVariable"),
+    false,
+  );
+});
+
 test("successful publish and rollback invalidate the local active runtime cache", async () => {
   let invalidations = 0;
   const repository = {

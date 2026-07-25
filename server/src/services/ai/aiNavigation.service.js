@@ -10,6 +10,100 @@ import {
   toAiServiceError,
 } from "./aiProviderPolicy.js";
 
+const MAX_NAVIGATION_ROUTES = 6;
+const MAX_NAVIGATION_WAYPOINTS = 12;
+const MAX_LABEL_LENGTH = 160;
+const MAX_SUMMARY_LENGTH = 240;
+
+function boundedNavigationText(value, maxLength, fallback) {
+  const normalized = String(value ?? "")
+    .replace(/\s+/g, " ")
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[redacted]")
+    .replace(/(?:\+?\d[\s().-]*){9,}/g, "[redacted]")
+    .replace(/-?\d{1,3}\.\d+\s*[,;]\s*-?\d{1,3}\.\d+/g, "[redacted]")
+    .trim();
+  return (normalized || fallback).slice(0, maxLength);
+}
+
+function boundedNavigationNumber(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  return Math.max(0, Math.min(100_000_000, Math.round(number)));
+}
+
+export function sanitizeNavigationProviderPayload(payload = {}, mode = "route") {
+  const context = payload.context ?? {};
+  const base = {
+    originLabel: boundedNavigationText(
+      payload.origin?.name,
+      MAX_LABEL_LENGTH,
+      "current_origin",
+    ),
+    destinationLabel: boundedNavigationText(
+      payload.destination?.name,
+      MAX_LABEL_LENGTH,
+      "selected_destination",
+    ),
+    question: boundedNavigationText(
+      context.question,
+      MAX_SUMMARY_LENGTH,
+      mode === "route"
+        ? "Recommend a navigation route"
+        : "Order navigation waypoints",
+    ),
+    timeOfDay: boundedNavigationText(
+      context.time,
+      MAX_LABEL_LENGTH,
+      "not_provided",
+    ),
+    transportPreference: boundedNavigationText(
+      context.vehicleType,
+      MAX_LABEL_LENGTH,
+      "motorcycle",
+    ),
+  };
+
+  if (mode === "waypoint") {
+    return {
+      ...base,
+      waypoints: (Array.isArray(payload.waypoints) ? payload.waypoints : [])
+        .slice(0, MAX_NAVIGATION_WAYPOINTS)
+        .map((point, index) => ({
+          index,
+          label: boundedNavigationText(
+            point?.name,
+            MAX_LABEL_LENGTH,
+            `Waypoint ${index}`,
+          ),
+        })),
+    };
+  }
+
+  return {
+    ...base,
+    routes: (Array.isArray(payload.routes) ? payload.routes : [])
+      .slice(0, MAX_NAVIGATION_ROUTES)
+      .map((route, index) => ({
+        id: boundedNavigationText(
+          route?.id,
+          MAX_LABEL_LENGTH,
+          `route-${index + 1}`,
+        ),
+        distance: boundedNavigationNumber(route?.distance),
+        duration: boundedNavigationNumber(route?.duration),
+        summary: boundedNavigationText(
+          route?.summary,
+          MAX_SUMMARY_LENGTH,
+          "n/a",
+        ),
+      })),
+  };
+}
+
+function navigationSafetyText(payload) {
+  return JSON.stringify(payload);
+}
+
 export async function requestNavigationCompletion({
   client,
   prompt,
@@ -45,33 +139,41 @@ export async function requestNavigationCompletion({
 }
 
 class AINavigationService {
+  constructor({
+    executeRequest = executeAiRequest,
+    resolveProviderOptions = resolveGroqProviderOptions,
+    createClient = createGroqClient,
+  } = {}) {
+    this.executeRequest = executeRequest;
+    this.resolveProviderOptions = resolveProviderOptions;
+    this.createClient = createClient;
+  }
+
   async getNavigationAdvice(payload = {}, actor = {}) {
-    const { origin, destination, routes = [], context = {} } = payload;
+    const { routes = [], context = {} } = payload;
 
     if (!Array.isArray(routes) || routes.length === 0) {
       return this._fallbackRecommendation(routes, context);
     }
 
+    const providerPayload = sanitizeNavigationProviderPayload(payload, "route");
     try {
-      const execution = await executeAiRequest({
+      const execution = await this.executeRequest({
         feature: "navigation-route-advice",
         user: actor,
-        inputText:
-          context.question || "Recommend a navigation route",
+        inputText: navigationSafetyText(providerPayload),
         context: {
-          timeOfDay: context.time,
-          transportPreference: context.vehicleType,
+          timeOfDay: providerPayload.timeOfDay,
+          transportPreference: providerPayload.transportPreference,
         },
         operation: async ({ configData, context: allowedContext }) => {
-          const providerOptions = await resolveGroqProviderOptions(
+          const providerOptions = await this.resolveProviderOptions(
             configData,
             "chat",
           );
-          const client = createGroqClient(providerOptions);
+          const client = this.createClient(providerOptions);
           const prompt = this._buildPrompt({
-            origin,
-            destination,
-            routes,
+            ...providerPayload,
             context: allowedContext,
           });
           const completion = await requestNavigationCompletion({
@@ -106,33 +208,34 @@ class AINavigationService {
   }
 
   async getWaypointOrderAdvice(payload = {}, actor = {}) {
-    const { origin, destination, waypoints = [], context = {} } = payload;
+    const { waypoints = [] } = payload;
     const normalizedWaypoints = Array.isArray(waypoints) ? waypoints : [];
 
     if (normalizedWaypoints.length === 0) {
       return this._fallbackWaypointOrder(normalizedWaypoints);
     }
 
+    const providerPayload = sanitizeNavigationProviderPayload(
+      payload,
+      "waypoint",
+    );
     try {
-      const execution = await executeAiRequest({
+      const execution = await this.executeRequest({
         feature: "navigation-waypoint-order",
         user: actor,
-        inputText:
-          context.question || "Order navigation waypoints",
+        inputText: navigationSafetyText(providerPayload),
         context: {
-          timeOfDay: context.time,
-          transportPreference: context.vehicleType,
+          timeOfDay: providerPayload.timeOfDay,
+          transportPreference: providerPayload.transportPreference,
         },
         operation: async ({ configData, context: allowedContext }) => {
-          const providerOptions = await resolveGroqProviderOptions(
+          const providerOptions = await this.resolveProviderOptions(
             configData,
             "chat",
           );
-          const client = createGroqClient(providerOptions);
+          const client = this.createClient(providerOptions);
           const prompt = this._buildWaypointOrderPrompt({
-            origin,
-            destination,
-            waypoints: normalizedWaypoints,
+            ...providerPayload,
             context: allowedContext,
           });
           const completion = await requestNavigationCompletion({
@@ -174,7 +277,13 @@ class AINavigationService {
     return this._fallbackWaypointOrder(normalizedWaypoints);
   }
 
-  _buildPrompt({ origin, destination, routes, context }) {
+  _buildPrompt({
+    originLabel,
+    destinationLabel,
+    question,
+    routes,
+    context,
+  }) {
     const summaries = routes
       .map(
         (route) =>
@@ -196,12 +305,12 @@ Hay phan tich cac route alternatives va tra ve JSON hop le theo schema sau:
 }
 
 Input:
-- Origin: ${origin?.name || "current_origin"}
-- Destination: ${destination?.name || "selected_destination"}
+- Origin: ${originLabel}
+- Destination: ${destinationLabel}
 - Time: ${context?.timeOfDay || "not_provided"}
 - Vehicle: ${context?.transportPreference || "motorcycle"}
 - Preference: ${context?.userPreference || "fastest"}
-- Question: ${context?.question || "Nen di route nao?"}
+- Question: ${question}
 
 Routes:
 ${summaries}
@@ -212,12 +321,14 @@ Quy tac:
 `;
   }
 
-  _buildWaypointOrderPrompt({ origin, destination, waypoints, context }) {
+  _buildWaypointOrderPrompt({
+    originLabel,
+    destinationLabel,
+    waypoints,
+    context,
+  }) {
     const waypointList = waypoints
-      .map((point, index) => {
-        const label = point?.name || `Waypoint ${index}`;
-        return `- ${index}: ${label}`;
-      })
+      .map((point) => `- ${point.index}: ${point.label}`)
       .join("\n");
 
     return `Ban la tro ly sap xep lich trinh tham quan tai Viet Nam.
@@ -231,8 +342,8 @@ Tra ve JSON hop le theo schema:
 }
 
 Input:
-- Origin: ${origin?.name || "current_origin"}
-- Destination: ${destination?.name || "selected_destination"}
+- Origin: ${originLabel}
+- Destination: ${destinationLabel}
 - Time: ${context?.timeOfDay || "not_provided"}
 - Intent: ${context?.intent || context?.userPreference || "balanced"}
 - Vehicle: ${context?.transportPreference || "motorcycle"}
@@ -329,4 +440,8 @@ Quy tac bat buoc:
   }
 }
 
-export default new AINavigationService();
+export function createAiNavigationService(dependencies = {}) {
+  return new AINavigationService(dependencies);
+}
+
+export default createAiNavigationService();

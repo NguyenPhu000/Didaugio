@@ -76,4 +76,16 @@ describe("genie assistant experience helpers", () => {
     expect(normalized.quickReplies).toEqual(["Thêm vào trip"]);
     expect(normalized.actions.map((action) => action.type)).toContain("view_map");
   });
+
+  test("drops a guessed request log id when the provider reply is empty", () => {
+    const normalized = normalizeGenieResponse({
+      data: {
+        reply: "   ",
+        requestLogId: 73,
+      },
+    });
+
+    expect(normalized.reply).toBe("");
+    expect(normalized.requestLogId).toBeNull();
+  });
 });

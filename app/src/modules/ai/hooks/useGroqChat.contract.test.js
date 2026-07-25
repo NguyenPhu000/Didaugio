@@ -20,6 +20,13 @@ const mocks = vi.hoisted(() => {
 
   return {
     apiClient: { post: vi.fn() },
+    normalizedResponse: {
+      reply: "retry reply",
+      suggestedPlaces: [],
+      quickReplies: [],
+      actions: [],
+      requestLogId: 77,
+    },
     sessionContext: {},
     state,
   };
@@ -65,13 +72,7 @@ vi.mock("../lib/conversationMemory", () => ({
 
 vi.mock("../lib/mapAIError", () => ({ mapAIError: () => "request failed" }));
 vi.mock("../lib/genieAssistantExperience", () => ({
-  normalizeGenieResponse: () => ({
-    reply: "retry reply",
-    suggestedPlaces: [],
-    quickReplies: [],
-    actions: [],
-    requestLogId: 77,
-  }),
+  normalizeGenieResponse: () => mocks.normalizedResponse,
 }));
 vi.mock("../../../api/endpoints", () => ({
   ENDPOINTS: { ai: { groqChat: "/chat" } },
@@ -93,6 +94,13 @@ describe("useGroqChat routing contract", () => {
     mocks.state.messages.length = 0;
     mocks.state.appendMessage.mockClear();
     mocks.apiClient.post.mockReset();
+    mocks.normalizedResponse = {
+      reply: "retry reply",
+      suggestedPlaces: [],
+      quickReplies: [],
+      actions: [],
+      requestLogId: 77,
+    };
     mocks.sessionContext.currentLocation = { latitude: 10.03, longitude: 105.78 };
     mocks.sessionContext.currentCity = "Can Tho";
     mocks.sessionContext.timeOfDay = "morning";
@@ -127,6 +135,28 @@ describe("useGroqChat routing contract", () => {
     expect(source).not.toContain("ITINERARY_PATTERN");
     expect(source).not.toContain("hybrid-plan");
     expect(source).toContain("ENDPOINTS.ai.groqChat");
+  });
+
+  it("does not attach a feedback id to the local no-content fallback", async () => {
+    mocks.normalizedResponse = {
+      reply: "",
+      suggestedPlaces: [],
+      quickReplies: [],
+      actions: [],
+      requestLogId: null,
+    };
+    mocks.apiClient.post.mockResolvedValueOnce({});
+
+    const result = await useGroqChat().sendMessage("hello");
+
+    expect(mocks.state.appendMessage).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        role: "assistant",
+        content: "aiChat.noReplyContent",
+        requestLogId: null,
+      }),
+    );
+    expect(result.requestLogId).toBeNull();
   });
 
   it("supports retry without appending a duplicate user message", () => {

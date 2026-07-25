@@ -312,6 +312,8 @@ export const reserveAiRequest =
   service.reserveAiRequest.bind(service);
 export const completeAiRequest =
   service.completeAiRequest.bind(service);
+export const anonymousAiUserRef =
+  service.anonymousUserRef.bind(service);
 export const pruneExpiredAiLogs =
   service.pruneExpiredAiLogs.bind(service);
 export const getLogs = service.getLogs.bind(service);

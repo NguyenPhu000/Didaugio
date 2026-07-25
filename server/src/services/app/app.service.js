@@ -3,6 +3,8 @@ import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
 import tripService, { TRIP_PLACE_SELECT } from "../trip/trip.service.js";
 import { deletePlaceImage, uploadPlaceImage } from "../media/media.service.js";
+import { anonymousAiUserRef } from "../adminAi/aiLog.service.js";
+import { RATEABLE_AI_FEATURES } from "../ai/aiFeedbackPolicy.js";
 
 const toInt = (value, fallback = null) => {
   const number = parseInt(value, 10);
@@ -959,7 +961,21 @@ export const {
 } = tripService;
 
 
-export function createFeedbackSubmissionService({ client }) {
+function unavailableAiFeedbackTarget() {
+  return Object.assign(
+    new Error("AI feedback target is unavailable."),
+    {
+      statusCode: 404,
+      code: "AI_FEEDBACK_TARGET_UNAVAILABLE",
+      errorCode: "AI_FEEDBACK_TARGET_UNAVAILABLE",
+    },
+  );
+}
+
+export function createFeedbackSubmissionService({
+  client,
+  anonymousUserRef = anonymousAiUserRef,
+}) {
   return async function submitFeedback({
     userId = null,
     reportType,
@@ -1006,17 +1022,27 @@ export function createFeedbackSubmissionService({ client }) {
       error.statusCode = 400;
       throw error;
     }
+    if (userId == null) throw unavailableAiFeedbackTarget();
+
+    let ownerReference;
+    try {
+      ownerReference = anonymousUserRef(userId);
+    } catch {
+      throw unavailableAiFeedbackTarget();
+    }
 
     return client.$transaction(async (transactionClient) => {
-      const requestLog = await transactionClient.aiRequestLog.findUnique({
-        where: { id: targetId },
+      const requestLog = await transactionClient.aiRequestLog.findFirst({
+        where: {
+          id: targetId,
+          anonymousUserRef: ownerReference,
+          status: "success",
+          isTest: false,
+          feature: { in: RATEABLE_AI_FEATURES },
+        },
         select: { id: true },
       });
-      if (!requestLog) {
-        const error = new Error("AI request log not found");
-        error.statusCode = 404;
-        throw error;
-      }
+      if (!requestLog) throw unavailableAiFeedbackTarget();
 
       await transactionClient.aiRequestLog.update({
         where: { id: targetId },
