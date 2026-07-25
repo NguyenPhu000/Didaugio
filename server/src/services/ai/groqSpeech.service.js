@@ -1,7 +1,6 @@
 import { toFile } from "groq-sdk";
 import { createGroqClient } from "./groq.service.js";
 import {
-  AI_PROVIDER_TIMEOUT_MS,
   logAiProviderEvent,
   toAiServiceError,
 } from "./aiProviderPolicy.js";
@@ -96,7 +95,10 @@ export function buildGroqSpeechRequest({ input, voice = GROQ_TTS_VOICE } = {}) {
   };
 }
 
-export async function transcribeWithGroq({ file, language, prompt }) {
+export async function transcribeWithGroq(
+  { file, language, prompt },
+  providerOptions = {},
+) {
   validateTranscriptionFile(file);
   const upload = await toFile(file.buffer, file.originalname || "voice.wav", {
     type: file.mimetype,
@@ -110,9 +112,9 @@ export async function transcribeWithGroq({ file, language, prompt }) {
   let transcription;
 
   try {
-    const client = createGroqClient();
+    const client = createGroqClient(providerOptions);
     transcription = await client.audio.transcriptions.create(request, {
-      timeout: AI_PROVIDER_TIMEOUT_MS,
+      timeout: providerOptions.timeoutMs,
     });
   } catch (error) {
     const aiError = toAiServiceError(error);
@@ -136,15 +138,18 @@ export async function transcribeWithGroq({ file, language, prompt }) {
   };
 }
 
-export async function synthesizeSpeechWithGroq({ input, voice }) {
+export async function synthesizeSpeechWithGroq(
+  { input, voice },
+  providerOptions = {},
+) {
   const cleanInput = validateSpeechInput(input);
   const request = buildGroqSpeechRequest({ input: cleanInput, voice });
   const startedAt = Date.now();
   let response;
   try {
-    const client = createGroqClient();
+    const client = createGroqClient(providerOptions);
     response = await client.audio.speech.create(request, {
-      timeout: AI_PROVIDER_TIMEOUT_MS,
+      timeout: providerOptions.timeoutMs,
     });
   } catch (error) {
     const aiError = toAiServiceError(error);

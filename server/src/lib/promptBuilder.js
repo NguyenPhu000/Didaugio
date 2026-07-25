@@ -8,12 +8,52 @@ Nguyên tắc:
 - Nếu không biết → thành thật, KHÔNG bịa đặt
 - Trả lời bằng tiếng Việt trừ khi được yêu cầu`.trim();
 
+export function renderConfiguredPrompt(configuredPrompt, variables = {}) {
+  const source = String(configuredPrompt ?? "").trim();
+  const rendered = source.replace(
+    /\{\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}\}/g,
+    (_match, name) => {
+      if (!Object.prototype.hasOwnProperty.call(variables, name)) {
+        throw Object.assign(
+          new Error(`Unknown AI prompt variable: ${name}`),
+          {
+            code: "AI_INVALID_REQUEST",
+            errorCode: "AI_INVALID_REQUEST",
+            statusCode: 400,
+          },
+        );
+      }
+      const value = variables[name];
+      return typeof value === "object"
+        ? JSON.stringify(value)
+        : String(value ?? "");
+    },
+  );
+  if (/\{\{[^{}]+\}\}/.test(rendered)) {
+    throw Object.assign(
+      new Error("Unknown AI prompt variable."),
+      {
+        code: "AI_INVALID_REQUEST",
+        errorCode: "AI_INVALID_REQUEST",
+        statusCode: 400,
+      },
+    );
+  }
+  return rendered;
+}
+
 /**
  * Build voice introduction prompt for a specific place.
  */
-export function buildVoiceIntroPrompt(place, context = {}) {
+export function buildVoiceIntroPrompt(
+  place,
+  context = {},
+  configuredPrompt = "",
+) {
   const { timeOfDay } = context;
-  return `${GENIE_SYSTEM}
+  return `${renderConfiguredPrompt(configuredPrompt, context)}
+
+${GENIE_SYSTEM}
 
 Giới thiệu địa điểm sau cho khách du lịch theo phong cách "Genie":
 Địa điểm: ${place.name}
@@ -28,8 +68,11 @@ Trả lời trong 3-4 câu ngắn, tự nhiên, kết thúc bằng 1 gợi ý ho
 /**
  * Build system prompt for chat AI with user context.
  */
-export function buildChatSystemPrompt(context = {}) {
-  const parts = [GENIE_SYSTEM];
+export function buildChatSystemPrompt(context = {}, configuredPrompt = "") {
+  const parts = [
+    renderConfiguredPrompt(configuredPrompt, context),
+    GENIE_SYSTEM,
+  ].filter(Boolean);
 
   if (context.currentLocation) {
     parts.push(

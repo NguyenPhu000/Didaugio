@@ -1,28 +1,42 @@
-import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
+import {
+  createGroqClient,
+  resolveGroqProviderOptions,
+} from "./groq.service.js";
+import { executeAiRequest } from "./runtime/aiRuntimeExecution.js";
 import { parseAiJsonObject } from "./aiJsonParser.js";
 import {
-  AI_PROVIDER_TIMEOUT_MS,
   logAiProviderEvent,
   normalizeProviderMessages,
   toAiServiceError,
 } from "./aiProviderPolicy.js";
 
-export async function requestNavigationCompletion({ client, prompt, feature }) {
+export async function requestNavigationCompletion({
+  client,
+  prompt,
+  feature,
+  providerOptions,
+}) {
   const startedAt = Date.now();
   try {
     const completion = await client.chat.completions.create({
-      model: GROQ_MODEL,
+      model: providerOptions.model,
       messages: normalizeProviderMessages([{ role: "user", content: prompt }]),
-      temperature: 0.3,
-      max_tokens: 800,
-    }, { timeout: AI_PROVIDER_TIMEOUT_MS });
-    logAiProviderEvent({ feature, model: GROQ_MODEL, startedAt, completion });
+      temperature: Math.min(providerOptions.temperature, 0.3),
+      top_p: providerOptions.topP,
+      max_tokens: providerOptions.maxTokens,
+    }, { timeout: providerOptions.timeoutMs });
+    logAiProviderEvent({
+      feature,
+      model: providerOptions.model,
+      startedAt,
+      completion,
+    });
     return completion;
   } catch (error) {
     const aiError = toAiServiceError(error);
     logAiProviderEvent({
       feature,
-      model: GROQ_MODEL,
+      model: providerOptions.model,
       startedAt,
       code: aiError.code,
     });
@@ -31,22 +45,49 @@ export async function requestNavigationCompletion({ client, prompt, feature }) {
 }
 
 class AINavigationService {
-  async getNavigationAdvice(payload = {}) {
+  async getNavigationAdvice(payload = {}, actor = {}) {
     const { origin, destination, routes = [], context = {} } = payload;
 
     if (!Array.isArray(routes) || routes.length === 0) {
       return this._fallbackRecommendation(routes, context);
     }
 
-    const prompt = this._buildPrompt({ origin, destination, routes, context });
-
     try {
-      const client = createGroqClient();
-      const completion = await requestNavigationCompletion({
-        client,
-        prompt,
+      const execution = await executeAiRequest({
         feature: "navigation-route-advice",
+        user: actor,
+        inputText:
+          context.question || "Recommend a navigation route",
+        context: {
+          timeOfDay: context.time,
+          transportPreference: context.vehicleType,
+        },
+        operation: async ({ configData, context: allowedContext }) => {
+          const providerOptions = await resolveGroqProviderOptions(
+            configData,
+            "chat",
+          );
+          const client = createGroqClient(providerOptions);
+          const prompt = this._buildPrompt({
+            origin,
+            destination,
+            routes,
+            context: allowedContext,
+          });
+          const completion = await requestNavigationCompletion({
+            client,
+            prompt,
+            feature: "navigation-route-advice",
+            providerOptions,
+          });
+          return {
+            outputText:
+              completion.choices[0]?.message?.content || "",
+            completion,
+          };
+        },
       });
+      const completion = execution.result.completion;
       const text = completion.choices[0]?.message?.content || "";
       const parsed = this._tryParseJson(text);
 
@@ -64,7 +105,7 @@ class AINavigationService {
     return this._fallbackRecommendation(routes, context);
   }
 
-  async getWaypointOrderAdvice(payload = {}) {
+  async getWaypointOrderAdvice(payload = {}, actor = {}) {
     const { origin, destination, waypoints = [], context = {} } = payload;
     const normalizedWaypoints = Array.isArray(waypoints) ? waypoints : [];
 
@@ -72,20 +113,42 @@ class AINavigationService {
       return this._fallbackWaypointOrder(normalizedWaypoints);
     }
 
-    const prompt = this._buildWaypointOrderPrompt({
-      origin,
-      destination,
-      waypoints: normalizedWaypoints,
-      context,
-    });
-
     try {
-      const client = createGroqClient();
-      const completion = await requestNavigationCompletion({
-        client,
-        prompt,
+      const execution = await executeAiRequest({
         feature: "navigation-waypoint-order",
+        user: actor,
+        inputText:
+          context.question || "Order navigation waypoints",
+        context: {
+          timeOfDay: context.time,
+          transportPreference: context.vehicleType,
+        },
+        operation: async ({ configData, context: allowedContext }) => {
+          const providerOptions = await resolveGroqProviderOptions(
+            configData,
+            "chat",
+          );
+          const client = createGroqClient(providerOptions);
+          const prompt = this._buildWaypointOrderPrompt({
+            origin,
+            destination,
+            waypoints: normalizedWaypoints,
+            context: allowedContext,
+          });
+          const completion = await requestNavigationCompletion({
+            client,
+            prompt,
+            feature: "navigation-waypoint-order",
+            providerOptions,
+          });
+          return {
+            outputText:
+              completion.choices[0]?.message?.content || "",
+            completion,
+          };
+        },
       });
+      const completion = execution.result.completion;
       const text = completion.choices[0]?.message?.content || "";
       const parsed = this._tryParseJson(text);
       const orderedIndexes = this._sanitizeWaypointIndexes(
@@ -133,10 +196,10 @@ Hay phan tich cac route alternatives va tra ve JSON hop le theo schema sau:
 }
 
 Input:
-- Origin: ${origin?.name || `${origin?.lat},${origin?.lng}`}
-- Destination: ${destination?.name || `${destination?.lat},${destination?.lng}`}
-- Time: ${context?.time || "not_provided"}
-- Vehicle: ${context?.vehicleType || "motorcycle"}
+- Origin: ${origin?.name || "current_origin"}
+- Destination: ${destination?.name || "selected_destination"}
+- Time: ${context?.timeOfDay || "not_provided"}
+- Vehicle: ${context?.transportPreference || "motorcycle"}
 - Preference: ${context?.userPreference || "fastest"}
 - Question: ${context?.question || "Nen di route nao?"}
 
@@ -153,7 +216,7 @@ Quy tac:
     const waypointList = waypoints
       .map((point, index) => {
         const label = point?.name || `Waypoint ${index}`;
-        return `- ${index}: ${label} (${point?.lat},${point?.lng})`;
+        return `- ${index}: ${label}`;
       })
       .join("\n");
 
@@ -168,11 +231,11 @@ Tra ve JSON hop le theo schema:
 }
 
 Input:
-- Origin: ${origin?.name || `${origin?.lat},${origin?.lng}`}
-- Destination: ${destination?.name || `${destination?.lat},${destination?.lng}`}
-- Time: ${context?.time || "not_provided"}
+- Origin: ${origin?.name || "current_origin"}
+- Destination: ${destination?.name || "selected_destination"}
+- Time: ${context?.timeOfDay || "not_provided"}
 - Intent: ${context?.intent || context?.userPreference || "balanced"}
-- Vehicle: ${context?.vehicleType || "motorcycle"}
+- Vehicle: ${context?.transportPreference || "motorcycle"}
 
 Waypoints:
 ${waypointList}

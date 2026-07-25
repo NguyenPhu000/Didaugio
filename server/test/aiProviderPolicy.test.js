@@ -70,10 +70,17 @@ test("navigation provider calls emit metadata-only success and stable failure ev
   console.info = (...args) => events.push(args);
 
   try {
+    const providerOptions = {
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      temperature: 0.3,
+      topP: 0.9,
+      maxTokens: 800,
+      timeoutMs: 12_345,
+    };
     const completion = { usage: { total_tokens: 21 }, choices: [{ finish_reason: "stop" }] };
     const client = {
       chat: { completions: { create: async (_request, options) => {
-        assert.deepEqual(options, { timeout: AI_PROVIDER_TIMEOUT_MS });
+        assert.deepEqual(options, { timeout: providerOptions.timeoutMs });
         return completion;
       } } },
     };
@@ -83,6 +90,7 @@ test("navigation provider calls emit metadata-only success and stable failure ev
         client,
         prompt: "private navigation prompt",
         feature: "navigation-route-advice",
+        providerOptions,
       }),
       completion,
     );
@@ -92,6 +100,7 @@ test("navigation provider calls emit metadata-only success and stable failure ev
         client: { chat: { completions: { create: async () => { throw { status: 503 }; } } } },
         prompt: "private failure prompt",
         feature: "navigation-waypoint-order",
+        providerOptions,
       }),
       (error) => error.code === "AI_UNAVAILABLE",
     );
@@ -118,7 +127,7 @@ test("navigation provider calls emit metadata-only success and stable failure ev
   assert.equal(JSON.stringify(events).includes("private"), false);
 });
 
-test("every Groq provider integration uses the shared timeout and avoids raw-error logs", () => {
+test("every Groq provider integration uses the published timeout and avoids raw-error logs", () => {
   const providerFiles = [
     "groq.service.js",
     "groqSpeech.service.js",
@@ -134,11 +143,12 @@ test("every Groq provider integration uses the shared timeout and avoids raw-err
       "utf8",
     );
     const providerCalls = source.match(/(?:completions|transcriptions|speech)\.create\(/g) || [];
-    const timeoutOptions = source.match(/timeout:\s*AI_PROVIDER_TIMEOUT_MS/g) || [];
+    const timeoutOptions =
+      source.match(/timeout:\s*(?:providerOptions\.)?timeoutMs/g) || [];
     assert.equal(
       timeoutOptions.length,
       providerCalls.length,
-      `${file} must apply the shared timeout to every provider call`,
+      `${file} must apply the published timeout to every provider call`,
     );
   }
 

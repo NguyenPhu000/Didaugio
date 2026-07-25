@@ -1,4 +1,8 @@
-import { chatWithGroq } from "../../services/ai/groq.service.js";
+import {
+  chatWithGroq,
+  resolveGroqProviderOptions,
+} from "../../services/ai/groq.service.js";
+import { executeAiRequest } from "../../services/ai/runtime/aiRuntimeExecution.js";
 import { toAiServiceError } from "../../services/ai/aiProviderPolicy.js";
 import prisma from "../../config/prismaClient.js";
 import { 
@@ -36,7 +40,7 @@ export const handleGroqChat = async (req, res) => {
     }
 
     // 1. Lấy thông tin travelPreferences từ Profile của user
-    const userId = req.user?.id;
+    const userId = req.user?.userId || req.user?.id;
     let travelPreferences = null;
     if (userId) {
       const profile = await prisma.userProfile.findUnique({
@@ -77,15 +81,39 @@ export const handleGroqChat = async (req, res) => {
       systemPlaces = await findRelatedPlacesByKeywords(lastUserMessage);
     }
 
-    // 4. Đóng gói Enriched Context gửi cho Groq Service
-    const enrichedContext = {
-      ...context,
-      systemPlaces,
-      travelPreferences,
-      locationContext,
-    };
-
-    const { reply, suggestedPlaceIds } = await chatWithGroq(messages, enrichedContext);
+    const lastUserMessage =
+      [...messages].reverse().find((message) => message.role === "user")
+        ?.content || "";
+    const execution = await executeAiRequest({
+      feature: "chat",
+      user: { userId },
+      inputText: lastUserMessage,
+      context: {
+        currentCity:
+          locationContext?.district || context.currentCity,
+        timeOfDay: context.timeOfDay,
+        travelPreferences,
+        places: systemPlaces,
+        messages,
+      },
+      operation: async ({ configData, context: allowedContext }) => {
+        const providerOptions = await resolveGroqProviderOptions(
+          configData,
+          "chat",
+        );
+        return chatWithGroq(
+          allowedContext.messages || [
+            { role: "user", content: lastUserMessage },
+          ],
+          {
+            ...allowedContext,
+            systemPlaces: allowedContext.places,
+          },
+          providerOptions,
+        );
+      },
+    });
+    const { reply, suggestedPlaceIds } = execution.result;
 
     // 5. Khớp các địa điểm được AI gợi ý
     let responsePlaces = [];
@@ -103,6 +131,9 @@ export const handleGroqChat = async (req, res) => {
       data: {
         reply,
         relatedPlaces: responsePlaces,
+        ...(execution.requestLogId
+          ? { requestLogId: execution.requestLogId }
+          : {}),
       },
       message: "Thành công",
     });

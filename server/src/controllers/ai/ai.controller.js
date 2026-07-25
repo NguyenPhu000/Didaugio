@@ -1,10 +1,17 @@
 import { getPlaceById } from "../../services/place/place.service.js";
 import {
+  buildSseErrorPayload,
+  encodeSseData,
+  encodeSseEvent,
   streamPlaceSummary,
   streamChat,
 } from "../../services/ai/aiStreaming.service.js";
-import { chatWithGroq } from "../../services/ai/groq.service.js";
+import {
+  chatWithGroq,
+  resolveGroqProviderOptions,
+} from "../../services/ai/groq.service.js";
 import { toAiServiceError } from "../../services/ai/aiProviderPolicy.js";
+import { executeAiRequest } from "../../services/ai/runtime/aiRuntimeExecution.js";
 import {
   synthesizeSpeechWithGroq,
   transcribeWithGroq,
@@ -42,12 +49,57 @@ export const handlePlaceSummaryStream = async (req, res) => {
       });
     }
 
-    const prompt = buildVoiceIntroPrompt(place, context ?? {});
-    await streamPlaceSummary(prompt, res);
+    const execution = await executeAiRequest({
+      feature: "voice",
+      user: {
+        userId: req.user?.userId || req.user?.id || null,
+      },
+      inputText: `place:${placeId}`,
+      context: {
+        timeOfDay: context?.timeOfDay,
+        places: [place],
+      },
+      operation: async ({ configData, context: allowedContext }) => {
+        const providerOptions = await resolveGroqProviderOptions(
+          configData,
+          "voice",
+        );
+        const allowedPlace = allowedContext.places?.[0];
+        if (!allowedPlace) {
+          throw Object.assign(
+            new Error("Voice place context is unavailable."),
+            {
+              code: "AI_INVALID_REQUEST",
+              errorCode: "AI_INVALID_REQUEST",
+              statusCode: 400,
+            },
+          );
+        }
+        const prompt = buildVoiceIntroPrompt(
+          allowedPlace,
+          allowedContext,
+          providerOptions.configuredPrompt,
+        );
+        return streamPlaceSummary(prompt, res, providerOptions);
+      },
+    });
+    res.write(encodeSseData(execution.result.outputText));
+    if (execution.requestLogId) {
+      res.write(
+        encodeSseEvent("metadata", {
+          requestLogId: execution.requestLogId,
+        }),
+      );
+    }
+    res.write(encodeSseData("[DONE]"));
+    res.end();
   } catch (err) {
-    const status = err?.status || 500;
+    const status = err?.status || err?.statusCode || 500;
     console.info("[AI]", { feature: "place-summary", status });
-    if (!res.headersSent) {
+    if (res.headersSent) {
+      res.write(encodeSseData(buildSseErrorPayload(err)));
+      res.end();
+    } else {
       res.status(status).json({
         success: false,
         data: null,
@@ -79,18 +131,66 @@ export const handleChat = async (req, res) => {
     const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
     const relatedPlaces = await findRelatedPlacesByKeywords(lastUserMessage);
 
-    const enrichedContext = {
-      ...context,
-      systemPlaces: relatedPlaces,
-    };
+    const execution = await executeAiRequest({
+      feature: "chat",
+      user: {
+        userId: req.user?.userId || req.user?.id || null,
+      },
+      inputText: lastUserMessage,
+      context: {
+        currentCity: context?.currentCity,
+        timeOfDay: context?.timeOfDay,
+        places: relatedPlaces,
+        messages,
+      },
+      operation: async ({ configData, context: allowedContext }) => {
+        const providerOptions = await resolveGroqProviderOptions(
+          configData,
+          "chat",
+        );
+        const providerContext = {
+          ...allowedContext,
+          systemPlaces: allowedContext.places,
+        };
+        if (stream) {
+          const system = buildChatSystemPrompt(
+            providerContext,
+            providerOptions.configuredPrompt,
+          );
+          return streamChat(
+            allowedContext.messages || [
+              { role: "user", content: lastUserMessage },
+            ],
+            system,
+            res,
+            providerOptions,
+          );
+        }
+        return chatWithGroq(
+          allowedContext.messages || [
+            { role: "user", content: lastUserMessage },
+          ],
+          providerContext,
+          providerOptions,
+        );
+      },
+    });
 
     if (stream) {
-      const system = buildChatSystemPrompt(enrichedContext);
-      await streamChat(messages, system, res);
+      res.write(encodeSseData(execution.result.outputText));
+      if (execution.requestLogId) {
+        res.write(
+          encodeSseEvent("metadata", {
+            requestLogId: execution.requestLogId,
+          }),
+        );
+      }
+      res.write(encodeSseData("[DONE]"));
+      res.end();
       return;
     }
 
-    const { reply, suggestedPlaceIds } = await chatWithGroq(messages, enrichedContext);
+    const { reply, suggestedPlaceIds } = execution.result;
 
     let responsePlaces = [];
     if (suggestedPlaceIds.length > 0) {
@@ -106,6 +206,9 @@ export const handleChat = async (req, res) => {
       data: {
         reply,
         relatedPlaces: responsePlaces,
+        ...(execution.requestLogId
+          ? { requestLogId: execution.requestLogId }
+          : {}),
       },
       message: "Thành công",
     });
@@ -115,6 +218,12 @@ export const handleChat = async (req, res) => {
     const isUnavailable = aiError.code === "AI_UNAVAILABLE";
 
     console.info("[AI]", { feature: "chat", status: err?.status ?? err?.statusCode ?? 500 });
+
+    if (res.headersSent) {
+      res.write(encodeSseData(buildSseErrorPayload(aiError)));
+      res.end();
+      return;
+    }
 
     if (isQuotaError) {
       return res.status(429).json({
@@ -158,11 +267,31 @@ export const handleChat = async (req, res) => {
  */
 export const handleVoiceTranscribe = async (req, res) => {
   try {
-    const result = await transcribeWithGroq({
-      file: req.file,
-      language: req.body?.language || "vi",
-      prompt: req.body?.prompt,
+    const language = req.body?.language || "vi";
+    const prompt = req.body?.prompt;
+    const execution = await executeAiRequest({
+      feature: "voice",
+      user: {
+        userId: req.user?.userId || req.user?.id || null,
+      },
+      inputText: prompt || `voice transcription:${language}`,
+      context: {},
+      operation: async ({ configData }) => {
+        const providerOptions = await resolveGroqProviderOptions(
+          configData,
+          "voice",
+        );
+        return transcribeWithGroq(
+          {
+            file: req.file,
+            language,
+            prompt,
+          },
+          providerOptions,
+        );
+      },
     });
+    const result = execution.result;
 
     return res.json({
       success: true,
@@ -190,10 +319,26 @@ export const handleVoiceTranscribe = async (req, res) => {
  */
 export const handleVoiceSpeech = async (req, res) => {
   try {
-    const result = await synthesizeSpeechWithGroq({
-      input: req.body?.input,
-      voice: req.body?.voice,
+    const input = req.body?.input;
+    const execution = await executeAiRequest({
+      feature: "voice",
+      user: {
+        userId: req.user?.userId || req.user?.id || null,
+      },
+      inputText: input,
+      context: {},
+      operation: async ({ configData }) => {
+        const providerOptions = await resolveGroqProviderOptions(
+          configData,
+          "voice",
+        );
+        return synthesizeSpeechWithGroq(
+          { input },
+          providerOptions,
+        );
+      },
     });
+    const result = execution.result;
 
     res.setHeader("Content-Type", result.contentType);
     res.setHeader("Cache-Control", "no-store");

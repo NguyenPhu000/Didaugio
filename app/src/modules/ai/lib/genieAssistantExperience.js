@@ -142,6 +142,10 @@ export function normalizeGenieResponse(response = {}) {
 
   return {
     reply,
+    requestLogId:
+      Number.isSafeInteger(data.requestLogId) && data.requestLogId > 0
+        ? data.requestLogId
+        : null,
     suggestedPlaces,
     quickReplies,
     actions,

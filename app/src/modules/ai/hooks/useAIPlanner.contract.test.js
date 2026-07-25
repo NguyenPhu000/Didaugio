@@ -142,6 +142,27 @@ describe("useAIPlanner mutation boundaries", () => {
     expect(payload.notes.endsWith("\ud83d")).toBe(false);
   });
 
+  it("preserves the planner request log id on completed preview text", () => {
+    useAIPlanner();
+    mocks.mutationConfigs[0].onSuccess({
+      data: {
+        previewOnly: true,
+        requestLogId: 81,
+        itinerary: { totalDays: 1 },
+        suggestedPlaces: [],
+      },
+    });
+
+    expect(
+      mocks.state.replaceDraftPreviewMessage,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        role: "assistant",
+        requestLogId: 81,
+      }),
+    );
+  });
+
   it("handles a rejected confirmation without rethrowing and preserves its request", async () => {
     mocks.state.draftPlan = {
       itinerary: { title: "preview", days: [] },

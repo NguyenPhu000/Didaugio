@@ -99,6 +99,10 @@ export function useAIPlanner() {
           suggestedPlaces,
           selectedPlaceIds: normalizedSelectedIds,
           isDraftPreview: true,
+          requestLogId:
+            Number.isSafeInteger(payload.requestLogId)
+              ? payload.requestLogId
+              : null,
         };
         replaceDraftPreviewMessage(assistantMsg);
         return;
@@ -111,6 +115,10 @@ export function useAIPlanner() {
           role: "assistant",
           text: buildTripSummaryMessage(trip, t),
           plan: trip,
+          requestLogId:
+            Number.isSafeInteger(payload.requestLogId)
+              ? payload.requestLogId
+              : null,
           createdAt: new Date(),
         };
         setDraftPlan(null);

@@ -1,9 +1,17 @@
+import { memo, useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIconsRounded } from "../../../../components/primitives/MaterialIconsRounded";
 import { PlacePreviewCard } from "../../../../components/composed/PlacePreviewCard";
 import { TOKENS } from "../../../../constants/design-tokens";
 import { GenieAvatar } from "./GenieAvatar";
+import { submitFeedbackApi } from "../../../feedback/api/feedbackApi";
+import {
+  createAiFeedbackSubmitter,
+  isRateableAiMessage,
+} from "../../lib/aiFeedback";
+
+const FEEDBACK_OPTIONS = ["up", "down"];
 
 const styles = StyleSheet.create({
   confirmBtn: {
@@ -31,9 +39,37 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 16,
   },
+  feedbackRow: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+    marginLeft: 24,
+  },
+  feedbackButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderCurve: "continuous",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  feedbackButtonSelected: {
+    backgroundColor: "#E0F2FE",
+  },
+  feedbackButtonDisabled: {
+    opacity: 0.55,
+  },
+  feedbackError: {
+    marginLeft: 4,
+    color: "#B91C1C",
+    fontSize: 11,
+    fontFamily: TOKENS.font.body,
+  },
 });
 
-export function AIPlannerMessageItem({
+function AIPlannerMessageItemComponent({
   canConfirmSelection,
   clearSelectedPlaces,
   draftPlan,
@@ -53,6 +89,47 @@ export function AIPlannerMessageItem({
   t,
 }) {
   const isUser = message.role === "user";
+  const canRate = isRateableAiMessage(message);
+  const [feedbackState, setFeedbackState] = useState({
+    status: "idle",
+    value: null,
+  });
+  const feedbackSubmitterRef = useRef(null);
+  if (!feedbackSubmitterRef.current) {
+    feedbackSubmitterRef.current =
+      createAiFeedbackSubmitter(submitFeedbackApi);
+  }
+
+  const handleFeedback = useCallback(
+    async (value) => {
+      if (!canRate || feedbackState.status === "pending") return;
+      setFeedbackState({ status: "pending", value });
+      const result = await feedbackSubmitterRef.current.submit({
+        requestLogId: message.requestLogId,
+        value,
+      });
+      setFeedbackState({
+        status: result.status,
+        value:
+          result.status === "submitted"
+            ? result.value
+            : null,
+      });
+    },
+    [
+      canRate,
+      feedbackState.status,
+      message.requestLogId,
+    ],
+  );
+  const handleHelpfulFeedback = useCallback(
+    () => handleFeedback("up"),
+    [handleFeedback],
+  );
+  const handleUnhelpfulFeedback = useCallback(
+    () => handleFeedback("down"),
+    [handleFeedback],
+  );
 
   return (
     <View
@@ -127,6 +204,74 @@ export function AIPlannerMessageItem({
               onViewDetail={handleOpenPlace}
             />
           ))}
+        </View>
+      ) : null}
+
+      {canRate ? (
+        <View style={styles.feedbackRow}>
+          {FEEDBACK_OPTIONS.map((value) => {
+            const selected =
+              feedbackState.status === "submitted" &&
+              feedbackState.value === value;
+            const disabled =
+              feedbackState.status === "pending" ||
+              feedbackState.status === "submitted";
+            return (
+              <Pressable
+                key={value}
+                accessibilityLabel={
+                  value === "up"
+                    ? t("aiPlanner.feedbackHelpful", {
+                        defaultValue: "Helpful response",
+                      })
+                    : t("aiPlanner.feedbackNotHelpful", {
+                        defaultValue: "Not helpful response",
+                      })
+                }
+                accessibilityRole="button"
+                accessibilityState={{ disabled, selected }}
+                disabled={disabled}
+                hitSlop={2}
+                onPress={
+                  value === "up"
+                    ? handleHelpfulFeedback
+                    : handleUnhelpfulFeedback
+                }
+                style={[
+                  styles.feedbackButton,
+                  selected && styles.feedbackButtonSelected,
+                  disabled &&
+                    !selected &&
+                    styles.feedbackButtonDisabled,
+                ]}
+              >
+                {feedbackState.status === "pending" &&
+                feedbackState.value === value ? (
+                  <ActivityIndicator size="small" color="#64748B" />
+                ) : (
+                  <MaterialIconsRounded
+                    name={
+                      value === "up"
+                        ? "thumb-up"
+                        : "thumb-down"
+                    }
+                    size={17}
+                    color={selected ? "#0369A1" : "#64748B"}
+                  />
+                )}
+              </Pressable>
+            );
+          })}
+          {feedbackState.status === "error" ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              style={styles.feedbackError}
+            >
+              {t("aiPlanner.feedbackError", {
+                defaultValue: "Could not send feedback. Try again.",
+              })}
+            </Text>
+          ) : null}
         </View>
       ) : null}
 
@@ -292,3 +437,7 @@ export function AIPlannerMessageItem({
     </View>
   );
 }
+
+export const AIPlannerMessageItem = memo(
+  AIPlannerMessageItemComponent,
+);

@@ -64,12 +64,14 @@ describe("genie assistant experience helpers", () => {
     const normalized = normalizeGenieResponse({
       data: {
         reply: "Quán này hợp đi tối nay.",
+        requestLogId: 73,
         relatedPlaces: [{ id: 1, name: "Bến Ninh Kiều" }],
         quickReplies: ["Thêm vào trip"],
       },
     });
 
     expect(normalized.reply).toBe("Quán này hợp đi tối nay.");
+    expect(normalized.requestLogId).toBe(73);
     expect(normalized.suggestedPlaces).toHaveLength(1);
     expect(normalized.quickReplies).toEqual(["Thêm vào trip"]);
     expect(normalized.actions.map((action) => action.type)).toContain("view_map");

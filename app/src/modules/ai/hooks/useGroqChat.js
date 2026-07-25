@@ -179,11 +179,16 @@ export function useGroqChat() {
           suggestedPlaces: relatedPlaces,
           quickReplies: normalized.quickReplies,
           actions: normalized.actions,
+          requestLogId: normalized.requestLogId,
           source: "chat",
         });
         lastFailedRequestRef.current = null;
 
-        return { reply, relatedPlaces };
+        return {
+          reply,
+          relatedPlaces,
+          requestLogId: normalized.requestLogId,
+        };
       } catch (err) {
         if (err?.name === "CanceledError" || err?.name === "AbortError") {
           return null;

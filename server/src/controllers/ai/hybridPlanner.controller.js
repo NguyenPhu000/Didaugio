@@ -1,7 +1,15 @@
 import prisma from "../../config/prismaClient.js";
 import { findPlacesNearby } from "../../utils/spatialQuery.js";
 import { generateHybridPlan } from "../../services/ai/hybridPlanner.service.js";
-import { toAiServiceError } from "../../services/ai/aiProviderPolicy.js";
+import { generateHybridFallback } from "../../services/ai/hybridPlannerFallback.js";
+import {
+  canUseHybridFallback,
+  toAiServiceError,
+} from "../../services/ai/aiProviderPolicy.js";
+import {
+  resolveGroqProviderOptions,
+} from "../../services/ai/groq.service.js";
+import { executeAiRequest } from "../../services/ai/runtime/aiRuntimeExecution.js";
 
 /**
  * POST /api/ai/hybrid-plan
@@ -34,7 +42,7 @@ export const handleHybridPlan = async (req, res) => {
     }
 
     // 1. Lấy sở thích du lịch (travelPreferences) của user từ DB
-    const userId = req.user?.id;
+    const userId = req.user?.userId || req.user?.id;
     let travelPreferences = null;
     if (userId) {
       const profile = await prisma.userProfile.findUnique({
@@ -58,16 +66,51 @@ export const handleHybridPlan = async (req, res) => {
     }
 
     // 3. Gọi service AI sắp xếp lịch trình và tính toán chi phí
-    const planResult = await generateHybridPlan(
-      { latitude: lat, longitude: lng },
-      travelPreferences,
-      nearbyPlaces,
-      userPrompt,
-    );
+    let planResult;
+    let requestLogId = null;
+    try {
+      const execution = await executeAiRequest({
+        feature: "planner",
+        user: { userId },
+        inputText: userPrompt || "Tạo lịch trình gần vị trí hiện tại",
+        context: {
+          travelPreferences,
+          budget: travelPreferences?.budget,
+          places: nearbyPlaces,
+        },
+        operation: async ({ configData, context: allowedContext }) => {
+          const providerOptions = await resolveGroqProviderOptions(
+            configData,
+            "planner",
+          );
+          const plan = await generateHybridPlan(
+            { latitude: lat, longitude: lng },
+            travelPreferences,
+            nearbyPlaces,
+            userPrompt,
+            providerOptions,
+            allowedContext,
+          );
+          return {
+            outputText: JSON.stringify(plan),
+            plan,
+            usage: plan.usage,
+          };
+        },
+      });
+      planResult = execution.result.plan;
+      requestLogId = execution.requestLogId ?? null;
+    } catch (error) {
+      if (!canUseHybridFallback(error)) throw error;
+      planResult = generateHybridFallback(nearbyPlaces);
+    }
 
     return res.status(200).json({
       success: true,
-      data: planResult,
+      data: {
+        ...planResult,
+        ...(requestLogId ? { requestLogId } : {}),
+      },
       message: "Tạo lịch trình thành công",
     });
   } catch (error) {

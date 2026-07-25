@@ -959,38 +959,81 @@ export const {
 } = tripService;
 
 
-export const submitFeedback = async ({
-  userId = null,
-  reportType,
-  title,
-  content,
-  targetType = null,
-  targetId = null,
-  screenshot = null,
-}) => {
-  if (!reportType || !title || !content) {
-    const error = new Error(
-      "Thieu thong tin bat buoc: reportType, title, content",
-    );
-    error.statusCode = 400;
-    throw error;
-  }
+export function createFeedbackSubmissionService({ client }) {
+  return async function submitFeedback({
+    userId = null,
+    reportType,
+    title,
+    content,
+    targetType = null,
+    targetId = null,
+    screenshot = null,
+  }) {
+    if (!reportType || !title || !content) {
+      const error = new Error(
+        "Thieu thong tin bat buoc: reportType, title, content",
+      );
+      error.statusCode = 400;
+      throw error;
+    }
 
-  const feedback = await prisma.feedbackReport.create({
-    data: {
-      reporterId: userId,
-      reportType,
-      targetType,
-      targetId,
-      title,
-      content,
-      screenshot,
-      status: "pending",
-    },
-  });
+    const createReport = async (transactionClient, reporterId = userId) =>
+      transactionClient.feedbackReport.create({
+        data: {
+          reporterId,
+          reportType,
+          targetType,
+          targetId,
+          title,
+          content,
+          screenshot,
+          status: "pending",
+        },
+      });
 
-  return feedback;
-};
+    if (targetType !== "ai_request") {
+      return createReport(client);
+    }
+
+    const feedback =
+      title === "AI helpful"
+        ? "up"
+        : title === "AI not helpful"
+          ? "down"
+          : null;
+    if (reportType !== "ai_quality" || !feedback) {
+      const error = new Error("Phan hoi AI khong hop le");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    return client.$transaction(async (transactionClient) => {
+      const requestLog = await transactionClient.aiRequestLog.findUnique({
+        where: { id: targetId },
+        select: { id: true },
+      });
+      if (!requestLog) {
+        const error = new Error("AI request log not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      await transactionClient.aiRequestLog.update({
+        where: { id: targetId },
+        data: {
+          feedback,
+          feedbackReason: content,
+        },
+      });
+
+      return createReport(transactionClient, null);
+    });
+  };
+}
+
+export const submitFeedback = createFeedbackSubmissionService({
+  client: prisma,
+});
 
 export default {
   getHomeData,

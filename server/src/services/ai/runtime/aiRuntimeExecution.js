@@ -169,8 +169,9 @@ export function createAiRuntimeExecutionService({
     const id = requestId();
     const startedAt = now();
     const { configData } = runtime;
+    let reservation;
     try {
-      await logs.reserveAiRequest({
+      reservation = await logs.reserveAiRequest({
         requestId: id,
         userId: user?.userId,
         feature,
@@ -253,7 +254,14 @@ export function createAiRuntimeExecutionService({
       safetyBlocked: false,
     });
     if (!completionWritten) throw requestLogUnavailableError();
-    return { requestId: id, result };
+    const requestLogId = Number.isSafeInteger(reservation?.id)
+      ? reservation.id
+      : null;
+    return {
+      requestId: id,
+      ...(requestLogId ? { requestLogId } : {}),
+      result,
+    };
   }
 
   async function executeAiRequest({

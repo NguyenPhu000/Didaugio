@@ -70,6 +70,7 @@ vi.mock("../lib/genieAssistantExperience", () => ({
     suggestedPlaces: [],
     quickReplies: [],
     actions: [],
+    requestLogId: 77,
   }),
 }));
 vi.mock("../../../api/endpoints", () => ({
@@ -114,6 +115,12 @@ describe("useGroqChat routing contract", () => {
       visitedPlaceIds: [],
       isPlaceQuery: false,
     });
+    expect(mocks.state.appendMessage).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        role: "assistant",
+        requestLogId: 77,
+      }),
+    );
   });
 
   it("is chat-only", () => {
