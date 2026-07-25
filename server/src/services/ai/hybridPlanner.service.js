@@ -1,16 +1,14 @@
-import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
+import { renderConfiguredPrompt } from "../../lib/promptBuilder.js";
+import { createGroqClient } from "./groq.service.js";
 import { parseAiJsonObject } from "./aiJsonParser.js";
 import {
   createAiInvalidOutputError,
   validateHybridPlanOutput,
 } from "./aiOutputGuard.js";
 import {
-  AI_PROVIDER_TIMEOUT_MS,
-  canUseHybridFallback,
   logAiProviderEvent,
   toAiServiceError,
 } from "./aiProviderPolicy.js";
-import { generateHybridFallback } from "./hybridPlannerFallback.js";
 
 function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
   const R = 6371; // Earth's radius in km
@@ -39,7 +37,14 @@ export function buildHybridPlanUserPrompt(basePrompt, userRequest = "") {
  * @param {Array} places Danh sách các địa điểm gần nhất lấy từ DB
  * @returns {Promise<Object>} Lịch trình và dự toán chi phí sạch
  */
-export async function generateHybridPlan(coords, preferences, places, userRequest = "") {
+export async function generateHybridPlan(
+  coords,
+  preferences,
+  places,
+  userRequest = "",
+  providerOptions = {},
+  providerContext = {},
+) {
   if (!Array.isArray(places) || places.length === 0) {
     throw new Error("Danh sách địa điểm đầu vào trống.");
   }
@@ -55,7 +60,10 @@ export async function generateHybridPlan(coords, preferences, places, userReques
   };
 
   // Rút gọn địa điểm để tiết kiệm token và định hướng AI
-  const placesContext = places.map((p) => ({
+  const promptPlaces = Array.isArray(providerContext.places)
+    ? providerContext.places
+    : [];
+  const placesContext = promptPlaces.map((p) => ({
     id: p.id,
     name: p.name,
     category: p.categoryName || "Địa điểm",
@@ -67,7 +75,12 @@ export async function generateHybridPlan(coords, preferences, places, userReques
       : "Chưa cập nhật",
   }));
 
-  const systemPrompt = `Bạn là "Genie" — trợ lý du lịch của ứng dụng "iPoint Genie".
+  const systemPrompt = `${renderConfiguredPrompt(
+    providerOptions.configuredPrompt,
+    providerContext,
+  )}
+
+Bạn là "Genie" — trợ lý du lịch của ứng dụng "iPoint Genie".
 Nhiệm vụ: sắp xếp lịch trình du lịch trong ngày thông minh, tối ưu tuyến đường, và ước lượng chi phí dựa trên danh sách địa điểm có thật từ cơ sở dữ liệu.
 
 QUY TẮC BẮT BUỘC:
@@ -105,12 +118,14 @@ SCHEMA JSON:
   ]
 }`;
 
-  const budgetHint = preferences?.budget
-    ? `\nNgân sách của người dùng: ${preferences.budget} — ưu tiên địa điểm trong khoảng giá này.`
+  const allowedPreferences = providerContext.travelPreferences;
+  const allowedBudget = providerContext.budget;
+  const budgetHint = allowedBudget
+    ? `\nNgân sách của người dùng: ${allowedBudget} — ưu tiên địa điểm trong khoảng giá này.`
     : "";
 
-  const userPrompt = `Tọa độ hiện tại: ${coords ? `${coords.latitude}, ${coords.longitude}` : "Chưa có"}
-Sở thích du lịch: ${preferences ? JSON.stringify(preferences) : "Chưa có"}${budgetHint}
+  const userPrompt = `Khu vực hiện tại: ${providerContext.currentCity || "Chưa có"}
+Sở thích du lịch: ${allowedPreferences ? JSON.stringify(allowedPreferences) : "Chưa có"}${budgetHint}
 Danh sách địa điểm từ DB (có priceReadable để tham khảo nhanh):
 ${JSON.stringify(placesContext)}
 
@@ -121,33 +136,31 @@ Hãy chọn 3-4 địa điểm phù hợp nhất, sắp xếp tuyến đường 
   const startedAt = Date.now();
   let completion;
   try {
-    const client = createGroqClient();
+    const client = createGroqClient(providerOptions);
     completion = await client.chat.completions.create({
-    model: GROQ_MODEL,
+    model: providerOptions.model,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: fullUserPrompt },
     ],
-    temperature: 0.2, // Nhiệt độ thấp để đảm bảo output định dạng JSON chính xác
-    max_tokens: 2000,
-    }, { timeout: AI_PROVIDER_TIMEOUT_MS });
+    temperature: Math.min(providerOptions.temperature, 0.3),
+    top_p: providerOptions.topP,
+    max_tokens: providerOptions.maxTokens,
+    }, { timeout: providerOptions.timeoutMs });
   } catch (error) {
     const aiError = toAiServiceError(error);
     logAiProviderEvent({
       feature: "hybrid-plan",
-      model: GROQ_MODEL,
+      model: providerOptions.model,
       startedAt,
       code: aiError.code,
     });
-    if (canUseHybridFallback(aiError)) {
-      return generateHybridFallback(places);
-    }
     throw aiError;
   }
 
   logAiProviderEvent({
     feature: "hybrid-plan",
-    model: GROQ_MODEL,
+    model: providerOptions.model,
     startedAt,
     completion,
   });
@@ -197,8 +210,13 @@ Hãy chọn 3-4 địa điểm phù hợp nhất, sắp xếp tuyến đường 
     }
   }
 
-  return {
+  const result = {
     tripSummary: planData.tripSummary,
     timeline: timeline,
   };
+  Object.defineProperty(result, "usage", {
+    value: completion.usage,
+    enumerable: false,
+  });
+  return result;
 }

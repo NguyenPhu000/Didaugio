@@ -1,5 +1,6 @@
 import prisma from "../../config/prismaClient.js";
-import { GROQ_MODEL } from "../ai/groq.service.js";
+import { resolveGroqProviderOptions } from "../ai/groq.service.js";
+import { executeAiRequest } from "../ai/runtime/aiRuntimeExecution.js";
 import { canUseHybridFallback } from "../ai/aiProviderPolicy.js";
 import {
   generateFallbackItinerary,
@@ -427,17 +428,49 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
     itineraryDraft && typeof itineraryDraft === "object"
       ? itineraryDraft
       : null;
+  let requestLogId = null;
 
   if (!rawItinerary) {
     const startTime = Date.now();
     let aiResult;
-    let isSuccessful = true;
-    let errorMessage = null;
 
     try {
-      aiResult = await generateItinerary(preferences, places);
+      const execution = await executeAiRequest({
+        feature: "planner",
+        user: { userId },
+        inputText:
+          preferences.notes ||
+          `Tạo lịch trình ${totalDays} ngày cho ${groupSize} người`,
+        context: {
+          travelPreferences: travelStyle
+            ? { travelStyles: [travelStyle] }
+            : null,
+          budget: preferences.budget,
+          partySize: Math.max(toInt(groupSize, 1), 1),
+          tripDuration: Math.max(toInt(totalDays, 1), 1),
+          places,
+        },
+        operation: async ({ configData, context: allowedContext }) => {
+          const providerOptions = await resolveGroqProviderOptions(
+            configData,
+            "planner",
+          );
+          const result = await generateItinerary(
+            preferences,
+            places,
+            providerOptions,
+            allowedContext,
+          );
+          return {
+            outputText:
+              result.raw || JSON.stringify(result.parsed),
+            itineraryResult: result,
+          };
+        },
+      });
+      aiResult = execution.result.itineraryResult;
+      requestLogId = execution.requestLogId ?? null;
     } catch (err) {
-      const errorCode = err?.errorCode || err?.code || "AI_ERROR";
       const allowFallback = canUseTripItineraryFallback(err);
 
       if (allowFallback) {
@@ -447,36 +480,9 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
           tokensUsed: null,
           responseTimeMs: Date.now() - startTime,
         };
-        isSuccessful = false;
-        errorMessage = `${errorCode}: ${err?.message}`;
       } else {
-        isSuccessful = false;
-        errorMessage = err?.message;
         throw err;
       }
-    } finally {
-      await prisma.aiPromptHistory
-        .create({
-          data: {
-            userId,
-            promptType: "trip_itinerary",
-            promptText: JSON.stringify(preferences),
-            contextData: {
-              placesCount: places.length,
-              travelStyle,
-              totalDays,
-              previewOnly: !!previewOnly,
-            },
-            responseText: aiResult?.raw ?? null,
-            responseParsed: aiResult?.parsed ?? null,
-            modelUsed: aiResult?.raw ? GROQ_MODEL : "fallback-local",
-            tokensUsed: aiResult?.tokensUsed ?? null,
-            responseTimeMs: Date.now() - startTime,
-            isSuccessful,
-            errorMessage,
-          },
-        })
-        .catch(() => {});
     }
 
     rawItinerary = aiResult?.parsed ?? null;
@@ -531,6 +537,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
       suggestedPlaces,
       selectedPlaceIds: effectiveSelectedPlaceIds,
       tripRoutingSummary,
+      ...(requestLogId ? { requestLogId } : {}),
     };
   }
 
@@ -642,6 +649,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
   return {
     ...trip,
     tripRoutingSummary,
+    ...(requestLogId ? { requestLogId } : {}),
   };
 };
 

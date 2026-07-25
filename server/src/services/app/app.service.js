@@ -3,6 +3,8 @@ import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
 import tripService, { TRIP_PLACE_SELECT } from "../trip/trip.service.js";
 import { deletePlaceImage, uploadPlaceImage } from "../media/media.service.js";
+import { anonymousAiUserRef } from "../adminAi/aiLog.service.js";
+import { RATEABLE_AI_FEATURES } from "../ai/aiFeedbackPolicy.js";
 
 const toInt = (value, fallback = null) => {
   const number = parseInt(value, 10);
@@ -959,38 +961,105 @@ export const {
 } = tripService;
 
 
-export const submitFeedback = async ({
-  userId = null,
-  reportType,
-  title,
-  content,
-  targetType = null,
-  targetId = null,
-  screenshot = null,
-}) => {
-  if (!reportType || !title || !content) {
-    const error = new Error(
-      "Thieu thong tin bat buoc: reportType, title, content",
-    );
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const feedback = await prisma.feedbackReport.create({
-    data: {
-      reporterId: userId,
-      reportType,
-      targetType,
-      targetId,
-      title,
-      content,
-      screenshot,
-      status: "pending",
+function unavailableAiFeedbackTarget() {
+  return Object.assign(
+    new Error("AI feedback target is unavailable."),
+    {
+      statusCode: 404,
+      code: "AI_FEEDBACK_TARGET_UNAVAILABLE",
+      errorCode: "AI_FEEDBACK_TARGET_UNAVAILABLE",
     },
-  });
+  );
+}
 
-  return feedback;
-};
+export function createFeedbackSubmissionService({
+  client,
+  anonymousUserRef = anonymousAiUserRef,
+}) {
+  return async function submitFeedback({
+    userId = null,
+    reportType,
+    title,
+    content,
+    targetType = null,
+    targetId = null,
+    screenshot = null,
+  }) {
+    if (!reportType || !title || !content) {
+      const error = new Error(
+        "Thieu thong tin bat buoc: reportType, title, content",
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const createReport = async (transactionClient, reporterId = userId) =>
+      transactionClient.feedbackReport.create({
+        data: {
+          reporterId,
+          reportType,
+          targetType,
+          targetId,
+          title,
+          content,
+          screenshot,
+          status: "pending",
+        },
+      });
+
+    if (targetType !== "ai_request") {
+      return createReport(client);
+    }
+
+    const feedback =
+      title === "AI helpful"
+        ? "up"
+        : title === "AI not helpful"
+          ? "down"
+          : null;
+    if (reportType !== "ai_quality" || !feedback) {
+      const error = new Error("Phan hoi AI khong hop le");
+      error.statusCode = 400;
+      throw error;
+    }
+    if (userId == null) throw unavailableAiFeedbackTarget();
+
+    let ownerReference;
+    try {
+      ownerReference = anonymousUserRef(userId);
+    } catch {
+      throw unavailableAiFeedbackTarget();
+    }
+
+    return client.$transaction(async (transactionClient) => {
+      const requestLog = await transactionClient.aiRequestLog.findFirst({
+        where: {
+          id: targetId,
+          anonymousUserRef: ownerReference,
+          status: "success",
+          isTest: false,
+          feature: { in: RATEABLE_AI_FEATURES },
+        },
+        select: { id: true },
+      });
+      if (!requestLog) throw unavailableAiFeedbackTarget();
+
+      await transactionClient.aiRequestLog.update({
+        where: { id: targetId },
+        data: {
+          feedback,
+          feedbackReason: content,
+        },
+      });
+
+      return createReport(transactionClient, null);
+    });
+  };
+}
+
+export const submitFeedback = createFeedbackSubmissionService({
+  client: prisma,
+});
 
 export default {
   getHomeData,

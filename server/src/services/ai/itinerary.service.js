@@ -6,9 +6,9 @@ import crypto from "crypto";
 import prisma from "../../config/prismaClient.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
-import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
+import { renderConfiguredPrompt } from "../../lib/promptBuilder.js";
+import { createGroqClient } from "./groq.service.js";
 import {
-  AI_PROVIDER_TIMEOUT_MS,
   logAiProviderEvent,
   toAiServiceError,
 } from "./aiProviderPolicy.js";
@@ -190,7 +190,12 @@ export function generateFallbackItinerary(preferences = {}, places = []) {
  * @param {Object} preferences - User travel preferences
  * @param {Array}  clusteredPlaces - Available approved places from DB, grouped by day index
  */
-function buildItineraryPrompt(preferences, clusteredPlaces) {
+function buildItineraryPrompt(
+  preferences,
+  clusteredPlaces,
+  configuredPrompt = "",
+  promptVariables = {},
+) {
   const { totalDays, travelStyle, groupSize, budget, notes } = preferences;
 
   const minifiedClustered = clusteredPlaces.map((cluster, idx) => ({
@@ -202,7 +207,9 @@ function buildItineraryPrompt(preferences, clusteredPlaces) {
     })),
   }));
 
-  return `Bạn là trợ lý du lịch thông minh cho Cần Thơ, Việt Nam.
+  return `${renderConfiguredPrompt(configuredPrompt, promptVariables)}
+
+Bạn là trợ lý du lịch thông minh cho Cần Thơ, Việt Nam.
 Hãy tạo lịch trình du lịch Cần Thơ chi tiết dựa theo các thông tin sau:
 
 **Thông tin chuyến đi:**
@@ -251,10 +258,18 @@ Chỉ trả về JSON thuần, không markdown, không giải thích.`;
  * @param {Array}  places
  * @returns {{ parsed: Object, raw: string, tokensUsed: number, responseTimeMs: number }}
  */
-export async function generateItinerary(preferences, places) {
+export async function generateItinerary(
+  preferences,
+  places,
+  providerOptions = {},
+  providerContext = {},
+) {
   // Phân cụm địa điểm bằng K-Means trước khi gọi AI
   const totalDays = toPositiveInt(preferences.totalDays, 1);
-  const clusteredPlaces = kMeansClustering(places, totalDays);
+  const allowedPlaces = Array.isArray(providerContext.places)
+    ? providerContext.places
+    : [];
+  const clusteredPlaces = kMeansClustering(allowedPlaces, totalDays);
 
   // Caching nâng cao
   const placeIds = places.map((p) => p.id).sort((a, b) => a - b).join(",");
@@ -273,25 +288,41 @@ export async function generateItinerary(preferences, places) {
     // Bỏ qua lỗi đọc cache và gọi trực tiếp AI
   }
 
-  const prompt = buildItineraryPrompt(preferences, clusteredPlaces);
+  const prompt = buildItineraryPrompt(
+    {
+      totalDays:
+        providerContext.tripDuration ?? preferences.totalDays,
+      travelStyle:
+        providerContext.travelPreferences?.travelStyles?.join(", ") ||
+        undefined,
+      groupSize:
+        providerContext.partySize ?? preferences.groupSize,
+      budget: providerContext.budget,
+      notes: preferences.notes,
+    },
+    clusteredPlaces,
+    providerOptions.configuredPrompt,
+    providerContext,
+  );
   const start = Date.now();
 
   let rawText;
   let tokensUsed = null;
   try {
-    const client = createGroqClient();
+    const client = createGroqClient(providerOptions);
     const completion = await client.chat.completions.create({
-      model: GROQ_MODEL,
+      model: providerOptions.model,
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.5,
-      max_tokens: 2000,
+      temperature: Math.min(providerOptions.temperature, 0.3),
+      top_p: providerOptions.topP,
+      max_tokens: providerOptions.maxTokens,
       response_format: { type: "json_object" },
-    }, { timeout: AI_PROVIDER_TIMEOUT_MS });
+    }, { timeout: providerOptions.timeoutMs });
     rawText = completion.choices[0]?.message?.content || "";
     tokensUsed = completion.usage?.total_tokens ?? null;
     logAiProviderEvent({
       feature: "itinerary",
-      model: GROQ_MODEL,
+      model: providerOptions.model,
       startedAt: start,
       completion,
     });
@@ -299,7 +330,7 @@ export async function generateItinerary(preferences, places) {
     const aiError = toAiServiceError(err);
     logAiProviderEvent({
       feature: "itinerary",
-      model: GROQ_MODEL,
+      model: providerOptions.model,
       startedAt: start,
       code: aiError.code,
     });
@@ -364,5 +395,10 @@ export async function generateItinerary(preferences, places) {
     // Bỏ qua lỗi ghi cache — vẫn trả kết quả cho client
   }
 
-  return { parsed, raw: rawText, tokensUsed, responseTimeMs };
+  return {
+    parsed,
+    raw: rawText,
+    tokensUsed,
+    responseTimeMs,
+  };
 }

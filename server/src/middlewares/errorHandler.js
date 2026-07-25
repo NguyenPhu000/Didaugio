@@ -6,12 +6,13 @@ import logger from "../config/logger.js";
 const errorHandler = (err, req, res, next) => {
   const statusCode = err.statusCode || 500;
   const isServerError = statusCode >= 500;
+  const errorCode = err.errorCode;
 
   if (isServerError) {
     logger.error(err.stack || err.message);
   } else {
     logger.warn(
-      `[WARN] ${req.method} ${req.originalUrl} -> ${statusCode} ${err.errorCode || "BUSINESS_ERROR"}: ${err.message}`,
+      `[WARN] ${req.method} ${req.originalUrl} -> ${statusCode} ${errorCode || "BUSINESS_ERROR"}: ${err.message}`,
     );
   }
 
@@ -75,14 +76,22 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  return res.status(statusCode).json({
+  const payload = {
     success: false,
     data: null,
     message: isServerError
       ? "Lỗi hệ thống, vui lòng thử lại sau"
       : err.message || "Yêu cầu không hợp lệ",
-    errorCode: err.errorCode || ERROR_CODES.INTERNAL_ERROR,
-  });
+    errorCode: errorCode || ERROR_CODES.INTERNAL_ERROR,
+  };
+  if (
+    errorCode === "AI_CONFIG_CONFLICT" &&
+    Number.isSafeInteger(err.currentRevision) &&
+    err.currentRevision >= 0
+  ) {
+    payload.currentRevision = err.currentRevision;
+  }
+  return res.status(statusCode).json(payload);
 };
 
 export default errorHandler;

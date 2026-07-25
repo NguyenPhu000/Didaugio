@@ -14,6 +14,7 @@
 - Expose exactly eight routes under `/api/v1/admin/ai`.
 - Only Super Admin and Admin participate in the module; accounts without an AI permission cannot see it or call its APIs.
 - Phase one supports the reviewed Groq adapter only.
+- Groq STT/TTS keep their specialized server-side model names; Admin controls the Voice prompt and shared credential, not speech model selection.
 - Do not add RAG/vector indexing, document upload, cache-management UI, email alerts, background jobs, Admin-authored regex, automatic multi-provider fallback, or AI-specific Redis Pub/Sub.
 - Draft changes never affect Mobile before publish.
 - Keep at most ten configuration versions while preserving active, draft, and rollback-required rows.
@@ -1034,6 +1035,8 @@ git commit -m "feat: expose lean admin AI API"
 - Replaces: new writes to `AiPromptHistory` with `AiRequestLog` lifecycle.
 - Produces: additive `requestLogId` in AI responses and thumbs feedback through the existing `/api/feedback` route.
 
+Text completion calls consume the published model and parameters. Groq transcription and speech synthesis consume the published credential/base URL but retain `GROQ_TRANSCRIPTION_MODEL`, `GROQ_TTS_MODEL`, and `GROQ_TTS_VOICE` from server-owned environment configuration.
+
 - [ ] **Step 1: Write failing integration contracts**
 
 ```js
@@ -1122,7 +1125,7 @@ Delete the `prisma.aiPromptHistory.create` block in `tripAiPlanner.service.js`. 
 
 - [ ] **Step 7: Connect Mobile thumbs feedback without a new Admin route**
 
-Return the numeric `AiRequestLog.id` as additive `requestLogId` metadata from Chat, Planner, and Voice responses. Preserve it on assistant messages. Add accessible thumbs-up/down buttons only for completed AI messages.
+Return the numeric `AiRequestLog.id` as additive `requestLogId` metadata from text-producing Chat, Planner, and Voice-introduction responses. Preserve it on assistant messages. Add accessible thumbs-up/down buttons only for completed assistant text; raw transcription and TTS transport responses are not independently rated.
 
 Submit through the existing feedback API:
 

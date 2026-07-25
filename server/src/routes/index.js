@@ -37,6 +37,7 @@ import adminReviewRoutes from "./review/adminReview.route.js";
 import feedbackRoutes from "./feedback/feedback.route.js";
 import serviceBookingRoutes from "./booking/serviceBooking.route.js";
 import aiRoutes from "./ai/ai.route.js";
+import adminAiRoutes from "./adminAi/adminAi.route.js";
 import routingRoutes from "../modules/routing/routing.routes.js";
 import navigationRoutes from "../modules/navigation/navigation.routes.js";
 import placeTelemetryRoutes from "./analytics/placeTelemetry.route.js";
@@ -144,6 +145,7 @@ export const registerApiRoutes = (app) => {
   app.use("/api/cms", cmsRoutes);
   app.use("/api/subscriptions", subscriptionRoutes);
   app.use("/api/admin/subscriptions", adminSubscriptionRoutes);
+  app.use("/api/v1/admin/ai", adminAiRoutes);
   app.use("/api/ai", aiRoutes);
   app.use("/api/routes", routingRoutes);
   app.use("/api/navigation", navigationRoutes);

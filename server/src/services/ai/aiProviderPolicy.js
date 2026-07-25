@@ -10,6 +10,14 @@ const STABLE_AI_CODES = new Set([
   "AI_UNAVAILABLE",
   "AI_ERROR",
   "AI_INVALID_OUTPUT",
+  "AI_INVALID_REQUEST",
+  "AI_DISABLED",
+  "AI_MAINTENANCE",
+  "AI_SAFETY_BLOCKED",
+  "AI_DAILY_QUOTA_EXCEEDED",
+  "AI_LOG_KEY_UNAVAILABLE",
+  "AI_REQUEST_LOG_UNAVAILABLE",
+  "AI_SECRET_UNAVAILABLE",
 ]);
 
 function parseTimeout(value) {
@@ -98,7 +106,15 @@ export function toAiServiceError(error) {
 
 export function canUseHybridFallback(error) {
   const code = toAiServiceError(error).code;
-  return ["AI_TIMEOUT", "QUOTA_EXCEEDED", "AI_UNAVAILABLE"].includes(code);
+  return [
+    "AI_TIMEOUT",
+    "QUOTA_EXCEEDED",
+    "AI_UNAVAILABLE",
+    "AI_DISABLED",
+    "AI_MAINTENANCE",
+    "AI_SECRET_UNAVAILABLE",
+    "AI_REQUEST_LOG_UNAVAILABLE",
+  ].includes(code);
 }
 
 export function logAiProviderEvent({ feature, model, startedAt, completion, code }) {

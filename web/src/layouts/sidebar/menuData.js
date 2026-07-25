@@ -23,6 +23,7 @@ import {
   Coins,
   CreditCard,
   User,
+  BrainCircuit,
 } from "lucide-react";
 import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/constants";
@@ -237,6 +238,14 @@ export function getMenuData() {
         { key: "audit-logs", title: t("nav.system.auditLogs"), url: ADMIN_ROUTES.AUDIT_LOGS, permission: PERMISSIONS.AUDIT_LOG.VIEW },
         { key: "login-history", title: t("nav.system.loginHistory"), url: ADMIN_ROUTES.LOGIN_HISTORY, permission: PERMISSIONS.LOGIN_HISTORY.VIEW },
       ],
+    },
+    {
+      key: "admin-ai",
+      title: "Quản lý AI",
+      icon: BrainCircuit,
+      url: ADMIN_ROUTES.AI,
+      roles: [R.SUPER_ADMIN, R.ADMIN],
+      permission: PERMISSIONS.AI.VIEW,
     },
   ],
 

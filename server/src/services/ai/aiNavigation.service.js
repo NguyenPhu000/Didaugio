@@ -1,28 +1,153 @@
-import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
+import {
+  createGroqClient,
+  resolveGroqProviderOptions,
+} from "./groq.service.js";
+import { executeAiRequest } from "./runtime/aiRuntimeExecution.js";
 import { parseAiJsonObject } from "./aiJsonParser.js";
 import {
-  AI_PROVIDER_TIMEOUT_MS,
   logAiProviderEvent,
   normalizeProviderMessages,
   toAiServiceError,
 } from "./aiProviderPolicy.js";
 
-export async function requestNavigationCompletion({ client, prompt, feature }) {
+const MAX_NAVIGATION_ROUTES = 6;
+const MAX_NAVIGATION_WAYPOINTS = 16;
+const MAX_NAVIGATION_WAYPOINTS_JSON_LENGTH = 1_600;
+const MAX_LABEL_LENGTH = 160;
+const MAX_SUMMARY_LENGTH = 240;
+
+function boundedNavigationText(value, maxLength, fallback) {
+  const normalized = String(value ?? "")
+    .replace(/\s+/g, " ")
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[redacted]")
+    .replace(/(?:\+?\d[\s().-]*){9,}/g, "[redacted]")
+    .replace(/-?\d{1,3}\.\d+\s*[,;]\s*-?\d{1,3}\.\d+/g, "[redacted]")
+    .trim();
+  return (normalized || fallback).slice(0, maxLength);
+}
+
+function boundedNavigationNumber(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  return Math.max(0, Math.min(100_000_000, Math.round(number)));
+}
+
+export function sanitizeNavigationProviderPayload(payload = {}, mode = "route") {
+  const context = payload.context ?? {};
+  const base = {
+    originLabel: boundedNavigationText(
+      payload.origin?.name,
+      MAX_LABEL_LENGTH,
+      "current_origin",
+    ),
+    destinationLabel: boundedNavigationText(
+      payload.destination?.name,
+      MAX_LABEL_LENGTH,
+      "selected_destination",
+    ),
+    question: boundedNavigationText(
+      context.question,
+      MAX_SUMMARY_LENGTH,
+      mode === "route"
+        ? "Recommend a navigation route"
+        : "Order navigation waypoints",
+    ),
+    timeOfDay: boundedNavigationText(
+      context.time,
+      MAX_LABEL_LENGTH,
+      "not_provided",
+    ),
+    transportPreference: boundedNavigationText(
+      context.vehicleType,
+      MAX_LABEL_LENGTH,
+      "motorcycle",
+    ),
+  };
+
+  if (mode === "waypoint") {
+    const waypoints = [];
+    const inputWaypoints = Array.isArray(payload.waypoints)
+      ? payload.waypoints
+      : [];
+    for (
+      let index = 0;
+      index < Math.min(inputWaypoints.length, MAX_NAVIGATION_WAYPOINTS);
+      index += 1
+    ) {
+      const candidate = {
+        index,
+        label: boundedNavigationText(
+          inputWaypoints[index]?.name,
+          MAX_LABEL_LENGTH,
+          `Waypoint ${index}`,
+        ),
+      };
+      if (
+        JSON.stringify([...waypoints, candidate]).length >
+        MAX_NAVIGATION_WAYPOINTS_JSON_LENGTH
+      ) {
+        break;
+      }
+      waypoints.push(candidate);
+    }
+    return {
+      ...base,
+      waypoints,
+    };
+  }
+
+  return {
+    ...base,
+    routes: (Array.isArray(payload.routes) ? payload.routes : [])
+      .slice(0, MAX_NAVIGATION_ROUTES)
+      .map((route, index) => ({
+        id: boundedNavigationText(
+          route?.id,
+          MAX_LABEL_LENGTH,
+          `route-${index + 1}`,
+        ),
+        distance: boundedNavigationNumber(route?.distance),
+        duration: boundedNavigationNumber(route?.duration),
+        summary: boundedNavigationText(
+          route?.summary,
+          MAX_SUMMARY_LENGTH,
+          "n/a",
+        ),
+      })),
+  };
+}
+
+function navigationSafetyText(payload) {
+  return JSON.stringify(payload);
+}
+
+export async function requestNavigationCompletion({
+  client,
+  prompt,
+  feature,
+  providerOptions,
+}) {
   const startedAt = Date.now();
   try {
     const completion = await client.chat.completions.create({
-      model: GROQ_MODEL,
+      model: providerOptions.model,
       messages: normalizeProviderMessages([{ role: "user", content: prompt }]),
-      temperature: 0.3,
-      max_tokens: 800,
-    }, { timeout: AI_PROVIDER_TIMEOUT_MS });
-    logAiProviderEvent({ feature, model: GROQ_MODEL, startedAt, completion });
+      temperature: Math.min(providerOptions.temperature, 0.3),
+      top_p: providerOptions.topP,
+      max_tokens: providerOptions.maxTokens,
+    }, { timeout: providerOptions.timeoutMs });
+    logAiProviderEvent({
+      feature,
+      model: providerOptions.model,
+      startedAt,
+      completion,
+    });
     return completion;
   } catch (error) {
     const aiError = toAiServiceError(error);
     logAiProviderEvent({
       feature,
-      model: GROQ_MODEL,
+      model: providerOptions.model,
       startedAt,
       code: aiError.code,
     });
@@ -31,22 +156,57 @@ export async function requestNavigationCompletion({ client, prompt, feature }) {
 }
 
 class AINavigationService {
-  async getNavigationAdvice(payload = {}) {
-    const { origin, destination, routes = [], context = {} } = payload;
+  constructor({
+    executeRequest = executeAiRequest,
+    resolveProviderOptions = resolveGroqProviderOptions,
+    createClient = createGroqClient,
+  } = {}) {
+    this.executeRequest = executeRequest;
+    this.resolveProviderOptions = resolveProviderOptions;
+    this.createClient = createClient;
+  }
+
+  async getNavigationAdvice(payload = {}, actor = {}) {
+    const { routes = [], context = {} } = payload;
 
     if (!Array.isArray(routes) || routes.length === 0) {
       return this._fallbackRecommendation(routes, context);
     }
 
-    const prompt = this._buildPrompt({ origin, destination, routes, context });
-
+    const providerPayload = sanitizeNavigationProviderPayload(payload, "route");
     try {
-      const client = createGroqClient();
-      const completion = await requestNavigationCompletion({
-        client,
-        prompt,
+      const execution = await this.executeRequest({
         feature: "navigation-route-advice",
+        user: actor,
+        inputText: navigationSafetyText(providerPayload),
+        context: {
+          timeOfDay: providerPayload.timeOfDay,
+          transportPreference: providerPayload.transportPreference,
+        },
+        operation: async ({ configData, context: allowedContext }) => {
+          const providerOptions = await this.resolveProviderOptions(
+            configData,
+            "chat",
+          );
+          const client = this.createClient(providerOptions);
+          const prompt = this._buildPrompt({
+            ...providerPayload,
+            context: allowedContext,
+          });
+          const completion = await requestNavigationCompletion({
+            client,
+            prompt,
+            feature: "navigation-route-advice",
+            providerOptions,
+          });
+          return {
+            outputText:
+              completion.choices[0]?.message?.content || "",
+            completion,
+          };
+        },
       });
+      const completion = execution.result.completion;
       const text = completion.choices[0]?.message?.content || "";
       const parsed = this._tryParseJson(text);
 
@@ -64,43 +224,78 @@ class AINavigationService {
     return this._fallbackRecommendation(routes, context);
   }
 
-  async getWaypointOrderAdvice(payload = {}) {
-    const { origin, destination, waypoints = [], context = {} } = payload;
+  async getWaypointOrderAdvice(payload = {}, actor = {}) {
+    const { waypoints = [] } = payload;
     const normalizedWaypoints = Array.isArray(waypoints) ? waypoints : [];
 
     if (normalizedWaypoints.length === 0) {
       return this._fallbackWaypointOrder(normalizedWaypoints);
     }
 
-    const prompt = this._buildWaypointOrderPrompt({
-      origin,
-      destination,
-      waypoints: normalizedWaypoints,
-      context,
-    });
-
+    const providerPayload = sanitizeNavigationProviderPayload(
+      payload,
+      "waypoint",
+    );
     try {
-      const client = createGroqClient();
-      const completion = await requestNavigationCompletion({
-        client,
-        prompt,
+      const execution = await this.executeRequest({
         feature: "navigation-waypoint-order",
+        user: actor,
+        inputText: navigationSafetyText(providerPayload),
+        context: {
+          timeOfDay: providerPayload.timeOfDay,
+          transportPreference: providerPayload.transportPreference,
+        },
+        operation: async ({ configData, context: allowedContext }) => {
+          const providerOptions = await this.resolveProviderOptions(
+            configData,
+            "chat",
+          );
+          const client = this.createClient(providerOptions);
+          const prompt = this._buildWaypointOrderPrompt({
+            ...providerPayload,
+            context: allowedContext,
+          });
+          const completion = await requestNavigationCompletion({
+            client,
+            prompt,
+            feature: "navigation-waypoint-order",
+            providerOptions,
+          });
+          return {
+            outputText:
+              completion.choices[0]?.message?.content || "",
+            completion,
+          };
+        },
       });
+      const completion = execution.result.completion;
       const text = completion.choices[0]?.message?.content || "";
       const parsed = this._tryParseJson(text);
+      const sentWaypointIndexes = providerPayload.waypoints.map(
+        (point) => point.index,
+      );
       const orderedIndexes = this._sanitizeWaypointIndexes(
         parsed?.orderedWaypointIndexes,
-        normalizedWaypoints.length,
+        sentWaypointIndexes,
       );
 
-      if (orderedIndexes.length === normalizedWaypoints.length) {
+      if (orderedIndexes.length === sentWaypointIndexes.length) {
+        const sentIndexSet = new Set(sentWaypointIndexes);
+        const unsentIndexes = normalizedWaypoints
+          .map((_, index) => index)
+          .filter((index) => !sentIndexSet.has(index));
         return {
-          source: "ai",
-          orderedWaypointIndexes: orderedIndexes,
+          source: unsentIndexes.length > 0 ? "ai-partial" : "ai",
+          orderedWaypointIndexes: [...orderedIndexes, ...unsentIndexes],
           reason:
             parsed?.reason ||
             "AI đã sắp xếp thứ tự điểm đến theo ngữ cảnh người dùng.",
-          warnings: Array.isArray(parsed?.warnings) ? parsed.warnings : [],
+          warnings: [
+            ...(Array.isArray(parsed?.warnings) ? parsed.warnings : []),
+            ...(unsentIndexes.length > 0
+              ? ["Only the provider-visible waypoint subset was AI-ordered."]
+              : []),
+          ],
           confidence: Number(parsed?.confidence || 0.72),
         };
       }
@@ -111,7 +306,13 @@ class AINavigationService {
     return this._fallbackWaypointOrder(normalizedWaypoints);
   }
 
-  _buildPrompt({ origin, destination, routes, context }) {
+  _buildPrompt({
+    originLabel,
+    destinationLabel,
+    question,
+    routes,
+    context,
+  }) {
     const summaries = routes
       .map(
         (route) =>
@@ -133,12 +334,12 @@ Hay phan tich cac route alternatives va tra ve JSON hop le theo schema sau:
 }
 
 Input:
-- Origin: ${origin?.name || `${origin?.lat},${origin?.lng}`}
-- Destination: ${destination?.name || `${destination?.lat},${destination?.lng}`}
-- Time: ${context?.time || "not_provided"}
-- Vehicle: ${context?.vehicleType || "motorcycle"}
+- Origin: ${originLabel}
+- Destination: ${destinationLabel}
+- Time: ${context?.timeOfDay || "not_provided"}
+- Vehicle: ${context?.transportPreference || "motorcycle"}
 - Preference: ${context?.userPreference || "fastest"}
-- Question: ${context?.question || "Nen di route nao?"}
+- Question: ${question}
 
 Routes:
 ${summaries}
@@ -149,12 +350,14 @@ Quy tac:
 `;
   }
 
-  _buildWaypointOrderPrompt({ origin, destination, waypoints, context }) {
+  _buildWaypointOrderPrompt({
+    originLabel,
+    destinationLabel,
+    waypoints,
+    context,
+  }) {
     const waypointList = waypoints
-      .map((point, index) => {
-        const label = point?.name || `Waypoint ${index}`;
-        return `- ${index}: ${label} (${point?.lat},${point?.lng})`;
-      })
+      .map((point) => `- ${point.index}: ${point.label}`)
       .join("\n");
 
     return `Ban la tro ly sap xep lich trinh tham quan tai Viet Nam.
@@ -168,11 +371,11 @@ Tra ve JSON hop le theo schema:
 }
 
 Input:
-- Origin: ${origin?.name || `${origin?.lat},${origin?.lng}`}
-- Destination: ${destination?.name || `${destination?.lat},${destination?.lng}`}
-- Time: ${context?.time || "not_provided"}
+- Origin: ${originLabel}
+- Destination: ${destinationLabel}
+- Time: ${context?.timeOfDay || "not_provided"}
 - Intent: ${context?.intent || context?.userPreference || "balanced"}
-- Vehicle: ${context?.vehicleType || "motorcycle"}
+- Vehicle: ${context?.transportPreference || "motorcycle"}
 
 Waypoints:
 ${waypointList}
@@ -239,20 +442,25 @@ Quy tac bat buoc:
     };
   }
 
-  _sanitizeWaypointIndexes(value, waypointCount) {
+  _sanitizeWaypointIndexes(value, allowedIndexes) {
     if (!Array.isArray(value)) return [];
 
+    const allowed = new Set(allowedIndexes);
     const seen = new Set();
     const indexes = [];
 
-    value.forEach((rawIndex) => {
+    for (const rawIndex of value) {
       const index = Number(rawIndex);
-      if (!Number.isInteger(index)) return;
-      if (index < 0 || index >= waypointCount) return;
-      if (seen.has(index)) return;
+      if (
+        !Number.isInteger(index) ||
+        !allowed.has(index) ||
+        seen.has(index)
+      ) {
+        return [];
+      }
       seen.add(index);
       indexes.push(index);
-    });
+    }
 
     return indexes;
   }
@@ -266,4 +474,8 @@ Quy tac bat buoc:
   }
 }
 
-export default new AINavigationService();
+export function createAiNavigationService(dependencies = {}) {
+  return new AINavigationService(dependencies);
+}
+
+export default createAiNavigationService();

@@ -3,21 +3,42 @@
  * Uses the official Groq SDK.
  */
 import Groq from "groq-sdk";
+import { resolveProviderSecret } from "../adminAi/aiCredential.service.js";
+import { renderConfiguredPrompt } from "../../lib/promptBuilder.js";
 import {
-  AI_PROVIDER_TIMEOUT_MS,
   logAiProviderEvent,
   normalizeProviderMessages,
   toAiServiceError,
 } from "./aiProviderPolicy.js";
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
-const GROQ_MODEL = process.env.GROQ_MODEL_NAME || "meta-llama/llama-4-scout-17b-16e-instruct";
-
-function createGroqClient() {
-  if (!GROQ_API_KEY) {
-    throw new Error("[ENV] Thiếu GROQ_API_KEY — vui lòng cấu hình trong .env");
+export function createGroqClient({
+  apiKey,
+  baseUrl = "https://api.groq.com",
+} = {}) {
+  if (!apiKey) {
+    throw Object.assign(new Error("Groq credential is unavailable."), {
+      code: "AI_SECRET_UNAVAILABLE",
+      errorCode: "AI_SECRET_UNAVAILABLE",
+      statusCode: 503,
+    });
   }
-  return new Groq({ apiKey: GROQ_API_KEY, baseURL: "https://api.groq.com" });
+  return new Groq({ apiKey, baseURL: baseUrl });
+}
+
+export async function resolveGroqProviderOptions(configData, feature) {
+  const apiKey = await resolveProviderSecret(
+    configData.provider.secretReference,
+  );
+  return {
+    apiKey,
+    baseUrl: configData.provider.baseUrl,
+    model: configData.provider.model,
+    temperature: configData.modelParameters.temperature,
+    topP: configData.modelParameters.topP,
+    maxTokens: configData.modelParameters.maxTokens,
+    timeoutMs: configData.modelParameters.timeoutMs,
+    configuredPrompt: configData.prompts[feature],
+  };
 }
 
 /**
@@ -52,8 +73,9 @@ function formatPriceRange(from, to) {
  * @param {Object} [context.locationContext] - Detailed district and ward
  * @param {Object} [context.travelPreferences] - User travel preferences from DB
  */
-function buildGroqSystemPrompt(context = {}) {
+function buildGroqSystemPrompt(context = {}, configuredPrompt = "") {
   const parts = [
+    renderConfiguredPrompt(configuredPrompt, context),
     `Bạn là "Genie" — trợ lý du lịch ảo của ứng dụng "iPoint Genie", đóng vai một người bạn địa phương Cần Thơ am hiểu, hay đi đây đi đó.`,
     `Nhiệm vụ: tư vấn lịch trình, gợi ý quán ăn, điểm check-in một cách tự nhiên, như đang trò chuyện với bạn bè.`,
     ``,
@@ -176,28 +198,41 @@ function buildGroqSystemPrompt(context = {}) {
  * @param {Object} context - User context for system prompt
  * @returns {Promise<{ reply: string, suggestedPlaceIds: Array }>}
  */
-export async function chatWithGroq(messages, context = {}) {
-  const systemPrompt = buildGroqSystemPrompt(context);
+export async function chatWithGroq(
+  messages,
+  context = {},
+  providerOptions = {},
+) {
+  const {
+    model,
+    temperature,
+    topP,
+    maxTokens,
+    timeoutMs,
+    configuredPrompt,
+  } = providerOptions;
+  const systemPrompt = buildGroqSystemPrompt(context, configuredPrompt);
   const normalizedMessages = normalizeProviderMessages(messages);
   const startedAt = Date.now();
   let completion;
 
   try {
-    const client = createGroqClient();
+    const client = createGroqClient(providerOptions);
     completion = await client.chat.completions.create(
       {
-        model: GROQ_MODEL,
+        model,
         messages: [{ role: "system", content: systemPrompt }, ...normalizedMessages],
-        temperature: 0.6,
-        max_tokens: 2000,
+        temperature,
+        top_p: topP,
+        max_tokens: maxTokens,
       },
-      { timeout: AI_PROVIDER_TIMEOUT_MS },
+      { timeout: timeoutMs },
     );
   } catch (error) {
     const aiError = toAiServiceError(error);
     logAiProviderEvent({
       feature: "chat",
-      model: GROQ_MODEL,
+      model,
       startedAt,
       code: aiError.code,
     });
@@ -207,7 +242,7 @@ export async function chatWithGroq(messages, context = {}) {
   const replyText = completion.choices[0]?.message?.content || "";
   logAiProviderEvent({
     feature: "chat",
-    model: GROQ_MODEL,
+    model,
     startedAt,
     completion,
   });
@@ -225,7 +260,12 @@ export async function chatWithGroq(messages, context = {}) {
     finalReply = replyText.replace(placesRegex, "").trim();
   }
 
-  return { reply: finalReply, suggestedPlaceIds };
+  return {
+    reply: finalReply,
+    suggestedPlaceIds,
+    inputTokens: completion.usage?.prompt_tokens ?? null,
+    outputTokens: completion.usage?.completion_tokens ?? null,
+  };
 }
 
-export { buildGroqSystemPrompt, createGroqClient, GROQ_MODEL };
+export { buildGroqSystemPrompt };

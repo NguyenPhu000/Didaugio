@@ -2,7 +2,10 @@ import navigationService from "../../modules/navigation/navigation.service.js";
 
 export const handleNavigate = async (req, res, next) => {
   try {
-    const data = await navigationService.recommendRoute(req.body || {});
+    const data = await navigationService.recommendRoute(
+      req.body || {},
+      { userId: req.user?.userId || req.user?.id || null },
+    );
 
     res.json({
       success: true,
