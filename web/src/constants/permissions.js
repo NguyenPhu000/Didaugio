@@ -192,4 +192,13 @@ export const PERMISSIONS = {
     UPDATE: "staff.update",
     DELETE: "staff.delete",
   },
+  AI: {
+    VIEW: "ai.view",
+    CONFIG_MANAGE: "ai.config.manage",
+    CONFIG_PUBLISH: "ai.config.publish",
+    SECRETS_MANAGE: "ai.secrets.manage",
+    LOGS_VIEW: "ai.logs.view",
+    TEST_RUN: "ai.test.run",
+    KILL_SWITCH_MANAGE: "ai.kill_switch.manage",
+  },
 };

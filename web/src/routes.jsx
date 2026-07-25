@@ -53,6 +53,7 @@ const AdminAnalyticsPage = lazy(() => import("@/pages/admin/AdminAnalyticsPage")
 const CMSContentPage = lazy(() => import("@/pages/admin/CMSContentPage"));
 const RoleManagePage = lazy(() => import("@/pages/RoleManagePage"));
 const PermissionManagePage = lazy(() => import("@/pages/PermissionManagePage"));
+const AdminAiPage = lazy(() => import("@/pages/admin/ai/AdminAiPage"));
 
 // Business pages - lazy loaded
 const BusinessProfilePage = lazy(() => import("@/pages/business/BusinessProfilePage"));
@@ -468,6 +469,15 @@ const AppRoutes = () => {
         element={
           <ProtectedAdmin roles={adminRoles}>
             <CMSContentPage />
+          </ProtectedAdmin>
+        }
+      />
+
+      <Route
+        path={ADMIN_ROUTES.AI}
+        element={
+          <ProtectedAdmin roles={adminRoles}>
+            <AdminAiPage />
           </ProtectedAdmin>
         }
       />
