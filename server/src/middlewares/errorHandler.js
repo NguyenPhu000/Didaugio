@@ -6,7 +6,7 @@ import logger from "../config/logger.js";
 const errorHandler = (err, req, res, next) => {
   const statusCode = err.statusCode || 500;
   const isServerError = statusCode >= 500;
-  const errorCode = err.errorCode ?? err.code;
+  const errorCode = err.errorCode;
 
   if (isServerError) {
     logger.error(err.stack || err.message);

@@ -64,11 +64,37 @@ function canManageProviderSecret(req) {
     req.userPermissions?.has("ai.secrets.manage") === true;
 }
 
+const ADMIN_AI_ERROR_CODE = /^AI_[A-Z0-9_]+$/;
+
+export function normalizeAdminAiError(error) {
+  if (
+    !error ||
+    typeof error.code !== "string" ||
+    !ADMIN_AI_ERROR_CODE.test(error.code)
+  ) {
+    return error;
+  }
+
+  const normalized = new Error(error.message);
+  if (Number.isInteger(error.statusCode)) {
+    normalized.statusCode = error.statusCode;
+  }
+  normalized.errorCode = error.code;
+  if (
+    error.code === "AI_CONFIG_CONFLICT" &&
+    Number.isSafeInteger(error.currentRevision) &&
+    error.currentRevision >= 0
+  ) {
+    normalized.currentRevision = error.currentRevision;
+  }
+  return normalized;
+}
+
 export const getOverview = async (req, res, next) => {
   try {
     return sendSuccess(res, await getAiOverview(req.query), "AI overview retrieved.");
   } catch (error) {
-    return next(error);
+    return next(normalizeAdminAiError(error));
   }
 };
 
@@ -76,7 +102,7 @@ export const getConfig = async (req, res, next) => {
   try {
     return sendSuccess(res, await getConfigView(), "AI configuration retrieved.");
   } catch (error) {
-    return next(error);
+    return next(normalizeAdminAiError(error));
   }
 };
 
@@ -110,7 +136,7 @@ export const saveDraft = async (req, res, next) => {
     }
     return sendSuccess(res, draft, "AI configuration draft saved.");
   } catch (error) {
-    return next(error);
+    return next(normalizeAdminAiError(error));
   }
 };
 
@@ -122,7 +148,7 @@ export const testConfig = async (req, res, next) => {
       "AI configuration test completed.",
     );
   } catch (error) {
-    return next(error);
+    return next(normalizeAdminAiError(error));
   }
 };
 
@@ -137,7 +163,7 @@ export const publishConfig = async (req, res, next) => {
     });
     return sendSuccess(res, published, "AI configuration published.");
   } catch (error) {
-    return next(error);
+    return next(normalizeAdminAiError(error));
   }
 };
 
@@ -152,7 +178,7 @@ export const rollbackConfig = async (req, res, next) => {
     });
     return sendSuccess(res, published, "AI configuration rolled back.");
   } catch (error) {
-    return next(error);
+    return next(normalizeAdminAiError(error));
   }
 };
 
@@ -170,7 +196,7 @@ export const updateKillSwitch = async (req, res, next) => {
     });
     return sendSuccess(res, result, "AI kill switch updated.");
   } catch (error) {
-    return next(error);
+    return next(normalizeAdminAiError(error));
   }
 };
 
@@ -178,6 +204,6 @@ export const getLogs = async (req, res, next) => {
   try {
     return sendSuccess(res, await getAiLogs(req.query), "AI request logs retrieved.");
   } catch (error) {
-    return next(error);
+    return next(normalizeAdminAiError(error));
   }
 };

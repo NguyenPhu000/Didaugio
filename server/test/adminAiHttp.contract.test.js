@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { normalizeAdminAiError } from "../src/controllers/adminAi/adminAi.controller.js";
 import errorHandler from "../src/middlewares/errorHandler.js";
 import adminAiRouter from "../src/routes/adminAi/adminAi.route.js";
 
@@ -72,7 +73,7 @@ test("shared handler preserves safe Admin AI conflict recovery metadata", () => 
     currentRevision: 17,
     internalDetail: "do-not-leak",
   });
-  const response = invokeError(error);
+  const response = invokeError(normalizeAdminAiError(error));
 
   assert.deepEqual(response, {
     statusCode: 409,
@@ -96,11 +97,36 @@ test("shared handler preserves stable Admin AI service codes without arbitrary e
       statusCode,
       internalDetail: "do-not-leak",
     });
-    const response = invokeError(error);
+    const response = invokeError(normalizeAdminAiError(error));
 
     assert.equal(response.statusCode, statusCode);
     assert.equal(response.payload.errorCode, code);
     assert.equal("internalDetail" in response.payload, false);
     assert.equal("currentRevision" in response.payload, false);
+  }
+});
+
+test("Admin AI error normalization trusts only bounded AI domain codes", () => {
+  const domainError = Object.assign(new Error("AI configuration changed."), {
+    code: "AI_CONFIG_CONFLICT",
+    statusCode: 409,
+    currentRevision: 17,
+    internalDetail: "do-not-leak",
+  });
+  const normalized = normalizeAdminAiError(domainError);
+
+  assert.notEqual(normalized, domainError);
+  assert.equal(normalized.errorCode, "AI_CONFIG_CONFLICT");
+  assert.equal(normalized.currentRevision, 17);
+  assert.equal("internalDetail" in normalized, false);
+
+  for (const code of ["P2003", "ECONNREFUSED", "ETIMEDOUT"]) {
+    const infrastructureError = Object.assign(new Error("infrastructure failure"), {
+      code,
+      statusCode: 500,
+    });
+    assert.equal(normalizeAdminAiError(infrastructureError), infrastructureError);
+    const response = invokeError(infrastructureError);
+    assert.equal(response.payload.errorCode, "INTERNAL_ERROR");
   }
 });
