@@ -1,23 +1,36 @@
 import { useState } from "react";
 import {
-  ClipboardCheck,
   FlaskConical,
   LayoutDashboard,
   LockKeyhole,
+  RefreshCcw,
   ScrollText,
   Settings2,
   ShieldCheck,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { PERMISSIONS } from "@/constants/permissions";
 import {
+  useAdminAiConfig,
   useAdminAiOverview,
+  usePublishAiConfig,
+  useRollbackAiConfig,
+  useSaveAiDraft,
+  useTestAiConfig,
+  useUpdateAiKillSwitch,
 } from "@/hooks/queries/useAdminAiQueries";
 import { usePermission } from "@/hooks/usePermission";
+import AiConfigurationPanel from "./components/AiConfigurationPanel";
 import AiEmptyState from "./components/AiEmptyState";
+import AiKillSwitchDialog from "./components/AiKillSwitchDialog";
 import AiLogsPanel from "./components/AiLogsPanel";
 import AiOverviewPanel from "./components/AiOverviewPanel";
+import AiPublishDialog from "./components/AiPublishDialog";
+import AiRollbackDialog from "./components/AiRollbackDialog";
+import AiSafetyPanel from "./components/AiSafetyPanel";
 import AiStatusHeader from "./components/AiStatusHeader";
+import AiTestLabPanel from "./components/AiTestLabPanel";
 
 const TAB_DEFINITIONS = [
   {
@@ -65,13 +78,286 @@ function unwrapResponse(value) {
     : value;
 }
 
-function PlannedPanel({ title, description }) {
+function conflictRevision(error) {
+  const status = error?.status ?? error?.response?.status;
+  const data = error?.data ?? error?.response?.data ?? {};
+  if (
+    (status === 409 || data.errorCode === "AI_CONFIG_CONFLICT") &&
+    Number.isSafeInteger(data.currentRevision) &&
+    data.currentRevision >= 0
+  ) {
+    return data.currentRevision;
+  }
+  return null;
+}
+
+function ConfigLoading() {
   return (
-    <AiEmptyState
-      icon={ClipboardCheck}
-      eyebrow="Task 9"
-      title={title}
-      description={description}
+    <div
+      role="status"
+      aria-label="Đang tải cấu hình AI"
+      className="flex min-h-64 items-center justify-center border border-black/20 font-mono text-xs uppercase tracking-wide dark:border-white/20"
+    >
+      Đang tải cấu hình AI…
+    </div>
+  );
+}
+
+function MutationNotice({
+  conflict,
+  error,
+  onReload,
+  isReloading = false,
+}) {
+  if (conflict !== null) {
+    return (
+      <div
+        role="alert"
+        className="mb-4 flex flex-col gap-3 border-l-4 border-primary bg-primary/10 p-4 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div>
+          <p className="font-mono text-xs font-bold uppercase tracking-wide">
+            Có revision mới hơn: {conflict}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Mutation đã dừng và không tự retry. Reload dữ liệu trước khi tiếp
+            tục.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          loading={isReloading}
+          onClick={onReload}
+          className="rounded-none border-black dark:border-white"
+        >
+          <RefreshCcw aria-hidden="true" />
+          Reload revision
+        </Button>
+      </div>
+    );
+  }
+
+  if (!error) return null;
+  return (
+    <p
+      role="alert"
+      className="mb-4 border-l-4 border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive"
+    >
+      {error.message ?? "Không thể hoàn tất thao tác AI."}
+    </p>
+  );
+}
+
+function ConfigurationWorkspace({ permissions }) {
+  const configQuery = useAdminAiConfig();
+  const saveDraftMutation = useSaveAiDraft();
+  const publishMutation = usePublishAiConfig();
+  const rollbackMutation = useRollbackAiConfig();
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [rollbackOpen, setRollbackOpen] = useState(false);
+  const [conflict, setConflict] = useState(null);
+  const [operationError, setOperationError] = useState(null);
+  const config = unwrapResponse(configQuery.data);
+
+  const runMutation = async (mutation, payload, closeDialog) => {
+    setConflict(null);
+    setOperationError(null);
+    try {
+      await mutation.mutateAsync(payload);
+      closeDialog?.();
+    } catch (error) {
+      const newerRevision = conflictRevision(error);
+      if (newerRevision !== null) {
+        setConflict(newerRevision);
+        closeDialog?.();
+      } else {
+        setOperationError(error);
+      }
+    }
+  };
+
+  const reload = async () => {
+    await configQuery.refetch();
+    setConflict(null);
+    setOperationError(null);
+  };
+
+  if (configQuery.isLoading) return <ConfigLoading />;
+  if (configQuery.isError || !config) {
+    return (
+      <AiEmptyState
+        isError
+        title="Không tải được cấu hình AI"
+        description="Không có mutation nào được mở khi snapshot cấu hình chưa sẵn sàng."
+        actionLabel="Tải lại cấu hình"
+        onAction={configQuery.refetch}
+      />
+    );
+  }
+
+  return (
+    <>
+      <MutationNotice
+        conflict={conflict}
+        error={operationError}
+        onReload={reload}
+        isReloading={configQuery.isFetching}
+      />
+      <AiConfigurationPanel
+        config={config}
+        permissions={permissions}
+        onSaveDraft={
+          permissions.manage
+            ? (payload) => runMutation(saveDraftMutation, payload)
+            : undefined
+        }
+        onPublish={
+          permissions.publish ? () => setPublishOpen(true) : undefined
+        }
+        onRollback={
+          permissions.publish ? () => setRollbackOpen(true) : undefined
+        }
+        isSaving={saveDraftMutation.isPending}
+      />
+      {permissions.publish && (
+        <>
+          <AiPublishDialog
+            open={publishOpen}
+            onOpenChange={setPublishOpen}
+            revision={config.revision}
+            currentVersion={config.activeVersion?.version}
+            draftVersion={config.draftVersion?.version}
+            isPending={publishMutation.isPending}
+            onConfirm={(payload) =>
+              runMutation(publishMutation, payload, () =>
+                setPublishOpen(false),
+              )
+            }
+          />
+          <AiRollbackDialog
+            open={rollbackOpen}
+            onOpenChange={setRollbackOpen}
+            currentVersion={config.activeVersion?.version}
+            versions={config.versions}
+            isPending={rollbackMutation.isPending}
+            onConfirm={(payload) =>
+              runMutation(rollbackMutation, payload, () =>
+                setRollbackOpen(false),
+              )
+            }
+          />
+        </>
+      )}
+    </>
+  );
+}
+
+function SafetyWorkspace({ permissions, runtime }) {
+  const configQuery = useAdminAiConfig();
+  const saveDraftMutation = useSaveAiDraft();
+  const killSwitchMutation = useUpdateAiKillSwitch();
+  const [killDialogOpen, setKillDialogOpen] = useState(false);
+  const [conflict, setConflict] = useState(null);
+  const [operationError, setOperationError] = useState(null);
+  const config = unwrapResponse(configQuery.data);
+  const killSwitchEnabled = runtime?.status === "disabled";
+
+  const saveDraft = async (payload) => {
+    setConflict(null);
+    setOperationError(null);
+    try {
+      await saveDraftMutation.mutateAsync(payload);
+    } catch (error) {
+      const newerRevision = conflictRevision(error);
+      if (newerRevision !== null) setConflict(newerRevision);
+      else setOperationError(error);
+    }
+  };
+
+  const updateKillSwitch = async (payload) => {
+    setOperationError(null);
+    try {
+      await killSwitchMutation.mutateAsync(payload);
+      setKillDialogOpen(false);
+    } catch (error) {
+      setOperationError(error);
+    }
+  };
+
+  const reload = async () => {
+    await configQuery.refetch();
+    setConflict(null);
+    setOperationError(null);
+  };
+
+  if (configQuery.isLoading) return <ConfigLoading />;
+  if (configQuery.isError || !config) {
+    return (
+      <AiEmptyState
+        isError
+        title="Không tải được safety draft"
+        description="Keyword rules và kill-switch entry point chưa được mở."
+        actionLabel="Tải lại cấu hình"
+        onAction={configQuery.refetch}
+      />
+    );
+  }
+
+  return (
+    <>
+      <MutationNotice
+        conflict={conflict}
+        error={operationError}
+        onReload={reload}
+        isReloading={configQuery.isFetching}
+      />
+      <AiSafetyPanel
+        config={config}
+        permissions={permissions}
+        killSwitchEnabled={killSwitchEnabled}
+        onSaveDraft={permissions.manage ? saveDraft : undefined}
+        onKillSwitch={
+          permissions.killSwitch
+            ? () => setKillDialogOpen(true)
+            : undefined
+        }
+        isSaving={saveDraftMutation.isPending}
+      />
+      {permissions.killSwitch && (
+        <AiKillSwitchDialog
+          open={killDialogOpen}
+          onOpenChange={setKillDialogOpen}
+          enabled={!killSwitchEnabled}
+          isPending={killSwitchMutation.isPending}
+          onConfirm={updateKillSwitch}
+        />
+      )}
+    </>
+  );
+}
+
+function TestLabWorkspace() {
+  const configQuery = useAdminAiConfig();
+  const testMutation = useTestAiConfig();
+  const config = unwrapResponse(configQuery.data);
+  const runTest = async (payload) => {
+    try {
+      await testMutation.mutateAsync(payload);
+    } catch {
+      // React Query owns the rendered validation/provider error state.
+    }
+  };
+  return (
+    <AiTestLabPanel
+      onRun={runTest}
+      result={unwrapResponse(testMutation.data)}
+      error={testMutation.error}
+      isRunning={testMutation.isPending}
+      sourceVersions={{
+        draft: config?.draftVersion?.version,
+        published: config?.activeVersion?.version,
+      }}
     />
   );
 }
@@ -87,6 +373,15 @@ function AdminAiCockpit({ hasPermission }) {
   const safeActiveTab =
     activeDefinition && canAccess(activeDefinition) ? activeTab : "overview";
   const overview = unwrapResponse(overviewQuery.data);
+  const configurationPermissions = {
+    manage: hasPermission(PERMISSIONS.AI.CONFIG_MANAGE),
+    publish: hasPermission(PERMISSIONS.AI.CONFIG_PUBLISH),
+    secrets: hasPermission(PERMISSIONS.AI.SECRETS_MANAGE),
+  };
+  const safetyPermissions = {
+    manage: hasPermission(PERMISSIONS.AI.CONFIG_MANAGE),
+    killSwitch: hasPermission(PERMISSIONS.AI.KILL_SWITCH_MANAGE),
+  };
 
   return (
     <section
@@ -165,26 +460,29 @@ function AdminAiCockpit({ hasPermission }) {
           />
         </TabsContent>
         <TabsContent value="configuration" className="mt-5">
-          <PlannedPanel
-            title="Cấu hình sẽ được mở ở Task 9"
-            description="Draft, publish và rollback được giữ ngoài phạm vi của cockpit vận hành này."
-          />
+          {safeActiveTab === "configuration" &&
+            canAccess(TAB_DEFINITIONS[1]) && (
+              <ConfigurationWorkspace
+                permissions={configurationPermissions}
+              />
+            )}
         </TabsContent>
         <TabsContent value="safety" className="mt-5">
-          <PlannedPanel
-            title="Bảng điều khiển an toàn sẽ được mở ở Task 9"
-            description="Quy tắc safety và kill switch sẽ có luồng xác nhận riêng."
-          />
+          {safeActiveTab === "safety" &&
+            canAccess(TAB_DEFINITIONS[2]) && (
+              <SafetyWorkspace
+                permissions={safetyPermissions}
+                runtime={overview?.runtime}
+              />
+            )}
         </TabsContent>
         <TabsContent value="logs" className="mt-5">
           {safeActiveTab === "logs" &&
             hasPermission(PERMISSIONS.AI.LOGS_VIEW) && <AiLogsPanel />}
         </TabsContent>
         <TabsContent value="test-lab" className="mt-5">
-          <PlannedPanel
-            title="Test Lab sẽ được mở ở Task 9"
-            description="Các request thử nghiệm sẽ được đánh dấu riêng và không đi vào production metrics."
-          />
+          {safeActiveTab === "test-lab" &&
+            hasPermission(PERMISSIONS.AI.TEST_RUN) && <TestLabWorkspace />}
         </TabsContent>
       </Tabs>
     </section>

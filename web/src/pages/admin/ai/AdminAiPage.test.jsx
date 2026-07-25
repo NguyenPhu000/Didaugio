@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AdminAiPage from "./AdminAiPage";
@@ -7,8 +13,20 @@ const mocks = vi.hoisted(() => ({
   permissions: new Set(),
   overviewResult: {},
   logsResult: {},
+  configResult: {},
+  saveDraftMutation: {},
+  testConfigMutation: {},
+  publishMutation: {},
+  rollbackMutation: {},
+  killSwitchMutation: {},
   useAdminAiOverview: vi.fn(),
   useAdminAiLogs: vi.fn(),
+  useAdminAiConfig: vi.fn(),
+  useSaveAiDraft: vi.fn(),
+  useTestAiConfig: vi.fn(),
+  usePublishAiConfig: vi.fn(),
+  useRollbackAiConfig: vi.fn(),
+  useUpdateAiKillSwitch: vi.fn(),
 }));
 
 vi.mock("@/hooks/usePermission", () => ({
@@ -20,6 +38,12 @@ vi.mock("@/hooks/usePermission", () => ({
 vi.mock("@/hooks/queries/useAdminAiQueries", () => ({
   useAdminAiOverview: (...args) => mocks.useAdminAiOverview(...args),
   useAdminAiLogs: (...args) => mocks.useAdminAiLogs(...args),
+  useAdminAiConfig: (...args) => mocks.useAdminAiConfig(...args),
+  useSaveAiDraft: (...args) => mocks.useSaveAiDraft(...args),
+  useTestAiConfig: (...args) => mocks.useTestAiConfig(...args),
+  usePublishAiConfig: (...args) => mocks.usePublishAiConfig(...args),
+  useRollbackAiConfig: (...args) => mocks.useRollbackAiConfig(...args),
+  useUpdateAiKillSwitch: (...args) => mocks.useUpdateAiKillSwitch(...args),
 }));
 
 const overview = {
@@ -39,6 +63,56 @@ const overview = {
   },
   latency: { averageMs: 900, p95Ms: 1500 },
   timeline: [],
+};
+
+const adminAiConfig = {
+  revision: 4,
+  providerCredential: { configured: true, suffix: "1234" },
+  activeVersion: { version: 3 },
+  draftVersion: {
+    version: 4,
+    configData: {
+      provider: {
+        adapter: "groq",
+        baseUrl: "https://api.groq.com",
+        model: "llama-4-scout",
+        secretReference: "groq-primary",
+      },
+      modelParameters: {
+        temperature: 0.3,
+        topP: 0.9,
+        maxTokens: 2000,
+        timeoutMs: 15000,
+      },
+      prompts: {
+        chat: "Chat prompt",
+        planner: "Planner prompt",
+        voice: "Voice prompt",
+      },
+      context: {
+        enabledSources: ["coarseLocation"],
+        fieldAllowlist: ["currentCity"],
+        maxTokens: 1000,
+        freshnessTtl: 300,
+      },
+      safety: {
+        blockedKeywords: [],
+        matchMode: "substring",
+        diacriticInsensitive: false,
+        safeResponse: "Yêu cầu này không thể được xử lý.",
+      },
+      quotas: { freeDailyRequests: 20, premiumDailyRequests: 200 },
+      fallback: {
+        maintenanceMessage: "AI đang bảo trì.",
+        staticPlannerEnabled: true,
+      },
+    },
+  },
+  versions: [
+    { version: 4, status: "draft" },
+    { version: 3, status: "published" },
+    { version: 2, status: "archived" },
+  ],
 };
 
 describe("AdminAiPage", () => {
@@ -70,10 +144,63 @@ describe("AdminAiPage", () => {
       isError: false,
       refetch: vi.fn(),
     };
+    mocks.configResult = {
+      data: { success: true, data: adminAiConfig },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn().mockResolvedValue(undefined),
+    };
+    mocks.saveDraftMutation = {
+      mutateAsync: vi.fn().mockResolvedValue({ success: true }),
+      isPending: false,
+      error: null,
+    };
+    mocks.testConfigMutation = {
+      mutateAsync: vi.fn().mockResolvedValue({ success: true }),
+      isPending: false,
+      error: null,
+      data: undefined,
+      reset: vi.fn(),
+    };
+    mocks.publishMutation = {
+      mutateAsync: vi.fn().mockResolvedValue({ success: true }),
+      isPending: false,
+      error: null,
+    };
+    mocks.rollbackMutation = {
+      mutateAsync: vi.fn().mockResolvedValue({ success: true }),
+      isPending: false,
+      error: null,
+    };
+    mocks.killSwitchMutation = {
+      mutateAsync: vi.fn().mockResolvedValue({ success: true }),
+      isPending: false,
+      error: null,
+    };
     mocks.useAdminAiOverview.mockReset();
     mocks.useAdminAiOverview.mockImplementation(() => mocks.overviewResult);
     mocks.useAdminAiLogs.mockReset();
     mocks.useAdminAiLogs.mockImplementation(() => mocks.logsResult);
+    mocks.useAdminAiConfig.mockReset();
+    mocks.useAdminAiConfig.mockImplementation(() => mocks.configResult);
+    mocks.useSaveAiDraft.mockReset();
+    mocks.useSaveAiDraft.mockImplementation(() => mocks.saveDraftMutation);
+    mocks.useTestAiConfig.mockReset();
+    mocks.useTestAiConfig.mockImplementation(
+      () => mocks.testConfigMutation,
+    );
+    mocks.usePublishAiConfig.mockReset();
+    mocks.usePublishAiConfig.mockImplementation(
+      () => mocks.publishMutation,
+    );
+    mocks.useRollbackAiConfig.mockReset();
+    mocks.useRollbackAiConfig.mockImplementation(
+      () => mocks.rollbackMutation,
+    );
+    mocks.useUpdateAiKillSwitch.mockReset();
+    mocks.useUpdateAiKillSwitch.mockImplementation(
+      () => mocks.killSwitchMutation,
+    );
   });
 
   it("shows a text-labeled operational state and five accessible sections", () => {
@@ -156,6 +283,10 @@ describe("AdminAiPage", () => {
     expect(logsTab).toBeDisabled();
     expect(screen.getByRole("tab", { name: "Test Lab" })).toBeDisabled();
     expect(mocks.useAdminAiLogs).not.toHaveBeenCalled();
+    expect(mocks.useAdminAiConfig).not.toHaveBeenCalled();
+    expect(mocks.useSaveAiDraft).not.toHaveBeenCalled();
+    expect(mocks.useTestAiConfig).not.toHaveBeenCalled();
+    expect(mocks.useUpdateAiKillSwitch).not.toHaveBeenCalled();
 
     await user.click(logsTab);
 
@@ -170,6 +301,12 @@ describe("AdminAiPage", () => {
 
     expect(mocks.useAdminAiOverview).not.toHaveBeenCalled();
     expect(mocks.useAdminAiLogs).not.toHaveBeenCalled();
+    expect(mocks.useAdminAiConfig).not.toHaveBeenCalled();
+    expect(mocks.useSaveAiDraft).not.toHaveBeenCalled();
+    expect(mocks.useTestAiConfig).not.toHaveBeenCalled();
+    expect(mocks.usePublishAiConfig).not.toHaveBeenCalled();
+    expect(mocks.useRollbackAiConfig).not.toHaveBeenCalled();
+    expect(mocks.useUpdateAiKillSwitch).not.toHaveBeenCalled();
     expect(screen.getByText("Bạn không có quyền truy cập AI Control Center")).toBeInTheDocument();
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
   });
@@ -480,5 +617,185 @@ describe("AdminAiPage", () => {
     expect(
       screen.getByRole("status", { name: "Đang tải metadata logs" }),
     ).toBeInTheDocument();
+  });
+
+  it("surfaces a newer revision after 409 and reloads without retrying the draft", async () => {
+    const user = userEvent.setup();
+    mocks.saveDraftMutation.mutateAsync.mockRejectedValueOnce({
+      status: 409,
+      data: {
+        errorCode: "AI_CONFIG_CONFLICT",
+        currentRevision: 9,
+      },
+    });
+
+    render(<AdminAiPage />);
+    expect(mocks.useAdminAiConfig).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("tab", { name: "Cấu hình" }));
+    expect(mocks.useAdminAiConfig).toHaveBeenCalledOnce();
+    await user.type(
+      screen.getByLabelText("Lý do thay đổi"),
+      "Cập nhật prompt",
+    );
+    await user.click(screen.getByRole("button", { name: "Lưu draft" }));
+
+    expect(
+      await screen.findByText("Có revision mới hơn: 9"),
+    ).toBeInTheDocument();
+    expect(mocks.saveDraftMutation.mutateAsync).toHaveBeenCalledOnce();
+
+    await user.click(screen.getByRole("button", { name: "Reload revision" }));
+    await waitFor(() => expect(mocks.configResult.refetch).toHaveBeenCalledOnce());
+    expect(mocks.saveDraftMutation.mutateAsync).toHaveBeenCalledOnce();
+  });
+
+  it("lets a draft manager save but exposes no secret, publish, rollback, or test calls", async () => {
+    const user = userEvent.setup();
+    mocks.permissions = new Set(["ai.view", "ai.config.manage"]);
+
+    render(<AdminAiPage />);
+    await user.click(screen.getByRole("tab", { name: "Cấu hình" }));
+
+    expect(screen.queryByLabelText("API key mới")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Phát hành" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Rollback" }),
+    ).not.toBeInTheDocument();
+
+    await user.type(
+      screen.getByLabelText("Lý do thay đổi"),
+      "Chỉnh prompt chat",
+    );
+    await user.click(screen.getByRole("button", { name: "Lưu draft" }));
+
+    expect(mocks.saveDraftMutation.mutateAsync).toHaveBeenCalledOnce();
+    expect(mocks.publishMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(mocks.rollbackMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(mocks.testConfigMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(mocks.killSwitchMutation.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("routes publish and rollback through guarded version dialogs", async () => {
+    const user = userEvent.setup();
+    mocks.permissions = new Set(["ai.view", "ai.config.publish"]);
+
+    render(<AdminAiPage />);
+    await user.click(screen.getByRole("tab", { name: "Cấu hình" }));
+    expect(
+      screen.queryByRole("button", { name: "Lưu draft" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Phát hành" }));
+    await user.type(
+      screen.getByLabelText("Lý do phát hành"),
+      "Draft đã kiểm thử",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Xác nhận phát hành" }),
+    );
+    expect(mocks.publishMutation.mutateAsync).toHaveBeenCalledWith({
+      revision: 4,
+      changeReason: "Draft đã kiểm thử",
+    });
+
+    await user.click(screen.getByRole("button", { name: "Rollback" }));
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Phiên bản đích" }),
+      "2",
+    );
+    await user.type(
+      screen.getByLabelText("Lý do rollback"),
+      "Khôi phục snapshot cũ",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Xác nhận rollback" }),
+    );
+    expect(mocks.rollbackMutation.mutateAsync).toHaveBeenCalledWith({
+      targetVersion: 2,
+      changeReason: "Khôi phục snapshot cũ",
+    });
+  });
+
+  it("closes a guarded publish dialog on 409 so Reload is reachable without retry", async () => {
+    const user = userEvent.setup();
+    mocks.permissions = new Set(["ai.view", "ai.config.publish"]);
+    mocks.publishMutation.mutateAsync.mockRejectedValueOnce({
+      status: 409,
+      data: {
+        errorCode: "AI_CONFIG_CONFLICT",
+        currentRevision: 10,
+      },
+    });
+
+    render(<AdminAiPage />);
+    await user.click(screen.getByRole("tab", { name: "Cấu hình" }));
+    await user.click(screen.getByRole("button", { name: "Phát hành" }));
+    await user.type(
+      screen.getByLabelText("Lý do phát hành"),
+      "Draft đã kiểm thử",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Xác nhận phát hành" }),
+    );
+
+    expect(
+      await screen.findByText("Có revision mới hơn: 10"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Phát hành draft" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Reload revision" }),
+    ).toBeEnabled();
+    expect(mocks.publishMutation.mutateAsync).toHaveBeenCalledOnce();
+  });
+
+  it("mounts Test Lab only on its permitted tab and forwards the bounded request", async () => {
+    const user = userEvent.setup();
+    mocks.permissions = new Set(["ai.view", "ai.test.run"]);
+
+    render(<AdminAiPage />);
+    expect(mocks.useTestAiConfig).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("tab", { name: "Test Lab" }));
+    expect(mocks.useTestAiConfig).toHaveBeenCalledOnce();
+
+    await user.type(screen.getByLabelText("Tin nhắn thử"), "Xin chào");
+    await user.click(screen.getByRole("button", { name: "Chạy test" }));
+    expect(mocks.testConfigMutation.mutateAsync).toHaveBeenCalledWith({
+      source: "draft",
+      feature: "chat",
+      message: "Xin chào",
+      context: {},
+    });
+    expect(mocks.saveDraftMutation.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("routes the kill switch only through its typed confirmation dialog", async () => {
+    const user = userEvent.setup();
+    mocks.permissions = new Set(["ai.view", "ai.kill_switch.manage"]);
+
+    render(<AdminAiPage />);
+    await user.click(screen.getByRole("tab", { name: "An toàn" }));
+    expect(
+      screen.queryByRole("button", { name: "Lưu safety draft" }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Tắt AI" }));
+    await user.type(
+      screen.getByLabelText("Lý do thay đổi kill switch"),
+      "Provider lỗi diện rộng",
+    );
+    await user.type(screen.getByLabelText("Nhập TAT AI để xác nhận"), "TAT AI");
+    await user.click(
+      screen.getByRole("button", { name: "Xác nhận tắt AI" }),
+    );
+
+    expect(mocks.killSwitchMutation.mutateAsync).toHaveBeenCalledWith({
+      enabled: true,
+      reason: "Provider lỗi diện rộng",
+    });
+    expect(mocks.saveDraftMutation.mutateAsync).not.toHaveBeenCalled();
   });
 });
