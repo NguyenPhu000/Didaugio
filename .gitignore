@@ -1,5 +1,11 @@
-docs
- didaugio.code-workspace
+docs/
+server/test/
+*.test.js
+*.test.jsx
+*.test.ts
+*.test.tsx
+web/src/test/
+didaugio.code-workspace
 .agent
 .cursor
 data
