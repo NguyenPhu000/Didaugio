@@ -8,6 +8,10 @@ import {
   toAiServiceError,
 } from "../src/services/ai/aiProviderPolicy.js";
 import { requestNavigationCompletion } from "../src/services/ai/aiNavigation.service.js";
+import {
+  aiConfigDataSchema,
+} from "../src/models/schemas/adminAi/adminAi.schema.js";
+import { DEFAULT_AI_CONFIG } from "../src/config/defaultAiConfig.js";
 
 test("provider messages remove client system roles and bound retained content", () => {
   const normalized = normalizeProviderMessages([
@@ -60,8 +64,75 @@ test("hybrid fallback is reserved for availability failures, not invalid provide
   assert.equal(canUseHybridFallback({ name: "TimeoutError" }), true);
   assert.equal(canUseHybridFallback({ status: 429 }), true);
   assert.equal(canUseHybridFallback({ status: 503 }), true);
+  assert.equal(canUseHybridFallback({
+    code: "AI_DISABLED",
+    statusCode: 503,
+  }), true);
+  assert.equal(canUseHybridFallback({
+    code: "AI_MAINTENANCE",
+    statusCode: 503,
+  }), true);
   assert.equal(canUseHybridFallback({ code: "AI_INVALID_OUTPUT", statusCode: 502 }), false);
   assert.equal(canUseHybridFallback({ status: 400 }), false);
+});
+
+test("provider URL policy accepts the approved Groq origin and rejects alternate or private destinations", () => {
+  const withBaseUrl = (baseUrl) => ({
+    ...DEFAULT_AI_CONFIG,
+    provider: {
+      ...DEFAULT_AI_CONFIG.provider,
+      baseUrl,
+    },
+  });
+
+  for (const baseUrl of [
+    "https://api.groq.com",
+    "https://api.groq.com/openai/v1?region=vn",
+  ]) {
+    assert.equal(
+      aiConfigDataSchema.safeParse(withBaseUrl(baseUrl)).success,
+      true,
+      baseUrl,
+    );
+  }
+
+  for (const baseUrl of [
+    "http://api.groq.com",
+    "https://api.groq.com:444",
+    "https://api.groq.com.evil.example",
+    "https://sub.api.groq.com",
+    "http://127.0.0.1:11434",
+    "http://169.254.169.254/latest/meta-data",
+    "http://10.0.0.1",
+    "http://172.16.0.1",
+    "http://192.168.1.1",
+    "not-a-url",
+  ]) {
+    assert.equal(
+      aiConfigDataSchema.safeParse(withBaseUrl(baseUrl)).success,
+      false,
+      baseUrl,
+    );
+  }
+});
+
+test("provider failures never expose upstream messages through stable errors", () => {
+  const rawMessage = "upstream secret token and request body";
+  const error = toAiServiceError({ status: 500, message: rawMessage });
+
+  assert.deepEqual(
+    {
+      code: error.code,
+      statusCode: error.statusCode,
+      message: error.message,
+    },
+    {
+      code: "AI_ERROR",
+      statusCode: 502,
+      message: "AI provider request failed.",
+    },
+  );
+  assert.equal(error.message.includes(rawMessage), false);
 });
 
 test("navigation provider calls emit metadata-only success and stable failure events", async () => {
