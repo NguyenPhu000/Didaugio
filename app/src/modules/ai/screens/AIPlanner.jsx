@@ -214,6 +214,16 @@ export function AIPlanner() {
   }, [isLoading]);
 
   const allMessages = messages;
+
+  // Scroll to bottom only when a new message arrives
+  const prevMsgCountRef = useRef(allMessages.length);
+  useEffect(() => {
+    if (allMessages.length > prevMsgCountRef.current) {
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    }
+    prevMsgCountRef.current = allMessages.length;
+  }, [allMessages.length]);
+
   const conversationTopic = useMemo(() => createConversationTopic(allMessages), [allMessages]);
   const historyPreviewItems = useMemo(() => {
     return allMessages
@@ -457,7 +467,6 @@ export function AIPlanner() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
-        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
         removeClippedSubviews={Platform.OS === "android"}
         initialNumToRender={10}
         maxToRenderPerBatch={10}

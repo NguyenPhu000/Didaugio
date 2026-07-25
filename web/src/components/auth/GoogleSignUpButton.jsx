@@ -6,7 +6,7 @@ import { GoogleLogin } from "@react-oauth/google";
  */
 const GoogleSignUpButton = ({ onSuccess, onError, disabled }) => {
   return (
-    <div className="w-full mb-4">
+    <div className="w-full mb-4 flex justify-center">
       <GoogleLogin
         onSuccess={(credentialResponse) => {
           onSuccess(credentialResponse);

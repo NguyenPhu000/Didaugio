@@ -27,7 +27,11 @@ export function ChatInputBar({
 }) {
   const [inputHeight, setInputHeight] = useState(LINE_HEIGHT);
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const hasText = inputText.trim().length > 0;
+  useEffect(() => {
+    if (!inputText || inputText.trim().length === 0) {
+      setInputHeight(LINE_HEIGHT);
+    }
+  }, [inputText]);
 
   useEffect(() => {
     let animation;

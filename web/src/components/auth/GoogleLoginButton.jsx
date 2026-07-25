@@ -9,7 +9,7 @@ import { GoogleLogin } from "@react-oauth/google";
  */
 const GoogleLoginButton = ({ onSuccess, onError, disabled }) => {
   return (
-    <div className="w-full mb-4">
+    <div className="w-full mb-4 flex justify-center">
       <GoogleLogin
         onSuccess={(credentialResponse) => {
           // Default flow returns { credential: "<id_token>" }

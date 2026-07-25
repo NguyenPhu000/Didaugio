@@ -45,6 +45,39 @@ function normalizeMessage(message) {
   };
 }
 
+function stripBase64(val) {
+  if (typeof val === "string" && val.startsWith("data:image")) return null;
+  return val;
+}
+
+function sanitizePlace(place) {
+  if (!place || typeof place !== "object") return place;
+  return {
+    ...place,
+    thumbnail: stripBase64(place.thumbnail),
+    image: stripBase64(place.image),
+    images: Array.isArray(place.images)
+      ? place.images
+          .map((img) =>
+            typeof img === "string"
+              ? stripBase64(img)
+              : { ...img, image_data: stripBase64(img?.image_data) },
+          )
+          .filter(Boolean)
+      : [],
+  };
+}
+
+function sanitizeMessagesForStorage(messages) {
+  const trimmed = trimPersistedMessages(messages);
+  return trimmed.map((msg) => ({
+    ...msg,
+    suggestedPlaces: Array.isArray(msg.suggestedPlaces)
+      ? msg.suggestedPlaces.map(sanitizePlace)
+      : [],
+  }));
+}
+
 export const useAIPlannerStore = create(
   persist(
     (set) => ({
@@ -114,7 +147,7 @@ export const useAIPlannerStore = create(
       name: "ai-planner-store",
       storage: createJSONStorage(() => safeAsyncStorage),
       partialize: (s) => ({
-        messages: trimPersistedMessages(s.messages),
+        messages: sanitizeMessagesForStorage(s.messages),
         draftPlan: s.draftPlan,
         selectedPlaceIds: normalizePlaceIds(s.selectedPlaceIds),
         lastPreferences: s.lastPreferences,

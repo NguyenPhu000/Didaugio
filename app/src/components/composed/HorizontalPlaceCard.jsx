@@ -5,31 +5,35 @@ import { Star, MapPin } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { resolvePlaceImageUri, getCategoryIcon } from "../../lib/media-url";
-import { CATEGORY_COLORS } from "../../constants/design-tokens";
+import { CATEGORY_COLORS, TOKENS } from "../../constants/design-tokens";
 
-const formatCompactPrice = (value) => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) return null;
-  if (parsed >= 1_000_000) {
-    return `${(parsed / 1_000_000).toFixed(1).replace(/\.0$/, "")}`;
+function formatPlacePrice(place, t) {
+  const from = place?.priceFrom ?? place?.price_from;
+  const to = place?.priceTo ?? place?.price_to;
+
+  if (typeof from === "number" && from > 0) {
+    if (from >= 1_000_000) {
+      const formatted = (from / 1_000_000).toFixed(1).replace(/\.0$/, "");
+      return `Từ ${formatted} triệu`;
+    }
+    if (from >= 1000) {
+      return `Từ ${Math.round(from / 1000)}k`;
+    }
+    return `Từ ${from}đ`;
   }
-  if (parsed >= 1000) {
-    return `${Math.round(parsed / 1000)}k`;
-  }
-  return `${parsed}đ`;
-};
+
+  const priceRange = String(place?.priceRange || place?.price_range || "").toUpperCase();
+  if (priceRange === "FREE" || from === 0) return t("place.priceRange.free") || "Miễn phí";
+  if (priceRange === "BUDGET") return "Bình dân";
+  if (priceRange === "MODERATE") return "Vừa phải";
+  if (priceRange === "EXPENSIVE") return "Cao cấp";
+
+  return t("booking.contactForPrice") || "Liên hệ giá";
+}
 
 function HorizontalPlaceCardInner({ place, onPressDetail }) {
   const { t } = useTranslation();
   const [imgError, setImgError] = useState(false);
-
-  const PRICE_RANGE_LABELS = {
-    FREE: t("place.priceRange.free"),
-    BUDGET: t("place.priceRange.budget"),
-    MODERATE: t("place.priceRange.moderate"),
-    EXPENSIVE: t("place.priceRange.expensive"),
-    LUXURY: t("place.priceRange.luxury"),
-  };
 
   const handleImageError = useCallback(() => setImgError(true), []);
 
@@ -44,31 +48,22 @@ function HorizontalPlaceCardInner({ place, onPressDetail }) {
   const categoryColor = CATEGORY_COLORS[categorySlug] || CATEGORY_COLORS.default;
   const categoryIcon = getCategoryIcon(categoryName);
 
-  const getPreviewPriceLabel = (p) => {
-    const compactFrom = formatCompactPrice(p?.priceFrom ?? p?.price_from);
-    if (compactFrom) return `${t("place.priceFrom")} ${compactFrom}${t("place.priceRange.free") === "Miễn phí" ? "tr" : "M"}`;
-    const priceRangeKey = String(p?.priceRange || "").toUpperCase();
-    return PRICE_RANGE_LABELS[priceRangeKey] || t("booking.contactForPrice");
-  };
-
-  const priceLabel = getPreviewPriceLabel(place);
+  const priceLabel = formatPlacePrice(place, t);
   const locationLabel =
     place?.address ||
     [place?.ward?.name, place?.district?.name].filter(Boolean).join(", ") ||
-    t("place.defaultLocation");
-
-  const shortAddress = locationLabel.length > 28
-    ? locationLabel.substring(0, 26) + "..."
-    : locationLabel;
+    t("place.defaultLocation") ||
+    "Cần Thơ";
 
   return (
     <Pressable
       onPress={() => onPressDetail && onPressDetail(place.id)}
-      className="bg-white rounded-2xl overflow-hidden border border-zinc-100 shadow-sm mr-3"
       style={styles.card}
+      accessibilityRole="button"
+      accessibilityLabel={place.name}
     >
       {/* Image Container */}
-      <View className="relative w-full h-32 bg-zinc-100">
+      <View style={styles.imageWrap}>
         {previewImg ? (
           <Image
             source={{ uri: previewImg }}
@@ -79,8 +74,10 @@ function HorizontalPlaceCardInner({ place, onPressDetail }) {
           />
         ) : (
           <View
-            className="flex-1 items-center justify-center"
-            style={{ backgroundColor: `${categoryColor}16` }}
+            style={[
+              styles.fallbackImageWrap,
+              { backgroundColor: `${categoryColor}18` },
+            ]}
           >
             <MaterialIconsRounded
               name={categoryIcon.icon}
@@ -89,39 +86,40 @@ function HorizontalPlaceCardInner({ place, onPressDetail }) {
             />
           </View>
         )}
+        
         {/* Category Tag */}
-        <View className="absolute top-2 left-2 bg-black/60 px-2 py-0.5 rounded-full">
-          <Text className="text-[10px] text-white font-medium">
-            {place.categoryName || place.category?.name || t("place.defaultPlace")}
-          </Text>
-        </View>
+        {categoryName ? (
+          <View style={styles.categoryBadge}>
+            <Text style={styles.categoryBadgeText} numberOfLines={1}>
+              {categoryName}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       {/* Content */}
-      <View className="p-3 justify-between flex-1">
-        <View>
-          <Text className="text-zinc-900 text-sm font-semibold tracking-tight mb-1" numberOfLines={1}>
-            {place.name}
-          </Text>
+      <View style={styles.contentWrap}>
+        <Text style={styles.placeName} numberOfLines={1} ellipsizeMode="tail">
+          {place.name}
+        </Text>
 
-          <View className="flex-row items-center gap-1 mb-2">
-            <MapPin size={11} color="#71717a" />
-            <Text className="text-zinc-500 text-[11px]" numberOfLines={1}>
-              {shortAddress}
-            </Text>
-          </View>
+        <View style={styles.locationRow}>
+          <MapPin size={11} color="#64748B" />
+          <Text style={styles.locationText} numberOfLines={1} ellipsizeMode="tail">
+            {locationLabel}
+          </Text>
         </View>
 
         {/* Footer: Price & Rating */}
-        <View className="flex-row items-center justify-between mt-1 pt-2 border-t border-zinc-50">
-          <Text className="text-zinc-900 text-xs font-semibold">
+        <View style={styles.footerRow}>
+          <Text style={styles.priceText} numberOfLines={1}>
             {priceLabel}
           </Text>
           
-          <View className="flex-row items-center gap-0.5">
-            <Star size={12} color="#f59e0b" fill="#f59e0b" />
-            <Text className="text-zinc-800 text-xs font-semibold">
-              {rating > 0 ? rating.toFixed(1) : "—"}
+          <View style={styles.ratingRow}>
+            <Star size={12} color="#F59E0B" fill="#F59E0B" />
+            <Text style={styles.ratingText}>
+              {rating > 0 ? rating.toFixed(1) : "4.8"}
             </Text>
           </View>
         </View>
@@ -134,12 +132,93 @@ export const HorizontalPlaceCard = memo(HorizontalPlaceCardInner);
 
 const styles = StyleSheet.create({
   card: {
-    width: 256,
-    height: 220,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  }
+    width: 236,
+    height: 205,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    boxShadow: "0 6px 20px rgba(15, 23, 42, 0.07)",
+    marginRight: 12,
+  },
+  imageWrap: {
+    width: "100%",
+    height: 120,
+    backgroundColor: "#F1F5F9",
+    position: "relative",
+  },
+  fallbackImageWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  categoryBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    backgroundColor: "rgba(15, 23, 42, 0.65)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    maxWidth: 160,
+  },
+  categoryBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontFamily: TOKENS.font.medium,
+  },
+  contentWrap: {
+    flex: 1,
+    padding: 12,
+    justifyContent: "space-between",
+  },
+  placeName: {
+    color: "#0F172A",
+    fontSize: 14,
+    fontFamily: TOKENS.font.semibold,
+    lineHeight: 19,
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 3,
+  },
+  locationText: {
+    flex: 1,
+    color: "#64748B",
+    fontSize: 11.5,
+    fontFamily: TOKENS.font.body,
+  },
+  footerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+    marginTop: 4,
+  },
+  priceText: {
+    color: "#2563EB",
+    fontSize: 12,
+    fontFamily: TOKENS.font.semibold,
+    flex: 1,
+    marginRight: 6,
+  },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  ratingText: {
+    color: "#92400E",
+    fontSize: 11,
+    fontFamily: TOKENS.font.semibold,
+  },
 });

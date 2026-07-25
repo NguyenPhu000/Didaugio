@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIconsRounded } from "../../../../components/primitives/MaterialIconsRounded";
@@ -33,7 +34,7 @@ const styles = StyleSheet.create({
   },
 });
 
-export function AIPlannerMessageItem({
+export const AIPlannerMessageItem = memo(function AIPlannerMessageItem({
   canConfirmSelection,
   clearSelectedPlaces,
   draftPlan,
@@ -291,4 +292,4 @@ export function AIPlannerMessageItem({
       ) : null}
     </View>
   );
-}
+});

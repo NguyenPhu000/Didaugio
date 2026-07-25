@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { View, Text, StyleSheet, FlatList } from "react-native";
 import { Sparkles } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -5,11 +6,11 @@ import { HorizontalPlaceCard } from "../../../../components/composed/HorizontalP
 import { InteractiveTimeline } from "./InteractiveTimeline";
 import { TOKENS } from "../../../../constants/design-tokens";
 
-export function MessageBubble({ message, onViewPlace, interactivePlan, onRemovePlace, onSwapPlace }) {
+export const MessageBubble = memo(function MessageBubble({ message, onViewPlace, interactivePlan, onRemovePlace, onSwapPlace }) {
   const isUser = message.role === "user";
 
   return (
-    <View style={[s.gap1_5, isUser ? s.itemsEnd : s.itemsStart]}>
+    <View style={[s.container, isUser ? s.itemsEnd : s.itemsStart]}>
       {!isUser && (
         <View style={s.rowCenterGap1_5}>
           <Sparkles size={12} color="#10B981" />
@@ -65,10 +66,11 @@ export function MessageBubble({ message, onViewPlace, interactivePlan, onRemoveP
       )}
     </View>
   );
-}
+});
 
 const s = StyleSheet.create({
-  gap1_5: {
+  container: {
+    width: "100%",
     gap: 6,
   },
   itemsStart: {
@@ -119,10 +121,12 @@ const s = StyleSheet.create({
   },
   carouselWrapper: {
     width: "100%",
+    alignSelf: "stretch",
     marginTop: 8,
+    marginBottom: 4,
   },
   carouselContent: {
-    paddingLeft: 4,
+    paddingLeft: 2,
     paddingRight: 16,
   },
 });

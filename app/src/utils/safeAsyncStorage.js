@@ -66,6 +66,13 @@ const safeAsyncStorage = {
         diskFullFlag = true;
         await aggressiveCleanup();
       }
+      if (error?.message?.includes("CursorWindow") || error?.message?.includes("Row too big")) {
+        logger.warn(`[safeAsyncStorage] Key "${key}" quá dung lượng CursorWindow (>2MB) — tự động reset key.`);
+        try {
+          await AsyncStorage.removeItem(key);
+        } catch (_) {}
+        return null;
+      }
       logger.warn(`[safeAsyncStorage] getItem failed for key "${key}":`, error?.message);
       return null;
     }

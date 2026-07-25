@@ -4,7 +4,7 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "start": "expo start --port 8083",
+    "start": "expo start --tunnel --port 8083",
     "dev": "expo start --tunnel --port 8083",
     "android": "expo run:android --port 8083",
     "ios": "expo run:ios --port 8083",

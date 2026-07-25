@@ -222,7 +222,7 @@ export default function CinematicSplash({ active, onFinish }) {
         <VideoView
           style={styles.media}
           player={player}
-          allowsFullscreen={false}
+          fullscreenOptions={{ allowsFullscreen: false }}
           nativeControls={false}
           resizeMode="cover"
         />

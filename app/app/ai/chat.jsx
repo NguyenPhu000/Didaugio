@@ -3,6 +3,7 @@ import {
   Text,
   Pressable,
   ScrollView,
+  FlatList,
   Platform,
   StyleSheet,
   KeyboardAvoidingView,
@@ -11,7 +12,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
-import { ArrowLeft, Home, MapPinned, MessageCircle, Sparkles, Trash2 } from "lucide-react-native";
+import { ArrowLeft, ArrowDown, Home, MapPinned, MessageCircle, Sparkles, Trash2 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { useGroqChat } from "../../src/modules/ai/hooks/useGroqChat";
@@ -73,6 +74,15 @@ export default function GroqChatScreen() {
       }
     });
   }, [conversationMemory]);
+
+  // Scroll to bottom only when a new message is added
+  const prevMsgCountRef = useRef(conversationMemory.length);
+  useEffect(() => {
+    if (conversationMemory.length > prevMsgCountRef.current) {
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    }
+    prevMsgCountRef.current = conversationMemory.length;
+  }, [conversationMemory.length]);
 
   const handleRemovePlace = useCallback((msgId, index) => {
     setInteractivePlans((prev) => {
@@ -224,10 +234,14 @@ export default function GroqChatScreen() {
     };
   }, [setCurrentCity, updateLocation]);
 
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const isSendingRef = useRef(false);
+
   const handleSend = useCallback(
-    async (text) => {
-      const msg = (text ?? inputText).trim();
-      if (!msg || isSending) return;
+    async (textOverride) => {
+      const msg = (typeof textOverride === "string" ? textOverride : inputText).trim();
+      if (!msg || isSendingRef.current) return;
+      isSendingRef.current = true;
       setInputText("");
       setError(null);
       setIsSending(true);
@@ -237,12 +251,21 @@ export default function GroqChatScreen() {
       } catch (err) {
         setError(err.message || "Đã có lỗi xảy ra");
       } finally {
+        isSendingRef.current = false;
         setIsSending(false);
-        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
       }
     },
-    [inputText, isSending, sendMessage],
+    [inputText, sendMessage],
   );
+
+  const handleScroll = useCallback((event) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    const contentHeight = event.nativeEvent.contentSize.height;
+    const layoutHeight = event.nativeEvent.layoutMeasurement.height;
+    const isFarFromBottom = contentHeight - offsetY - layoutHeight > 250;
+    setShowScrollBottom(isFarFromBottom);
+  }, []);
 
   const handleToggleRecord = useCallback(async () => {
     if (isRecording) {
@@ -281,7 +304,7 @@ export default function GroqChatScreen() {
   return (
     <KeyboardAvoidingView
       style={s.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? HEADER_HEIGHT : 0}
     >
       {/* Premium Header */}
@@ -342,17 +365,31 @@ export default function GroqChatScreen() {
         </View>
       </View>
 
-      <ScrollView
+      <FlatList
         ref={scrollRef}
+        data={hasMessages ? conversationMemory : []}
+        keyExtractor={(item, index) => item.id ?? `${item.role}-${index}`}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        renderItem={({ item }) => (
+          <MessageBubble
+            message={item}
+            onViewPlace={handleViewPlace}
+            interactivePlan={interactivePlans[item.id]}
+            onRemovePlace={handleRemovePlace}
+            onSwapPlace={handleSwapPlace}
+          />
+        )}
         style={s.flex1}
-        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={hasMessages ? s.scrollContentMessages : s.scrollContentEmpty}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
-        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
-      >
-        {!hasMessages ? (
+        removeClippedSubviews={Platform.OS === "android"}
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={5}
+        ListEmptyComponent={
           <View style={s.emptyContainer}>
             <Glow style="breathe" speed={0.72} intensity={0.62} colors={["#2563EB", "#7C3AED", "#DB2777"]}>
               <LinearGradient
@@ -375,42 +412,43 @@ export default function GroqChatScreen() {
               onSelect={handleSend}
             />
           </View>
-        ) : (
-          <View style={s.messageGap}>
-            {conversationMemory.map((msg, index) => (
-              <MessageBubble
-                key={msg.id ?? `${msg.role}-${index}`}
-                message={msg}
-                onViewPlace={handleViewPlace}
-                interactivePlan={interactivePlans[msg.id]}
-                onRemovePlace={handleRemovePlace}
-                onSwapPlace={handleSwapPlace}
-              />
-            ))}
-          </View>
-        )}
+        }
+        ListFooterComponent={
+          <>
+            {isLoadingOrSending && (
+              <View style={s.thinkingWrap}>
+                <View style={s.thinkingLabelRow}>
+                  <MessageCircle size={12} color="#2563EB" />
+                  <Text style={s.thinkingLabel}>Genie</Text>
+                </View>
+                <View style={s.thinkingBubble}>
+                  <StreamingText text="Đang suy nghĩ..." style={s.thinkingText} />
+                </View>
+              </View>
+            )}
 
-        {isLoadingOrSending && (
-          <View style={s.thinkingWrap}>
-            <View style={s.thinkingLabelRow}>
-              <MessageCircle size={12} color="#2563EB" />
-              <Text style={s.thinkingLabel}>Genie</Text>
-            </View>
-            <View style={s.thinkingBubble}>
-              <StreamingText text="Đang suy nghĩ..." style={s.thinkingText} />
-            </View>
-          </View>
-        )}
+            {error && (
+              <View style={s.errorBanner}>
+                <Text style={s.errorText} selectable>{error}</Text>
+                <Pressable onPress={() => setError(null)}>
+                  <Text style={s.closeText}>Đóng</Text>
+                </Pressable>
+              </View>
+            )}
+          </>
+        }
+      />
 
-        {error && (
-          <View style={s.errorBanner}>
-            <Text style={s.errorText} selectable>{error}</Text>
-            <Pressable onPress={() => setError(null)}>
-              <Text style={s.closeText}>Đóng</Text>
-            </Pressable>
-          </View>
-        )}
-      </ScrollView>
+      {showScrollBottom && (
+        <Pressable
+          onPress={() => scrollRef.current?.scrollToEnd({ animated: true })}
+          style={s.scrollBottomBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Cuộn xuống tin nhắn mới nhất"
+        >
+          <ArrowDown size={18} color="#2563EB" />
+        </Pressable>
+      )}
 
       <ChatInputBar
         inputText={inputText}
@@ -626,5 +664,20 @@ const s = StyleSheet.create({
     fontSize: 12.5,
     fontFamily: TOKENS.font.semibold,
     marginLeft: 10,
+  },
+  scrollBottomBtn: {
+    position: "absolute",
+    right: 20,
+    bottom: 90,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 6px 18px rgba(15, 23, 42, 0.16)",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    zIndex: 20,
   },
 });
