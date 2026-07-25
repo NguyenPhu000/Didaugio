@@ -86,10 +86,10 @@ function OverviewLoading() {
 function RuledMetric({ label, value, detail }) {
   return (
     <div className="grid gap-1 py-3 sm:grid-cols-[minmax(10rem,1fr)_auto] sm:items-center sm:gap-5">
-      <div>
-        <dt className="text-sm font-semibold">{label}</dt>
-        <p className="text-xs text-muted-foreground">{detail}</p>
-      </div>
+      <dt>
+        <span className="block text-sm font-semibold">{label}</span>
+        <span className="block text-xs text-muted-foreground">{detail}</span>
+      </dt>
       <dd className="font-mono text-base font-bold tabular-nums">{value}</dd>
     </div>
   );

@@ -125,6 +125,24 @@ describe("AdminAiPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps each usage metric term and value directly grouped in its description list", () => {
+    render(<AdminAiPage />);
+
+    const performanceSignals = screen.getByRole("group", {
+      name: "Mức sử dụng và hiệu năng",
+    });
+    expect(performanceSignals.tagName).toBe("DL");
+
+    const metricRows = Array.from(performanceSignals.children);
+    expect(metricRows).toHaveLength(3);
+    for (const row of metricRows) {
+      expect(Array.from(row.children, (child) => child.tagName)).toEqual([
+        "DT",
+        "DD",
+      ]);
+    }
+  });
+
   it("disables unauthorized sections and never mounts the logs query", async () => {
     const user = userEvent.setup();
     mocks.permissions = new Set(["ai.view"]);
