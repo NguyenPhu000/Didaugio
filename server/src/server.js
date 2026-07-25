@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { createRequire } from "module";
 import express from "express";
 import { createServer } from "http";
@@ -25,12 +26,14 @@ import { startSubscriptionStatsScheduler } from "./schedulers/subscriptionStats.
 import { startDomainJobScheduler } from "./schedulers/domainJob.scheduler.js";
 import { createSchedulerLeader } from "./schedulers/schedulerLeader.js";
 import { initContractGenerationListener } from "./services/contract/contractGenerationListener.js";
+import { ensureDefaultAiConfig } from "./services/adminAi/index.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json");
 
 dotenv.config({ override: true });
 validateEnv();
+await ensureDefaultAiConfig();
 
 const app = express();
 const PORT = process.env.PORT || 8080;
