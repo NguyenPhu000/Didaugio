@@ -105,7 +105,13 @@ export function createAiConfigRepository({ client }) {
       });
     },
 
-    async saveDraft({ revision, configData, changeReason, actorId }) {
+    async saveDraft({
+      revision,
+      configData,
+      changeReason,
+      actorId,
+      writeCredential,
+    }) {
       return client.$transaction(async (tx) => {
         const current = await tx.aiConfig.findUnique({
           where: { key: AI_CONFIG_KEY },
@@ -119,6 +125,7 @@ export function createAiConfigRepository({ client }) {
         if (!current) throw unavailableConfigError();
 
         const nextRevision = await acquireRevision(tx, current, revision);
+        await writeCredential?.(tx);
         const version = await nextVersionNumber(tx, current.id);
         const draft = await tx.aiConfigVersion.create({
           data: {
@@ -220,6 +227,7 @@ export function createAiConfigRepository({ client }) {
             id: true,
             revision: true,
             activeVersionId: true,
+            draftVersionId: true,
           },
         });
         if (!current) throw unavailableConfigError();
@@ -232,6 +240,12 @@ export function createAiConfigRepository({ client }) {
         if (current.activeVersionId) {
           await tx.aiConfigVersion.updateMany({
             where: { id: current.activeVersionId },
+            data: { status: "archived" },
+          });
+        }
+        if (current.draftVersionId) {
+          await tx.aiConfigVersion.updateMany({
+            where: { id: current.draftVersionId, status: "draft" },
             data: { status: "archived" },
           });
         }

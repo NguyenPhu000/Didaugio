@@ -32,18 +32,21 @@ export const createAiConfigService = ({ repository, credentials }) => ({
     }
 
     const configData = aiConfigDataSchema.parse(input.configData);
-    if (input.providerSecret) {
-      await credentials.replaceProviderSecret(
-        configData.provider.secretReference,
-        input.providerSecret,
-      );
-    }
+    const writeCredential = input.providerSecret
+      ? (transactionClient) =>
+          credentials.replaceProviderSecret(
+            configData.provider.secretReference,
+            input.providerSecret,
+            transactionClient,
+          )
+      : undefined;
 
     return repository.saveDraft({
       revision: input.revision,
       configData,
       changeReason: input.changeReason,
       actorId: actor.userId,
+      writeCredential,
     });
   },
 

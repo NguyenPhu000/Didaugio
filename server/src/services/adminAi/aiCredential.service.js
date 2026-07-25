@@ -14,10 +14,14 @@ export function createAiCredentialService({
   decrypt = decryptField,
 }) {
   return {
-    async replaceProviderSecret(reference, plaintext) {
+    async replaceProviderSecret(
+      reference,
+      plaintext,
+      transactionClient = client,
+    ) {
       const encrypted = encrypt(plaintext);
       const suffix = String(plaintext).slice(-4);
-      const row = await client.apiKeyManagement.upsert({
+      const row = await transactionClient.apiKeyManagement.upsert({
         where: { serviceName: reference },
         create: {
           serviceName: reference,

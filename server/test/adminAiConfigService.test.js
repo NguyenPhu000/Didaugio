@@ -335,10 +335,12 @@ test("admin AI public service exports do not expose secret resolution", async ()
 test("saveDraft sends plaintext only to credential storage and persists parsed config", async () => {
   const repositoryWrites = [];
   const credentialWrites = [];
+  const transaction = { kind: "transaction-client" };
   const repository = {
     getForUpdate: async () => ({ id: 1, revision: 4 }),
     saveDraft: async (input) => {
       repositoryWrites.push(input);
+      await input.writeCredential(transaction);
       return { revision: 5 };
     },
   };
@@ -368,13 +370,91 @@ test("saveDraft sends plaintext only to credential storage and persists parsed c
   );
 
   assert.deepEqual(credentialWrites, [
-    ["groq-primary", "gsk_private_1234567890"],
+    ["groq-primary", "gsk_private_1234567890", transaction],
   ]);
   assert.equal("providerSecret" in repositoryWrites[0], false);
   assert.equal(
     repositoryWrites[0].configData.prompts.chat,
     DEFAULT_AI_CONFIG.prompts.chat,
   );
+});
+
+test("saveDraft rolls back a transaction-scoped credential when snapshot creation fails", async () => {
+  let committedCredential = "encrypted:old";
+  let credentialWriteAttempted = false;
+  const client = {
+    aiConfig: {
+      findUnique: async () => ({ id: 1, revision: 4 }),
+    },
+    apiKeyManagement: {
+      upsert: async (input) => {
+        credentialWriteAttempted = true;
+        committedCredential = input.create.apiKey;
+        return {
+          serviceName: input.create.serviceName,
+          keySuffix: input.create.keySuffix,
+          updatedAt: new Date("2026-07-24T10:00:00.000Z"),
+        };
+      },
+    },
+    $transaction: async (operation) => {
+      let stagedCredential = committedCredential;
+      const transaction = {
+        aiConfig: {
+          findUnique: async () => ({
+            id: 1,
+            revision: 4,
+            activeVersionId: 10,
+            draftVersionId: 11,
+          }),
+          updateMany: async () => ({ count: 1 }),
+        },
+        aiConfigVersion: {
+          aggregate: async () => ({ _max: { version: 2 } }),
+          create: async () => {
+            throw new Error("snapshot create failed");
+          },
+        },
+        apiKeyManagement: {
+          upsert: async (input) => {
+            credentialWriteAttempted = true;
+            stagedCredential = input.create.apiKey;
+            return {
+              serviceName: input.create.serviceName,
+              keySuffix: input.create.keySuffix,
+              updatedAt: new Date("2026-07-24T10:00:00.000Z"),
+            };
+          },
+        },
+      };
+      const result = await operation(transaction);
+      committedCredential = stagedCredential;
+      return result;
+    },
+  };
+  const repository = createAiConfigRepository({ client });
+  const credentials = createAiCredentialService({
+    client,
+    encrypt: (value) => `encrypted:${value}`,
+    decrypt: assert.fail,
+  });
+  const service = createAiConfigService({ repository, credentials });
+
+  await assert.rejects(
+    service.saveDraft(
+      {
+        revision: 4,
+        configData: DEFAULT_AI_CONFIG,
+        changeReason: "Điều chỉnh cấu hình Chat",
+        providerSecret: "gsk_private_1234567890",
+      },
+      { userId: 7 },
+    ),
+    /snapshot create failed/,
+  );
+
+  assert.equal(credentialWriteAttempted, true);
+  assert.equal(committedCredential, "encrypted:old");
 });
 
 test("publishDraft archives active, publishes draft, creates a fresh draft, and prunes oldest history", async () => {
@@ -452,4 +532,87 @@ test("publishDraft archives active, publishes draft, creates a fresh draft, and 
   assert.deepEqual(calls[4][1].where.id.in, [1]);
   assert.equal(published.revision, 5);
   assert.equal(published.status, "published");
+});
+
+test("rollback archives both superseded pointers and publishes one copied snapshot with one fresh draft", async () => {
+  const revisionLocks = [];
+  const archives = [];
+  const creates = [];
+  const rootUpdates = [];
+  const prunedIds = [];
+  let nextId = 20;
+  const transaction = {
+    aiConfig: {
+      findUnique: async () => ({
+        id: 1,
+        revision: 4,
+        activeVersionId: 10,
+        draftVersionId: 11,
+      }),
+      updateMany: async (input) => {
+        revisionLocks.push(input);
+        return { count: 1 };
+      },
+      update: async (input) => {
+        rootUpdates.push(input);
+        return input;
+      },
+    },
+    aiConfigVersion: {
+      updateMany: async (input) => {
+        archives.push(input);
+        return { count: 1 };
+      },
+      aggregate: async () => ({ _max: { version: 4 } }),
+      create: async (input) => {
+        const row = { id: nextId, ...input.data };
+        nextId += 1;
+        creates.push(input);
+        return row;
+      },
+      findMany: async () => [
+        ...Array.from({ length: 10 }, (_, index) => ({ id: index + 1 })),
+        { id: 20 },
+        { id: 21 },
+      ],
+      deleteMany: async (input) => {
+        prunedIds.push(...input.where.id.in);
+        return { count: input.where.id.in.length };
+      },
+    },
+  };
+  const repository = createAiConfigRepository({
+    client: { $transaction: async (operation) => operation(transaction) },
+  });
+
+  const result = await repository.publishCopiedVersion({
+    sourceVersionId: 8,
+    configData: DEFAULT_AI_CONFIG,
+    changeReason: "Khôi phục cấu hình ổn định",
+    actorId: 7,
+  });
+
+  assert.deepEqual(revisionLocks, [{
+    where: { id: 1, revision: 4 },
+    data: { revision: { increment: 1 } },
+  }]);
+  assert.deepEqual(archives, [
+    { where: { id: 10 }, data: { status: "archived" } },
+    { where: { id: 11, status: "draft" }, data: { status: "archived" } },
+  ]);
+  assert.equal(creates.filter((call) => call.data.status === "published").length, 1);
+  assert.equal(creates.filter((call) => call.data.status === "draft").length, 1);
+  assert.equal(creates[0].data.version, 5);
+  assert.equal(creates[0].data.configData, DEFAULT_AI_CONFIG);
+  assert.equal(creates[1].data.version, 6);
+  assert.deepEqual(rootUpdates[0].data, {
+    activeVersionId: 20,
+    draftVersionId: 21,
+    updatedBy: 7,
+  });
+  assert.deepEqual(prunedIds, [1, 2]);
+  assert.equal(prunedIds.includes(20), false);
+  assert.equal(prunedIds.includes(21), false);
+  assert.equal(result.revision, 5);
+  assert.equal(result.id, 20);
 });
