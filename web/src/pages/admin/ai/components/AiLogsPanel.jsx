@@ -38,6 +38,8 @@ import { useAdminAiLogs } from "@/hooks/queries/useAdminAiQueries";
 import AiEmptyState from "./AiEmptyState";
 
 const PAGE_SIZE = 25;
+const AI_TIME_ZONE = "Asia/Ho_Chi_Minh";
+const AI_TIME_ZONE_OFFSET_MINUTES = 7 * 60;
 const LOG_COLUMNS = [
   "Thời gian",
   "Tính năng",
@@ -91,6 +93,7 @@ const numberFormatter = new Intl.NumberFormat("vi-VN");
 const dateFormatter = new Intl.DateTimeFormat("vi-VN", {
   dateStyle: "short",
   timeStyle: "medium",
+  timeZone: AI_TIME_ZONE,
 });
 
 function unwrapResponse(value) {
@@ -101,7 +104,34 @@ function unwrapResponse(value) {
 
 function dateParam(value, endOfDay = false) {
   if (!value) return undefined;
-  return `${value}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return undefined;
+
+  const [, yearText, monthText, dayText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const utcDay = new Date(Date.UTC(year, month - 1, day));
+  if (
+    utcDay.getUTCFullYear() !== year ||
+    utcDay.getUTCMonth() !== month - 1 ||
+    utcDay.getUTCDate() !== day
+  ) {
+    return undefined;
+  }
+
+  const localBoundary = Date.UTC(
+    year,
+    month - 1,
+    day,
+    endOfDay ? 23 : 0,
+    endOfDay ? 59 : 0,
+    endOfDay ? 59 : 0,
+    endOfDay ? 999 : 0,
+  );
+  return new Date(
+    localBoundary - AI_TIME_ZONE_OFFSET_MINUTES * 60_000,
+  ).toISOString();
 }
 
 function formatNumber(value) {
@@ -200,13 +230,19 @@ function FeedbackValue({ feedback }) {
 }
 
 function TokenValue({ item }) {
-  const input = Number.isFinite(item.inputTokens) ? item.inputTokens : 0;
-  const output = Number.isFinite(item.outputTokens) ? item.outputTokens : 0;
+  const hasInput = Number.isFinite(item.inputTokens);
+  const hasOutput = Number.isFinite(item.outputTokens);
+  const input = hasInput ? formatNumber(item.inputTokens) : "—";
+  const output = hasOutput ? formatNumber(item.outputTokens) : "—";
+  const total =
+    hasInput && hasOutput
+      ? formatNumber(item.inputTokens + item.outputTokens)
+      : "—";
   return (
     <div className="font-mono tabular-nums">
-      <p className="text-xs font-semibold">{formatNumber(input + output)}</p>
+      <p className="text-xs font-semibold">{total}</p>
       <p className="text-[10px] text-muted-foreground">
-        {formatNumber(input)} in / {formatNumber(output)} out
+        {input} in / {output} out
       </p>
     </div>
   );
@@ -233,7 +269,7 @@ function ProviderModel({ item }) {
 function LogMobileCard({ item }) {
   return (
     <article
-      className="min-w-0 border border-black/20 bg-card p-4 dark:border-white/20"
+      className="min-w-0 py-4"
       aria-label={`Log ${featureLabels[item.feature] || item.feature || "AI"} lúc ${formatTimestamp(item.createdAt)}`}
     >
       <div className="flex min-w-0 items-start justify-between gap-3">
@@ -274,7 +310,12 @@ function LogMobileCard({ item }) {
 
 function LogsLoading() {
   return (
-    <div aria-label="Đang tải metadata logs" className="space-y-2 p-4">
+    <div
+      role="status"
+      aria-label="Đang tải metadata logs"
+      aria-live="polite"
+      className="space-y-2 p-4"
+    >
       {Array.from({ length: 5 }, (_, index) => (
         <Skeleton key={index} className="h-14 rounded-none" />
       ))}
@@ -308,7 +349,12 @@ export default function AiLogsPanel() {
     pagination.page < pagination.totalPages;
 
   return (
-    <Card className="min-w-0 overflow-hidden rounded-none border-black/20 shadow-none dark:border-white/20">
+    <Card
+      role="region"
+      aria-label="Metadata yêu cầu"
+      aria-busy={busy}
+      className="min-w-0 overflow-hidden rounded-none border-black/20 shadow-none dark:border-white/20"
+    >
       <CardHeader className="border-b border-black/10 pb-4 dark:border-white/10">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
           <div>
@@ -421,6 +467,7 @@ export default function AiLogsPanel() {
           <div className="p-4">
             <AiEmptyState
               isError
+              variant="inline"
               icon={MessageSquareWarning}
               eyebrow="Logs unavailable"
               title="Không tải được metadata logs"
@@ -432,6 +479,7 @@ export default function AiLogsPanel() {
         ) : items.length === 0 ? (
           <div className="p-4">
             <AiEmptyState
+              variant="inline"
               icon={ScrollText}
               title="Chưa có metadata log"
               description={
@@ -443,7 +491,7 @@ export default function AiLogsPanel() {
           </div>
         ) : (
           <>
-            <div className="grid min-w-0 gap-3 p-4 xl:hidden">
+            <div className="min-w-0 divide-y divide-black/10 px-4 xl:hidden dark:divide-white/10">
               {items.map((item) => (
                 <LogMobileCard key={item.requestId} item={item} />
               ))}

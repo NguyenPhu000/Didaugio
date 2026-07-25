@@ -49,6 +49,9 @@ export default function AiStatusHeader({ data, isLoading, isError }) {
     return (
       <Card
         aria-label="Đang tải trạng thái AI"
+        aria-busy="true"
+        aria-live="polite"
+        role="status"
         className="rounded-none border-black/20 shadow-none dark:border-white/20"
       >
         <CardContent className="grid gap-4 p-4 lg:grid-cols-[auto_1fr] lg:items-center">

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AdminAiPage from "./AdminAiPage";
@@ -82,8 +82,28 @@ describe("AdminAiPage", () => {
     expect(screen.getByRole("heading", { name: "AI Operations" })).toBeInTheDocument();
     expect(screen.getByText("AI đang hoạt động")).toBeInTheDocument();
     expect(screen.getByText("llama-4-scout")).toBeInTheDocument();
-    expect(screen.getByText("20")).toBeInTheDocument();
-    expect(screen.getByText("95%")).toBeInTheDocument();
+    const primarySignals = screen.getByRole("group", {
+      name: "Tín hiệu vận hành chính",
+    });
+    expect(within(primarySignals).getByText("20")).toBeInTheDocument();
+    expect(within(primarySignals).getByText("95%")).toBeInTheDocument();
+    const performanceSignals = screen.getByRole("group", {
+      name: "Mức sử dụng và hiệu năng",
+    });
+    for (const label of [
+      "Tổng token",
+      "Latency trung bình",
+      "Latency P95",
+    ]) {
+      expect(within(performanceSignals).getByText(label)).toBeInTheDocument();
+    }
+    const exceptions = screen.getByRole("group", {
+      name: "Ngoại lệ cần theo dõi",
+    });
+    expect(within(exceptions).getByText("Safety blocks")).toBeInTheDocument();
+    expect(
+      within(exceptions).getByText("Feedback tiêu cực"),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Lưu lượng theo ngày")).not.toBeInTheDocument();
 
     for (const label of [
@@ -200,9 +220,14 @@ describe("AdminAiPage", () => {
     expect(screen.queryByText("private@example.com")).not.toBeInTheDocument();
     expect(screen.queryByText("0900000000")).not.toBeInTheDocument();
     expect(screen.queryByText("991")).not.toBeInTheDocument();
+    const logsRegion = screen.getByRole("region", {
+      name: "Metadata yêu cầu",
+    });
+    expect(logsRegion).toHaveClass("border", "bg-card");
+    expect(logsRegion.querySelectorAll(".border.bg-card")).toHaveLength(0);
   });
 
-  it("sends designed metadata filters and server page changes to the logs hook", async () => {
+  it("serializes every designed filter against Vietnam calendar boundaries", async () => {
     const user = userEvent.setup();
     mocks.logsResult = {
       data: {
@@ -235,12 +260,38 @@ describe("AdminAiPage", () => {
 
     render(<AdminAiPage />);
     await user.click(screen.getByRole("tab", { name: "Logs & Feedback" }));
-    await user.selectOptions(screen.getByRole("combobox", { name: "Tính năng" }), "planner");
+    fireEvent.change(screen.getByLabelText("Từ ngày"), {
+      target: { value: "2026-07-25" },
+    });
+    fireEvent.change(screen.getByLabelText("Đến ngày"), {
+      target: { value: "2026-07-25" },
+    });
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Tính năng" }),
+      "planner",
+    );
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Trạng thái" }),
+      "error",
+    );
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Safety" }),
+      "true",
+    );
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Feedback" }),
+      "down",
+    );
 
     expect(mocks.useAdminAiLogs).toHaveBeenLastCalledWith({
       page: 1,
       limit: 25,
       feature: "planner",
+      status: "error",
+      safetyBlocked: true,
+      feedback: "down",
+      from: "2026-07-24T17:00:00.000Z",
+      to: "2026-07-25T16:59:59.999Z",
     });
 
     await user.click(screen.getByRole("button", { name: "Trang sau" }));
@@ -249,7 +300,87 @@ describe("AdminAiPage", () => {
       page: 2,
       limit: 25,
       feature: "planner",
+      status: "error",
+      safetyBlocked: true,
+      feedback: "down",
+      from: "2026-07-24T17:00:00.000Z",
+      to: "2026-07-25T16:59:59.999Z",
     });
+  });
+
+  it("displays timestamps in Vietnam time across the local midnight boundary", async () => {
+    const user = userEvent.setup();
+    mocks.logsResult = {
+      data: {
+        success: true,
+        data: {
+          items: [
+            {
+              requestId: "req-midnight",
+              feature: "chat",
+              provider: "groq",
+              model: "llama",
+              configVersion: 4,
+              inputTokens: 10,
+              outputTokens: 20,
+              latencyMs: 500,
+              status: "success",
+              errorCode: null,
+              safetyBlocked: false,
+              feedback: null,
+              createdAt: "2026-07-24T18:00:00.000Z",
+            },
+          ],
+          pagination: { page: 1, limit: 25, total: 1, totalPages: 1 },
+        },
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    };
+
+    render(<AdminAiPage />);
+    await user.click(screen.getByRole("tab", { name: "Logs & Feedback" }));
+
+    expect(screen.getAllByText("01:00:00 25/7/26").length).toBeGreaterThan(0);
+  });
+
+  it("renders unavailable token measurements as em dashes", async () => {
+    const user = userEvent.setup();
+    mocks.logsResult = {
+      data: {
+        success: true,
+        data: {
+          items: [
+            {
+              requestId: "req-no-token-metadata",
+              feature: "chat",
+              provider: "groq",
+              model: "llama",
+              configVersion: 4,
+              inputTokens: null,
+              outputTokens: null,
+              latencyMs: null,
+              status: "started",
+              errorCode: null,
+              safetyBlocked: false,
+              feedback: null,
+              createdAt: "2026-07-24T10:15:00.000Z",
+            },
+          ],
+          pagination: { page: 1, limit: 25, total: 1, totalPages: 1 },
+        },
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    };
+
+    render(<AdminAiPage />);
+    await user.click(screen.getByRole("tab", { name: "Logs & Feedback" }));
+
+    expect(screen.getAllByText("— in / — out").length).toBeGreaterThan(0);
+    expect(screen.queryByText("0 in / 0 out")).not.toBeInTheDocument();
   });
 
   it("isolates overview and logs error states with working retry actions", async () => {
@@ -278,6 +409,11 @@ describe("AdminAiPage", () => {
 
     await user.click(screen.getByRole("tab", { name: "Logs & Feedback" }));
     expect(screen.getByText("Không tải được metadata logs")).toBeInTheDocument();
+    const logsRegion = screen.getByRole("region", {
+      name: "Metadata yêu cầu",
+    });
+    expect(logsRegion).toHaveClass("border", "bg-card");
+    expect(logsRegion.querySelectorAll(".border.bg-card")).toHaveLength(0);
     await user.click(screen.getByRole("button", { name: "Tải lại logs" }));
     expect(retryLogs).toHaveBeenCalledOnce();
   });
@@ -291,5 +427,40 @@ describe("AdminAiPage", () => {
     expect(screen.getByText("Chưa có metadata log")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Trang trước" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Trang sau" })).toBeDisabled();
+  });
+
+  it("announces overview and logs loading states and exposes busy panels", async () => {
+    const user = userEvent.setup();
+    mocks.overviewResult = {
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      refetch: vi.fn(),
+    };
+    mocks.logsResult = {
+      data: undefined,
+      isLoading: true,
+      isFetching: true,
+      isError: false,
+      refetch: vi.fn(),
+    };
+
+    render(<AdminAiPage />);
+
+    expect(
+      screen.getByRole("status", { name: "Đang tải trạng thái AI" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: "Đang tải tổng quan AI" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Logs & Feedback" }));
+
+    expect(
+      screen.getByRole("region", { name: "Metadata yêu cầu" }),
+    ).toHaveAttribute("aria-busy", "true");
+    expect(
+      screen.getByRole("status", { name: "Đang tải metadata logs" }),
+    ).toBeInTheDocument();
   });
 });

@@ -10,13 +10,16 @@ export default function AiEmptyState({
   actionLabel,
   onAction,
   isError = false,
+  variant = "surface",
 }) {
-  return (
-    <Card
-      className="rounded-none border-black/20 shadow-none dark:border-white/20"
-      role={isError ? "alert" : undefined}
+  const content = (
+    <div
+      className={
+        variant === "inline"
+          ? "flex min-h-44 flex-col items-center justify-center px-6 py-8 text-center"
+          : "flex min-h-56 flex-col items-center justify-center px-6 py-10 text-center"
+      }
     >
-      <CardContent className="flex min-h-56 flex-col items-center justify-center px-6 py-10 text-center">
         <div className="mb-4 flex size-11 items-center justify-center border border-black/25 bg-muted dark:border-white/25">
           <Icon aria-hidden="true" className="size-5" />
         </div>
@@ -42,7 +45,23 @@ export default function AiEmptyState({
             {actionLabel}
           </Button>
         )}
-      </CardContent>
+    </div>
+  );
+
+  if (variant === "inline") {
+    return (
+      <div role={isError ? "alert" : undefined} className="min-w-0">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Card
+      className="rounded-none border-black/20 shadow-none dark:border-white/20"
+      role={isError ? "alert" : undefined}
+    >
+      <CardContent className="p-0">{content}</CardContent>
     </Card>
   );
 }

@@ -1,13 +1,4 @@
-import {
-  Activity,
-  Ban,
-  Gauge,
-  MessageSquareWarning,
-  Percent,
-  Timer,
-  TimerReset,
-  WholeWord,
-} from "lucide-react";
+import { Activity, MessageSquareWarning } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -29,16 +20,19 @@ import {
 } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import AiEmptyState from "./AiEmptyState";
-import AiMetricCard from "./AiMetricCard";
 
 const numberFormatter = new Intl.NumberFormat("vi-VN");
 
 function formatNumber(value) {
-  return numberFormatter.format(Number.isFinite(value) ? value : 0);
+  return Number.isFinite(value) ? numberFormatter.format(value) : "—";
 }
 
 function formatLatency(value) {
-  return `${formatNumber(value)} ms`;
+  return Number.isFinite(value) ? `${formatNumber(value)} ms` : "—";
+}
+
+function formatPercent(value) {
+  return Number.isFinite(value) ? `${formatNumber(value)}%` : "—";
 }
 
 function formatBucket(value) {
@@ -61,13 +55,54 @@ const chartConfig = {
 
 function OverviewLoading() {
   return (
-    <div aria-label="Đang tải tổng quan AI" className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 7 }, (_, index) => (
-          <Skeleton key={index} className="h-32 rounded-none" />
-        ))}
-      </div>
+    <div
+      role="status"
+      aria-label="Đang tải tổng quan AI"
+      aria-live="polite"
+      aria-busy="true"
+      className="space-y-5"
+    >
+      <Card className="rounded-none border-black/20 shadow-none dark:border-white/20">
+        <CardContent className="p-0">
+          <div className="grid lg:grid-cols-[1.4fr_1fr]">
+            <Skeleton className="h-40 rounded-none" />
+            <Skeleton className="h-40 rounded-none" />
+          </div>
+          <div className="grid border-t border-black/10 lg:grid-cols-[1fr_18rem] dark:border-white/10">
+            <div className="space-y-px p-4">
+              <Skeleton className="h-11 rounded-none" />
+              <Skeleton className="h-11 rounded-none" />
+              <Skeleton className="h-11 rounded-none" />
+            </div>
+            <Skeleton className="min-h-32 rounded-none" />
+          </div>
+        </CardContent>
+      </Card>
       <Skeleton className="h-72 rounded-none" />
+    </div>
+  );
+}
+
+function RuledMetric({ label, value, detail }) {
+  return (
+    <div className="grid gap-1 py-3 sm:grid-cols-[minmax(10rem,1fr)_auto] sm:items-center sm:gap-5">
+      <div>
+        <dt className="text-sm font-semibold">{label}</dt>
+        <p className="text-xs text-muted-foreground">{detail}</p>
+      </div>
+      <dd className="font-mono text-base font-bold tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
+function ExceptionMetric({ label, value, detail }) {
+  return (
+    <div className="min-w-0 border-t border-black/10 py-4 first:border-t-0 dark:border-white/10">
+      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1 font-mono text-2xl font-black tabular-nums">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
     </div>
   );
 }
@@ -105,61 +140,86 @@ export default function AiOverviewPanel({
   const { totals, latency } = data;
   const timeline = Array.isArray(data.timeline) ? data.timeline : [];
   const totalTokens =
-    (Number.isFinite(totals.inputTokens) ? totals.inputTokens : 0) +
-    (Number.isFinite(totals.outputTokens) ? totals.outputTokens : 0);
-
-  const metrics = [
-    {
-      label: "Yêu cầu",
-      value: formatNumber(totals.requests),
-      detail: "Production requests",
-      icon: WholeWord,
-    },
-    {
-      label: "Tổng token",
-      value: formatNumber(totalTokens),
-      detail: `${formatNumber(totals.inputTokens)} vào · ${formatNumber(totals.outputTokens)} ra`,
-      icon: Gauge,
-    },
-    {
-      label: "Tỷ lệ thành công",
-      value: `${formatNumber(totals.successRate)}%`,
-      detail: "Kết quả status=success",
-      icon: Percent,
-    },
-    {
-      label: "Latency trung bình",
-      value: formatLatency(latency.averageMs),
-      detail: "Thời gian phản hồi trung bình",
-      icon: Timer,
-    },
-    {
-      label: "Latency P95",
-      value: formatLatency(latency.p95Ms),
-      detail: "Phân vị thứ 95",
-      icon: TimerReset,
-    },
-    {
-      label: "Safety blocks",
-      value: formatNumber(totals.safetyBlocks),
-      detail: "Input hoặc output bị chặn",
-      icon: Ban,
-    },
-    {
-      label: "Feedback tiêu cực",
-      value: formatNumber(totals.negativeFeedback),
-      detail: "Feedback đánh dấu không hữu ích",
-      icon: MessageSquareWarning,
-    },
-  ];
+    Number.isFinite(totals.inputTokens) &&
+    Number.isFinite(totals.outputTokens)
+      ? totals.inputTokens + totals.outputTokens
+      : null;
 
   return (
     <div className="min-w-0 space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {metrics.map((metric) => (
-          <AiMetricCard key={metric.label} {...metric} />
-        ))}
-      </div>
+      <Card className="min-w-0 rounded-none border-black/20 shadow-none dark:border-white/20">
+        <CardContent className="p-0">
+          <div
+            role="group"
+            aria-label="Tín hiệu vận hành chính"
+            className="grid lg:grid-cols-[1.4fr_1fr]"
+          >
+            <div className="border-b border-black/10 bg-primary/10 p-6 lg:border-b-0 lg:border-r dark:border-white/10">
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Yêu cầu
+              </p>
+              <p className="mt-3 font-mono text-5xl font-black tracking-tight tabular-nums sm:text-6xl">
+                {formatNumber(totals.requests)}
+              </p>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Production requests trong cửa sổ quan sát
+              </p>
+            </div>
+            <div className="flex flex-col justify-center p-6">
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Tỷ lệ thành công
+              </p>
+              <p className="mt-3 font-mono text-4xl font-black tracking-tight tabular-nums">
+                {formatPercent(totals.successRate)}
+              </p>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Kết quả status=success
+              </p>
+            </div>
+          </div>
+
+          <div className="grid border-t border-black/10 lg:grid-cols-[minmax(0,1fr)_18rem] dark:border-white/10">
+            <dl
+              role="group"
+              aria-label="Mức sử dụng và hiệu năng"
+              className="divide-y divide-black/10 px-5 dark:divide-white/10"
+            >
+              <RuledMetric
+                label="Tổng token"
+                value={formatNumber(totalTokens)}
+                detail={`${formatNumber(totals.inputTokens)} vào · ${formatNumber(totals.outputTokens)} ra`}
+              />
+              <RuledMetric
+                label="Latency trung bình"
+                value={formatLatency(latency.averageMs)}
+                detail="Thời gian phản hồi trung bình"
+              />
+              <RuledMetric
+                label="Latency P95"
+                value={formatLatency(latency.p95Ms)}
+                detail="Phân vị thứ 95"
+              />
+            </dl>
+
+            <div
+              role="group"
+              aria-label="Ngoại lệ cần theo dõi"
+              className="border-t border-black/10 px-5 lg:border-l lg:border-t-0 dark:border-white/10"
+            >
+              <ExceptionMetric
+                label="Safety blocks"
+                value={formatNumber(totals.safetyBlocks)}
+                detail="Input hoặc output bị chặn"
+              />
+              <ExceptionMetric
+                label="Feedback tiêu cực"
+                value={formatNumber(totals.negativeFeedback)}
+                detail="Đánh dấu không hữu ích"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {timeline.length > 0 && (
         <Card className="min-w-0 rounded-none border-black/20 shadow-none dark:border-white/20">
