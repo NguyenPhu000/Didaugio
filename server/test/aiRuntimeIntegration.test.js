@@ -102,6 +102,11 @@ test("only successful production text features receive a rateable log id", async
       expectedErrorCode: "AI_EMPTY_OUTPUT",
     },
     {
+      feature: "chat",
+      result: { outputText: "[PLACES: 3]" },
+      expectedErrorCode: "AI_EMPTY_OUTPUT",
+    },
+    {
       feature: "voice-introduction",
       result: { outputText: "   " },
       expectedErrorCode: "AI_EMPTY_OUTPUT",
@@ -141,13 +146,17 @@ test("only successful production text features receive a rateable log id", async
     })),
   );
 
-  for (const feature of ["planner", "voice-introduction"]) {
+  for (const [feature, outputText] of [
+    ["planner", "completed assistant text"],
+    ["voice-introduction", "completed assistant text"],
+    ["chat", "A real streamed answer\n[PLACES: 3]"],
+  ]) {
     const execution = await service.executeAiRequest({
       feature,
       user: { userId: 8 },
       inputText: "safe input",
       context: {},
-      operation: async () => ({ outputText: "completed assistant text" }),
+      operation: async () => ({ outputText }),
     });
     assert.equal(Number.isSafeInteger(execution.requestLogId), true);
   }
@@ -262,6 +271,87 @@ test("navigation sanitizes all provider-bound labels and safety checks them", as
     });
   }
   assert.equal(providerPrompts.length, 1);
+});
+
+test("waypoint advice validates and maps the exact original indexes sent to the provider", async () => {
+  const prompts = [];
+  const providerOrders = [
+    [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+    [7, 6, 5, 4, 3, 2, 1, 0],
+    [7, 6, 5, 4, 3, 2, 1, 0, 8],
+  ];
+  const navigation = createAiNavigationService({
+    executeRequest: async ({ operation }) => ({
+      result: await operation({
+        configData: DEFAULT_AI_CONFIG,
+        context: {},
+      }),
+    }),
+    resolveProviderOptions: async () => ({
+      model: "model",
+      temperature: 0,
+      topP: 1,
+      maxTokens: 256,
+      timeoutMs: 3_000,
+    }),
+    createClient: () => ({
+      chat: {
+        completions: {
+          create: async ({ messages }) => {
+            prompts.push(messages[0].content);
+            return {
+              choices: [{
+                message: {
+                  content: JSON.stringify({
+                    orderedWaypointIndexes: providerOrders.shift(),
+                    reason: "grounded order",
+                  }),
+                },
+              }],
+            };
+          },
+        },
+      },
+    }),
+  });
+  const sixteenWaypoints = Array.from(
+    { length: 16 },
+    (_, index) => ({ name: `Waypoint ${index}` }),
+  );
+
+  const full = await navigation.getWaypointOrderAdvice({
+    waypoints: sixteenWaypoints,
+  });
+  assert.equal(full.source, "ai");
+  assert.deepEqual(
+    full.orderedWaypointIndexes,
+    [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+  );
+  assert.match(prompts[0], /- 15: Waypoint 15/);
+
+  const oversizedWaypoints = Array.from(
+    { length: 16 },
+    (_, index) => ({ name: `${index}-${"x".repeat(500)}` }),
+  );
+  const partial = await navigation.getWaypointOrderAdvice({
+    waypoints: oversizedWaypoints,
+  });
+  assert.equal(partial.source, "ai-partial");
+  assert.deepEqual(
+    partial.orderedWaypointIndexes,
+    [7, 6, 5, 4, 3, 2, 1, 0, 8, 9, 10, 11, 12, 13, 14, 15],
+  );
+  assert.match(prompts[1], /- 7: 7-/);
+  assert.doesNotMatch(prompts[1], /- 8: 8-/);
+
+  const unsent = await navigation.getWaypointOrderAdvice({
+    waypoints: oversizedWaypoints,
+  });
+  assert.equal(unsent.source, "fallback");
+  assert.deepEqual(
+    unsent.orderedWaypointIndexes,
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+  );
 });
 
 test("configured prompts are appended ahead of server-owned output rules", () => {

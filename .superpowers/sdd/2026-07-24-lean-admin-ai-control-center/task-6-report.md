@@ -170,3 +170,50 @@ Focused lint on all changed Mobile files: PASS with no findings.
 `node --check` on every changed Server source/test file: PASS.
 
 `git diff --check`: PASS.
+
+## Review fix round 2/5
+
+The three open findings in `task-6-rereview-round-1.md` were fixed without changing the public schema, adding a table, or adding an endpoint:
+
+1. The common runtime eligibility check now removes `[PLACES: ...]` transport tags before deciding whether Chat output contains completed assistant text. A real streaming result shape with tag-only `outputText` completes as `error/AI_EMPTY_OUTPUT` and exposes no ID, while streamed text plus the tag remains successful and rateable.
+2. The strict public Admin logs query remains `chat | planner | voice`. At the log service boundary, `feature=voice` now maps to legacy `voice` plus `voice-introduction`, `voice-transcription`, and `voice-speech`, so existing Admin filtering includes every internal voice subtype and excludes Chat/Planner. The overview has no feature grouping, so no corresponding grouping translation was applicable.
+3. Navigation now supports all 16 schema-valid waypoints when labels fit the bounded provider payload. Oversized labels are subject to a 1,600-character waypoint JSON budget while retaining original indexes. Provider output must be an exact permutation of only the indexes actually sent; any duplicate, malformed, missing, or unsent index causes deterministic fallback. A valid bounded subset is applied under `ai-partial`, with provider-ordered sent indexes followed by unsent original indexes in deterministic order.
+
+### Round 2 RED evidence
+
+```powershell
+cd D:\didaugio\.worktrees\lean-admin-ai\server
+node --test test/aiRuntimeIntegration.test.js test/aiRuntimeConfig.test.js
+```
+
+Result: RED as expected — 39/42 passed. Tag-only streaming output received a numeric ID, the public `voice` token remained a scalar storage filter, and a valid 16-waypoint prompt stopped at index 11.
+
+The strengthened unsent-index case also reproduced the exact-set defect: a provider response containing every sent index plus an unsent index incorrectly returned `ai-partial` instead of fallback.
+
+### Round 2 GREEN and verification
+
+- Tag-only/text-plus-tag eligibility focused behavior: PASS — 1/1.
+- Admin voice compatibility and ordinary log filtering: PASS — 2/2.
+- 16-waypoint, budget-truncation, original-index mapping, and unsent-index rejection behavior: PASS — 1/1.
+- Combined focused runtime/config suites: PASS — 42/42.
+
+Final verification:
+
+```powershell
+cd D:\didaugio\.worktrees\lean-admin-ai\server
+npm.cmd test
+```
+
+Result: PASS — 140/140.
+
+```powershell
+cd D:\didaugio\.worktrees\lean-admin-ai\app
+npm.cmd test
+npm.cmd run lint
+```
+
+Result: tests PASS — 25 files, 100/100. Expo lint PASS with 0 errors and the same unrelated pre-existing unused import warning in `app/(auth)/login.jsx`.
+
+`node --check` on every changed Server source/test file: PASS.
+
+`git diff --check`: PASS.

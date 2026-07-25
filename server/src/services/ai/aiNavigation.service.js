@@ -11,7 +11,8 @@ import {
 } from "./aiProviderPolicy.js";
 
 const MAX_NAVIGATION_ROUTES = 6;
-const MAX_NAVIGATION_WAYPOINTS = 12;
+const MAX_NAVIGATION_WAYPOINTS = 16;
+const MAX_NAVIGATION_WAYPOINTS_JSON_LENGTH = 1_600;
 const MAX_LABEL_LENGTH = 160;
 const MAX_SUMMARY_LENGTH = 240;
 
@@ -64,18 +65,34 @@ export function sanitizeNavigationProviderPayload(payload = {}, mode = "route") 
   };
 
   if (mode === "waypoint") {
+    const waypoints = [];
+    const inputWaypoints = Array.isArray(payload.waypoints)
+      ? payload.waypoints
+      : [];
+    for (
+      let index = 0;
+      index < Math.min(inputWaypoints.length, MAX_NAVIGATION_WAYPOINTS);
+      index += 1
+    ) {
+      const candidate = {
+        index,
+        label: boundedNavigationText(
+          inputWaypoints[index]?.name,
+          MAX_LABEL_LENGTH,
+          `Waypoint ${index}`,
+        ),
+      };
+      if (
+        JSON.stringify([...waypoints, candidate]).length >
+        MAX_NAVIGATION_WAYPOINTS_JSON_LENGTH
+      ) {
+        break;
+      }
+      waypoints.push(candidate);
+    }
     return {
       ...base,
-      waypoints: (Array.isArray(payload.waypoints) ? payload.waypoints : [])
-        .slice(0, MAX_NAVIGATION_WAYPOINTS)
-        .map((point, index) => ({
-          index,
-          label: boundedNavigationText(
-            point?.name,
-            MAX_LABEL_LENGTH,
-            `Waypoint ${index}`,
-          ),
-        })),
+      waypoints,
     };
   }
 
@@ -254,19 +271,31 @@ class AINavigationService {
       const completion = execution.result.completion;
       const text = completion.choices[0]?.message?.content || "";
       const parsed = this._tryParseJson(text);
+      const sentWaypointIndexes = providerPayload.waypoints.map(
+        (point) => point.index,
+      );
       const orderedIndexes = this._sanitizeWaypointIndexes(
         parsed?.orderedWaypointIndexes,
-        normalizedWaypoints.length,
+        sentWaypointIndexes,
       );
 
-      if (orderedIndexes.length === normalizedWaypoints.length) {
+      if (orderedIndexes.length === sentWaypointIndexes.length) {
+        const sentIndexSet = new Set(sentWaypointIndexes);
+        const unsentIndexes = normalizedWaypoints
+          .map((_, index) => index)
+          .filter((index) => !sentIndexSet.has(index));
         return {
-          source: "ai",
-          orderedWaypointIndexes: orderedIndexes,
+          source: unsentIndexes.length > 0 ? "ai-partial" : "ai",
+          orderedWaypointIndexes: [...orderedIndexes, ...unsentIndexes],
           reason:
             parsed?.reason ||
             "AI đã sắp xếp thứ tự điểm đến theo ngữ cảnh người dùng.",
-          warnings: Array.isArray(parsed?.warnings) ? parsed.warnings : [],
+          warnings: [
+            ...(Array.isArray(parsed?.warnings) ? parsed.warnings : []),
+            ...(unsentIndexes.length > 0
+              ? ["Only the provider-visible waypoint subset was AI-ordered."]
+              : []),
+          ],
           confidence: Number(parsed?.confidence || 0.72),
         };
       }
@@ -413,20 +442,25 @@ Quy tac bat buoc:
     };
   }
 
-  _sanitizeWaypointIndexes(value, waypointCount) {
+  _sanitizeWaypointIndexes(value, allowedIndexes) {
     if (!Array.isArray(value)) return [];
 
+    const allowed = new Set(allowedIndexes);
     const seen = new Set();
     const indexes = [];
 
-    value.forEach((rawIndex) => {
+    for (const rawIndex of value) {
       const index = Number(rawIndex);
-      if (!Number.isInteger(index)) return;
-      if (index < 0 || index >= waypointCount) return;
-      if (seen.has(index)) return;
+      if (
+        !Number.isInteger(index) ||
+        !allowed.has(index) ||
+        seen.has(index)
+      ) {
+        return [];
+      }
       seen.add(index);
       indexes.push(index);
-    });
+    }
 
     return indexes;
   }

@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import prisma from "../../config/prismaClient.js";
 import { getRedisClient } from "../../config/redisClient.js";
 import logger from "../../config/logger.js";
+import { VOICE_AI_FEATURES } from "../ai/aiFeedbackPolicy.js";
 
 const RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 const PRUNE_INTERVAL_MS = 60 * 60 * 1000;
@@ -257,7 +258,6 @@ export function createAiLogService({
       : 50;
     const where = {};
     for (const key of [
-      "feature",
       "provider",
       "status",
       "safetyBlocked",
@@ -265,6 +265,11 @@ export function createAiLogService({
       "isTest",
     ]) {
       if (filters[key] !== undefined) where[key] = filters[key];
+    }
+    if (filters.feature !== undefined) {
+      where.feature = filters.feature === "voice"
+        ? { in: VOICE_AI_FEATURES }
+        : filters.feature;
     }
     if (filters.from || filters.to) {
       where.createdAt = {};

@@ -64,6 +64,12 @@ function outputText(result) {
   );
 }
 
+function rateableOutputText(result) {
+  return outputText(result)
+    .replace(/\[PLACES:\s*[\d\s,]*\]/gi, "")
+    .trim();
+}
+
 function tokenMetadata(result) {
   return {
     inputTokens:
@@ -244,7 +250,7 @@ export function createAiRuntimeExecutionService({
     }
 
     const rateable = !isTest && isRateableAiFeature(feature);
-    const hasRateableOutput = outputText(result).trim().length > 0;
+    const hasRateableOutput = rateableOutputText(result).length > 0;
     const emptyRateableOutput = rateable && !hasRateableOutput;
     const completionWritten = await completeOnce({
       ...tokens,

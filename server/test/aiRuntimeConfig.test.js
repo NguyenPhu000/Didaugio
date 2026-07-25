@@ -986,6 +986,63 @@ test("logs expose paginated metadata without anonymous references or retention f
   assert.equal("expiresAt" in calls[0].select, false);
 });
 
+test("the public voice log filter includes every internal voice feature only", async () => {
+  const rows = [
+    { requestId: "legacy", feature: "voice" },
+    { requestId: "intro", feature: "voice-introduction" },
+    { requestId: "stt", feature: "voice-transcription" },
+    { requestId: "tts", feature: "voice-speech" },
+    { requestId: "chat", feature: "chat" },
+    { requestId: "planner", feature: "planner" },
+  ];
+  const calls = [];
+  const client = {
+    aiRequestLog: {
+      findMany: async (input) => {
+        calls.push(input);
+        const allowedFeatures = Array.isArray(input.where.feature?.in)
+          ? input.where.feature.in
+          : [input.where.feature];
+        return rows.filter((row) =>
+          allowedFeatures.includes(row.feature),
+        );
+      },
+      count: async ({ where }) => {
+        const allowedFeatures = Array.isArray(where.feature?.in)
+          ? where.feature.in
+          : [where.feature];
+        return rows.filter((row) =>
+          allowedFeatures.includes(row.feature)
+        ).length;
+      },
+    },
+    $transaction: async (operations) => Promise.all(operations),
+  };
+  const logs = createAiLogService({
+    client,
+    encryptionKey: "58".repeat(32),
+  });
+
+  const result = await logs.getLogs({ feature: "voice" });
+
+  assert.deepEqual(
+    calls[0].where.feature,
+    {
+      in: [
+        "voice",
+        "voice-introduction",
+        "voice-transcription",
+        "voice-speech",
+      ],
+    },
+  );
+  assert.deepEqual(
+    result.items.map((row) => row.requestId),
+    ["legacy", "intro", "stt", "tts"],
+  );
+  assert.equal(result.pagination.total, 4);
+});
+
 test("log service falls back to today's database count when ready Redis fails", async () => {
   const fixture = logClientFixture({ productionCount: 0 });
   const logs = createAiLogService({
