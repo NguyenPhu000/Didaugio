@@ -8,7 +8,11 @@ function conflictError(currentRevision) {
   });
 }
 
-export const createAiConfigService = ({ repository, credentials }) => ({
+export const createAiConfigService = ({
+  repository,
+  credentials,
+  invalidateRuntime = () => {},
+}) => ({
   async getConfigView() {
     const view = await repository.getConfigView();
     const secretReference =
@@ -51,7 +55,12 @@ export const createAiConfigService = ({ repository, credentials }) => ({
   },
 
   async publishDraft(input, actor) {
-    return repository.publishDraft({ ...input, actorId: actor.userId });
+    const published = await repository.publishDraft({
+      ...input,
+      actorId: actor.userId,
+    });
+    invalidateRuntime();
+    return published;
   },
 
   async rollbackConfig(input, actor) {
@@ -63,12 +72,14 @@ export const createAiConfigService = ({ repository, credentials }) => ({
       });
     }
 
-    return repository.publishCopiedVersion({
+    const published = await repository.publishCopiedVersion({
       sourceVersionId: source.id,
       configData: source.configData,
       changeReason: input.changeReason,
       actorId: actor.userId,
     });
+    invalidateRuntime();
+    return published;
   },
 });
 
