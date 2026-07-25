@@ -29,7 +29,7 @@ export const ERROR_MESSAGES = {
   VALIDATION: "Invalid information. Please check and try again.",
   UNKNOWN: "An error occurred. Please try again.",
   AI_QUOTA:
-    "AI has reached its quota limit. Please try again later.",
+    "Hệ thống Genie AI đang trong quá trình tính toán và tối ưu dữ liệu. Vui lòng đợi trong giây lát rồi thử lại nghen!",
   AI_UNAVAILABLE: "AI service is temporarily unavailable.",
   LOCATION_DENIED: "Location permission is required to use this feature.",
 };

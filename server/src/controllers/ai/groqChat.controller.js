@@ -101,13 +101,17 @@ export const handleGroqChat = async (req, res) => {
           configData,
           "chat",
         );
+        const activePlaces =
+          allowedContext.places && allowedContext.places.length > 0
+            ? allowedContext.places
+            : systemPlaces;
         return chatWithGroq(
           allowedContext.messages || [
             { role: "user", content: lastUserMessage },
           ],
           {
             ...allowedContext,
-            systemPlaces: allowedContext.places,
+            systemPlaces: activePlaces,
           },
           providerOptions,
         );

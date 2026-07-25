@@ -204,8 +204,8 @@ export const changePasswordLimiter = createLimiter({
 export const aiUserLimiter = createLimiter({
   envKey: "GROQ_CHAT_RATE_LIMIT_MAX",
   namespace: "ai-user",
-  devDefault: 300,
-  prodDefault: 60,
+  devDefault: 1000,
+  prodDefault: 300,
   message: "Qua nhieu yeu cau tro ly AI, vui long thu lai sau",
   keyGenerator: buildAiRateLimitKey,
 });

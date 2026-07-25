@@ -96,7 +96,7 @@ export function toAiServiceError(error) {
     return createStableAiError("AI provider request timed out.", 504, "AI_TIMEOUT");
   }
   if (hasStatus(429) || matches(/quota|rate.?limit|too many requests/i)) {
-    return createStableAiError("AI provider quota exceeded.", 429, "QUOTA_EXCEEDED");
+    return createStableAiError("Hệ thống Genie AI đang trong quá trình tính toán và tối ưu dữ liệu. Vui lòng đợi trong giây lát rồi thử lại nghen!", 429, "QUOTA_EXCEEDED");
   }
   if (hasStatus(503) || matches(/service unavailable|overloaded|temporarily unavailable/i)) {
     return createStableAiError("AI provider is unavailable.", 503, "AI_UNAVAILABLE");

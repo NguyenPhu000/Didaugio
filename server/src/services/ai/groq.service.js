@@ -25,12 +25,22 @@ export function createGroqClient({
   return new Groq({ apiKey, baseURL: baseUrl });
 }
 
+export function parseApiKeyPool(secretString) {
+  if (!secretString || typeof secretString !== "string") return [];
+  return secretString
+    .split(/[\n,;]+/)
+    .map((k) => k.trim())
+    .filter((k) => k.length > 0);
+}
+
 export async function resolveGroqProviderOptions(configData, feature) {
   const apiKey = await resolveProviderSecret(
     configData.provider.secretReference,
   );
+  const apiKeys = parseApiKeyPool(apiKey);
   return {
-    apiKey,
+    apiKey: apiKeys[0] || "",
+    apiKeys,
     baseUrl: configData.provider.baseUrl,
     model: configData.provider.model,
     temperature: configData.modelParameters.temperature,
@@ -39,6 +49,41 @@ export async function resolveGroqProviderOptions(configData, feature) {
     timeoutMs: configData.modelParameters.timeoutMs,
     configuredPrompt: configData.prompts[feature],
   };
+}
+
+export async function executeGroqCompletionWithPool(providerOptions, executionCallback) {
+  const keys = providerOptions?.apiKeys?.length > 0
+    ? providerOptions.apiKeys
+    : [providerOptions?.apiKey].filter(Boolean);
+
+  if (keys.length === 0) {
+    const client = createGroqClient(providerOptions);
+    return executionCallback(client);
+  }
+
+  let lastError;
+  for (let i = 0; i < keys.length; i++) {
+    const currentKey = keys[i];
+    try {
+      const client = createGroqClient({ ...providerOptions, apiKey: currentKey });
+      return await executionCallback(client);
+    } catch (error) {
+      const aiError = toAiServiceError(error);
+      lastError = aiError;
+      const isQuotaOrRateLimit =
+        aiError.code === "QUOTA_EXCEEDED" ||
+        aiError.statusCode === 429 ||
+        error?.status === 429;
+      if (isQuotaOrRateLimit && i < keys.length - 1) {
+        console.info(
+          `[Groq Key Pool] Key #${i + 1} hit rate limit (${aiError.code}). Rotating to Key #${i + 2}...`
+        );
+        continue;
+      }
+      throw aiError;
+    }
+  }
+  throw lastError;
 }
 
 /**
@@ -215,16 +260,20 @@ export async function chatWithGroq(
   let completion;
 
   try {
-    const client = createGroqClient(providerOptions);
-    completion = await client.chat.completions.create(
-      {
-        model,
-        messages: [{ role: "system", content: systemPrompt }, ...normalizedMessages],
-        temperature,
-        top_p: topP,
-        max_tokens: maxTokens,
+    completion = await executeGroqCompletionWithPool(
+      providerOptions,
+      async (client) => {
+        return client.chat.completions.create(
+          {
+            model,
+            messages: [{ role: "system", content: systemPrompt }, ...normalizedMessages],
+            temperature,
+            top_p: topP,
+            max_tokens: maxTokens,
+          },
+          { timeout: timeoutMs },
+        );
       },
-      { timeout: timeoutMs },
     );
   } catch (error) {
     const aiError = toAiServiceError(error);

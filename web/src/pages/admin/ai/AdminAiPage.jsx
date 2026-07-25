@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   FlaskConical,
   LayoutDashboard,
@@ -35,12 +36,14 @@ import AiTestLabPanel from "./components/AiTestLabPanel";
 const TAB_DEFINITIONS = [
   {
     value: "overview",
+    i18nKey: "adminAi.tabs.overview",
     label: "Tổng quan",
     icon: LayoutDashboard,
     permissions: [PERMISSIONS.AI.VIEW],
   },
   {
     value: "configuration",
+    i18nKey: "adminAi.tabs.configuration",
     label: "Cấu hình",
     icon: Settings2,
     permissions: [
@@ -51,6 +54,7 @@ const TAB_DEFINITIONS = [
   },
   {
     value: "safety",
+    i18nKey: "adminAi.tabs.safety",
     label: "An toàn",
     icon: ShieldCheck,
     permissions: [
@@ -60,12 +64,14 @@ const TAB_DEFINITIONS = [
   },
   {
     value: "logs",
+    i18nKey: "adminAi.tabs.logs",
     label: "Logs & Feedback",
     icon: ScrollText,
     permissions: [PERMISSIONS.AI.LOGS_VIEW],
   },
   {
     value: "test-lab",
+    i18nKey: "adminAi.tabs.testLab",
     label: "Test Lab",
     icon: FlaskConical,
     permissions: [PERMISSIONS.AI.TEST_RUN],
@@ -222,7 +228,27 @@ function ConfigurationWorkspace({ permissions }) {
         permissions={permissions}
         onSaveDraft={
           permissions.manage
-            ? (payload) => runMutation(saveDraftMutation, payload)
+            ? async (payload) => {
+                setConflict(null);
+                setOperationError(null);
+                try {
+                  const savedResponse = await saveDraftMutation.mutateAsync(payload);
+                  const savedData = unwrapResponse(savedResponse);
+                  if (permissions.publish) {
+                    await publishMutation.mutateAsync({
+                      revision: savedData?.revision ?? config.revision,
+                      changeReason: payload.changeReason || "Cập nhật và phát hành cấu hình AI",
+                    });
+                  }
+                } catch (error) {
+                  const newerRevision = conflictRevision(error);
+                  if (newerRevision !== null) {
+                    setConflict(newerRevision);
+                  } else {
+                    setOperationError(error);
+                  }
+                }
+              }
             : undefined
         }
         onPublish={
@@ -415,16 +441,24 @@ function TestLabWorkspace() {
 }
 
 function AdminAiCockpit({ hasPermission }) {
-  const [activeTab, setActiveTab] = useState("overview");
+  const { t } = useTranslation();
   const overviewQuery = useAdminAiOverview();
-  const canAccess = (tab) =>
-    tab.permissions.some((permission) => hasPermission(permission));
-  const activeDefinition = TAB_DEFINITIONS.find(
-    (tab) => tab.value === activeTab,
-  );
-  const safeActiveTab =
-    activeDefinition && canAccess(activeDefinition) ? activeTab : "overview";
   const overview = unwrapResponse(overviewQuery.data);
+
+  const canAccess = (tab) =>
+    tab.permissions.every((permission) => hasPermission(permission));
+
+  const firstAvailableTab =
+    TAB_DEFINITIONS.find((tab) => canAccess(tab))?.value || "overview";
+
+  const [activeTab, setActiveTab] = useState(firstAvailableTab);
+
+  const safeActiveTab = canAccess(
+    TAB_DEFINITIONS.find((tab) => tab.value === activeTab) || {},
+  )
+    ? activeTab
+    : firstAvailableTab;
+
   const configurationPermissions = {
     manage: hasPermission(PERMISSIONS.AI.CONFIG_MANAGE),
     publish: hasPermission(PERMISSIONS.AI.CONFIG_PUBLISH),
@@ -454,13 +488,12 @@ function AdminAiCockpit({ hasPermission }) {
               id="admin-ai-title"
               className="text-2xl font-bold uppercase tracking-tight sm:text-3xl"
             >
-              AI Operations
+              {t("adminAi.title", "AI Operations")}
             </h1>
           </div>
         </div>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Theo dõi trạng thái runtime, chất lượng vận hành và metadata yêu cầu
-          mà không hiển thị nội dung hội thoại.
+          {t("adminAi.description", "Theo dõi trạng thái runtime, chất lượng vận hành và metadata yêu cầu mà không hiển thị nội dung hội thoại.")}
         </p>
       </header>
 
@@ -494,7 +527,7 @@ function AdminAiCockpit({ hasPermission }) {
                 className="min-h-11 min-w-max gap-2 rounded-none border-b-2 border-transparent px-4 font-mono text-xs font-semibold uppercase tracking-wide shadow-none transition-colors data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:shadow-none"
               >
                 <Icon aria-hidden="true" className="size-4" />
-                {tab.label}
+                {t(tab.i18nKey, tab.label)}
                 {!allowed && (
                   <LockKeyhole aria-hidden="true" className="ml-1 size-3" />
                 )}

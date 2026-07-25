@@ -1,10 +1,14 @@
 import { useState } from "react";
 import {
   ArchiveRestore,
+  Eye,
+  EyeOff,
   KeyRound,
+  Plus,
   Save,
   Send,
   Settings2,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -15,37 +19,37 @@ import { toAiConfigForm, toAiDraftPayload } from "../adminAiForm";
 import { isValidAiConfigSnapshot } from "../adminAiValidation";
 
 const CONTEXT_SOURCES = [
-  ["coarseLocation", "Coarse location"],
-  ["travelPreferences", "Travel preferences"],
-  ["budget", "Budget"],
-  ["partySize", "Party size"],
-  ["tripDuration", "Trip duration"],
-  ["transportPreference", "Transport preference"],
-  ["places", "Places"],
-  ["events", "Events"],
-  ["sessionMessages", "Session messages"],
-  ["time", "Time"],
-  ["weather", "Weather"],
-  ["openingStatus", "Opening status"],
+  ["coarseLocation", "Vị trí ước tính (Tỉnh/Thành)"],
+  ["travelPreferences", "Sở thích du lịch"],
+  ["budget", "Ngân sách chuyến đi"],
+  ["partySize", "Số lượng người tham gia"],
+  ["tripDuration", "Thời gian chuyến đi (Số ngày)"],
+  ["transportPreference", "Phương tiện di chuyển ưa thích"],
+  ["places", "Danh sách địa điểm CSDL RAG"],
+  ["events", "Sự kiện & lễ hội"],
+  ["sessionMessages", "Lịch sử tin nhắn phiên chat"],
+  ["time", "Thời gian hiện tại"],
+  ["weather", "Thời tiết địa phương"],
+  ["openingStatus", "Trạng thái mở/đóng cửa"],
 ];
 
 const CONTEXT_FIELDS = [
-  ["currentCity", "Current city"],
-  ["travelPreferences", "Travel preferences"],
-  ["budget", "Budget"],
-  ["partySize", "Party size"],
-  ["tripDuration", "Trip duration"],
-  ["transportPreference", "Transport preference"],
-  ["places", "Places"],
-  ["events", "Events"],
-  ["messages", "Messages"],
-  ["timeOfDay", "Time of day"],
-  ["weather", "Weather"],
-  ["openingStatus", "Opening status"],
+  ["currentCity", "Thành phố/Quận huyện hiện tại"],
+  ["travelPreferences", "Sở thích du lịch"],
+  ["budget", "Ngân sách chuyến đi"],
+  ["partySize", "Số lượng người tham gia"],
+  ["tripDuration", "Thời gian chuyến đi (Số ngày)"],
+  ["transportPreference", "Phương tiện di chuyển ưa thích"],
+  ["places", "Danh sách địa điểm CSDL RAG"],
+  ["events", "Sự kiện & lễ hội"],
+  ["messages", "Tin nhắn thoại/chat gửi kèm"],
+  ["timeOfDay", "Buổi trong ngày (Sáng/Trưa/Tối)"],
+  ["weather", "Thời tiết địa phương"],
+  ["openingStatus", "Trạng thái mở/đóng cửa"],
 ];
 const isValidProviderSecret = (value) => {
   const secret = value.trim();
-  return !secret || (secret.length >= 20 && secret.length <= 500);
+  return !secret || (secret.length >= 20 && secret.length <= 2000);
 };
 
 function SectionHeading({ title, description }) {
@@ -134,13 +138,51 @@ function AiConfigurationPanelForm({
 }) {
   const mappedForm = toAiConfigForm(config);
   const [configData, setConfigData] = useState(mappedForm.configData);
-  const [providerSecret, setProviderSecret] = useState("");
+  const [secretKeys, setSecretKeys] = useState(
+    mappedForm.providerKeys?.length > 0 ? mappedForm.providerKeys : [""]
+  );
+  const [showSecrets, setShowSecrets] = useState({});
   const [reason, setReason] = useState("");
   const canManage = permissions.manage === true;
   const canRotateSecret = canManage && permissions.secrets === true;
+
+  const toggleShowSecret = (index) => {
+    setShowSecrets((current) => ({
+      ...current,
+      [index]: !current[index],
+    }));
+  };
+
+  const joinedSecret = secretKeys.map((k) => k.trim()).filter(Boolean).join(", ");
   const formValid =
     isValidAiConfigSnapshot(configData) &&
-    (!canRotateSecret || isValidProviderSecret(providerSecret));
+    (!canRotateSecret || isValidProviderSecret(joinedSecret));
+
+  const addSecretKey = () => setSecretKeys((current) => [...current, ""]);
+  const updateSecretKey = (index, value) => {
+    if (value.includes(",") || value.includes("\n") || value.includes(";")) {
+      const splitKeys = value
+        .split(/[\n,;]+/)
+        .map((k) => k.trim())
+        .filter(Boolean);
+      if (splitKeys.length > 1) {
+        setSecretKeys((current) => {
+          const next = [...current];
+          next.splice(index, 1, ...splitKeys);
+          return next;
+        });
+        return;
+      }
+    }
+    setSecretKeys((current) =>
+      current.map((item, idx) => (idx === index ? value : item)),
+    );
+  };
+  const removeSecretKey = (index) => {
+    setSecretKeys((current) =>
+      current.length > 1 ? current.filter((_, idx) => idx !== index) : [""]
+    );
+  };
 
   const setSectionValue = (section, field, value) => {
     setConfigData((current) => ({
@@ -169,15 +211,19 @@ function AiConfigurationPanelForm({
 
   const submitDraft = (event) => {
     event.preventDefault();
-    if (!canManage || !formValid || reason.trim().length < 5) return;
+    if (!canManage || !formValid) return;
+    const finalReason =
+      reason.trim().length >= 5
+        ? reason.trim()
+        : "Cập nhật và phát hành cấu hình AI";
     onSaveDraft(
       toAiDraftPayload(
         {
           configData,
-          providerSecret: canRotateSecret ? providerSecret : "",
+          providerSecret: canRotateSecret ? joinedSecret : "",
         },
         mappedForm.revision,
-        reason.trim(),
+        finalReason,
       ),
     );
   };
@@ -238,35 +284,82 @@ function AiConfigurationPanelForm({
                 />
               </Field>
               {canRotateSecret && (
-                <div className="space-y-2 lg:col-span-2">
-                  <Field
-                    id="ai-provider-secret"
-                    label="API key mới"
-                    description="Để trống để giữ nguyên khóa. Giá trị đã lưu không bao giờ được đọc ngược về trình duyệt."
+                <div className="space-y-3 lg:col-span-2">
+                  <div className="space-y-1">
+                    <Label className="font-mono text-[11px] font-semibold uppercase tracking-wide">
+                      Danh sách Groq API Keys (Xoay vòng Pool tự động)
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Để trống để giữ nguyên khóa hiện tại. Bạn có thể thêm nhiều ô API Key Groq Free. Hệ thống sẽ tự động chuyển sang Key tiếp theo khi dính Rate Limit (429).
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    {secretKeys.map((keyVal, idx) => (
+                      <div key={`secret-key-row-${idx}`} className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <KeyRound
+                            aria-hidden="true"
+                            className="absolute left-3 top-3 size-4 text-muted-foreground"
+                          />
+                          <Input
+                            type={showSecrets[idx] ? "text" : "password"}
+                            placeholder={`API Key #${idx + 1} (gsk_...)`}
+                            autoComplete="new-password"
+                            value={keyVal}
+                            maxLength={300}
+                            onChange={(event) => updateSecretKey(idx, event.target.value)}
+                            className="rounded-none pl-10 pr-10 font-mono text-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => toggleShowSecret(idx)}
+                            className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground focus:outline-none"
+                            title={showSecrets[idx] ? "Ẩn API Key" : "Hiện API Key"}
+                          >
+                            {showSecrets[idx] ? (
+                              <EyeOff aria-hidden="true" className="size-4" />
+                            ) : (
+                              <Eye aria-hidden="true" className="size-4" />
+                            )}
+                          </button>
+                        </div>
+                        {secretKeys.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeSecretKey(idx)}
+                            className="rounded-none px-3 text-xs text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addSecretKey}
+                    className="rounded-none font-mono text-xs"
                   >
-                    <div className="relative">
-                      <KeyRound
-                        aria-hidden="true"
-                        className="absolute left-3 top-3 size-4 text-muted-foreground"
-                      />
-                      <Input
-                        id="ai-provider-secret"
-                        type="password"
-                        autoComplete="new-password"
-                        value={providerSecret}
-                        minLength={20}
-                        maxLength={500}
-                        onChange={(event) =>
-                          setProviderSecret(event.target.value)
-                        }
-                        className="rounded-none pl-10 font-mono"
-                      />
-                    </div>
-                  </Field>
+                    <Plus className="mr-1 size-3.5" />
+                    Thêm API Key mới
+                  </Button>
+
+                  {joinedSecret.length > 0 && (
+                    <p className="font-mono text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      {`Đã sẵn sàng ${secretKeys.map((k) => k.trim()).filter(Boolean).length} API Key để lưu vào Pool xoay vòng.`}
+                    </p>
+                  )}
+
                   {mappedForm.credentialConfigured &&
                     mappedForm.credentialSuffix && (
                       <p className="font-mono text-[11px] text-muted-foreground">
-                        {`Đã cấu hình · kết thúc bằng ${mappedForm.credentialSuffix}`}
+                        {`Đã cấu hình khóa bảo mật trong CSDL · đuôi ${mappedForm.credentialSuffix}`}
                       </p>
                     )}
                 </div>
@@ -518,28 +611,15 @@ function AiConfigurationPanelForm({
                   Rollback
                 </Button>
               )}
-              {permissions.publish && onPublish && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onPublish}
-                  className="rounded-none border-black dark:border-white"
-                >
-                  <Send aria-hidden="true" />
-                  Phát hành
-                </Button>
-              )}
               {canManage && (
                 <Button
                   type="submit"
                   loading={isSaving}
-                  disabled={
-                    isSaving || !formValid || reason.trim().length < 5
-                  }
-                  className="rounded-none"
+                  disabled={isSaving || !formValid}
+                  className="rounded-none font-bold"
                 >
-                  <Save aria-hidden="true" />
-                  Lưu draft
+                  <Send aria-hidden="true" className="mr-1 size-4" />
+                  Lưu & Phát hành
                 </Button>
               )}
             </div>

@@ -10,6 +10,7 @@ export function toAiConfigForm(apiData = {}) {
     revision: apiData.revision ?? 0,
     configData: draft.configData ?? {},
     providerSecret: "",
+    providerKeys: Array.isArray(credential.keys) ? credential.keys : [],
     credentialConfigured: credential.configured === true,
     credentialSuffix: credential.suffix ?? "",
   };

@@ -48,22 +48,35 @@ export function createAiCredentialService({
       };
     },
 
-    async getProviderSecretMetadata(reference) {
+    async getProviderSecretMetadata(reference, includePlaintext = false) {
       const row = await client.apiKeyManagement.findUnique({
         where: { serviceName: reference },
         select: {
           serviceName: true,
+          apiKey: true,
           keySuffix: true,
           updatedAt: true,
           status: true,
         },
       });
 
+      let keys = [];
+      if (includePlaintext && row?.apiKey && row.status === "active") {
+        try {
+          const decrypted = decrypt(row.apiKey);
+          keys = decrypted
+            .split(/[\n,;]+/)
+            .map((k) => k.trim())
+            .filter(Boolean);
+        } catch {}
+      }
+
       return {
         reference,
         configured: Boolean(row && row.status === "active"),
         suffix: row?.keySuffix ?? null,
         updatedAt: row?.updatedAt ?? null,
+        keys,
       };
     },
 

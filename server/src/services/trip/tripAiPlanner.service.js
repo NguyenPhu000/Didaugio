@@ -28,7 +28,7 @@ export const canUseTripItineraryFallback = (error) =>
 
 const createInvalidConfirmationError = () => {
   const error = new ServiceError(
-    "Lich trinh xac nhan chua dia diem khong hop le",
+    "Lịch trình xác nhận chứa địa điểm không hợp lệ",
     400,
     "AI_INVALID_REQUEST",
   );

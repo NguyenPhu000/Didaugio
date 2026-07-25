@@ -7,7 +7,7 @@ import prisma from "../../config/prismaClient.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
 import { renderConfiguredPrompt } from "../../lib/promptBuilder.js";
-import { createGroqClient } from "./groq.service.js";
+import { createGroqClient, executeGroqCompletionWithPool } from "./groq.service.js";
 import {
   logAiProviderEvent,
   toAiServiceError,
@@ -201,9 +201,9 @@ function buildItineraryPrompt(
   const minifiedClustered = clusteredPlaces.map((cluster, idx) => ({
     dayNumber: idx + 1,
     places: cluster.map((p) => ({
-      i: p.id,
-      n: p.name,
-      c: p.category?.name || "Khác",
+      id: p.id,
+      name: p.name,
+      category: p.category?.name || "Khác",
     })),
   }));
 
@@ -219,13 +219,14 @@ Hãy tạo lịch trình du lịch Cần Thơ chi tiết dựa theo các thông 
 - Ngân sách ước tính: ${budget ? budget + " VNĐ/người" : "Không giới hạn"}
 ${notes ? `- Ghi chú: ${notes}` : ""}
 
-**Danh sách địa điểm ĐÃ PHÂN CỤM THEO TỪNG NGÀY (i = ID, n = Tên, c = Danh mục):**
-${JSON.stringify(minifiedClustered)}
+**Danh sách địa điểm CSDL khả dụng theo từng ngày:**
+${JSON.stringify(minifiedClustered, null, 2)}
 
 **YÊU CẦU NGHIÊM NGẶT:**
 1. Bạn CHỈ ĐƯỢC phép xếp địa điểm của cụm Ngày N vào đúng ngày ("dayNumber": N) trong lịch trình đầu ra. Không được hoán đổi địa điểm giữa các ngày.
-2. Dùng đúng ID ("i") của địa điểm cho trường "placeId" của đầu ra.
-3. Trả về JSON hợp lệ khớp với schema yêu cầu, không giải thích gì thêm.
+2. Dùng đúng giá trị số "id" của địa điểm cho trường "placeId" của đầu ra. TUYỆT ĐỐI KHÔNG TỰ TẠO SỐ ID KHÔNG CÓ TRONG CSDL.
+3. Tuyệt đối không dùng dấu hoa thị (*) hoặc markdown bold (*).
+4. Trả về JSON hợp lệ khớp với schema yêu cầu, không giải thích gì thêm.
 
 **JSON Schema yêu cầu:**
 ${JSON.stringify({
@@ -265,10 +266,16 @@ export async function generateItinerary(
   providerContext = {},
 ) {
   // Phân cụm địa điểm bằng K-Means trước khi gọi AI
-  const totalDays = toPositiveInt(preferences.totalDays, 1);
-  const allowedPlaces = Array.isArray(providerContext.places)
-    ? providerContext.places
-    : [];
+  const totalDays = Math.min(
+    Math.max(toPositiveInt(preferences.totalDays, 1), 1),
+    7,
+  );
+  const allowedPlaces =
+    Array.isArray(providerContext?.places) && providerContext.places.length > 0
+      ? providerContext.places
+      : Array.isArray(places) && places.length > 0
+        ? places
+        : [];
   const clusteredPlaces = kMeansClustering(allowedPlaces, totalDays);
 
   // Caching nâng cao
@@ -309,15 +316,22 @@ export async function generateItinerary(
   let rawText;
   let tokensUsed = null;
   try {
-    const client = createGroqClient(providerOptions);
-    const completion = await client.chat.completions.create({
-      model: providerOptions.model,
-      messages: [{ role: "user", content: prompt }],
-      temperature: Math.min(providerOptions.temperature, 0.3),
-      top_p: providerOptions.topP,
-      max_tokens: providerOptions.maxTokens,
-      response_format: { type: "json_object" },
-    }, { timeout: providerOptions.timeoutMs });
+    const completion = await executeGroqCompletionWithPool(
+      providerOptions,
+      async (client) => {
+        return client.chat.completions.create(
+          {
+            model: providerOptions.model,
+            messages: [{ role: "user", content: prompt }],
+            temperature: Math.min(providerOptions.temperature, 0.3),
+            top_p: providerOptions.topP,
+            max_tokens: providerOptions.maxTokens,
+            response_format: { type: "json_object" },
+          },
+          { timeout: providerOptions.timeoutMs },
+        );
+      },
+    );
     rawText = completion.choices[0]?.message?.content || "";
     tokensUsed = completion.usage?.total_tokens ?? null;
     logAiProviderEvent({
@@ -337,9 +351,15 @@ export async function generateItinerary(
     throw aiError;
   }
 
-  const responseTimeMs = Date.now() - start;
-
-  let parsed = parseAndValidateItineraryOutput(rawText, places);
+  let parsed;
+  try {
+    parsed = parseAndValidateItineraryOutput(rawText, places);
+  } catch (parseError) {
+    console.warn(
+      `[Itinerary AI] Invalid output from provider (${parseError.message}). Using candidate places fallback.`
+    );
+    parsed = buildFallbackItinerary(places, totalDays, preferences);
+  }
 
   // 1. Validate và co kéo thời gian khớp giờ mở cửa thực tế
   parsed.days = validateAndCorrectItinerary(parsed.days, places);

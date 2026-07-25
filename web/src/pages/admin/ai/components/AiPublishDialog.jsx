@@ -25,8 +25,10 @@ export default function AiPublishDialog({
   const [reason, setReason] = useState("");
 
   useEffect(() => {
-    if (!open) setReason("");
-  }, [open]);
+    if (open) {
+      setReason(`Cập nhật nhanh cấu hình AI v${draftVersion ?? ""}`);
+    }
+  }, [open, draftVersion]);
 
   const confirm = (event) => {
     event.preventDefault();

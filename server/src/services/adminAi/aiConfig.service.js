@@ -19,12 +19,13 @@ export const createAiConfigService = ({
       view.draftVersion?.configData?.provider?.secretReference ??
       view.activeVersion?.configData?.provider?.secretReference;
     const providerCredential = secretReference
-      ? await credentials.getProviderSecretMetadata(secretReference)
+      ? await credentials.getProviderSecretMetadata(secretReference, true)
       : {
           reference: null,
           configured: false,
           suffix: null,
           updatedAt: null,
+          keys: [],
         };
     return { ...view, providerCredential };
   },

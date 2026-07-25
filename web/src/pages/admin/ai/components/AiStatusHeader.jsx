@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import {
   CircleAlert,
   CircleCheck,
@@ -11,17 +12,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const STATUS_VIEW = {
   active: {
+    i18nKey: "adminAi.status.active",
     label: "AI đang hoạt động",
     Icon: CircleCheck,
     className: "border-black bg-primary text-black",
   },
   disabled: {
+    i18nKey: "adminAi.status.disabled",
     label: "AI đang tạm dừng",
     Icon: Power,
     className:
       "border-destructive bg-destructive/10 text-destructive dark:border-destructive",
   },
   maintenance: {
+    i18nKey: "adminAi.status.maintenance",
     label: "AI đang bảo trì",
     Icon: Wrench,
     className: "border-foreground bg-muted text-foreground",
@@ -45,6 +49,8 @@ function TechnicalField({ label, value }) {
 }
 
 export default function AiStatusHeader({ data, isLoading, isError }) {
+  const { t } = useTranslation();
+
   if (isLoading) {
     return (
       <Card
@@ -68,12 +74,14 @@ export default function AiStatusHeader({ data, isLoading, isError }) {
 
   const view = isError
     ? {
+        i18nKey: "adminAi.status.error",
         label: "Không đọc được trạng thái AI",
         Icon: CircleAlert,
         className:
           "border-destructive bg-destructive/10 text-destructive dark:border-destructive",
       }
     : STATUS_VIEW[data?.status] ?? {
+        i18nKey: "adminAi.status.unknown",
         label: "Trạng thái AI chưa xác định",
         Icon: CircleHelp,
         className: "border-foreground bg-muted text-foreground",
@@ -89,20 +97,23 @@ export default function AiStatusHeader({ data, isLoading, isError }) {
           className={`w-fit gap-2 rounded-none px-3 py-2 font-mono text-xs uppercase tracking-wide ${view.className}`}
         >
           <StatusIcon aria-hidden="true" className="size-4" />
-          {view.label}
+          {t(view.i18nKey, view.label)}
         </Badge>
         <dl className="grid min-w-0 gap-3 sm:grid-cols-3">
           <TechnicalField
-            label="Provider"
+            label={t("adminAi.technical.provider", "Provider")}
             value={data?.provider ? String(data.provider).toUpperCase() : "—"}
           />
-          <TechnicalField label="Model" value={data?.model || "—"} />
           <TechnicalField
-            label="Phiên bản"
+            label={t("adminAi.technical.model", "Model")}
+            value={data?.model || "—"}
+          />
+          <TechnicalField
+            label={t("adminAi.technical.version", "Phiên bản")}
             value={
               Number.isFinite(data?.version)
                 ? `v${data.version}`
-                : "Chưa phát hành"
+                : t("adminAi.technical.notPublished", "Chưa phát hành")
             }
           />
         </dl>
