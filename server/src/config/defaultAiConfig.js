@@ -12,9 +12,9 @@ export const DEFAULT_AI_CONFIG = Object.freeze({
     voice: "Giới thiệu địa điểm tự nhiên bằng tiếng Việt trong 3-4 câu ngắn. Không dùng emoji.",
   },
   context: {
-    enabledSources: ["coarseLocation", "travelPreferences", "places", "time"],
-    fieldAllowlist: ["currentCity", "travelPreferences", "budget", "partySize", "tripDuration", "places", "timeOfDay"],
-    maxTokens: 1800,
+    enabledSources: ["coarseLocation", "travelPreferences", "places", "time", "sessionMessages"],
+    fieldAllowlist: ["currentCity", "travelPreferences", "budget", "partySize", "tripDuration", "places", "timeOfDay", "messages"],
+    maxTokens: 4000,
     freshnessTtl: 300,
   },
   safety: {

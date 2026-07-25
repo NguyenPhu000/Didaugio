@@ -318,6 +318,40 @@ export function createAiConfigRepository({ client }) {
           data: { status: "bootstrapping" },
         });
         if (claim.count === 0) {
+          if (typeof tx.aiConfig?.findUnique === "function") {
+            const current = await tx.aiConfig.findUnique({
+              where: { id: root.id },
+              select: { activeVersionId: true, activeVersion: true },
+            });
+            if (current?.activeVersionId && current?.activeVersion?.configData) {
+              const cData = current.activeVersion.configData;
+              let updated = false;
+              if (!Array.isArray(cData.context?.enabledSources)) cData.context.enabledSources = [];
+              if (!Array.isArray(cData.context?.fieldAllowlist)) cData.context.fieldAllowlist = [];
+              if (!cData.context.enabledSources.includes("sessionMessages")) {
+                cData.context.enabledSources.push("sessionMessages");
+                updated = true;
+              }
+              if (!cData.context.fieldAllowlist.includes("messages")) {
+                cData.context.fieldAllowlist.push("messages");
+                updated = true;
+              }
+              if (!cData.context.fieldAllowlist.includes("places")) {
+                cData.context.fieldAllowlist.push("places");
+                updated = true;
+              }
+              if ((cData.context.maxTokens || 0) < 4000) {
+                cData.context.maxTokens = 4000;
+                updated = true;
+              }
+              if (updated) {
+                await tx.aiConfigVersion.update({
+                  where: { id: current.activeVersionId },
+                  data: { configData: cData },
+                });
+              }
+            }
+          }
           return { bootstrapped: false, id: root.id };
         }
 
