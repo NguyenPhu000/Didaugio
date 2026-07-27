@@ -30,8 +30,8 @@ import {
   BusinessFilterBar,
 } from "@/components/business/ui";
 import { formatVND } from "@/components/business/dashboardWidgetHelpers";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -41,7 +41,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-} from "@/components/ui/Dialog";
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -49,7 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/Label";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import FileUploader from "@/components/business/FileUploader";

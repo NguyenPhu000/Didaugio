@@ -44,8 +44,8 @@ import {
 } from "@/components/business/DashboardWidgets";
 import { BusinessPageHeader, BusinessFilterBar, BusinessEmptyState } from "@/components/business/ui";
 import { formatDate, formatVND } from "@/components/business/dashboardWidgetHelpers";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -53,7 +53,7 @@ import {
   TabsList,
   TabsTrigger,
   TabsContent,
-} from "@/components/ui/Tabs";
+} from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -61,7 +61,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-} from "@/components/ui/Dialog";
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -70,7 +70,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/Label";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import BulkActionBar from "@/components/business/BulkActionBar";
 import BookingQrScannerDialog from "@/components/business/BookingQrScannerDialog";

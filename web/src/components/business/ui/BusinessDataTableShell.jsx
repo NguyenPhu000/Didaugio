@@ -1,8 +1,8 @@
 import { memo } from "react";
 import { Inbox, AlertTriangle, RefreshCw } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { BusinessEmptyState } from "./BusinessEmptyState";
 

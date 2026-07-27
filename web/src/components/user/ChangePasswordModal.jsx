@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/Dialog";
+} from "@/components/ui/dialog";
 import { Button, Input, Label } from "@/components/ui";
 import { authService } from "@/apis";
 import { useTranslation } from "react-i18next";

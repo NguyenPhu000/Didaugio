@@ -109,7 +109,6 @@ export const useAuthStore = create(
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
       // Skip hydration during SSR

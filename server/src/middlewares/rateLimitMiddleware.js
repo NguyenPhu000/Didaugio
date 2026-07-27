@@ -132,7 +132,7 @@ export const authLimiter = createLimiter({
   devDefault: 1000,
   prodDefault: 10,
   windowMs: 15 * 60 * 1000,
-  message: "Qua nhieu yeu cau dang nhap, vui long thu lai sau 15 phut",
+  message: "Quá nhiều yêu cầu đăng nhập, vui lòng thử lại sau 15 phút",
 });
 
 export const refreshLimiter = createLimiter({
@@ -140,7 +140,7 @@ export const refreshLimiter = createLimiter({
   devDefault: 120,
   prodDefault: 30,
   windowMs: 15 * 60 * 1000,
-  message: "Qua nhieu yeu cau lam moi phien, vui long thu lai sau 15 phut",
+  message: "Quá nhiều yêu cầu làm mới phiên, vui lòng thử lại sau 15 phút",
 });
 
 export const recoveryLimiter = createLimiter({
@@ -148,21 +148,21 @@ export const recoveryLimiter = createLimiter({
   devDefault: 120,
   prodDefault: 10,
   windowMs: 15 * 60 * 1000,
-  message: "Qua nhieu yeu cau khoi phuc tai khoan, vui long thu lai sau",
+  message: "Quá nhiều yêu cầu khôi phục tài khoản, vui lòng thử lại sau",
 });
 
 export const apiLimiter = createLimiter({
   namespace: "api",
   devDefault: 5000,
   prodDefault: 100,
-  message: "Qua nhieu yeu cau, vui long thu lai sau",
+  message: "Quá nhiều yêu cầu, vui lòng thử lại sau",
 });
 
 export const businessApiLimiter = createLimiter({
   namespace: "business",
   devDefault: 200,
   prodDefault: 200,
-  message: "Qua nhieu yeu cau, vui long thu lai sau",
+  message: "Quá nhiều yêu cầu, vui lòng thử lại sau",
 });
 
 export const reviewCreateLimiter = createLimiter({
@@ -170,35 +170,35 @@ export const reviewCreateLimiter = createLimiter({
   devDefault: 60,
   prodDefault: 10,
   windowMs: 10 * 60 * 1000,
-  message: "Qua nhieu yeu cau gui danh gia, vui long thu lai sau",
+  message: "Quá nhiều yêu cầu gửi đánh giá, vui lòng thử lại sau",
 });
 
 export const routingLimiter = createLimiter({
   namespace: "routing",
   devDefault: 1200,
   prodDefault: 180,
-  message: "Qua nhieu yeu cau dinh tuyen, vui long thu lai sau",
+  message: "Quá nhiều yêu cầu định tuyến, vui lòng thử lại sau",
 });
 
 export const navigationLimiter = createLimiter({
   namespace: "navigation",
   devDefault: 360,
   prodDefault: 90,
-  message: "Qua nhieu yeu cau navigation, vui long thu lai sau",
+  message: "Quá nhiều yêu cầu điều hướng, vui lòng thử lại sau",
 });
 
 export const navigationTelemetryLimiter = createLimiter({
   namespace: "navigation-telemetry",
   devDefault: 1200,
   prodDefault: 240,
-  message: "Qua nhieu yeu cau telemetry dieu huong, vui long thu lai sau",
+  message: "Quá nhiều yêu cầu telemetry điều hướng, vui lòng thử lại sau",
 });
 
 export const changePasswordLimiter = createLimiter({
   devDefault: 120,
   prodDefault: 5,
   windowMs: 15 * 60 * 1000,
-  message: "Qua nhieu yeu cau doi mat khau, vui long thu lai sau 15 phut",
+  message: "Quá nhiều yêu cầu đổi mật khẩu, vui lòng thử lại sau 15 phút",
 });
 
 export const aiUserLimiter = createLimiter({
@@ -206,7 +206,7 @@ export const aiUserLimiter = createLimiter({
   namespace: "ai-user",
   devDefault: 1000,
   prodDefault: 300,
-  message: "Qua nhieu yeu cau tro ly AI, vui long thu lai sau",
+  message: "Quá nhiều yêu cầu trợ lý AI, vui lòng thử lại sau",
   keyGenerator: buildAiRateLimitKey,
 });
 

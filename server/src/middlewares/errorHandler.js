@@ -4,9 +4,15 @@ import multer from "multer";
 import logger from "../config/logger.js";
 
 const errorHandler = (err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
+  const parsedStatusCode = Number(err.statusCode);
+  const statusCode =
+    Number.isInteger(parsedStatusCode) &&
+    parsedStatusCode >= 100 &&
+    parsedStatusCode <= 599
+      ? parsedStatusCode
+      : 500;
   const isServerError = statusCode >= 500;
-  const errorCode = err.errorCode;
+  const errorCode = typeof err.errorCode === "string" ? err.errorCode : null;
 
   if (isServerError) {
     logger.error(err.stack || err.message);

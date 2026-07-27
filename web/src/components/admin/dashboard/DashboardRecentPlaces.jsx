@@ -1,7 +1,5 @@
+import { MapPin, ExternalLink, Star } from "lucide-react";
 import { Link } from "react-router-dom";
-import MapPin from "lucide-react/dist/esm/icons/map-pin";
-import ExternalLink from "lucide-react/dist/esm/icons/external-link";
-import Star from "lucide-react/dist/esm/icons/star";
 import { ADMIN_ROUTES } from "@/constants/routes";
 import { useTranslation } from "react-i18next";
 import { formatTableSerial } from "@/utils/tableSerial";

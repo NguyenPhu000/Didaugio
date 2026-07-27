@@ -11,8 +11,8 @@ import {
 } from "@/modules/map";
 import DistrictLabels from "@/modules/map/components/DistrictLabels";
 import WardLabels from "@/modules/map/components/WardLabels";
-import PlaceCard from "@/pages/admin/map/PlaceCard";
-import FilterPanel from "@/pages/admin/map/FilterPanel";
+import PlaceCard from "@/components/admin/map/PlaceCard";
+import FilterPanel from "@/components/admin/map/FilterPanel";
 import {
   Search,
   MapPin,
@@ -37,9 +37,9 @@ import {
 } from "lucide-react";
 import { getMyPlaces } from "@/apis/businessApi";
 import { BUSINESS_ROUTES } from "@/constants/routes";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/Input";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";

@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export function StatCard({ title, value, icon: Icon, tone = "default", subtitle }) {

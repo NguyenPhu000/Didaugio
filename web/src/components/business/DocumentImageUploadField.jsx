@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Label } from "@/components/ui/Label";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 const DOCUMENT_IMAGE_MAX_BYTES = 10 * 1024 * 1024;

@@ -1,17 +1,6 @@
+import { FileText, RefreshCw, Eye, CheckCircle, Edit, Trash2, Shield, Globe, Monitor, Calendar, X, Download } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import FileText from "lucide-react/dist/esm/icons/file-text";
-import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
-import Eye from "lucide-react/dist/esm/icons/eye";
-import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
-import Edit from "lucide-react/dist/esm/icons/edit";
-import Trash2 from "lucide-react/dist/esm/icons/trash-2";
-import Shield from "lucide-react/dist/esm/icons/shield";
-import Globe from "lucide-react/dist/esm/icons/globe";
-import Monitor from "lucide-react/dist/esm/icons/monitor";
-import Calendar from "lucide-react/dist/esm/icons/calendar";
-import X from "lucide-react/dist/esm/icons/x";
-import Download from "lucide-react/dist/esm/icons/download";
 import { toast } from "sonner";
 import {
   Card,

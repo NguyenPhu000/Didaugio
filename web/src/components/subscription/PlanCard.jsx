@@ -1,7 +1,7 @@
 import { Check, Crown, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/Card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatVND } from "@/components/business/dashboardWidgetHelpers";

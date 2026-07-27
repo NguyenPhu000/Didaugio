@@ -91,7 +91,7 @@ export const updateBanner = async (bannerId, data) => {
   });
 
   if (!existing) {
-    throw new ServiceError(ERROR_CODES.NOT_FOUND, "Không tìm thấy banner", 404);
+    throw new ServiceError("Không tìm thấy banner", 404, ERROR_CODES.NOT_FOUND);
   }
 
   const updateData = {};
@@ -192,7 +192,7 @@ export const deleteBanner = async (bannerId) => {
   });
 
   if (!banner) {
-    throw new ServiceError(ERROR_CODES.NOT_FOUND, "Không tìm thấy banner", 404);
+    throw new ServiceError("Không tìm thấy banner", 404, ERROR_CODES.NOT_FOUND);
   }
 
   // Dọn dẹp ảnh trên Cloudinary

@@ -15,12 +15,12 @@ import {
   Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/Separator";
+import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/Label";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -43,7 +43,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/Dialog";
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { formatVND, formatDate, formatDateTime } from "@/components/business/dashboardWidgetHelpers";
 import { BUSINESS_ROUTES } from "@/constants/routes";
@@ -55,7 +55,7 @@ import {
 } from "@/hooks/queries/useSubscriptionQueries";
 import PlanBadge from "@/components/subscription/PlanBadge";
 import GracePeriodBanner from "@/components/subscription/GracePeriodBanner";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import PricingPage from "./PricingPage";
 
 const STATUS_LABELS = {

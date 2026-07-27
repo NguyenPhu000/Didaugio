@@ -36,7 +36,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-} from "@/components/ui/Dialog";
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -44,11 +44,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/Label";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -64,21 +64,21 @@ import { useAuthStore } from "@/stores/authStore";
 import {
   TripContentCard as SampleTripContentCard,
   TripEditModal as SampleTripEditModal,
-} from "./cms/sample-trips";
-import { compressBannerImage } from "./cms/banners/imageCompression";
-import { getContentTypes } from "./cms/contentTypes";
-import { getMockData } from "./cms/mockData";
-import { EventEditModal } from "./cms/events/EventEditModal";
-import { EventTabContent } from "./cms/events/EventTabContent";
-import { ContentCard } from "./cms/content/ContentCard";
-import { EditModal } from "./cms/content/EditModal";
-import { ImageUploadArea } from "./cms/shared/ImageUploadArea";
-import { StatCard } from "./cms/shared/StatCard";
-import { StatusBadge } from "./cms/shared/StatusBadge";
-import { CmsFilterBar } from "./cms/dashboard/CmsFilterBar";
-import { CmsPageHeader } from "./cms/dashboard/CmsPageHeader";
-import { CmsTypeTabs } from "./cms/dashboard/CmsTypeTabs";
-import { CmsContentLayout } from "./cms/dashboard/CmsContentLayout";
+} from "@/components/admin/cms/sample-trips";
+import { compressBannerImage } from "@/components/admin/cms/banners/imageCompression";
+import { getContentTypes } from "@/components/admin/cms/contentTypes";
+import { getMockData } from "@/components/admin/cms/mockData";
+import { EventEditModal } from "@/components/admin/cms/events/EventEditModal";
+import { EventTabContent } from "@/components/admin/cms/events/EventTabContent";
+import { ContentCard } from "@/components/admin/cms/content/ContentCard";
+import { EditModal } from "@/components/admin/cms/content/EditModal";
+import { ImageUploadArea } from "@/components/admin/cms/shared/ImageUploadArea";
+import { StatCard } from "@/components/admin/cms/shared/StatCard";
+import { StatusBadge } from "@/components/admin/cms/shared/StatusBadge";
+import { CmsFilterBar } from "@/components/admin/cms/dashboard/CmsFilterBar";
+import { CmsPageHeader } from "@/components/admin/cms/dashboard/CmsPageHeader";
+import { CmsTypeTabs } from "@/components/admin/cms/dashboard/CmsTypeTabs";
+import { CmsContentLayout } from "@/components/admin/cms/dashboard/CmsContentLayout";
 
 // ─── Image Compression ───────────────────────────────────────────────────────
 

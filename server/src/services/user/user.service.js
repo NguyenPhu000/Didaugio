@@ -18,6 +18,7 @@ import {
 import ServiceError from "../../utils/serviceError.js";
 import { generateUniqueUsername } from "../../utils/username.js";
 import { invalidateUserCache } from "../../utils/permissionCache.js";
+import { invalidateUserStatusCache } from "../../utils/userStatusCache.js";
 
 import { isOnline as checkOnlineStatus } from "../../utils/onlineManager.js";
 
@@ -451,6 +452,8 @@ export const deleteUser = async (id) => {
     },
   });
 
+  invalidateUserStatusCache(userId);
+
   return deletedUser;
 };
 
@@ -579,6 +582,7 @@ export const updateUserRole = async (userId, newRoleId, currentUser) => {
   });
 
   invalidateUserCache(validUserId);
+  invalidateUserStatusCache(validUserId);
 
   return updatedUser;
 };

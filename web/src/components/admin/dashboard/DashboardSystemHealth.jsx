@@ -1,9 +1,5 @@
+import { Cpu, Database, HardDrive, Zap, Users } from "lucide-react";
 import { useState } from "react";
-import Cpu from "lucide-react/dist/esm/icons/cpu";
-import Database from "lucide-react/dist/esm/icons/database";
-import HardDrive from "lucide-react/dist/esm/icons/hard-drive";
-import Zap from "lucide-react/dist/esm/icons/zap";
-import Users from "lucide-react/dist/esm/icons/users";
 import { useTranslation } from "react-i18next";
 
 const barColor = (v) => {

@@ -25,7 +25,7 @@ import { getMyPlaces } from "@/apis/businessApi";
 import { blockedDateApi } from "@/apis/blockedDateApi";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { BOOKING_STATUS } from "@/constants/constants";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,

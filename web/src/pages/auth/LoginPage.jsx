@@ -1,15 +1,10 @@
+import { User, Lock, ArrowRight, Shield, Activity, BriefcaseBusiness } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import User from "lucide-react/dist/esm/icons/user";
-import Lock from "lucide-react/dist/esm/icons/lock";
-import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
-import Shield from "lucide-react/dist/esm/icons/shield";
-import Activity from "lucide-react/dist/esm/icons/activity";
-import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
 import {
   Button,
   Input,

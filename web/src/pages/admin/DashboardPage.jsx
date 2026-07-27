@@ -17,7 +17,7 @@ import ServerHealthCard from "@/components/admin/ServerHealthCard";
 import RecentErrorsCard from "@/components/admin/RecentErrorsCard";
 
 // Legacy sub-components
-import { DashboardDataStatus, DashboardCategories } from "./dashboard";
+import { DashboardDataStatus, DashboardCategories } from "@/components/admin/dashboard";
 
 const DashboardPage = () => {
   const { user } = useAuthStore();

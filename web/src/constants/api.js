@@ -196,6 +196,7 @@ api.interceptors.response.use(
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
+        failedQueue = [];
       }
     }
 

@@ -1,16 +1,10 @@
+import { Mail, ArrowLeft, Send, CheckCircle, Shield, KeyRound, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import Mail from "lucide-react/dist/esm/icons/mail";
-import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
-import Send from "lucide-react/dist/esm/icons/send";
-import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
-import Shield from "lucide-react/dist/esm/icons/shield";
-import KeyRound from "lucide-react/dist/esm/icons/key-round";
-import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import {
   Button,
   Input,
@@ -262,7 +256,9 @@ const ForgotPasswordPage = () => {
 
                   <div className="bg-[#F3E600] border-2 border-black p-4">
                     <AlertCircle className="h-8 w-8 mx-auto mb-3" />
-                    <p className="text-xs font-mono uppercase leading-relaxed" dangerouslySetInnerHTML={{ __html: t("auth.forgotPassword.emailSentNote", { email }) }} />
+                    <p className="text-xs font-mono uppercase leading-relaxed text-center">
+                      {t("auth.forgotPassword.emailSentNote", { email })}
+                    </p>
                   </div>
 
                   <div className="space-y-2 text-xs text-gray-600 uppercase font-mono bg-gray-50 border border-gray-200 p-4">

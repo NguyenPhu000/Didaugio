@@ -15,7 +15,7 @@ import {
   ChevronRight,
   ChevronDown,
 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/Dialog";
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,7 +35,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useCategoryTree, useDeleteCategory } from "@/hooks/queries/useCategoryQueries";
 import CategoryFormDialog from "@/components/category/CategoryFormDialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MdiCategoryIcon } from "@/components/category/MdiCategoryIcon";
 import TimStatsCard from "@/components/admin/TimStatsCard";
 import { useTranslation } from "react-i18next";

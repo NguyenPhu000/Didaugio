@@ -14,6 +14,7 @@ const { persist, createJSONStorage } = require("zustand/middleware");
 
 function createInitialState() {
   return {
+    // TODO (Tech Debt): Refactor to Option B — Merge conversation memory into single source of truth with aiContextStore
     messages: [],
     draftPlan: null,
     selectedPlaceIds: [],

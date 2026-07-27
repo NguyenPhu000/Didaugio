@@ -9,8 +9,8 @@ import {
   Settings2,
   ShieldCheck,
 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PERMISSIONS } from "@/constants/permissions";
 import {
   useAdminAiConfig,
@@ -22,16 +22,16 @@ import {
   useUpdateAiKillSwitch,
 } from "@/hooks/queries/useAdminAiQueries";
 import { usePermission } from "@/hooks/usePermission";
-import AiConfigurationPanel from "./components/AiConfigurationPanel";
-import AiEmptyState from "./components/AiEmptyState";
-import AiKillSwitchDialog from "./components/AiKillSwitchDialog";
-import AiLogsPanel from "./components/AiLogsPanel";
-import AiOverviewPanel from "./components/AiOverviewPanel";
-import AiPublishDialog from "./components/AiPublishDialog";
-import AiRollbackDialog from "./components/AiRollbackDialog";
-import AiSafetyPanel from "./components/AiSafetyPanel";
-import AiStatusHeader from "./components/AiStatusHeader";
-import AiTestLabPanel from "./components/AiTestLabPanel";
+import AiConfigurationPanel from "@/components/admin/ai/AiConfigurationPanel";
+import AiEmptyState from "@/components/admin/ai/AiEmptyState";
+import AiKillSwitchDialog from "@/components/admin/ai/AiKillSwitchDialog";
+import AiLogsPanel from "@/components/admin/ai/AiLogsPanel";
+import AiOverviewPanel from "@/components/admin/ai/AiOverviewPanel";
+import AiPublishDialog from "@/components/admin/ai/AiPublishDialog";
+import AiRollbackDialog from "@/components/admin/ai/AiRollbackDialog";
+import AiSafetyPanel from "@/components/admin/ai/AiSafetyPanel";
+import AiStatusHeader from "@/components/admin/ai/AiStatusHeader";
+import AiTestLabPanel from "@/components/admin/ai/AiTestLabPanel";
 
 const TAB_DEFINITIONS = [
   {
@@ -446,7 +446,7 @@ function AdminAiCockpit({ hasPermission }) {
   const overview = unwrapResponse(overviewQuery.data);
 
   const canAccess = (tab) =>
-    tab.permissions.every((permission) => hasPermission(permission));
+    tab.permissions.some((permission) => hasPermission(permission));
 
   const firstAvailableTab =
     TAB_DEFINITIONS.find((tab) => canAccess(tab))?.value || "overview";

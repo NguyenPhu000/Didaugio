@@ -20,8 +20,8 @@ import {
   moderateAdminReview,
   moderateAdminReviewReply,
 } from "@/apis/adminReviewApi";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Doughnut, Bar } from "react-chartjs-2";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import "@/lib/chartSetup";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { cn } from "@/lib/utils";

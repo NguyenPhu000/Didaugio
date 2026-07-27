@@ -1,4 +1,4 @@
-import SettingsPageContent from "./settings/SettingsPageContent";
+import SettingsPageContent from "@/components/admin/settings/SettingsPageContent";
 
 const SettingsPage = () => {
   return <SettingsPageContent />;

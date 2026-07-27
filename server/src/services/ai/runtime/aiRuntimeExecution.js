@@ -8,6 +8,7 @@ import {
 } from "../../adminAi/aiLog.service.js";
 import { resolveProviderSecret } from "../../adminAi/aiCredential.service.js";
 import { toAiServiceError } from "../aiProviderPolicy.js";
+import { parseApiKeyPool } from "../groq.service.js";
 import { buildAllowedContext } from "./aiContextPolicy.js";
 import {
   getActiveAiRuntime,
@@ -123,8 +124,11 @@ async function executeGroqConfigTest({
   secret,
 }) {
   const startedAt = Date.now();
+  const keys = parseApiKeyPool(secret);
+  const effectiveKey = keys[0] || secret;
+
   const client = new Groq({
-    apiKey: secret,
+    apiKey: effectiveKey,
     baseURL: configData.provider.baseUrl,
   });
   const completion = await client.chat.completions.create(

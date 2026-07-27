@@ -1,5 +1,5 @@
+import { Filter } from "lucide-react";
 import { Link } from "react-router-dom";
-import Filter from "lucide-react/dist/esm/icons/filter";
 import { ADMIN_ROUTES } from "@/constants/routes";
 import { useTranslation } from "react-i18next";
 import { formatTableSerial } from "@/utils/tableSerial";

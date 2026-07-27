@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { Search, X } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { Card, CardContent } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function CmsFilterBar({ activeTab, search, selectedType, statusFilter, onSearchChange, onStatusChange, onClear }) {

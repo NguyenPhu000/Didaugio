@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowLeft, Check } from "lucide-react";
 import usePlaceStore from "@/stores/placeStore";
 import { usePlaceDetail } from "@/hooks/queries/usePlaceQueries";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import StepBasicInfo from "@/components/place/StepBasicInfo";
 import StepDetails from "@/components/place/StepDetails";

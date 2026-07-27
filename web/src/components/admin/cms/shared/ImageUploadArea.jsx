@@ -1,7 +1,7 @@
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { Upload } from "lucide-react";
-import { Label } from "@/components/ui/Label";
+import { Label } from "@/components/ui/label";
 
 export function ImageUploadArea({ value, onChange, label, hint }) {
   const { t } = useTranslation();

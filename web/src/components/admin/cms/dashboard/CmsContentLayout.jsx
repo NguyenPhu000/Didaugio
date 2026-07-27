@@ -1,7 +1,7 @@
 import { Bar, Doughnut } from "react-chartjs-2";
 import { Bell, Calendar, CheckCircle, Compass, Eye, FileText, Globe, Image as ImageIcon, RefreshCw, Star, Zap, Plus } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EventEditModal } from "../events/EventEditModal";
 import { EventTabContent } from "../events/EventTabContent";

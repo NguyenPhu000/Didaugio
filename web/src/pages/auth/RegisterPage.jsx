@@ -1,3 +1,4 @@
+import { Eye, EyeOff, ArrowLeft, User, AtSign, Mail, Lock, Shield, UserPlus } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -6,15 +7,6 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
-import Eye from "lucide-react/dist/esm/icons/eye";
-import EyeOff from "lucide-react/dist/esm/icons/eye-off";
-import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
-import User from "lucide-react/dist/esm/icons/user";
-import AtSign from "lucide-react/dist/esm/icons/at-sign";
-import Mail from "lucide-react/dist/esm/icons/mail";
-import Lock from "lucide-react/dist/esm/icons/lock";
-import Shield from "lucide-react/dist/esm/icons/shield";
-import UserPlus from "lucide-react/dist/esm/icons/user-plus";
 import {
   Button,
   Input,

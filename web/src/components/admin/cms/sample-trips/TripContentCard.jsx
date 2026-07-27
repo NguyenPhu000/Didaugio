@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Calendar, Compass, Edit, Link, MapPin, RefreshCw, Route, Trash2, Users } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { Card, CardContent } from "@/components/ui/Card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getPlaceImage } from "./sampleTripUtils";
 

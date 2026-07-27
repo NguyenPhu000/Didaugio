@@ -14,7 +14,8 @@ import { initSocketIO } from "./config/socketIO.js";
 import { validateEnv } from "./config/validateEnv.js";
 import { registerApiRoutes, registerRateLimiters } from "./routes/index.js";
 import { registerHealthRoutes } from "./health/health.routes.js";
-import { getRedisClient } from "./config/redisClient.js";
+import { getRedisClient, closeRedisClient } from "./config/redisClient.js";
+import { requestIdMiddleware } from "./middlewares/requestContext.js";
 import { registerMetrics } from "./observability/metrics.js";
 import { startPendingBookingExpireScheduler } from "./schedulers/pendingBookingExpire.scheduler.js";
 import { startTripAutoCompleteScheduler } from "./schedulers/tripAutoComplete.scheduler.js";
@@ -33,9 +34,9 @@ const pkg = require("../package.json");
 
 dotenv.config({ override: true });
 validateEnv();
-await ensureDefaultAiConfig();
 
 const app = express();
+app.use(requestIdMiddleware);
 const PORT = process.env.PORT || 8080;
 const BODY_LIMIT = process.env.BODY_LIMIT || "2mb";
 const RAW_BODY_CAPTURE_PATHS = [
@@ -52,9 +53,8 @@ const configuredOrigins = (process.env.CORS_ORIGINS || "")
 const isProduction = process.env.NODE_ENV === "production";
 const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "";
 
-// Trust first proxy hop (nginx, load balancer, cloud platform, ngrok)
-// "loopback" = chỉ trust localhost (127.0.0.1, ::1), đủ cho dev + ngrok
-app.set("trust proxy", "loopback");
+// Trust proxy configuration
+app.set("trust proxy", process.env.TRUST_PROXY === "true" ? 1 : (process.env.TRUST_PROXY || "loopback"));
 
 const devDefaultOrigins = [
   "http://localhost:3000",
@@ -232,11 +232,54 @@ const schedulerLeader = createSchedulerLeader({
   ],
 });
 
+let isBootCompleted = false;
+
+ensureDefaultAiConfig()
+  .then(() => {
+    isBootCompleted = true;
+    logger.info("[boot] Default AI configuration initialized successfully");
+  })
+  .catch((err) => {
+    isBootCompleted = true;
+    logger.warn("[boot] Default AI configuration failed, using fallback", { error: err.message });
+  });
+
 httpServer.listen(PORT, () => {
   logger.info(`Server is running on http://localhost:${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
   schedulerLeader.start();
 });
 
+const gracefulShutdown = async (signal) => {
+  logger.info(`[Shutdown] Received signal ${signal}. Starting graceful shutdown...`);
+
+  // 1. Safety timeout: if requests do not finish within 10s, force exit. Unref so timer does not block event loop.
+  setTimeout(() => {
+    logger.error("[Shutdown] Timeout of 10s exceeded, forcing process exit.");
+    process.exit(1);
+  }, 10000).unref();
+
+  // 2. Stop accepting new HTTP connections
+  httpServer.close(async (err) => {
+    if (err) logger.error("[Shutdown] Error closing HTTP server", { error: err.message });
+
+    try {
+      logger.info("[Shutdown] HTTP server closed. Stopping background schedulers & closing DB connections...");
+      await schedulerLeader.stop();
+      await prisma.$disconnect();
+      await closeRedisClient();
+
+      logger.info("[Shutdown] Graceful shutdown completed cleanly. Process exiting (0).");
+      process.exit(0);
+    } catch (shutdownErr) {
+      logger.error("[Shutdown] Error during cleanup", { error: shutdownErr.message });
+      process.exit(1);
+    }
+  });
+};
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+export { io, isBootCompleted };
 export default app;
-export { io };

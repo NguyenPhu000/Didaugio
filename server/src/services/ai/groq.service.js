@@ -3,6 +3,7 @@
  * Uses the official Groq SDK.
  */
 import Groq from "groq-sdk";
+import logger from "../../config/logger.js";
 import { resolveProviderSecret } from "../adminAi/aiCredential.service.js";
 import { renderConfiguredPrompt } from "../../lib/promptBuilder.js";
 import {
@@ -75,7 +76,7 @@ export async function executeGroqCompletionWithPool(providerOptions, executionCa
         aiError.statusCode === 429 ||
         error?.status === 429;
       if (isQuotaOrRateLimit && i < keys.length - 1) {
-        console.info(
+        logger.info(
           `[Groq Key Pool] Key #${i + 1} hit rate limit (${aiError.code}). Rotating to Key #${i + 2}...`
         );
         continue;

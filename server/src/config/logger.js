@@ -1,9 +1,12 @@
 import winston from "winston";
+import { getRequestId } from "../middlewares/requestContext.js";
 
 const { combine, timestamp, printf, colorize, errors } = winston.format;
 
 const logFormat = printf(({ level, message, timestamp, stack }) => {
-  return `${timestamp} [${level}]: ${stack || message}`;
+  const reqId = getRequestId();
+  const contextPrefix = reqId ? `[${reqId}] ` : "";
+  return `${timestamp} ${contextPrefix}[${level}]: ${stack || message}`;
 });
 
 const transports = [

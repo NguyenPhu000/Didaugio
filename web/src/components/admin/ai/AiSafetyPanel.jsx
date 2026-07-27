@@ -8,13 +8,13 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/Label";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { toAiConfigForm, toAiDraftPayload } from "../adminAiForm";
-import { isValidAiConfigSnapshot } from "../adminAiValidation";
+import { toAiConfigForm, toAiDraftPayload } from "@/pages/admin/ai/adminAiForm";
+import { isValidAiConfigSnapshot } from "@/pages/admin/ai/adminAiValidation";
 
 function collapseWhitespace(value) {
   let output = "";

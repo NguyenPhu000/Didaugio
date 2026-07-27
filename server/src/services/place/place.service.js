@@ -1110,17 +1110,17 @@ export const approvePlace = async (id, userId) => {
 
   if (!existing) {
     throw new ServiceError(
-      ERROR_CODES.NOT_FOUND,
       "Địa điểm không tồn tại",
       404,
+      ERROR_CODES.NOT_FOUND,
     );
   }
 
   if (existing.status === PLACE_STATUS.APPROVED) {
     throw new ServiceError(
-      ERROR_CODES.INVALID_INPUT,
       "Địa điểm đã được duyệt trước đó",
       400,
+      ERROR_CODES.INVALID_INPUT,
     );
   }
 

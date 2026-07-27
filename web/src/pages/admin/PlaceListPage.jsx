@@ -126,6 +126,8 @@ const PlaceListPage = ({
   const [viewBusinessId, setViewBusinessId] = useState(null);
   const [viewMode, setViewMode] = useState("grid"); // grid | list
   const searchDebounceRef = useRef(null);
+  // localSearch: controlled input value updated immediately (no debounce)
+  const [localSearch, setLocalSearch] = useState(searchParams.get("search") || "");
   const [moderationDialog, setModerationDialog] = useState({
     open: false,
     place: null,
@@ -196,9 +198,10 @@ const PlaceListPage = ({
 
   const handleSearch = (e) => {
     const value = e.target.value;
-    if (searchDebounceRef.current) {
-      clearTimeout(searchDebounceRef.current);
-    }
+    // Update input display immediately — no lag
+    setLocalSearch(value);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    // Only trigger API call after debounce
     searchDebounceRef.current = setTimeout(() => {
       const newFilters = { ...filters, search: value, page: 1 };
       setFilters(newFilters);
@@ -206,12 +209,18 @@ const PlaceListPage = ({
     }, 350);
   };
 
+  const handleClearSearch = () => {
+    setLocalSearch("");
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    const newFilters = { ...filters, search: "", page: 1 };
+    setFilters(newFilters);
+    updateURL(newFilters);
+  };
+
   const onSearchKey = (e) => {
     if (e.key === "Enter") {
-      if (searchDebounceRef.current) {
-        clearTimeout(searchDebounceRef.current);
-      }
-      const newFilters = { ...filters, search: e.target.value, page: 1 };
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      const newFilters = { ...filters, search: localSearch, page: 1 };
       setFilters(newFilters);
       updateURL(newFilters);
     }
@@ -488,17 +497,27 @@ const PlaceListPage = ({
         {/* Filter Bar */}
         <div className="bg-white border border-black p-4 flex flex-col md:flex-row gap-4 shadow-sm">
           {/* Search */}
-          <div className="flex-1 flex shadow-sm">
-            <div className="h-10 w-10 bg-black flex items-center justify-center text-white">
+          <div className="flex-1 flex shadow-sm relative">
+            <div className="h-10 w-10 bg-black flex items-center justify-center text-white shrink-0">
               <Search className="h-4 w-4" />
             </div>
             <input
               placeholder={t("places.searchPlaceholder")}
-              value={filters.search}
+              value={localSearch}
               onChange={handleSearch}
               onKeyDown={onSearchKey}
-              className="flex-1 h-10 px-4 border-y border-r border-black font-mono text-sm uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400"
+              className="flex-1 h-10 px-4 pr-10 border-y border-r border-black font-mono text-sm uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400"
             />
+            {localSearch && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors"
+                aria-label="Xóa tìm kiếm"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
           {/* Filters */}

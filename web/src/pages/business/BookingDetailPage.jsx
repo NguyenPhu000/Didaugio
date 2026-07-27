@@ -22,7 +22,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -31,8 +31,8 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-} from "@/components/ui/Dialog";
-import { Label } from "@/components/ui/Label";
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import * as bookingApi from "@/apis/bookingService";
 import { BUSINESS_ROUTES } from "@/constants/routes";

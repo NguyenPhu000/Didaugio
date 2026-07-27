@@ -23,17 +23,19 @@ const ResendVerificationPage = lazy(() => import("@/pages/auth/ResendVerificatio
 const CheckEmailPage = lazy(() => import("@/pages/auth/CheckEmailPage"));
 const StaffInvitePage = lazy(() => import("@/pages/auth/StaffInvitePage"));
 
+// Shared pages - lazy loaded
+const ProfilePage = lazy(() => import("@/pages/shared/ProfilePage"));
+const NotificationsPage = lazy(() => import("@/pages/shared/NotificationsPage"));
+const NotFoundPage = lazy(() => import("@/pages/shared/NotFoundPage"));
+
 // Admin pages - lazy loaded
-const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
-const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
-const NotificationsPage = lazy(() => import("@/pages/NotificationsPage"));
+const DashboardPage = lazy(() => import("@/pages/admin/DashboardPage"));
 const SettingsPage = lazy(() => import("@/pages/admin/SettingsPage"));
-const UserManagePage = lazy(() => import("@/pages/UserManagePage"));
-const EmailVerificationPage = lazy(() => import("@/pages/EmailVerificationPage"));
-const PasswordResetPage = lazy(() => import("@/pages/PasswordResetPage"));
-const AuditLogsPage = lazy(() => import("@/pages/AuditLogsPage"));
-const LoginHistoryPage = lazy(() => import("@/pages/LoginHistoryPage"));
-const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
+const UserManagePage = lazy(() => import("@/pages/admin/UserManagePage"));
+const EmailVerificationPage = lazy(() => import("@/pages/admin/EmailVerificationPage"));
+const PasswordResetPage = lazy(() => import("@/pages/admin/PasswordResetPage"));
+const AuditLogsPage = lazy(() => import("@/pages/admin/AuditLogsPage"));
+const LoginHistoryPage = lazy(() => import("@/pages/admin/LoginHistoryPage"));
 const PlaceWizardPage = lazy(() => import("@/pages/admin/PlaceWizardPage"));
 const PlaceListPage = lazy(() => import("@/pages/admin/PlaceListPage"));
 const PlacePendingPage = lazy(() => import("@/pages/admin/PlacePendingPage"));
@@ -51,8 +53,8 @@ const AdminSubscriptionPage = lazy(() => import("@/pages/admin/AdminSubscription
 const AdminPlanManagementPage = lazy(() => import("@/pages/admin/AdminPlanManagementPage"));
 const AdminAnalyticsPage = lazy(() => import("@/pages/admin/AdminAnalyticsPage"));
 const CMSContentPage = lazy(() => import("@/pages/admin/CMSContentPage"));
-const RoleManagePage = lazy(() => import("@/pages/RoleManagePage"));
-const PermissionManagePage = lazy(() => import("@/pages/PermissionManagePage"));
+const RoleManagePage = lazy(() => import("@/pages/admin/RoleManagePage"));
+const PermissionManagePage = lazy(() => import("@/pages/admin/PermissionManagePage"));
 const AdminAiPage = lazy(() => import("@/pages/admin/ai/AdminAiPage"));
 
 // Business pages - lazy loaded
@@ -115,10 +117,19 @@ const dashboardRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
 const placeRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
 const superAdminOnly = [ROLES.SUPER_ADMIN];
 
+import GlobalErrorBoundary from "@/components/common/GlobalErrorBoundary";
+
 /** Wrap page in ProtectedRoute + AdminLayout */
 const ProtectedAdmin = ({ children, roles }) => (
   <ProtectedRoute roles={roles}>
-    <AdminLayout>{children}</AdminLayout>
+    <AdminLayout>
+      <GlobalErrorBoundary
+        title="Lỗi phân hệ Quản trị (Admin)"
+        description="Phân hệ Admin gặp sự cố không mong muốn. Sự cố này đã được cách ly và không ảnh hưởng tới các phân hệ khác."
+      >
+        {children}
+      </GlobalErrorBoundary>
+    </AdminLayout>
   </ProtectedRoute>
 );
 
@@ -129,13 +140,18 @@ const ProtectedBusiness = ({
 }) => (
   <ProtectedRoute roles={[ROLES.BUSINESS, ROLES.STAFF]}>
     <BusinessLayout>
-      {skipBusinessGuard ? (
-        children
-      ) : (
-        <BusinessGuard allowWhenPendingOrRejected={allowWhenPendingOrRejected}>
-          {children}
-        </BusinessGuard>
-      )}
+      <GlobalErrorBoundary
+        title="Lỗi phân hệ Doanh nghiệp (Business)"
+        description="Phân hệ Doanh nghiệp gặp sự cố không mong muốn. Sự cố này đã được cách ly và không ảnh hưởng tới các phân hệ khác."
+      >
+        {skipBusinessGuard ? (
+          children
+        ) : (
+          <BusinessGuard allowWhenPendingOrRejected={allowWhenPendingOrRejected}>
+            {children}
+          </BusinessGuard>
+        )}
+      </GlobalErrorBoundary>
     </BusinessLayout>
   </ProtectedRoute>
 );

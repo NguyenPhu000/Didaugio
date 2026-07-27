@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { roleService } from "@/apis/roleService";
 import { toast } from "sonner";
 import { RoleManagementModal } from "@/components/role/role-management-modal";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import TimStatsCard from "@/components/admin/TimStatsCard";
 import { usePermission } from "@/hooks/usePermission";
 import { ROLES } from "@/constants/constants";

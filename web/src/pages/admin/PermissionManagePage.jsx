@@ -4,7 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/Dialog";
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { permissionService } from "@/apis/permissionService";
 import { MODULE_DISPLAY_NAMES } from "@/constants/permissions";

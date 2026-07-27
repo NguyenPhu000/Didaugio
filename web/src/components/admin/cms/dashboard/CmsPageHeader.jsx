@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Plus, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function CmsPageHeader({ activeTab, isRefreshing, onCreate, onRefresh }) {

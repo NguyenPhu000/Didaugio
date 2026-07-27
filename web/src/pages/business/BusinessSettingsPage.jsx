@@ -15,10 +15,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import SettingsAutoSave from "@/components/settings/SettingsAutoSave";
 import SettingsSection from "@/components/settings/SettingsSection";
 import { businessSettingsApi } from "@/apis/businessSettingsApi";
-import BusinessGeneralTab from "./settings/BusinessGeneralTab";
-import BookingRulesTab from "./settings/BookingRulesTab";
-import BusinessNotificationsTab from "./settings/BusinessNotificationsTab";
-import BlockedDatesTab from "./settings/BlockedDatesTab";
+import BusinessGeneralTab from "@/components/business/settings/BusinessGeneralTab";
+import BookingRulesTab from "@/components/business/settings/BookingRulesTab";
+import BusinessNotificationsTab from "@/components/business/settings/BusinessNotificationsTab";
+import BlockedDatesTab from "@/components/business/settings/BlockedDatesTab";
 
 const DEFAULT_SETTINGS = {
   general: {

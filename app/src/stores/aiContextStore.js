@@ -43,6 +43,7 @@ export const useAIContextStore = create(
         timeOfDay: null,
       },
 
+      // TODO (Tech Debt): Refactor to Option B — Merge conversation memory into single source of truth with aiPlannerStore
       conversationMemory: [],
 
       voiceState: {

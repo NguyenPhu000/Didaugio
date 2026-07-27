@@ -8,8 +8,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/Dialog";
-import { Button } from "@/components/ui/Button";
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import * as businessApi from "@/apis/businessApi";
 import auditLogService from "@/apis/auditLogService";
 import { ADMIN_ROUTES } from "@/constants/routes";

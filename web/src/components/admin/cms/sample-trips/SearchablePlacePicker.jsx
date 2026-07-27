@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, ChevronDown, MapPin, Plus, Search } from "lucide-react";
-import { Input } from "@/components/ui/Input";
+import { Input } from "@/components/ui/input";
 import { getPlaceImage } from "./sampleTripUtils";
 
 export function SearchablePlacePicker({ places = [], value, onChange, onCreateQuick }) {

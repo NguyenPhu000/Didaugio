@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Input, Label, Checkbox } from "@/components/ui";
 import { Switch } from "@/components/ui/switch";
 import SettingsSection from "@/components/settings/SettingsSection";
-import SettingSelectField from "@/pages/admin/settings/components/SettingSelectField";
+import SettingSelectField from "@/components/admin/settings/components/SettingSelectField";
 
 const BookingRulesTab = ({ value, onChange }) => {
   const { t } = useTranslation();

@@ -1,8 +1,8 @@
 import { Edit, Trash2, MoreVertical } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/Card";
+import { Card } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,

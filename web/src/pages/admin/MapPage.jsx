@@ -34,10 +34,10 @@ import {
   Navigation2,
   Flag,
 } from "lucide-react";
-import PlaceCard from "./map/PlaceCard";
-import DistrictRow from "./map/DistrictRow";
-import FilterPanel from "./map/FilterPanel";
-import MapListView from "./map/MapListView";
+import PlaceCard from "@/components/admin/map/PlaceCard";
+import DistrictRow from "@/components/admin/map/DistrictRow";
+import FilterPanel from "@/components/admin/map/FilterPanel";
+import MapListView from "@/components/admin/map/MapListView";
 
 const PlaceDetailDialog = lazy(
   () => import("@/components/place/PlaceDetailDialog"),

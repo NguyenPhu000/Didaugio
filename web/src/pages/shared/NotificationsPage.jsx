@@ -14,7 +14,7 @@ import {
   Store,
 } from "lucide-react";
 import { notificationService } from "@/apis/notificationService";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ROLES } from "@/constants/constants";
 import { queryKeys } from "@/constants/query-keys";

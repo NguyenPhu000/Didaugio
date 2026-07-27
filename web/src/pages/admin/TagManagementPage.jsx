@@ -9,7 +9,7 @@ import {
   Tag as TagIcon,
   Activity,
 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -24,7 +24,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/Dialog";
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useTags, useDeleteTag } from "@/hooks/queries/useTagQueries";
 import TagList from "@/components/tag/TagList";

@@ -1,7 +1,4 @@
-import Activity from "lucide-react/dist/esm/icons/activity";
-import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
-import Archive from "lucide-react/dist/esm/icons/archive";
-import Layers from "lucide-react/dist/esm/icons/layers";
+import { Activity, AlertCircle, Archive, Layers } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const StatusRow = ({ icon: _Icon, value, label, pct, barColor, iconClass }) => (

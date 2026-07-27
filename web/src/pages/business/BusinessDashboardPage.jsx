@@ -39,7 +39,7 @@ import {
   BusinessSectionCardSkeleton,
 } from "@/components/business/ui";
 import { formatVND, formatDateTime } from "@/components/business/dashboardWidgetHelpers";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/Badge";
 import {
   Select,
