@@ -23,7 +23,7 @@ import {
 } from "../../../constants/design-tokens";
 import { useExplore, useCategories } from "../hooks/useExplore";
 import { useBoundaryData } from "../../map/hooks/useBoundaryData";
-import { resolvePlaceImageUri } from "../../../lib/media-url";
+import { resolvePlaceImageUri, PLACE_IMAGE_BLURHASH } from "../../../lib/media-url";
 import { getPlaceLocation, normalizeText } from "../utils/exploreHelpers";
 
 const isNewArchitectureEnabled = global?.nativeFabricUIManager != null;
@@ -105,6 +105,8 @@ const SearchResultItem = memo(function SearchResultItem({
           <Image
             source={{ uri: imageUri }}
             contentFit="cover"
+            placeholder={{ blurhash: PLACE_IMAGE_BLURHASH }}
+            placeholderContentFit="cover"
             cachePolicy="memory-disk"
             style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
           />

@@ -84,18 +84,10 @@ export function AIEntryButton({
           <View style={styles.buttonGradientGlow} />
 
           <View style={[styles.iconWrap, compact && styles.iconWrapCompact]}>
-            {/* Sử dụng LinearGradient công nghệ AI đa sắc thay cho màu xanh trơn */}
-            <LinearGradient
-              colors={["#2563EB", "#7C3AED", "#DB2777"]} // AI assistant style gradient
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.iconGradientHighlight} />
             <Image
               source={require("../../../assets/technical-support.png")}
               style={[styles.iconImage, compact && styles.iconImageCompact]}
-              contentFit="contain"
+              contentFit="cover"
               transition={120}
             />
           </View>
@@ -113,14 +105,14 @@ const styles = StyleSheet.create({
     borderRadius: 29,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.72)",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1.5,
-    borderColor: "rgba(168,85,247,0.32)", // Viền tím AI mờ
-    shadowColor: "#7C3AED", // Shadow màu tím công nghệ
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 10,
+    borderColor: "rgba(52, 120, 246, 0.25)",
+    shadowColor: "#3478F6",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 8,
   },
   buttonCompact: {
     width: 52,
@@ -133,18 +125,18 @@ const styles = StyleSheet.create({
   },
   halo: {
     position: "absolute",
-    top: -8,
-    right: -8,
-    bottom: -8,
-    left: -8,
+    top: -6,
+    right: -6,
+    bottom: -6,
+    left: -6,
     borderRadius: 35,
-    backgroundColor: "rgba(139,92,246,0.24)", // Phát sáng màu tím hồng AI
+    backgroundColor: "rgba(52, 120, 246, 0.15)",
   },
   haloCompact: {
-    top: -7,
-    right: -7,
-    bottom: -7,
-    left: -7,
+    top: -5,
+    right: -5,
+    bottom: -5,
+    left: -5,
     borderRadius: 31,
   },
   buttonGradient: {
@@ -154,7 +146,7 @@ const styles = StyleSheet.create({
     borderRadius: 29,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FAF5FF", // Nền tím nhạt
+    backgroundColor: "#FFFFFF",
   },
   buttonGradientCompact: {
     borderRadius: 26,
@@ -171,13 +163,11 @@ const styles = StyleSheet.create({
   },
   iconWrap: {
     overflow: "hidden",
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.45)",
   },
   iconGradientHighlight: {
     position: "absolute",
@@ -191,18 +181,20 @@ const styles = StyleSheet.create({
     transform: [{ rotate: "-20deg" }],
   },
   iconWrapCompact: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
   },
   iconImage: {
     zIndex: 2,
-    width: 26,
-    height: 26,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
   },
   iconImageCompact: {
-    width: 24,
-    height: 24,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
   },
   root: {
     position: "relative",

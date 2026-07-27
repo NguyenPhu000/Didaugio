@@ -12,10 +12,15 @@ import {
   toAiServiceError,
 } from "./aiProviderPolicy.js";
 
-export function createGroqClient({
-  apiKey,
-  baseUrl = "https://api.groq.com",
-} = {}) {
+// Pre-compiled Regular Expressions for better performance
+const REGEX_EXTRACT_PLACES = /\[\s*(?:PLACES?|PLACE_ID|ID)\s*:\s*([\d\s,]+)\s*\]/gi;
+const REGEX_STRIP_TAGS = /\[\s*(?:PLACES?|PLACE_ID|ID)\s*:\s*[\d\s,]+\s*\]/gi;
+const REGEX_STRIP_PARENS = /[\(\[\{]\s*(?:MÃ\s*ID|PLACE\s*ID|MÃ|ID)\s*#?\s*:?\s*[\d\s,]+\s*[\)\]\}]/gi;
+const REGEX_STRIP_BARE_ID = /\b(?:MÃ\s*ID|PLACE\s*ID|ID)\s*#?\s*:?\s*\d+\b/gi;
+const REGEX_MULTIPLE_SPACES = / {2,}/g;
+const REGEX_SPLIT_KEYS = /[\n,;]+/;
+
+export function createGroqClient({ apiKey, baseUrl = "https://api.groq.com" } = {}) {
   if (!apiKey) {
     throw Object.assign(new Error("Groq credential is unavailable."), {
       code: "AI_SECRET_UNAVAILABLE",
@@ -29,16 +34,15 @@ export function createGroqClient({
 export function parseApiKeyPool(secretString) {
   if (!secretString || typeof secretString !== "string") return [];
   return secretString
-    .split(/[\n,;]+/)
+    .split(REGEX_SPLIT_KEYS)
     .map((k) => k.trim())
-    .filter((k) => k.length > 0);
+    .filter(Boolean);
 }
 
 export async function resolveGroqProviderOptions(configData, feature) {
-  const apiKey = await resolveProviderSecret(
-    configData.provider.secretReference,
-  );
-  const apiKeys = parseApiKeyPool(apiKey);
+  const apiKeySecret = await resolveProviderSecret(configData.provider.secretReference);
+  const apiKeys = parseApiKeyPool(apiKeySecret);
+  
   return {
     apiKey: apiKeys[0] || "",
     apiKeys,
@@ -57,31 +61,30 @@ export async function executeGroqCompletionWithPool(providerOptions, executionCa
     ? providerOptions.apiKeys
     : [providerOptions?.apiKey].filter(Boolean);
 
-  if (keys.length === 0) {
+  if (!keys.length) {
     const client = createGroqClient(providerOptions);
     return executionCallback(client);
   }
 
   let lastError;
   for (let i = 0; i < keys.length; i++) {
-    const currentKey = keys[i];
     try {
-      const client = createGroqClient({ ...providerOptions, apiKey: currentKey });
+      const client = createGroqClient({ ...providerOptions, apiKey: keys[i] });
       return await executionCallback(client);
     } catch (error) {
-      const aiError = toAiServiceError(error);
-      lastError = aiError;
-      const isQuotaOrRateLimit =
-        aiError.code === "QUOTA_EXCEEDED" ||
-        aiError.statusCode === 429 ||
+      lastError = toAiServiceError(error);
+      const isRateLimit =
+        lastError.code === "QUOTA_EXCEEDED" ||
+        lastError.statusCode === 429 ||
         error?.status === 429;
-      if (isQuotaOrRateLimit && i < keys.length - 1) {
+
+      if (isRateLimit && i < keys.length - 1) {
         logger.info(
-          `[Groq Key Pool] Key #${i + 1} hit rate limit (${aiError.code}). Rotating to Key #${i + 2}...`
+          `[Groq Key Pool] Key #${i + 1} hit rate limit (${lastError.code}). Rotating to Key #${i + 2}...`
         );
         continue;
       }
-      throw aiError;
+      throw lastError; // Ném lỗi nếu không phải rate limit hoặc đã hết key
     }
   }
   throw lastError;
@@ -89,35 +92,31 @@ export async function executeGroqCompletionWithPool(providerOptions, executionCa
 
 /**
  * Format price range to human-readable Vietnamese string.
- * Under 1M: "120k", over 1M: "1.5 triệu"
  * @param {number|null} from
  * @param {number|null} to
  * @returns {string}
  */
 function formatPriceRange(from, to) {
   if (!from && !to) return "Chưa cập nhật";
+  
   const fmt = (v) => {
     if (!v || v <= 0) return null;
     if (v >= 1_000_000) {
       const millions = v / 1_000_000;
-      return millions % 1 === 0 ? `${millions} triệu` : `${millions.toFixed(1)} triệu`;
+      return Number.isInteger(millions) ? `${millions} triệu` : `${millions.toFixed(1)} triệu`;
     }
     return `${Math.round(v / 1000)}k`;
   };
+  
   const f = fmt(from);
   const t = fmt(to);
+  
   if (f && t) return f === t ? f : `${f} - ${t}`;
   return f || t || "Chưa cập nhật";
 }
 
 /**
  * Build system prompt for the travel assistant persona with user context.
- * @param {Object} context
- * @param {string} [context.currentCity]
- * @param {{ latitude: number, longitude: number }} [context.currentCoords]
- * @param {Array} [context.systemPlaces] - RAG places from DB
- * @param {Object} [context.locationContext] - Detailed district and ward
- * @param {Object} [context.travelPreferences] - User travel preferences from DB
  */
 function buildGroqSystemPrompt(context = {}, configuredPrompt = "") {
   const parts = [
@@ -150,11 +149,12 @@ function buildGroqSystemPrompt(context = {}, configuredPrompt = "") {
   // 1. Vị trí địa lý (Spatial Context)
   if (context.locationContext) {
     const { district, ward, coords } = context.locationContext;
-    let locStr = `Ngữ cảnh vị trí hiện tại của người dùng: `;
-    if (ward) locStr += `Phường/Xã ${ward}, `;
-    if (district) locStr += `Quận/Huyện ${district}, `;
-    locStr += `Cần Thơ.`;
-    parts.push(`\n${locStr}`);
+    const locParts = ["Ngữ cảnh vị trí hiện tại của người dùng:"];
+    if (ward) locParts.push(`Phường/Xã ${ward},`);
+    if (district) locParts.push(`Quận/Huyện ${district},`);
+    locParts.push("Cần Thơ.");
+    
+    parts.push(`\n${locParts.join(" ")}`);
     if (coords) {
       parts.push(`Tọa độ GPS hiện tại: ${coords.latitude}, ${coords.longitude}`);
     }
@@ -171,27 +171,20 @@ function buildGroqSystemPrompt(context = {}, configuredPrompt = "") {
   let timeOfDay = context.timeOfDay;
   if (!timeOfDay) {
     const hour = new Date().getHours();
-    if (hour >= 5 && hour < 11) timeOfDay = "Buổi sáng";
-    else if (hour >= 11 && hour < 14) timeOfDay = "Buổi trưa";
-    else if (hour >= 14 && hour < 18) timeOfDay = "Buổi chiều";
-    else timeOfDay = "Buổi tối";
+    timeOfDay = hour < 5 ? "Buổi tối" : hour < 11 ? "Buổi sáng" : hour < 14 ? "Buổi trưa" : hour < 18 ? "Buổi chiều" : "Buổi tối";
   }
   parts.push(`Thời điểm hiện tại: ${timeOfDay}`);
 
   // 3. Sở thích (Travel Preferences Context)
   if (context.travelPreferences) {
-    const prefs = context.travelPreferences;
+    const { travelStyles, budget, notes } = context.travelPreferences;
     const prefParts = [];
-    if (prefs.travelStyles && prefs.travelStyles.length > 0) {
-      prefParts.push(`Gu du lịch: ${prefs.travelStyles.join(", ")}`);
-    }
-    if (prefs.budget) {
-      prefParts.push(`Ngân sách dự tính: ${prefs.budget}`);
-    }
-    if (prefs.notes) {
-      prefParts.push(`Ghi chú cá nhân: ${prefs.notes}`);
-    }
-    if (prefParts.length > 0) {
+    
+    if (travelStyles?.length) prefParts.push(`Gu du lịch: ${travelStyles.join(", ")}`);
+    if (budget) prefParts.push(`Ngân sách dự tính: ${budget}`);
+    if (notes) prefParts.push(`Ghi chú cá nhân: ${notes}`);
+    
+    if (prefParts.length) {
       parts.push(`\nThông tin sở thích của người dùng để cá nhân hóa gợi ý:\n${prefParts.join("\n")}`);
     }
   } else if (context.preferences?.travelStyles?.length) {
@@ -202,18 +195,20 @@ function buildGroqSystemPrompt(context = {}, configuredPrompt = "") {
     parts.push(`Đã xem: ${context.visitedPlaceIds.slice(-5).join(", ")}`);
   }
 
-  // 4. RAG Places Context từ DB (Dạng văn bản rõ ràng cho LLM)
+  // 4. RAG Places Context từ DB (Đã fix lỗi bị thiếu formattedPlaceLines)
   if (Array.isArray(context.systemPlaces) && context.systemPlaces.length > 0) {
     const allowedNames = context.systemPlaces.map((p) => `"${p.name}"`).join(", ");
     const formattedPlaceLines = context.systemPlaces.map((p) => {
-      let line = `- ID ${p.id}: "${p.name}" (Danh mục: ${p.categoryName || p.category?.name || "Địa điểm"}`;
+      const category = p.categoryName || p.category?.name || "Địa điểm";
+      let line = `- ID ${p.id}: "${p.name}" (Danh mục: ${category}`;
       if (p.address) line += `, Địa chỉ: ${p.address}`;
+      
       const priceStr = formatPriceRange(p.priceFrom, p.priceTo);
       if (priceStr) line += `, Giá: ${priceStr}`;
       if (p.ratingAvg) line += `, Đánh giá: ${p.ratingAvg}/5`;
       if (p.shortDescription) line += `, Mô tả: ${p.shortDescription.substring(0, 80)}`;
-      line += `)`;
-      return line;
+      
+      return line + `)`;
     }).join("\n");
 
     parts.push(
@@ -221,13 +216,13 @@ function buildGroqSystemPrompt(context = {}, configuredPrompt = "") {
       `DANH SÁCH TÊN ĐỊA ĐIỂM DUY NHẤT ĐƯỢC PHÉP NHẮC TỚI: [ ${allowedNames} ]`,
       `TUYỆT ĐỐI KHÔNG TỰ NÓI HOẶC BỊA BẤT KỲ TÊN QUÁN/ĐỊA ĐIỂM NÀO KHÁC BÊN NGOÀI DANH SÁCH TRÊN (ví dụ: không được bịa "Quán bún Cái Bè", "Quán bún Bè", hay bất kỳ quán nào không có trong danh sách trên).`,
       `Nếu người dùng hỏi món ăn/quán mà trong CSDL không có, hãy trả lời thẳng thắn: "Hiện tại Genie chưa có thông tin quán này trong hệ thống Cần Thơ nè" và gợi ý 1 trong các quán có sẵn trong danh sách CSDL dưới đây.`,
-      `\nDANH SÁCH CHI TIẾT ĐỊA ĐIỂM CSDL:`,
-      formattedPlaceLines,
-      `\nKhi gợi ý địa điểm từ danh sách trên, LUÔN đính kèm dòng: [PLACES: id1, id2, ...] ở cuối câu trả lời.`,
+      `\nDANH SÁCH CHI TIẾT ĐỊA ĐIỂM CSDL:\n${formattedPlaceLines}`,
+      `\nQUY TẮC HIỂN THỊ MÃ ID: TUYỆT ĐỐI CẤM VIẾT BẤT KỲ MÃ ID NÀO (như ID 240, [PLACE: 240], (ID 240), mã 240...) VÀO TRONG NỘI DUNG VĂN BẢN TRẢ LỜI NGƯỜI DÙNG.`,
+      `Khi gợi ý địa điểm từ danh sách trên, CHỈ ĐÍNH KÈM DUY NHẤT DÒNG: [PLACES: id1, id2, ...] Ở DÒNG CUỐI CÙNG CỦA CÂU TRẢ LỜI DÙNG CHO HỆ THỐNG.`
     );
   } else {
     parts.push(
-      `\nQUY TẮC CHỐNG BỊA ĐẶT: Hiện tại CSDL chưa có địa điểm nào phù hợp. Bạn KHÔNG ĐƯỢC BỊA NÓI bất kỳ tên quán/địa điểm nào. Hãy thông báo: "Genie chưa tìm thấy địa điểm phù hợp trong CSDL nè" và hỏi lại nhu cầu của người dùng.`,
+      `\nQUY TẮC CHỐNG BỊA ĐẶT: Hiện tại CSDL chưa có địa điểm nào phù hợp. Bạn KHÔNG ĐƯỢC BỊA NÓI bất kỳ tên quán/địa điểm nào. Hãy thông báo: "Genie chưa tìm thấy địa điểm phù hợp trong CSDL nè" và hỏi lại nhu cầu của người dùng.`
     );
   }
 
@@ -238,15 +233,8 @@ function buildGroqSystemPrompt(context = {}, configuredPrompt = "") {
 
 /**
  * Send a chat completion request to Groq.
- * @param {Array<{role: string, content: string}>} messages
- * @param {Object} context - User context for system prompt
- * @returns {Promise<{ reply: string, suggestedPlaceIds: Array }>}
  */
-export async function chatWithGroq(
-  messages,
-  context = {},
-  providerOptions = {},
-) {
+export async function chatWithGroq(messages, context = {}, providerOptions = {}) {
   const {
     model,
     temperature,
@@ -255,6 +243,7 @@ export async function chatWithGroq(
     timeoutMs,
     configuredPrompt,
   } = providerOptions;
+  
   const systemPrompt = buildGroqSystemPrompt(context, configuredPrompt);
   const normalizedMessages = normalizeProviderMessages(messages);
   const startedAt = Date.now();
@@ -263,31 +252,25 @@ export async function chatWithGroq(
   try {
     completion = await executeGroqCompletionWithPool(
       providerOptions,
-      async (client) => {
-        return client.chat.completions.create(
-          {
-            model,
-            messages: [{ role: "system", content: systemPrompt }, ...normalizedMessages],
-            temperature,
-            top_p: topP,
-            max_tokens: maxTokens,
-          },
-          { timeout: timeoutMs },
-        );
-      },
+      (client) => client.chat.completions.create(
+        {
+          model,
+          messages: [{ role: "system", content: systemPrompt }, ...normalizedMessages],
+          temperature,
+          top_p: topP,
+          max_tokens: maxTokens,
+        },
+        { timeout: timeoutMs }
+      )
     );
   } catch (error) {
     const aiError = toAiServiceError(error);
-    logAiProviderEvent({
-      feature: "chat",
-      model,
-      startedAt,
-      code: aiError.code,
-    });
+    logAiProviderEvent({ feature: "chat", model, startedAt, code: aiError.code });
     throw aiError;
   }
 
   const replyText = completion.choices[0]?.message?.content || "";
+  
   logAiProviderEvent({
     feature: "chat",
     model,
@@ -295,22 +278,26 @@ export async function chatWithGroq(
     completion,
   });
 
-  // Extract [PLACES: id1, id2] tag from response
-  let finalReply = replyText;
-  let suggestedPlaceIds = [];
-  const placesRegex = /\[PLACES:\s*([\d\s,]+)\]/i;
-  const match = replyText.match(placesRegex);
-  if (match) {
-    suggestedPlaceIds = match[1]
-      .split(",")
-      .map((idStr) => parseInt(idStr.trim(), 10))
-      .filter((id) => !isNaN(id));
-    finalReply = replyText.replace(placesRegex, "").trim();
+  // Extract [PLACES: id1, id2] seamlessly with matchAll
+  const suggestedPlaceIds = [];
+  for (const match of replyText.matchAll(REGEX_EXTRACT_PLACES)) {
+    match[1].split(",").forEach((idStr) => {
+      const id = parseInt(idStr.trim(), 10);
+      if (!isNaN(id)) suggestedPlaceIds.push(id);
+    });
   }
+
+  // Strip ALL ID variations efficiently
+  const finalReply = replyText
+    .replace(REGEX_STRIP_TAGS, "")
+    .replace(REGEX_STRIP_PARENS, "")
+    .replace(REGEX_STRIP_BARE_ID, "")
+    .replace(REGEX_MULTIPLE_SPACES, " ")
+    .trim();
 
   return {
     reply: finalReply,
-    suggestedPlaceIds,
+    suggestedPlaceIds: [...new Set(suggestedPlaceIds)],
     inputTokens: completion.usage?.prompt_tokens ?? null,
     outputTokens: completion.usage?.completion_tokens ?? null,
   };

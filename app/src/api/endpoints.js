@@ -84,12 +84,9 @@ export const ENDPOINTS = {
     byBooking: (bookingId) => `/payments/by-booking/${bookingId}`,
   },
   ai: {
-    placeSummary: "/ai/place-summary",
-    chat: "/ai/chat",
     navigate: "/ai/navigate",
     groqChat: "/ai/groq-chat",
     voiceTranscribe: "/ai/voice/transcribe",
-    voiceSpeech: "/ai/voice/speech",
   },
   routing: {
     health: "/routes/health",

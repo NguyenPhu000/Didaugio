@@ -4,12 +4,11 @@ import { Image } from "expo-image";
 import { Star, MapPin } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import { resolvePlaceImageUri, getCategoryIcon } from "../../lib/media-url";
+import { resolvePlaceImageUri, getCategoryIcon, PLACE_IMAGE_BLURHASH } from "../../lib/media-url";
 import { CATEGORY_COLORS, TOKENS } from "../../constants/design-tokens";
 
 function formatPlacePrice(place, t) {
   const from = place?.priceFrom ?? place?.price_from;
-  const to = place?.priceTo ?? place?.price_to;
 
   if (typeof from === "number" && from > 0) {
     if (from >= 1_000_000) {
@@ -70,6 +69,9 @@ function HorizontalPlaceCardInner({ place, onPressDetail }) {
             style={StyleSheet.absoluteFillObject}
             transition={200}
             contentFit="cover"
+            placeholder={{ blurhash: PLACE_IMAGE_BLURHASH }}
+            placeholderContentFit="cover"
+            cachePolicy="memory-disk"
             onError={handleImageError}
           />
         ) : (

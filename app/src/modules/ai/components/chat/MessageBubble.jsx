@@ -3,10 +3,9 @@ import { View, Text, StyleSheet, FlatList } from "react-native";
 import { Sparkles } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { HorizontalPlaceCard } from "../../../../components/composed/HorizontalPlaceCard";
-import { InteractiveTimeline } from "./InteractiveTimeline";
 import { TOKENS } from "../../../../constants/design-tokens";
 
-export const MessageBubble = memo(function MessageBubble({ message, onViewPlace, interactivePlan, onRemovePlace, onSwapPlace }) {
+export const MessageBubble = memo(function MessageBubble({ message, onViewPlace }) {
   const isUser = message.role === "user";
 
   return (
@@ -54,15 +53,6 @@ export const MessageBubble = memo(function MessageBubble({ message, onViewPlace,
             contentContainerStyle={s.carouselContent}
           />
         </View>
-      )}
-
-      {/* Render Interactive Timeline nếu tin nhắn có lịch trình hybridPlan */}
-      {!isUser && interactivePlan && (
-        <InteractiveTimeline
-          plan={interactivePlan}
-          onRemove={(idx) => onRemovePlace(message.id, idx)}
-          onSwap={(idx) => onSwapPlace(message.id, idx)}
-        />
       )}
     </View>
   );

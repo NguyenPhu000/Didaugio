@@ -72,7 +72,8 @@ export async function startAudioRecording({
   canContinue = () => true,
 }) {
   const permission = await requestPermission();
-  if (!permission?.granted || !canContinue()) {
+  const isGranted = permission?.granted || permission?.status === "granted";
+  if (!isGranted || !canContinue()) {
     await restoreIdleAudioMode(setAudioMode);
     return false;
   }
@@ -82,6 +83,14 @@ export async function startAudioRecording({
     if (!canContinue()) {
       await restoreIdleAudioMode(setAudioMode);
       return false;
+    }
+
+    try {
+      if (recorder && recorder.isRecording) {
+        await recorder.stop();
+      }
+    } catch {
+      // Ignore prior cleanup error
     }
 
     await recorder.prepareToRecordAsync(recordingOptions);
@@ -100,8 +109,14 @@ export async function startAudioRecording({
 
 export async function stopAudioRecording({ recorder, setAudioMode }) {
   try {
-    await recorder.stop();
-    return recorder.uri;
+    if (recorder) {
+      try {
+        await recorder.stop();
+      } catch {
+        // Ignore stop error if already stopped
+      }
+    }
+    return recorder?.uri || null;
   } finally {
     await restoreIdleAudioMode(setAudioMode);
   }

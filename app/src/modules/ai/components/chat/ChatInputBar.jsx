@@ -64,6 +64,8 @@ export function ChatInputBar({
     setInputHeight(Math.min(nextHeight, MAX_INPUT_HEIGHT));
   }, []);
 
+  const hasText = inputText.trim().length > 0;
+
   return (
     <View style={[s.wrapper, { paddingBottom: bottomPadding }]}>
       <View style={s.composer}>

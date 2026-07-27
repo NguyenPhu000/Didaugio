@@ -26,7 +26,7 @@ export function GenieVoicePanel({
       style={{ boxShadow: "0 14px 36px rgba(15, 23, 42, 0.08)" }}
     >
       <LinearGradient
-        colors={["rgba(37,99,235,0.10)", "rgba(219,39,119,0.08)", "rgba(255,255,255,0)"]}
+        colors={["rgba(52,120,246,0.08)", "rgba(52,120,246,0.02)", "rgba(255,255,255,0)"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}

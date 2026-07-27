@@ -2,12 +2,11 @@ import {
   View,
   Text,
   Pressable,
-  ScrollView,
-  FlatList,
   Platform,
   StyleSheet,
   KeyboardAvoidingView,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -30,7 +29,7 @@ import { Glow } from "../../src/components/reacticx/glow";
 import { StreamingText } from "../../src/components/reacticx/streaming-text";
 
 // Utils
-import { clientHaversine, getTimeBasedSuggestions } from "../../src/modules/ai/lib/chatUtils";
+import { getTimeBasedSuggestions } from "../../src/modules/ai/lib/chatUtils";
 
 export default function GroqChatScreen() {
   const [inputText, setInputText] = useState("");
@@ -58,23 +57,6 @@ export default function GroqChatScreen() {
   const isRecording = voiceStatus === "listening";
   const isTranscribing = voiceStatus === "transcribing";
 
-  const [interactivePlans, setInteractivePlans] = useState({});
-
-  // Sync local plan state when new messages include a hybrid plan.
-  useEffect(() => {
-    conversationMemory.forEach((msg) => {
-      if (msg.hybridPlan && msg.id) {
-        setInteractivePlans((prev) => {
-          if (prev[msg.id]) return prev;
-          return {
-            ...prev,
-            [msg.id]: msg.hybridPlan,
-          };
-        });
-      }
-    });
-  }, [conversationMemory]);
-
   // Scroll to bottom only when a new message is added
   const prevMsgCountRef = useRef(conversationMemory.length);
   useEffect(() => {
@@ -83,120 +65,6 @@ export default function GroqChatScreen() {
     }
     prevMsgCountRef.current = conversationMemory.length;
   }, [conversationMemory.length]);
-
-  const handleRemovePlace = useCallback((msgId, index) => {
-    setInteractivePlans((prev) => {
-      const plan = prev[msgId];
-      if (!plan || !plan.timeline) return prev;
-
-      const newTimeline = [...plan.timeline];
-      const removedItem = newTimeline[index];
-      const place = removedItem.place;
-
-      newTimeline.splice(index, 1);
-
-      if (index > 0 && newTimeline[index - 1]) {
-        const prevItem = newTimeline[index - 1];
-        const nextItem = newTimeline[index];
-
-        if (nextItem && prevItem.place && nextItem.place) {
-          const dist = clientHaversine(
-            parseFloat(prevItem.place.latitude),
-            parseFloat(prevItem.place.longitude),
-            parseFloat(nextItem.place.latitude),
-            parseFloat(nextItem.place.longitude)
-          );
-          const duration = Math.max(1, Math.round(dist * 2.5));
-          prevItem.navigationToNext = {
-            distanceKm: parseFloat(dist.toFixed(1)),
-            durationMin: duration,
-          };
-        } else {
-          prevItem.navigationToNext = null;
-        }
-      }
-
-      const priceFrom = place?.priceFrom || 0;
-      const priceTo = place?.priceTo || 0;
-
-      const category = (place?.categoryName || "").toLowerCase();
-      let costType = "tickets";
-      if (category.includes("ăn") || category.includes("uống") || category.includes("restaurant") || category.includes("food") || category.includes("cà phê") || category.includes("cafe")) {
-        costType = "food";
-      } else if (category.includes("di chuyển") || category.includes("xe") || category.includes("taxi")) {
-        costType = "transportEstimated";
-      }
-
-      const summary = { ...plan.tripSummary };
-      summary.totalEstimatedPriceFrom = Math.max(0, summary.totalEstimatedPriceFrom - priceFrom);
-      summary.totalEstimatedPriceTo = Math.max(0, summary.totalEstimatedPriceTo - priceTo);
-
-      if (summary.costBreakdown && summary.costBreakdown[costType]) {
-        const breakdown = { ...summary.costBreakdown };
-        breakdown[costType] = {
-          from: Math.max(0, breakdown[costType].from - priceFrom),
-          to: Math.max(0, breakdown[costType].to - priceTo),
-        };
-        summary.costBreakdown = breakdown;
-      }
-
-      return {
-        ...prev,
-        [msgId]: {
-          ...plan,
-          tripSummary: summary,
-          timeline: newTimeline,
-        },
-      };
-    });
-  }, []);
-
-  const handleSwapPlace = useCallback((msgId, index) => {
-    setInteractivePlans((prev) => {
-      const plan = prev[msgId];
-      if (!plan || !plan.timeline) return prev;
-
-      const newTimeline = [...plan.timeline];
-      if (index >= newTimeline.length - 1) return prev;
-
-      const temp = newTimeline[index];
-      newTimeline[index] = newTimeline[index + 1];
-      newTimeline[index + 1] = temp;
-
-      const tempTime = newTimeline[index].timeSlot;
-      newTimeline[index].timeSlot = newTimeline[index + 1].timeSlot;
-      newTimeline[index + 1].timeSlot = tempTime;
-
-      for (let i = 0; i < newTimeline.length; i++) {
-        const current = newTimeline[i];
-        const next = newTimeline[i + 1];
-
-        if (next && current.place && next.place) {
-          const dist = clientHaversine(
-            parseFloat(current.place.latitude),
-            parseFloat(current.place.longitude),
-            parseFloat(next.place.latitude),
-            parseFloat(next.place.longitude)
-          );
-          const duration = Math.max(1, Math.round(dist * 2.5));
-          current.navigationToNext = {
-            distanceKm: parseFloat(dist.toFixed(1)),
-            durationMin: duration,
-          };
-        } else {
-          current.navigationToNext = null;
-        }
-      }
-
-      return {
-        ...prev,
-        [msgId]: {
-          ...plan,
-          timeline: newTimeline,
-        },
-      };
-    });
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -294,12 +162,21 @@ export default function GroqChatScreen() {
     if (isSending) return;
     clearConversation();
     setError(null);
-    setInteractivePlans({});
   }, [isSending, clearConversation]);
 
   const hasMessages = conversationMemory.length > 0;
   const isLoadingOrSending = isSending || isTranscribing;
   const canSend = inputText.trim().length > 0 && !isLoadingOrSending;
+
+  const renderChatItem = useCallback(
+    ({ item }) => (
+      <MessageBubble
+        message={item}
+        onViewPlace={handleViewPlace}
+      />
+    ),
+    [handleViewPlace]
+  );
 
   return (
     <KeyboardAvoidingView
@@ -365,30 +242,19 @@ export default function GroqChatScreen() {
         </View>
       </View>
 
-      <FlatList
+      <FlashList
         ref={scrollRef}
         data={hasMessages ? conversationMemory : []}
         keyExtractor={(item, index) => item.id ?? `${item.role}-${index}`}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        renderItem={({ item }) => (
-          <MessageBubble
-            message={item}
-            onViewPlace={handleViewPlace}
-            interactivePlan={interactivePlans[item.id]}
-            onRemovePlace={handleRemovePlace}
-            onSwapPlace={handleSwapPlace}
-          />
-        )}
+        estimatedItemSize={120}
+        renderItem={renderChatItem}
         style={s.flex1}
         contentContainerStyle={hasMessages ? s.scrollContentMessages : s.scrollContentEmpty}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
-        removeClippedSubviews={Platform.OS === "android"}
-        initialNumToRender={8}
-        maxToRenderPerBatch={8}
-        windowSize={5}
         ListEmptyComponent={
           <View style={s.emptyContainer}>
             <Glow style="breathe" speed={0.72} intensity={0.62} colors={["#2563EB", "#7C3AED", "#DB2777"]}>
@@ -529,13 +395,6 @@ const s = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#10B981",
-    position: "absolute",
-  },
   onlineDotCore: {
     width: 6,
     height: 6,
@@ -599,9 +458,6 @@ const s = StyleSheet.create({
     maxWidth: 310,
     marginBottom: 32,
     fontFamily: TOKENS.font.body,
-  },
-  messageGap: {
-    gap: 16,
   },
   thinkingWrap: {
     alignItems: "flex-start",

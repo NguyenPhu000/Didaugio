@@ -170,7 +170,6 @@ export async function findPlacesNearby(lat, lng, radiusKm = 10, limit = 10) {
       imagesByPlace[img.placeId].push({
         secureUrl: img.secureUrl,
         thumbnailUrl: img.thumbnailUrl,
-        imageData: img.imageData,
       });
     }
   }

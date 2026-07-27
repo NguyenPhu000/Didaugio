@@ -1,5 +1,6 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { safeLazy as lazy } from "@/lib/safeLazy";
 import { useAuthStore } from "@/stores/authStore";
 import { ProtectedRoute } from "@/layouts";
 import { AdminLayout } from "@/layouts";

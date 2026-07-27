@@ -9,7 +9,7 @@ import { FlashList } from "@shopify/flash-list";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { resolvePlaceImageUri } from "../../../lib/media-url";
+import { resolvePlaceImageUri, PLACE_IMAGE_BLURHASH } from "../../../lib/media-url";
 import { getPlaceLocation, formatRatingLabel } from "../utils/exploreHelpers";
 
 const EST_ITEM_SIZE = 100;
@@ -32,6 +32,8 @@ const PlaceRow = memo(function PlaceRow({ place, onPress }) {
             style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
             contentFit="cover"
             transition={180}
+            placeholder={{ blurhash: PLACE_IMAGE_BLURHASH }}
+            placeholderContentFit="cover"
             cachePolicy="memory-disk"
           />
         ) : (

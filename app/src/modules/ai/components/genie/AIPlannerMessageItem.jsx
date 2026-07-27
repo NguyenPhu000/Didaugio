@@ -1,6 +1,7 @@
 import { memo, useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { MaterialIconsRounded } from "../../../../components/primitives/MaterialIconsRounded";
 import { PlacePreviewCard } from "../../../../components/composed/PlacePreviewCard";
 import { TOKENS } from "../../../../constants/design-tokens";
@@ -88,6 +89,7 @@ function AIPlannerMessageItemComponent({
   stopSpeaking,
   t,
 }) {
+  const router = useRouter();
   const isUser = message.role === "user";
   const canRate = isRateableAiMessage(message);
   const [feedbackState, setFeedbackState] = useState({
@@ -190,6 +192,88 @@ function AIPlannerMessageItemComponent({
           </Text>
         </View>
       )}
+
+      {!isUser && message.plan ? (
+        <View
+          className="mt-3.5 w-full gap-3 rounded-3xl border border-emerald-100 bg-white p-4"
+          style={{ boxShadow: "0 10px 30px rgba(16, 185, 129, 0.08)" }}
+        >
+          <View className="flex-row items-center gap-3">
+            <LinearGradient
+              colors={["#10B981", "#059669"]}
+              className="h-10 w-10 items-center justify-center rounded-2xl"
+            >
+              <MaterialIconsRounded name="auto-awesome" size={20} color="#FFFFFF" />
+            </LinearGradient>
+            <View className="flex-1">
+              <Text
+                className="text-[11px] uppercase tracking-wider text-emerald-600"
+                style={{ fontFamily: TOKENS.font.semibold }}
+              >
+                {t("aiPlanner.tripCreatedSuccess")}
+              </Text>
+              <Text
+                className="text-[15px] text-slate-900"
+                style={{ fontFamily: TOKENS.font.semibold }}
+                numberOfLines={1}
+              >
+                {message.plan.title || "Lịch trình Cần Thơ"}
+              </Text>
+            </View>
+          </View>
+
+          <View className="flex-row items-center justify-between rounded-2xl bg-slate-50 px-3.5 py-2.5">
+            <View className="flex-row items-center gap-1.5">
+              <MaterialIconsRounded name="event-note" size={16} color="#059669" />
+              <Text
+                className="text-xs text-slate-700"
+                style={{ fontFamily: TOKENS.font.medium }}
+              >
+                {message.plan.totalDays || 1} {t("common.days", { defaultValue: "ngày" })}
+              </Text>
+            </View>
+
+            {message.plan.destinations?.length ? (
+              <View className="flex-row items-center gap-1.5">
+                <MaterialIconsRounded name="place" size={16} color="#059669" />
+                <Text
+                  className="text-xs text-slate-700"
+                  style={{ fontFamily: TOKENS.font.medium }}
+                >
+                  {message.plan.destinations.length} {t("aiPlanner.destinationCount_other", { defaultValue: "địa điểm" })}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          <Pressable
+            onPress={() => {
+              const tripId = Number(message.plan.id);
+              if (tripId) {
+                router.push(`/trip/${tripId}`);
+              } else {
+                router.push("/(tabs)/trips");
+              }
+            }}
+            className="overflow-hidden rounded-2xl"
+          >
+            <LinearGradient
+              colors={["#059669", "#047857"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              className="flex-row items-center justify-center gap-2 py-3 px-4"
+            >
+              <Text
+                className="text-[14px] text-white"
+                style={{ fontFamily: TOKENS.font.semibold }}
+              >
+                {t("aiPlanner.viewCreatedTrip")}
+              </Text>
+              <MaterialIconsRounded name="arrow-forward" size={18} color="#FFFFFF" />
+            </LinearGradient>
+          </Pressable>
+        </View>
+      ) : null}
 
       {!isUser &&
       message.source === "chat" &&

@@ -66,6 +66,13 @@ function rewriteLocalhostToOrigin(url, origin) {
   );
 }
 
+/**
+ * Neutral gray blurhash used as the placeholder while remote place images
+ * load. Keeps list thumbnails from flickering blank/white on slow networks.
+ * Works with expo-image's `placeholder={{ blurhash }}` API.
+ */
+export const PLACE_IMAGE_BLURHASH = "LGF5]+Yk^6#M@-5c,1J5@[or[Q6.";
+
 export function resolveMediaUrl(raw) {
   if (raw == null || typeof raw !== "string") return null;
 

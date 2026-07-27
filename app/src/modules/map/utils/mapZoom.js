@@ -6,7 +6,7 @@ export const MARKER_DENSITY = Object.freeze({
 export function getMarkerDensity(zoom) {
   const value = Number(zoom);
 
-  if (!Number.isFinite(value) || value < 13) {
+  if (!Number.isFinite(value) || value < 10) {
     return MARKER_DENSITY.CATEGORY;
   }
 

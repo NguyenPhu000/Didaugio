@@ -101,24 +101,24 @@ export async function downgrade(req, res, next) {
   try {
     const businessId = req.activeBusiness?.id;
     if (!businessId) {
-      return errorResponse(res, 403, "KhÃ´ng tÃ¬m tháº¥y doanh nghiá»‡p", "NO_BUSINESS");
+      return errorResponse(res, 403, "Không tìm thấy doanh nghiệp", "NO_BUSINESS");
     }
 
     const { targetPlanId } = req.body;
     if (!targetPlanId) {
-      return errorResponse(res, 400, "targetPlanId lÃ  báº¯t buá»™c", ERROR_CODES.VALIDATION_ERROR);
+      return errorResponse(res, 400, "targetPlanId là bắt buộc", ERROR_CODES.VALIDATION_ERROR);
     }
 
     const result = await subscriptionService.scheduleDowngrade(businessId, targetPlanId);
-    return successResponse(res, result, "ÄÃ£ lÃªn lá»‹ch háº¡ gÃ³i cuá»‘i chu ká»³");
+    return successResponse(res, result, "Đã lên lịch hạ gói cuối chu kỳ");
   } catch (error) {
-    if (error.message?.includes("khÃ´ng tá»“n táº¡i") || error.message?.includes("KhÃ´ng tÃ¬m tháº¥y")) {
+    if (error.message?.includes("không tồn tại") || error.message?.includes("Không tìm thấy")) {
       return errorResponse(res, 404, error.message, ERROR_CODES.NOT_FOUND);
     }
     if (
-      error.message?.includes("Ä‘ang sá»­ dá»¥ng") ||
-      error.message?.includes("Háº¡ gÃ³i") ||
-      error.message?.includes("bá»‹ khÃ³a")
+      error.message?.includes("đang sử dụng") ||
+      error.message?.includes("Hạ gói") ||
+      error.message?.includes("bị khóa")
     ) {
       return errorResponse(res, 400, error.message, ERROR_CODES.VALIDATION_ERROR);
     }
@@ -130,11 +130,11 @@ export async function cancelScheduledDowngrade(req, res, next) {
   try {
     const businessId = req.activeBusiness?.id;
     if (!businessId) {
-      return errorResponse(res, 403, "KhÃ´ng tÃ¬m tháº¥y doanh nghiá»‡p", "NO_BUSINESS");
+      return errorResponse(res, 403, "Không tìm thấy doanh nghiệp", "NO_BUSINESS");
     }
 
     const result = await subscriptionService.cancelScheduledDowngrade(businessId);
-    return successResponse(res, result, "ÄÃ£ há»§y lá»‹ch háº¡ gÃ³i");
+    return successResponse(res, result, "Đã hủy lịch hạ gói");
   } catch (error) {
     next(error);
   }

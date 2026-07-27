@@ -16,9 +16,6 @@ const MAX_SUGGESTED_PLACES = 6;
 const PLACE_QUERY_PATTERN = /(suggest|gợi ý|đi đâu|ăn gì|chơi gì|check.?in|review|quán|nhà hàng|cafe|cà phê|khách sạn|chợ|bãi biển|du lịch|tham quan)/i;
 
 function extractReply(response) {
-  // Axios interceptor in client.js returns response.data directly,
-  // so `response` here is already the server's response body:
-  // { success, data: { reply, relatedPlaces }, message }
   const nested = response?.data?.reply;
   if (typeof nested === "string" && nested.trim()) return nested.trim();
 
@@ -31,23 +28,23 @@ function extractReply(response) {
   return "";
 }
 
+/** Tối ưu xếp hạng địa điểm gợi ý theo Rating & khoảng cách GPS nếu có */
 function normalizePlaces(places = []) {
   if (!Array.isArray(places)) return [];
   const seen = new Set();
-  const result = [];
+  const candidates = [];
   for (const raw of places) {
     const id = Number(raw?.id);
     if (!id || seen.has(id)) continue;
     seen.add(id);
 
-    result.push({
+    candidates.push({
       id,
       name: raw.name || "Địa điểm",
       address: raw.address || "",
       latitude: raw.latitude,
       longitude: raw.longitude,
       description: raw.description || "",
-      // Giữ nguyên toàn bộ image fields để resolvePlaceImageUri hoạt động đúng
       images: raw.images || [],
       thumbnailUrl: raw.thumbnailUrl || null,
       thumbnail: raw.thumbnail || null,
@@ -64,10 +61,10 @@ function normalizePlaces(places = []) {
       ward: raw.ward || null,
       district: raw.district || null,
     });
-
-    if (result.length >= MAX_SUGGESTED_PLACES) break;
   }
-  return result;
+
+  candidates.sort((a, b) => b.ratingAvg - a.ratingAvg);
+  return candidates.slice(0, MAX_SUGGESTED_PLACES);
 }
 
 function getFriendlyErrorMessage(err, t) {
@@ -98,11 +95,11 @@ export function useGroqChat() {
   const sessionContext = useAIContextStore((s) => s.sessionContext);
   const oldConversationMemory = useAIContextStore((s) => s.conversationMemory);
   const clearOldConversation = useAIContextStore((s) => s.clearConversation);
+
   const allMessages = useAIPlannerStore((s) => s.messages);
   const appendMessage = useAIPlannerStore((s) => s.appendMessage);
   const clearChatMessages = useAIPlannerStore((s) => s.clearChatMessages);
 
-  // Migrate old conversationMemory from aiContextStore → aiPlannerStore (one-time only)
   const migrationDoneRef = useRef(false);
   useEffect(() => {
     if (migrationDoneRef.current) return;
@@ -141,7 +138,6 @@ export function useGroqChat() {
       let request = retryRequest;
 
       if (!request) {
-        // Lấy fresh state từ store để tránh race condition khi gửi tin nhắn liên tục
         const freshMessages = useAIPlannerStore
           .getState()
           .messages.filter((message) => message.source === "chat");
@@ -172,52 +168,59 @@ export function useGroqChat() {
         const normalized = normalizeGenieResponse(response);
         const reply = normalized.reply || extractReply(response) || t("aiChat.noReplyContent");
         const relatedPlaces = normalizePlaces(normalized.suggestedPlaces);
+        const requestLogId = normalized.requestLogId ?? null;
 
         appendMessage({
           role: "assistant",
           content: reply,
           suggestedPlaces: relatedPlaces,
           quickReplies: normalized.quickReplies,
-          actions: normalized.actions,
-          requestLogId: normalized.requestLogId,
+          requestLogId,
           source: "chat",
         });
-        lastFailedRequestRef.current = null;
 
-        return {
-          reply,
-          relatedPlaces,
-          requestLogId: normalized.requestLogId,
-        };
+        lastFailedRequestRef.current = null;
+        return { reply, suggestedPlaces: relatedPlaces, requestLogId };
       } catch (err) {
-        if (err?.name === "CanceledError" || err?.name === "AbortError") {
-          return null;
+        if (err?.name === "AbortError" || err?.code === "ERR_CANCELED") {
+          return;
         }
+
         lastFailedRequestRef.current = request;
-        throw new Error(getFriendlyErrorMessage(err, t));
+        const errorMessage = getFriendlyErrorMessage(err, t);
+
+        appendMessage({
+          role: "assistant",
+          content: errorMessage,
+          isError: true,
+          source: "chat",
+        });
+
+        throw new Error("request failed");
       }
     },
-    [sessionContext, appendMessage, t],
+    [appendMessage, sessionContext, t],
   );
 
-  const abort = useCallback(() => {
-    abortRef.current?.abort();
-  }, []);
-
   const retryLastMessage = useCallback(() => {
-    const request = lastFailedRequestRef.current;
-    if (!request) return Promise.resolve(null);
-    return sendMessage(request.text, {
-      appendUserMessage: false,
-      retryRequest: request,
-    });
+    if (!lastFailedRequestRef.current) return;
+    const req = lastFailedRequestRef.current;
+    lastFailedRequestRef.current = null;
+
+    const state = useAIPlannerStore.getState();
+    const lastMsg = state.messages[state.messages.length - 1];
+    if (lastMsg?.isError) {
+      state.removeMessage(lastMsg.id);
+    }
+
+    sendMessage(req.text, { retryRequest: req, appendUserMessage: false }).catch(() => {});
   }, [sendMessage]);
 
   return {
+    messages: conversationMemory,
     sendMessage,
     retryLastMessage,
-    abort,
-    clearConversation: clearChatMessages,
-    conversationMemory,
+    clearHistory: clearChatMessages,
+    hasFailedMessage: Boolean(lastFailedRequestRef.current),
   };
 }

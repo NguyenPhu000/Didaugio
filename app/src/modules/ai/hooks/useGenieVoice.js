@@ -99,15 +99,22 @@ export function useGenieVoice() {
 
     try {
       const form = new FormData();
+      const normalizedUri =
+        audioFile.uri.startsWith("file://") ||
+        audioFile.uri.startsWith("content://") ||
+        audioFile.uri.startsWith("http")
+          ? audioFile.uri
+          : `file://${audioFile.uri}`;
+
       form.append("audio", {
-        uri: audioFile.uri,
+        uri: normalizedUri,
         name: audioFile.name || "genie-voice.m4a",
         type: audioFile.type || "audio/m4a",
       });
       form.append("language", audioFile.language || "vi");
 
       const response = await apiClient.post(ENDPOINTS.ai.voiceTranscribe, form, {
-        headers: { "Content-Type": "multipart/form-data" },
+        transformRequest: [(data) => data],
         timeout: AI_REQUEST_TIMEOUT,
       });
       const text = response?.data?.text || response?.data?.data?.text || "";
@@ -259,8 +266,8 @@ export function useGenieVoice() {
 
         Speech.speak(cleanText, {
           language: "vi-VN",
-          rate: 0.9,
-          pitch: 1.02,
+          rate: 0.95,
+          pitch: 1.0,
           onDone: () => {
             if (!isCurrentSpeech()) return;
             setSafely(setVoiceLevel, 0);
@@ -273,9 +280,29 @@ export function useGenieVoice() {
           },
           onError: () => {
             if (!isCurrentSpeech()) return;
-            setSafely(setError, "Voice playback failed");
-            setSafely(setVoiceLevel, 0);
-            setVoiceStatus(VOICE_STATUS.ERROR);
+            // Fallback sang nhãn "vi" nếu thiết bị không hỗ trợ mã "vi-VN"
+            try {
+              Speech.speak(cleanText, {
+                language: "vi",
+                rate: 0.95,
+                pitch: 1.0,
+                onDone: () => {
+                  if (!isCurrentSpeech()) return;
+                  setSafely(setVoiceLevel, 0);
+                  setVoiceStatus(VOICE_STATUS.IDLE);
+                },
+                onError: () => {
+                  if (!isCurrentSpeech()) return;
+                  setSafely(setError, "Voice playback failed");
+                  setSafely(setVoiceLevel, 0);
+                  setVoiceStatus(VOICE_STATUS.ERROR);
+                },
+              });
+            } catch {
+              setSafely(setError, "Voice playback failed");
+              setSafely(setVoiceLevel, 0);
+              setVoiceStatus(VOICE_STATUS.ERROR);
+            }
           },
         });
         return true;

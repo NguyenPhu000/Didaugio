@@ -17,6 +17,7 @@ import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import {
   resolvePlaceImageUri,
   getOptimizedCloudinaryUrl,
+  PLACE_IMAGE_BLURHASH,
 } from "../../../lib/media-url";
 import {
   getPlaceLocation,
@@ -51,6 +52,8 @@ function CategoryPlaceCard({ place, onPress }) {
             source={{ uri: imageUri }}
             contentFit="cover"
             transition={300}
+            placeholder={{ blurhash: PLACE_IMAGE_BLURHASH }}
+            placeholderContentFit="cover"
             cachePolicy="memory-disk"
             style={StyleSheet.absoluteFillObject}
           />

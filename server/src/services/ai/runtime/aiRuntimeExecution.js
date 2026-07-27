@@ -10,9 +10,7 @@ import { resolveProviderSecret } from "../../adminAi/aiCredential.service.js";
 import { toAiServiceError } from "../aiProviderPolicy.js";
 import { parseApiKeyPool } from "../groq.service.js";
 import { buildAllowedContext } from "./aiContextPolicy.js";
-import {
-  getActiveAiRuntime,
-} from "./aiRuntimeConfig.js";
+import { getActiveAiRuntime } from "./aiRuntimeConfig.js";
 import { evaluateKeywordSafety } from "./aiKeywordSafety.js";
 import { renderConfiguredPrompt } from "../../../lib/promptBuilder.js";
 import { isRateableAiFeature } from "../aiFeedbackPolicy.js";
@@ -28,6 +26,12 @@ const RUNTIME_ERROR_CODES = new Set([
   "AI_INVALID_REQUEST",
 ]);
 
+// Pre-compiled Regular Expressions
+const REGEX_STRIP_TAGS = /\[\s*(?:PLACES?|PLACE_ID|ID)\s*:\s*[\d\s,]+\s*\]/gi;
+const REGEX_STRIP_PARENS = /[\(\[\{]\s*(?:MÃ\s*ID|PLACE\s*ID|MÃ|ID)\s*#?\s*:?\s*[\d\s,]+\s*[\)\]\}]/gi;
+const REGEX_STRIP_BARE_ID = /\b(?:MÃ\s*ID|PLACE\s*ID|ID)\s*#?\s*:?\s*\d+\b/gi;
+const REGEX_MULTIPLE_SPACES = / {2,}/g;
+
 function runtimeError(message, statusCode, code) {
   return Object.assign(new Error(message), {
     code,
@@ -39,8 +43,11 @@ function runtimeError(message, statusCode, code) {
 function stableRuntimeError(error) {
   const code = error?.code ?? error?.errorCode;
   if (RUNTIME_ERROR_CODES.has(code)) {
-    if (!error.code) error.code = code;
-    if (!error.errorCode) error.errorCode = code;
+    // Safely assign properties if object is extensible
+    if (Object.isExtensible(error)) {
+      if (!error.code) error.code = code;
+      if (!error.errorCode) error.errorCode = code;
+    }
     return error;
   }
   return toAiServiceError(error);
@@ -50,24 +57,29 @@ function requestLogUnavailableError() {
   return runtimeError(
     "AI request logging is unavailable.",
     503,
-    "AI_REQUEST_LOG_UNAVAILABLE",
+    "AI_REQUEST_LOG_UNAVAILABLE"
   );
 }
 
 function outputText(result) {
+  if (!result) return "";
   if (typeof result === "string") return result;
-  return String(
-    result?.outputText ??
-      result?.reply ??
-      result?.text ??
-      result?.content ??
-      "",
-  );
+  
+  const text =
+    result.outputText ??
+    result.reply ??
+    result.text ??
+    result.content;
+    
+  return text != null ? String(text) : "";
 }
 
 function rateableOutputText(result) {
   return outputText(result)
-    .replace(/\[PLACES:\s*[\d\s,]*\]/gi, "")
+    .replace(REGEX_STRIP_TAGS, "")
+    .replace(REGEX_STRIP_PARENS, "")
+    .replace(REGEX_STRIP_BARE_ID, "")
+    .replace(REGEX_MULTIPLE_SPACES, " ")
     .trim();
 }
 
@@ -91,13 +103,13 @@ function unavailableRuntime(runtime) {
     return runtimeError(
       runtime.killSwitch?.message || "AI runtime is disabled.",
       503,
-      "AI_DISABLED",
+      "AI_DISABLED"
     );
   }
   return runtimeError(
     "AI runtime is under maintenance.",
     503,
-    "AI_MAINTENANCE",
+    "AI_MAINTENANCE"
   );
 }
 
@@ -118,7 +130,6 @@ async function loadTestConfigSnapshot(source) {
 
 async function executeGroqConfigTest({
   configData,
-  feature,
   inputText,
   renderedSystemPrompt,
   secret,
@@ -131,6 +142,7 @@ async function executeGroqConfigTest({
     apiKey: effectiveKey,
     baseURL: configData.provider.baseUrl,
   });
+  
   const completion = await client.chat.completions.create(
     {
       model: configData.provider.model,
@@ -142,7 +154,7 @@ async function executeGroqConfigTest({
       top_p: configData.modelParameters.topP,
       max_tokens: configData.modelParameters.maxTokens,
     },
-    { timeout: configData.modelParameters.timeoutMs },
+    { timeout: configData.modelParameters.timeoutMs }
   );
 
   return {
@@ -163,6 +175,7 @@ export function createAiRuntimeExecutionService({
   resolveSecret = resolveProviderSecret,
   executeTestProvider = executeGroqConfigTest,
 } = {}) {
+  
   async function executeWithValidatedRuntime({
     feature,
     user,
@@ -177,6 +190,7 @@ export function createAiRuntimeExecutionService({
     const startedAt = now();
     const { configData } = runtime;
     let reservation;
+    
     try {
       reservation = await logs.reserveAiRequest({
         requestId: id,
@@ -205,44 +219,40 @@ export function createAiRuntimeExecutionService({
 
     let result;
     let tokens = { inputTokens: null, outputTokens: null };
+    
     try {
-      const inputSafety = evaluateKeywordSafety(
-        inputText,
-        configData.safety,
-      );
+      const inputSafety = evaluateKeywordSafety(inputText, configData.safety);
       if (inputSafety.blocked) {
         throw runtimeError(
           configData.safety.safeResponse,
           422,
-          "AI_SAFETY_BLOCKED",
+          "AI_SAFETY_BLOCKED"
         );
       }
 
-      const allowedContext = buildAllowedContext(
-        context,
-        configData.context,
-      );
+      const allowedContext = buildAllowedContext(context, configData.context);
+      
       result = await operation({
         configData,
         inputText,
         context: allowedContext,
         requestId: id,
       });
+      
       tokens = tokenMetadata(result);
-      const outputSafety = evaluateKeywordSafety(
-        outputText(result),
-        configData.safety,
-      );
+      
+      const outputSafety = evaluateKeywordSafety(outputText(result), configData.safety);
       if (outputSafety.blocked) {
         throw runtimeError(
           configData.safety.safeResponse,
           422,
-          "AI_SAFETY_BLOCKED",
+          "AI_SAFETY_BLOCKED"
         );
       }
     } catch (error) {
       const stableError = stableRuntimeError(error);
       const safetyBlocked = stableError.code === "AI_SAFETY_BLOCKED";
+      
       await completeOnce({
         ...tokens,
         latencyMs: now() - startedAt,
@@ -256,6 +266,7 @@ export function createAiRuntimeExecutionService({
     const rateable = !isTest && isRateableAiFeature(feature);
     const hasRateableOutput = rateableOutputText(result).length > 0;
     const emptyRateableOutput = rateable && !hasRateableOutput;
+    
     const completionWritten = await completeOnce({
       ...tokens,
       latencyMs: now() - startedAt,
@@ -263,15 +274,16 @@ export function createAiRuntimeExecutionService({
       errorCode: emptyRateableOutput ? "AI_EMPTY_OUTPUT" : null,
       safetyBlocked: false,
     });
+    
     if (!completionWritten) throw requestLogUnavailableError();
-    const requestLogId = Number.isSafeInteger(reservation?.id)
+    
+    const requestLogId = Number.isSafeInteger(reservation?.id) && reservation.id > 0
       ? reservation.id
       : null;
+
     return {
       requestId: id,
-      ...(rateable && hasRateableOutput && requestLogId
-        ? { requestLogId }
-        : {}),
+      ...(rateable && hasRateableOutput && requestLogId ? { requestLogId } : {}),
       result,
     };
   }
@@ -290,6 +302,7 @@ export function createAiRuntimeExecutionService({
     } catch (error) {
       throw stableRuntimeError(error);
     }
+    
     return executeWithValidatedRuntime({
       feature,
       user,
@@ -300,25 +313,24 @@ export function createAiRuntimeExecutionService({
     }, runtime);
   }
 
-  async function runAiConfigTest(
-    { source, feature, message, context },
-    actor,
-  ) {
+  async function runAiConfigTest({ source, feature, message, context }, actor) {
     if (source !== "draft" && source !== "published") {
       throw runtimeError(
         "AI configuration snapshot is unavailable.",
         404,
-        "AI_VERSION_NOT_FOUND",
+        "AI_VERSION_NOT_FOUND"
       );
     }
+    
     const snapshot = await loadSnapshot(source);
     if (!snapshot) {
       throw runtimeError(
         "AI configuration snapshot is unavailable.",
         404,
-        "AI_VERSION_NOT_FOUND",
+        "AI_VERSION_NOT_FOUND"
       );
     }
+    
     const configData = aiConfigDataSchema.parse(snapshot.configData);
     const runtime = {
       status: "active",
@@ -326,7 +338,9 @@ export function createAiRuntimeExecutionService({
       configData,
       killSwitch: { enabled: false, message: null, updatedAt: null },
     };
+    
     const allowedContext = buildAllowedContext(context, configData.context);
+    
     const execution = await executeWithValidatedRuntime({
       feature,
       user: actor,
@@ -336,11 +350,10 @@ export function createAiRuntimeExecutionService({
       operation: async (operationInput) => {
         const renderedSystemPrompt = renderConfiguredPrompt(
           configData.prompts[feature],
-          operationInput.context,
+          operationInput.context
         );
-        const secret = await resolveSecret(
-          configData.provider.secretReference,
-        );
+        const secret = await resolveSecret(configData.provider.secretReference);
+        
         return executeTestProvider({
           ...operationInput,
           feature,
@@ -349,15 +362,13 @@ export function createAiRuntimeExecutionService({
         });
       },
     }, runtime);
+    
     const providerResult = execution.result;
 
     return {
       requestId: execution.requestId,
       renderedPrompt: {
-        system: renderConfiguredPrompt(
-          configData.prompts[feature],
-          allowedContext,
-        ),
+        system: renderConfiguredPrompt(configData.prompts[feature], allowedContext),
         user: "[REDACTED_TEST_MESSAGE]",
       },
       context: allowedContext,
@@ -378,7 +389,5 @@ export function createAiRuntimeExecutionService({
 
 const service = createAiRuntimeExecutionService();
 
-export const executeAiRequest =
-  service.executeAiRequest.bind(service);
-export const runAiConfigTest =
-  service.runAiConfigTest.bind(service);
+export const executeAiRequest = service.executeAiRequest.bind(service);
+export const runAiConfigTest = service.runAiConfigTest.bind(service);

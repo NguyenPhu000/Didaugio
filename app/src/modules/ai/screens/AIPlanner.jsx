@@ -1,7 +1,6 @@
 import {
   View,
   Text,
-  FlatList,
   Pressable,
   Platform,
   Keyboard,
@@ -10,6 +9,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { useTranslation } from "react-i18next";
 import { useAnimatedStyle, useSharedValue, withTiming, Easing } from "react-native-reanimated";
 
@@ -162,7 +162,7 @@ export function AIPlanner() {
   const {
     sendMessage: sendChatMessage,
     retryLastMessage,
-    clearConversation: clearChatConversation,
+    clearHistory: clearChatConversation,
   } = useGroqChat();
 
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -456,7 +456,7 @@ export function AIPlanner() {
         sidebarWidth={sidebarWidth}
         t={t}
       />
-      <FlatList
+      <FlashList
         ref={scrollRef}
         data={hasMessages ? allMessages : []}
         renderItem={renderPlannerMessage}
@@ -467,10 +467,6 @@ export function AIPlanner() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
-        removeClippedSubviews={Platform.OS === "android"}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={5}
         ListEmptyComponent={
           <View className="items-center px-4 py-8">
             <Pressable
@@ -567,7 +563,64 @@ export function AIPlanner() {
               </View>
             ) : null}
 
-            {isLoading ? (
+            {isConfirming ? (
+              <View
+                className="mt-2 w-full rounded-3xl border border-sky-100 bg-white p-4"
+                style={{ boxShadow: "0 10px 30px rgba(52, 120, 246, 0.08)" }}
+              >
+                <View className="flex-row items-center gap-3 mb-3">
+                  <ActivityIndicator size="small" color="#3478F6" />
+                  <Text
+                    className="text-[14px] text-sky-900"
+                    style={{ fontFamily: TOKENS.font.semibold }}
+                  >
+                    {t('aiPlanner.creatingTripProgress')}
+                  </Text>
+                </View>
+
+                <View className="gap-2">
+                  <View className="flex-row items-center gap-2.5">
+                    <MaterialIconsRounded
+                      name={loadingStep >= 0 ? "check-circle" : "radio-button-unchecked"}
+                      size={16}
+                      color={loadingStep >= 0 ? "#10B981" : "#CBD5E1"}
+                    />
+                    <Text
+                      className={`text-xs ${loadingStep >= 0 ? "text-slate-800" : "text-slate-400"}`}
+                      style={{ fontFamily: TOKENS.font.medium }}
+                    >
+                      {t('aiPlanner.stepAggregatePlaces')}
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center gap-2.5">
+                    <MaterialIconsRounded
+                      name={loadingStep >= 1 ? "check-circle" : "radio-button-unchecked"}
+                      size={16}
+                      color={loadingStep >= 1 ? "#10B981" : "#CBD5E1"}
+                    />
+                    <Text
+                      className={`text-xs ${loadingStep >= 1 ? "text-slate-800" : "text-slate-400"}`}
+                      style={{ fontFamily: TOKENS.font.medium }}
+                    >
+                      {t('aiPlanner.stepOptimizeRoute')}
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center gap-2.5">
+                    <MaterialIconsRounded
+                      name={loadingStep >= 2 ? "check-circle" : "radio-button-unchecked"}
+                      size={16}
+                      color={loadingStep >= 2 ? "#10B981" : "#CBD5E1"}
+                    />
+                    <Text
+                      className={`text-xs ${loadingStep >= 2 ? "text-slate-800" : "text-slate-400"}`}
+                      style={{ fontFamily: TOKENS.font.medium }}
+                    >
+                      {t('aiPlanner.stepFinalizeTrip')}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ) : isLoading ? (
               <View
                 className="flex-row items-center self-start rounded-2xl rounded-tl-sm border border-slate-100 bg-white px-4 py-3"
                 style={{ boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)" }}

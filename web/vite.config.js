@@ -33,6 +33,7 @@ export default defineConfig({
           // Core React libraries
           "react-vendor": ["react", "react-dom"],
           "react-router": ["react-router-dom"],
+          "ui-icons": ["lucide-react"],
 
           // State management
           state: ["zustand"],

@@ -95,7 +95,7 @@ export function useDowngradeSubscription() {
           queryKeys.subscriptions.current(),
           queryKeys.subscriptions.invoices(),
         ]);
-        toast.success("ÄÃ£ lÃªn lá»‹ch háº¡ gÃ³i cuá»‘i chu ká»³");
+        toast.success("Đã lên lịch hạ gói cuối chu kỳ");
       },
     },
   );
@@ -111,7 +111,7 @@ export function useCancelScheduledDowngrade() {
         invalidateQueries(queryClient, [
           queryKeys.subscriptions.current(),
         ]);
-        toast.success("ÄÃ£ há»§y lá»‹ch háº¡ gÃ³i");
+        toast.success("Đã hủy lịch hạ gói");
       },
     },
   );

@@ -429,6 +429,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
       ? itineraryDraft
       : null;
   let requestLogId = null;
+  let usedFallback = false;
 
   if (!rawItinerary) {
     const startTime = Date.now();
@@ -474,6 +475,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
       const allowFallback = canUseTripItineraryFallback(err);
 
       if (allowFallback) {
+        usedFallback = true;
         aiResult = {
           parsed: generateFallbackItinerary(preferences, places),
           raw: null,
@@ -490,6 +492,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
 
   let itinerary = normalizeItinerary(rawItinerary, totalDays);
   if (itinerary.days.length === 0) {
+    usedFallback = true;
     itinerary = normalizeItinerary(
       generateFallbackItinerary(preferences, places),
       totalDays,
@@ -537,6 +540,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
       suggestedPlaces,
       selectedPlaceIds: effectiveSelectedPlaceIds,
       tripRoutingSummary,
+      isFallback: usedFallback,
       ...(requestLogId ? { requestLogId } : {}),
     };
   }
@@ -559,7 +563,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
         totalDistanceM: tripRoutingSummary?.totalDistance ? Math.round(tripRoutingSummary.totalDistance) : null,
         estimatedCost: itinerary.estimatedCost ?? null,
         status: "planned",
-        source: "ai_generated",
+        source: usedFallback ? "ai_fallback" : "ai_generated",
         metadata: {
           travelStyle: travelStyle ?? null,
           groupSize: Math.max(toInt(groupSize, 1), 1),

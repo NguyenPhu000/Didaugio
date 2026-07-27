@@ -8,6 +8,7 @@ import { requirePermission } from "../../middlewares/permissionMiddleware.js";
 import { reviewCreateLimiter } from "../../middlewares/rateLimitMiddleware.js";
 import { auditLog } from "../../middlewares/auditLogMiddleware.js";
 import { checkPlaceOwnership } from "../../middlewares/placeMiddleware.js";
+import { requireActiveSubscription } from "../../middlewares/subscriptionFeatureLock.js";
 import {
   validateBody,
   validateQuery,
@@ -93,6 +94,7 @@ router.post(
   "/",
   authenticate,
   requirePermission("places.create"),
+  requireActiveSubscription,
   validateBody(createPlaceSchema),
   auditLog({
     action: "CREATE",

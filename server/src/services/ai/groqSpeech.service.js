@@ -21,11 +21,18 @@ const ALLOWED_AUDIO_TYPES = new Set([
   "audio/mp4",
   "audio/mpga",
   "audio/m4a",
+  "audio/x-m4a",
+  "audio/aac",
+  "audio/3gpp",
+  "audio/3gp",
+  "audio/caf",
+  "audio/mp4a-latm",
   "audio/ogg",
   "audio/wav",
   "audio/webm",
   "video/mp4",
   "video/webm",
+  "application/octet-stream",
 ]);
 
 export function validateTranscriptionFile(file) {
@@ -100,8 +107,14 @@ export async function transcribeWithGroq(
   providerOptions = {},
 ) {
   validateTranscriptionFile(file);
-  const upload = await toFile(file.buffer, file.originalname || "voice.wav", {
-    type: file.mimetype,
+  const normalizedMime =
+    file.mimetype === "application/octet-stream" || file.mimetype === "audio/x-m4a"
+      ? "audio/m4a"
+      : (file.mimetype || "audio/m4a");
+  const filename = file.originalname || "voice.m4a";
+
+  const upload = await toFile(file.buffer, filename, {
+    type: normalizedMime,
   });
   const request = buildGroqTranscriptionRequest({
     file: upload,

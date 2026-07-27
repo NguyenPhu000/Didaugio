@@ -376,20 +376,37 @@ export async function checkFeatureLock(businessId) {
 }
 
 export async function getCurrentSubscription(businessId) {
-  const subscription = await prisma.subscription.findUnique({
-    where: { businessId },
-    include: {
-      plan: true,
-      invoices: {
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        select: {
-          id: true, invoiceNumber: true, amount: true, status: true,
-          dueDate: true, paidAt: true, createdAt: true, qrUrl: true,
+  const [subscription, usageCounts] = await Promise.all([
+    prisma.subscription.findUnique({
+      where: { businessId },
+      include: {
+        plan: true,
+        invoices: {
+          orderBy: { createdAt: "desc" },
+          take: 5,
+          select: {
+            id: true, invoiceNumber: true, amount: true, status: true,
+            dueDate: true, paidAt: true, createdAt: true, qrUrl: true,
+          },
         },
       },
-    },
-  });
+    }),
+    // Count actual usage for this business
+    Promise.all([
+      prisma.place.count({ where: { businessId } }),
+      prisma.businessService.count({ where: { businessId } }),
+      prisma.user.count({ where: { businessId, businessRoleId: { not: null } } }),
+      prisma.booking.count({
+        where: {
+          businessId,
+          createdAt: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) },
+        },
+      }),
+    ]),
+  ]);
+
+  const [placesCount, servicesCount, staffCount, bookingsCount] = usageCounts;
+  const usage = { places: placesCount, services: servicesCount, staff: staffCount, bookings: bookingsCount };
 
   if (!subscription) {
     // Business chưa có subscription → tạo mặc định với plan Basic
@@ -422,6 +439,7 @@ export async function getCurrentSubscription(businessId) {
 
     return {
       ...created,
+      usage,
       entitlements: buildSubscriptionEntitlements(created),
     };
   }
