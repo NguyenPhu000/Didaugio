@@ -34,7 +34,7 @@ const VOICE_RECORDING_OPTIONS = {
   bitRate: 64000,
 };
 
-const VOICE_SESSION_FAILED = "VOICE_SESSION_FAILED";
+
 
 export function useGenieVoice() {
   const [status, setStatus] = useState(VOICE_STATUS.IDLE);
@@ -114,6 +114,10 @@ export function useGenieVoice() {
       form.append("language", audioFile.language || "vi");
 
       const response = await apiClient.post(ENDPOINTS.ai.voiceTranscribe, form, {
+        // The client default is application/json; multipart uploads must
+        // override it so RN networking builds the multipart body correctly
+        // (Android's OkHttp rejects FormData under a non-multipart type).
+        headers: { "Content-Type": "multipart/form-data" },
         transformRequest: [(data) => data],
         timeout: AI_REQUEST_TIMEOUT,
       });
@@ -173,7 +177,7 @@ export function useGenieVoice() {
       } catch {
         await restoreIdle();
         setVoiceStatus(VOICE_STATUS.ERROR);
-        setSafely(setError, VOICE_SESSION_FAILED);
+        setSafely(setError, VOICE_ERROR_CODES.SESSION_FAILED);
         setSafely(setVoiceLevel, 0);
         return false;
       }
@@ -197,7 +201,7 @@ export function useGenieVoice() {
         });
       } catch {
         setVoiceStatus(VOICE_STATUS.ERROR);
-        setSafely(setError, VOICE_SESSION_FAILED);
+        setSafely(setError, VOICE_ERROR_CODES.SESSION_FAILED);
         setSafely(setVoiceLevel, 0);
         return "";
       }
@@ -308,7 +312,7 @@ export function useGenieVoice() {
         return true;
       } catch {
         if (speechSessionRef.current !== speechSession) return false;
-        setSafely(setError, VOICE_SESSION_FAILED);
+        setSafely(setError, VOICE_ERROR_CODES.SESSION_FAILED);
         setSafely(setVoiceLevel, 0);
         setVoiceStatus(VOICE_STATUS.ERROR);
         return false;

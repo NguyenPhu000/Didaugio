@@ -59,8 +59,8 @@ export const handleGroqChat = async (req, res) => {
       const { latitude: lat, longitude: lng } = currentCoords;
       
       if (!isNaN(lat) && !isNaN(lng)) {
-        // Spatial query với Bounding Box pre-filter
-        systemPlaces = await findPlacesNearby(lat, lng, 10, 10);
+        // Spatial query với Bounding Box pre-filter (nâng giới hạn lên 20 điểm)
+        systemPlaces = await findPlacesNearby(lat, lng, 10, 20);
         
         // Reverse geocoding tại server
         const district = await findNearestDistrict(lat, lng);
@@ -119,15 +119,27 @@ export const handleGroqChat = async (req, res) => {
     });
     const { reply, suggestedPlaceIds } = execution.result;
 
-    // 5. Khớp các địa điểm được AI gợi ý
+    // 5. Khớp các địa điểm được AI gợi ý theo ID tag lẫn tên văn bản
     let responsePlaces = [];
-    if (suggestedPlaceIds.length > 0) {
-      responsePlaces = systemPlaces.filter((p) => suggestedPlaceIds.includes(p.id));
-    } else {
-      // Fallback: khớp theo tên địa điểm xuất hiện trong văn bản trả về
-      responsePlaces = systemPlaces.filter((p) =>
-        reply.toLowerCase().includes(p.name.toLowerCase()),
-      );
+    const matchedIds = new Set();
+
+    if (suggestedPlaceIds?.length > 0) {
+      const placeMap = new Map(systemPlaces.map((p) => [p.id, p]));
+      for (const id of suggestedPlaceIds) {
+        if (placeMap.has(id)) {
+          responsePlaces.push(placeMap.get(id));
+          matchedIds.add(id);
+        }
+      }
+    }
+
+    // Bổ sung các địa điểm có tên xuất hiện trong văn bản trả về nhưng chưa có trong ID tag
+    const replyLower = reply.toLowerCase();
+    for (const p of systemPlaces) {
+      if (!matchedIds.has(p.id) && replyLower.includes(p.name.toLowerCase())) {
+        responsePlaces.push(p);
+        matchedIds.add(p.id);
+      }
     }
 
     return res.status(200).json({

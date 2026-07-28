@@ -225,8 +225,9 @@ ${JSON.stringify(minifiedClustered, null, 2)}
 **YÊU CẦU NGHIÊM NGẶT:**
 1. Bạn CHỈ ĐƯỢC phép xếp địa điểm của cụm Ngày N vào đúng ngày ("dayNumber": N) trong lịch trình đầu ra. Không được hoán đổi địa điểm giữa các ngày.
 2. Dùng đúng giá trị số "id" của địa điểm cho trường "placeId" của đầu ra. TUYỆT ĐỐI KHÔNG TỰ TẠO SỐ ID KHÔNG CÓ TRONG CSDL.
-3. Tuyệt đối không dùng dấu hoa thị (*) hoặc markdown bold (*).
-4. Trả về JSON hợp lệ khớp với schema yêu cầu, không giải thích gì thêm.
+3. ĐẶC BIỆT LƯU Ý: Nếu người dùng có yêu cầu hoặc đề cập các địa điểm cụ thể trong Ghi chú ("notes") hoặc tin nhắn trước, bạn BẮT BUỘC phải ưu tiên xếp đầy đủ các địa điểm đó vào lịch trình (dùng đúng placeId tương ứng trong CSDL).
+4. Tuyệt đối không dùng dấu hoa thị (*) hoặc markdown bold (*).
+5. Trả về JSON hợp lệ khớp với schema yêu cầu, không giải thích gì thêm.
 
 **JSON Schema yêu cầu:**
 ${JSON.stringify({

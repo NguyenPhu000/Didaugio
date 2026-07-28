@@ -66,46 +66,50 @@ export function UpcomingTripCard({ trip, onPress }) {
   return (
     <Pressable
       onPress={onPress}
-      className="h-[220px] rounded-[20px] overflow-hidden bg-white shadow-md elevation-3 relative"
+      className="h-[220px] rounded-[24px] overflow-hidden bg-[#0B0D12] border border-white/15 shadow-xl relative active:opacity-95"
     >
       <Image
         source={{ uri: coverImage }}
-        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
+        className="absolute inset-0 w-full h-full"
         contentFit="cover"
+        transition={250}
+        cachePolicy="memory-disk"
       />
       
+      {/* 3-stop Linear Gradient Overlay */}
       <LinearGradient
-        colors={["transparent", "rgba(15, 23, 42, 0.75)"]}
-        className="absolute inset-0"
+        colors={["transparent", "rgba(8, 9, 12, 0.45)", "rgba(8, 9, 12, 0.95)"]}
+        locations={[0, 0.55, 1]}
+        className="absolute inset-0 w-full h-full"
       />
 
-      <View className="absolute top-4 right-4 bg-[#10B981] rounded-full px-3 py-1">
-        <Text className="text-white text-[13px] font-semibold">{countdownText}</Text>
+      <View className="absolute top-4 right-4 bg-emerald-950/80 border border-emerald-400/40 rounded-full px-3 py-1">
+        <Text className="text-emerald-400 text-[11px] font-bold uppercase tracking-wider" style={{ fontVariant: ["tabular-nums"] }}>
+          {countdownText}
+        </Text>
       </View>
 
-      <View className="absolute bottom-14 left-5">
+      <View className="absolute bottom-14 left-5 right-5">
         <Text
-          className="text-[22px] font-semibold text-white"
+          className="text-[22px] font-bold text-white tracking-[-0.5px]"
           numberOfLines={1}
-          style={shadowStyle}
         >
           {title}
         </Text>
         <Text
-          className="text-[15px] text-white font-medium mt-0.5"
+          className="text-[14px] text-cyan-200/90 font-medium mt-0.5"
           numberOfLines={1}
-          style={shadowStyle}
         >
           {destination}{duration ? ` • ${duration}` : ""}
         </Text>
       </View>
 
       <View className="absolute bottom-4 left-5 right-5 flex-row justify-between items-end">
-        <MaterialIconsRounded name="airplane-ticket" size={28} color="#fff" />
+        <MaterialIconsRounded name="airplane-ticket" size={24} color="#38BDF8" />
 
         {duration ? (
-          <View className="bg-white/20 rounded-full px-3 py-1 border border-white/30">
-            <Text className="text-xs font-semibold text-white">{duration}</Text>
+          <View className="bg-[#0B0D12]/80 rounded-full px-3 py-1 border border-white/20">
+            <Text className="text-xs font-semibold text-white" style={{ fontVariant: ["tabular-nums"] }}>{duration}</Text>
           </View>
         ) : null}
       </View>

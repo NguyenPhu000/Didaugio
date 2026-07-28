@@ -414,11 +414,61 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
     throw error;
   }
 
-  const placeById = new Map(places.map((place) => [place.id, place]));
-  const placeIdSet = new Set(placeById.keys());
-  const normalizedSelectedPlaceIds = Array.isArray(selectedPlaceIds)
+  // Matching place names mentioned in preferences.notes
+  const lowerNotes = String(preferences.notes || "").toLowerCase();
+  const matchedNotesPlaceIds = [];
+  if (lowerNotes.length > 0) {
+    for (const place of places) {
+      const pName = place.name.toLowerCase();
+      if (lowerNotes.includes(pName) || (pName.length > 4 && lowerNotes.includes(pName))) {
+        matchedNotesPlaceIds.push(place.id);
+      }
+    }
+  }
+
+  const initialSelectedIds = Array.isArray(selectedPlaceIds)
     ? selectedPlaceIds.map((id) => toInt(id)).filter(Boolean)
     : [];
+
+  const combinedSelectedIds = [...new Set([...initialSelectedIds, ...matchedNotesPlaceIds])];
+
+  // If any selected IDs are missing from top 50, fetch them explicitly from DB
+  const existingPlaceIds = new Set(places.map((p) => p.id));
+  const missingSelectedIds = combinedSelectedIds.filter((id) => !existingPlaceIds.has(id));
+
+  if (missingSelectedIds.length > 0) {
+    const extraPlaces = await prisma.place.findMany({
+      where: {
+        ...approvedPlaceWhere,
+        id: { in: missingSelectedIds },
+      },
+      include: {
+        category: { select: { id: true, name: true, slug: true } },
+        district: { select: { id: true, name: true, code: true } },
+        ward: { select: { id: true, name: true, wardType: true } },
+        openingHours: {
+          orderBy: [{ dayOfWeek: "asc" }],
+          select: {
+            dayOfWeek: true,
+            openTime: true,
+            closeTime: true,
+            isClosed: true,
+          },
+        },
+        _count: { select: { reviews: true } },
+        images: {
+          take: 1,
+          orderBy: [{ isCover: "desc" }],
+          select: { imageData: true, secureUrl: true, thumbnailUrl: true },
+        },
+      },
+    });
+    places = [...extraPlaces, ...places];
+  }
+
+  const placeById = new Map(places.map((place) => [place.id, place]));
+  const placeIdSet = new Set(placeById.keys());
+  const normalizedSelectedPlaceIds = combinedSelectedIds.filter((id) => placeIdSet.has(id));
 
   if (normalizedSelectedPlaceIds.some((id) => !placeIdSet.has(id))) {
     throw createInvalidConfirmationError();

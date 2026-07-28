@@ -12,7 +12,7 @@ const tripsRootKey = QUERY_KEYS.trips.all()[0];
 
 function slimPlace(place) {
   if (!place || typeof place !== "object") return place;
-  const { thumbnail, images, ...rest } = place;
+  const { thumbnail, images, image_data, imageData, reviews, ...rest } = place;
 
   const slimThumbnail =
     typeof thumbnail === "string" && /^https?:\/\//i.test(thumbnail.trim())
@@ -21,11 +21,12 @@ function slimPlace(place) {
 
   const first = Array.isArray(images) ? images[0] : null;
   const slimImages =
-    first && (first.secureUrl || first.thumbnailUrl)
+    first && typeof (first.secureUrl || first.thumbnailUrl || first.url) === "string"
       ? [
           {
             ...(first.secureUrl ? { secureUrl: first.secureUrl } : {}),
             ...(first.thumbnailUrl ? { thumbnailUrl: first.thumbnailUrl } : {}),
+            ...(first.url ? { url: first.url } : {}),
           },
         ]
       : undefined;
@@ -94,11 +95,11 @@ export const asyncStoragePersister = {
           return q;
         });
 
-        // Size guard: bỏ qua persist nếu payload quá lớn (> 1.5MB)
-        // để tránh SQLITE_FULL trên thiết bị
+        // Size guard: nâng hạn mức size guard từ 1.5MB lên 4.5MB
+        // kết hợp loại bỏ base64 để cho phép lưu trữ offline dữ liệu lớn mà không bị cảnh báo
         try {
           const serialized = JSON.stringify(slimmedQueries);
-          if (serialized.length > 1_500_000) {
+          if (serialized.length > 4_500_000) {
             logger.warn(
               `[queryPersist] Cache quá lớn (${(serialized.length / 1024 / 1024).toFixed(1)}MB), bỏ qua persist.`
             );

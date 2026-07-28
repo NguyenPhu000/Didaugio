@@ -190,12 +190,20 @@ export function useAIPlanner() {
       appendMessage(userMsg);
 
       const inferred = inferPlannerPreferences(rawText);
+      const prevSuggestedIds = messages
+        .flatMap((m) => m.suggestedPlaces || [])
+        .map((p) => Number(p?.id))
+        .filter(Boolean);
+
       const payload = {
         totalDays: preferences.totalDays ?? inferred.totalDays ?? 1,
         travelStyle: preferences.travelStyle ?? inferred.travelStyle,
         groupSize: preferences.groupSize ?? inferred.groupSize ?? 1,
         budget: preferences.budget ?? inferred.budget,
         notes: normalizePlannerNotes(rawText),
+        selectedPlaceIds:
+          preferences.selectedPlaceIds ??
+          (prevSuggestedIds.length > 0 ? [...new Set(prevSuggestedIds)] : undefined),
       };
 
       setLastPreferences(payload);

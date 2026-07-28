@@ -1,7 +1,5 @@
 import { View } from "react-native";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
-import { Glow } from "../../../../components/reacticx/glow";
 
 export function GenieAvatar({ size = 40 }) {
   return (

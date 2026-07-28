@@ -10,7 +10,8 @@ const client = axios.create({
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
-    "ngrok-skip-browser-warning": "true",
+    // Only sent in development (ngrok tunnel). Never reaches production.
+    ...(__DEV__ && { "ngrok-skip-browser-warning": "true" }),
   },
 });
 

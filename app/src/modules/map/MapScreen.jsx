@@ -77,16 +77,7 @@ const MAP_CANVAS_STYLE = {
 };
 const ARRIVING_SOON_RADIUS_M = 150;
 
-const showLocationPermissionAlert = () => {
-  Alert.alert(
-    "Yeu cau quyen truy cap vi tri",
-    "Vui long cap quyen vi tri trong Cai dat de ung dung co the dan duong thoi gian thuc.",
-    [
-      { text: "Huy", style: "cancel" },
-      { text: "Mo Cai dat", onPress: () => Linking.openSettings() },
-    ],
-  );
-};
+
 
 function buildLocalDateTime(ymd, hhmm) {
   if (!ymd || !hhmm) return null;
@@ -175,13 +166,24 @@ export default function MapScreen() {
 
   const mapTransportToMode = useCallback((transport) => {
     if (!transport) return "motorcycle";
-    const t = String(transport).toLowerCase().trim();
-    if (t.includes("đi bộ") || t.includes("walking")) return "walking";
-    if (t.includes("xe hơi") || t.includes("ô tô") || t.includes("car")) return "driving";
-    if (t.includes("xe đạp") || t.includes("cycling") || t.includes("bike")) return "cycling";
-    if (t.includes("xe buýt") || t.includes("bus")) return "driving";
+    const tr = String(transport).toLowerCase().trim();
+    if (tr.includes("đi bộ") || tr.includes("walking")) return "walking";
+    if (tr.includes("xe hơi") || tr.includes("ô tô") || tr.includes("car")) return "driving";
+    if (tr.includes("xe đạp") || tr.includes("cycling") || tr.includes("bike")) return "cycling";
+    if (tr.includes("xe buýt") || tr.includes("bus")) return "driving";
     return "motorcycle";
   }, []);
+
+  const showLocationPermissionAlert = useCallback(() => {
+    Alert.alert(
+      t("mapScreen.locationPermissionTitle"),
+      t("mapScreen.locationPermissionMessage"),
+      [
+        { text: t("mapScreen.locationPermissionCancel"), style: "cancel" },
+        { text: t("mapScreen.locationPermissionOpenSettings"), onPress: () => Linking.openSettings() },
+      ],
+    );
+  }, [t]);
 
   useEffect(() => {
     let cancelled = false;

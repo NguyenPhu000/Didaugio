@@ -1495,7 +1495,8 @@
     "estimatedCost": "Chi phí ~{{cost}} đ",
     "selectingCountShort": "Đang chọn: {{count}} địa điểm.",
     "previewMessage": "Em Genie đã lên khung lịch trình {{totalDays}} ngày và gợi ý {{suggestedCount}} địa điểm.",
-    "previewInstruction": "Bạn chọn địa điểm phía dưới rồi bấm **Chốt & tạo chuyến đi**."
+    "previewInstruction": "Bạn chọn địa điểm phía dưới rồi bấm **Chốt & tạo chuyến đi**.",
+    "newTopic": "Chủ đề mới"
   },
   "chatPanel": {
     "confirmDelete": "Xóa lịch sử chat?",
@@ -1729,7 +1730,11 @@
     "map": "Bản đồ",
     "satellite": "Vệ tinh",
     "complete": "Hoàn tất",
-    "paused": "Tạm nghỉ"
+    "paused": "Tạm nghỉ",
+    "locationPermissionTitle": "Yêu cầu quyền vị trí",
+    "locationPermissionMessage": "Vui lòng cấp quyền vị trí trong Cài đặt để ứng dụng có thể dẫn đường thời gian thực.",
+    "locationPermissionCancel": "Hủy",
+    "locationPermissionOpenSettings": "Mở Cài đặt"
   },
   "travelMode": {
     "motorbike": "Xe máy",

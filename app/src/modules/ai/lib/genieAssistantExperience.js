@@ -126,9 +126,10 @@ export function normalizeGenieResponse(response = {}) {
       ? data.reply.trim()
       : "";
   const reply = rawReply
-    .replace(/\[\s*(?:PLACES?|PLACE_ID|ID)\s*:\s*[\d\s,]+\s*\]/gi, "")
-    .replace(/[\(\[\{]\s*(?:MÃ\s*ID|PLACE\s*ID|MÃ|ID)\s*#?\s*:?\s*[\d\s,]+\s*[\)\]\}]/gi, "")
-    .replace(/\b(?:MÃ\s*ID|PLACE\s*ID|ID)\s*#?\s*:?\s*\d+\b/gi, "")
+    .replace(/[\(\[\{]\s*(?:PLACES?|PLACE_ID|PLACES_ID|MÃ_ID|MÃ|ID)\s*:\s*[\d\s,]+\s*[\)\]\}]/gi, "")
+    .replace(/[\(\[\{]\s*(?:MÃ\s*ID|PLACE\s*ID|PLACES?|MÃ|ID)?\s*#?\s*:?\s*[\d\s,]+\s*[\)\]\}]/gi, "")
+    .replace(/\b(?:MÃ\s*ID|PLACE\s*ID|PLACES?|MÃ|ID)\s*#?\s*:?\s*\d+\b/gi, "")
+    .replace(/[\(\[\{]\s*[\)\]\}]/g, "")
     .replace(/  +/g, " ")
     .trim();
   const suggestedPlaces = Array.isArray(data.relatedPlaces)

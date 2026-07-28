@@ -38,14 +38,19 @@ import {
   sendItineraryWithVoiceFeedback,
 } from "../lib/genieRequestFlow";
 
-const ACCENT = "#3478F6";
-const SUGGESTION_COLORS = ["#0EA5E9", "#F97316", "#10B981", "#8B5CF6"];
+const ACCENT = TOKENS.color.primary[500];
+const SUGGESTION_COLORS = [
+  "#0EA5E9",
+  "#F97316",
+  TOKENS.color.success,
+  "#8B5CF6",
+];
 const HISTORY_PREVIEW_LIMIT = 5;
 
-function createConversationTopic(messages) {
+function createConversationTopic(messages, fallback) {
   const userMessage = messages.find((message) => message.role === "user");
   const rawText = (userMessage?.text ?? userMessage?.content ?? "").trim();
-  if (!rawText) return "Chủ đề mới";
+  if (!rawText) return fallback;
 
   const cleaned = rawText
     .replace(/\s+/g, " ")
@@ -215,16 +220,35 @@ export function AIPlanner() {
 
   const allMessages = messages;
 
-  // Scroll to bottom only when a new message arrives
-  const prevMsgCountRef = useRef(allMessages.length);
+  // Scroll to bottom on initial load with existing history AND when new messages arrive
+  const prevMsgCountRef = useRef(0);
+  const initialScrollDoneRef = useRef(false);
+
   useEffect(() => {
-    if (allMessages.length > prevMsgCountRef.current) {
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    const currentLength = allMessages.length;
+    if (currentLength > 0) {
+      const isInitial = !initialScrollDoneRef.current;
+      if (isInitial || currentLength > prevMsgCountRef.current) {
+        initialScrollDoneRef.current = true;
+        const timer = setTimeout(
+          () => scrollRef.current?.scrollToEnd({ animated: !isInitial }),
+          isInitial ? 60 : 100,
+        );
+        prevMsgCountRef.current = currentLength;
+        return () => clearTimeout(timer);
+      }
     }
-    prevMsgCountRef.current = allMessages.length;
+    prevMsgCountRef.current = currentLength;
   }, [allMessages.length]);
 
-  const conversationTopic = useMemo(() => createConversationTopic(allMessages), [allMessages]);
+  const handleContentSizeChange = useCallback(() => {
+    if (!initialScrollDoneRef.current && allMessages.length > 0) {
+      initialScrollDoneRef.current = true;
+      scrollRef.current?.scrollToEnd({ animated: false });
+    }
+  }, [allMessages.length]);
+
+  const conversationTopic = useMemo(() => createConversationTopic(allMessages, t("aiPlanner.newTopic")), [allMessages, t]);
   const historyPreviewItems = useMemo(() => {
     return allMessages
       .filter((message) => message.role === "user")
@@ -461,6 +485,12 @@ export function AIPlanner() {
         data={hasMessages ? allMessages : []}
         renderItem={renderPlannerMessage}
         keyExtractor={(item, index) => item.id ?? String(index)}
+        onContentSizeChange={handleContentSizeChange}
+        estimatedItemSize={160}
+        getItemType={(item) => (item?.plan || item?.suggestedPlaces?.length > 0 || item?.isDraftPreview ? "complex" : "simple")}
+        overrideItemLayout={(layout, item) => {
+          layout.size = item?.plan || item?.suggestedPlaces?.length > 0 || item?.isDraftPreview ? 360 : 120;
+        }}
         contentInsetAdjustmentBehavior="automatic"
         style={s.scrollView}
         contentContainerStyle={hasMessages ? s.scrollContentMessages : s.scrollContentEmpty}

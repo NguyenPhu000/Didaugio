@@ -13,10 +13,11 @@ import {
 } from "./aiProviderPolicy.js";
 
 // Pre-compiled Regular Expressions for better performance
-const REGEX_EXTRACT_PLACES = /\[\s*(?:PLACES?|PLACE_ID|ID)\s*:\s*([\d\s,]+)\s*\]/gi;
-const REGEX_STRIP_TAGS = /\[\s*(?:PLACES?|PLACE_ID|ID)\s*:\s*[\d\s,]+\s*\]/gi;
-const REGEX_STRIP_PARENS = /[\(\[\{]\s*(?:MÃ\s*ID|PLACE\s*ID|MÃ|ID)\s*#?\s*:?\s*[\d\s,]+\s*[\)\]\}]/gi;
-const REGEX_STRIP_BARE_ID = /\b(?:MÃ\s*ID|PLACE\s*ID|ID)\s*#?\s*:?\s*\d+\b/gi;
+const REGEX_EXTRACT_PLACES = /[\(\[\{]\s*(?:PLACES?|PLACE_ID|ID)\s*:\s*([\d\s,]+)\s*[\)\]\}]/gi;
+const REGEX_STRIP_TAGS = /[\(\[\{]\s*(?:PLACES?|PLACE_ID|PLACES_ID|MÃ_ID|MÃ|ID)\s*:\s*[\d\s,]+\s*[\)\]\}]/gi;
+const REGEX_STRIP_PARENS = /[\(\[\{]\s*(?:MÃ\s*ID|PLACE\s*ID|PLACES?|MÃ|ID)?\s*#?\s*:?\s*[\d\s,]+\s*[\)\]\}]/gi;
+const REGEX_STRIP_BARE_ID = /\b(?:MÃ\s*ID|PLACE\s*ID|PLACES?|MÃ|ID)\s*#?\s*:?\s*\d+\b/gi;
+const REGEX_STRIP_EMPTY_PARENS = /[\(\[\{]\s*[\)\]\}]/g;
 const REGEX_MULTIPLE_SPACES = / {2,}/g;
 const REGEX_SPLIT_KEYS = /[\n,;]+/;
 
@@ -128,7 +129,7 @@ function buildGroqSystemPrompt(context = {}, configuredPrompt = "") {
     `- Trò chuyện tự nhiên, như đang nhắn tin cho bạn, KHÔNG phải robot đọc danh sách`,
     `- Dùng ngôn ngữ miền Nam nhẹ nhàng: "nè", "đó", "ha", "nghen", "ơi" ở cuối câu khi phù hợp`,
     `- Khi gợi ý địa điểm: kể như đang giới thiệu cho bạn, nhấn mạnh điểm đặc biệt nhất trước`,
-    `- Mỗi lần gợi ý 2-3 chỗ cụ thể kèm GIÁ THẬT từ dữ liệu, KHÔNG nói chung chung`,
+    `- Nếu người dùng yêu cầu số lượng cụ thể (ví dụ: "gợi ý 10 chỗ"), hãy gợi ý ĐÚNG số lượng đó từ danh sách CSDL. Nếu người dùng không chỉ định số lượng, hãy gợi ý 3-5 chỗ cụ thể kèm GIÁ THẬT từ dữ liệu, KHÔNG nói chung chung`,
     `- Nếu người dùng hỏi mơ hồ (ví dụ: "đi đâu chơi"), hãy hỏi lại cho rõ: muốn ăn gì, budget bao nhiêu, thích kiểu nào`,
     `- Nhớ ngữ cảnh cuộc trò chuyện trước đó, nếu user từng hỏi thì nhắc lại để tạo liền mạch`,
     `- Nếu người dùng chê "đắt quá" hoặc muốn "rẻ hơn", gợi ý thay thế từ dữ liệu có giá thấp hơn`,
@@ -217,8 +218,8 @@ function buildGroqSystemPrompt(context = {}, configuredPrompt = "") {
       `TUYỆT ĐỐI KHÔNG TỰ NÓI HOẶC BỊA BẤT KỲ TÊN QUÁN/ĐỊA ĐIỂM NÀO KHÁC BÊN NGOÀI DANH SÁCH TRÊN (ví dụ: không được bịa "Quán bún Cái Bè", "Quán bún Bè", hay bất kỳ quán nào không có trong danh sách trên).`,
       `Nếu người dùng hỏi món ăn/quán mà trong CSDL không có, hãy trả lời thẳng thắn: "Hiện tại Genie chưa có thông tin quán này trong hệ thống Cần Thơ nè" và gợi ý 1 trong các quán có sẵn trong danh sách CSDL dưới đây.`,
       `\nDANH SÁCH CHI TIẾT ĐỊA ĐIỂM CSDL:\n${formattedPlaceLines}`,
-      `\nQUY TẮC HIỂN THỊ MÃ ID: TUYỆT ĐỐI CẤM VIẾT BẤT KỲ MÃ ID NÀO (như ID 240, [PLACE: 240], (ID 240), mã 240...) VÀO TRONG NỘI DUNG VĂN BẢN TRẢ LỜI NGƯỜI DÙNG.`,
-      `Khi gợi ý địa điểm từ danh sách trên, CHỈ ĐÍNH KÈM DUY NHẤT DÒNG: [PLACES: id1, id2, ...] Ở DÒNG CUỐI CÙNG CỦA CÂU TRẢ LỜI DÙNG CHO HỆ THỐNG.`
+      `\nQUY TẮC HIỂN THỊ MÃ ID: TUYỆT ĐỐI CẤM VIẾT BẤT KỲ MÃ ID NÀO (như (PLACES:254), [PLACES:254], ID 240, (ID 240), mã 240...) VÀO TRONG NỘI DUNG VĂN BẢN TRẢ LỜI NGƯỜI DÙNG.`,
+      `Khi gợi ý địa điểm từ danh sách trên, CHỈ ĐÍNH KÈM DUY NHẤT DÒNG HỆ THỐNG: [PLACES: id1, id2, ...] Ở DÒNG CUỐI CÙNG VÀ NGOÀI RA KHÔNG VIẾT MÃ ID Ở BẤT KỲ ĐÂU KHÁC.`
     );
   } else {
     parts.push(
@@ -292,6 +293,7 @@ export async function chatWithGroq(messages, context = {}, providerOptions = {})
     .replace(REGEX_STRIP_TAGS, "")
     .replace(REGEX_STRIP_PARENS, "")
     .replace(REGEX_STRIP_BARE_ID, "")
+    .replace(REGEX_STRIP_EMPTY_PARENS, "")
     .replace(REGEX_MULTIPLE_SPACES, " ")
     .trim();
 

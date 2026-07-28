@@ -1497,7 +1497,8 @@
     "estimatedCost": "Cost ~{{cost}} VND",
     "selectingCountShort": "Selecting: {{count}} destinations.",
     "previewMessage": "Genie has prepared a {{totalDays}}-day itinerary with {{suggestedCount}} suggested places.",
-    "previewInstruction": "Select places below and press **Confirm & create trip**."
+    "previewInstruction": "Select places below and press **Confirm & create trip**.",
+    "newTopic": "New topic"
   },
   "chatPanel": {
     "confirmDelete": "Delete chat history?",
@@ -1730,7 +1731,11 @@
     "map": "Map",
     "satellite": "Satellite",
     "complete": "Complete",
-    "paused": "Paused"
+    "paused": "Paused",
+    "locationPermissionTitle": "Location access required",
+    "locationPermissionMessage": "Please grant location permission in Settings so the app can provide real-time navigation.",
+    "locationPermissionCancel": "Cancel",
+    "locationPermissionOpenSettings": "Open Settings"
   },
   "travelMode": {
     "motorbike": "Motorbike",

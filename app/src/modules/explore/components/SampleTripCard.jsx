@@ -94,19 +94,15 @@ function SampleTripCardInner({ trip, onPress }) {
         className="absolute inset-0 w-full h-full"
       />
 
-      {/* Modern Gradient Overlays */}
+      {/* 3-Stop Linear Gradient Overlay */}
       <LinearGradient
-        colors={[
-          "rgba(15, 23, 42, 0.4)",
-          "rgba(15, 23, 42, 0.2)",
-          "rgba(15, 23, 42, 0.95)",
-        ]}
-        locations={[0, 0.4, 1]}
+        colors={["transparent", "rgba(8, 9, 12, 0.45)", "rgba(8, 9, 12, 0.95)"]}
+        locations={[0, 0.55, 1]}
         className="absolute inset-0 w-full h-full"
       />
 
       {/* Top Floating Badge */}
-      <View className="absolute top-3.5 left-3.5 flex-row items-center space-x-1.5 px-3 py-1.5 rounded-full bg-black/40 border border-white/30 backdrop-blur-md">
+      <View className="absolute top-3.5 left-3.5 flex-row items-center space-x-1.5 px-3 py-1.5 rounded-full bg-[#0B0D12]/80 border border-white/20">
         <MaterialIconsRounded name="explore" size={14} color="#38BDF8" />
         <Text className="text-[10px] font-bold tracking-wider text-sky-300 uppercase">
           LỊCH TRÌNH MẪU • CẦN THƠ
@@ -114,8 +110,8 @@ function SampleTripCardInner({ trip, onPress }) {
       </View>
 
       {/* Right Top Days Tag */}
-      <View className="absolute top-3.5 right-3.5 px-2.5 py-1 rounded-full bg-emerald-500/90 border border-emerald-300/40">
-        <Text className="text-[10px] font-extrabold text-white uppercase tracking-tight">
+      <View className="absolute top-3.5 right-3.5 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-400/40">
+        <Text className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-tight" style={{ fontVariant: ["tabular-nums"] }}>
           {dayCount} NGÀY
         </Text>
       </View>
@@ -125,7 +121,7 @@ function SampleTripCardInner({ trip, onPress }) {
         {/* Title */}
         <Text
           numberOfLines={2}
-          className="text-xl font-bold text-white leading-snug tracking-tight drop-shadow-md"
+          className="text-xl font-bold text-white leading-snug tracking-tight"
         >
           {trip?.title || "Hành trình trải nghiệm Cần Thơ"}
         </Text>
@@ -150,26 +146,26 @@ function SampleTripCardInner({ trip, onPress }) {
                 size={14}
                 color="#E2E8F0"
               />
-              <Text className="text-xs font-semibold text-slate-200">
+              <Text className="text-xs font-semibold text-slate-200" style={{ fontVariant: ["tabular-nums"] }}>
                 {dayCount} ngày
               </Text>
             </View>
 
-            <View className="w-px h-3 bg-white/40" />
+            <View className="w-px h-3 bg-white/30" />
 
             <View className="flex-row items-center space-x-1">
               <MaterialIconsRounded name="route" size={14} color="#E2E8F0" />
-              <Text className="text-xs font-semibold text-slate-200">
+              <Text className="text-xs font-semibold text-slate-200" style={{ fontVariant: ["tabular-nums"] }}>
                 {destinations.length || 1} chặng dừng
               </Text>
             </View>
           </View>
 
           {/* Action Arrow Icon Button */}
-          <View className="w-9 h-9 rounded-full bg-white/20 border border-white/40 items-center justify-center shadow-sm">
+          <View className="w-8 h-8 rounded-full bg-white/20 border border-white/30 items-center justify-center">
             <MaterialIconsRounded
               name="arrow-forward"
-              size={18}
+              size={16}
               color="#FFFFFF"
             />
           </View>

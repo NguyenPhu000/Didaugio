@@ -126,8 +126,8 @@ export default function TripsScreen() {
         data={!isLoading && !isError ? filteredTrips : []}
         renderItem={renderTripCard}
         keyExtractor={keyExtractor}
-        itemHeight={264}
-        spacing={16}
+        itemHeight={252}
+        spacing={6}
         rotationAngle={0.7}
         scaleInactive={0.97}
         opacityInactive={0.94}

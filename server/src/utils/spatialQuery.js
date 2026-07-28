@@ -41,7 +41,7 @@ export async function findRelatedPlacesByKeywords(userMessage) {
           { description: { contains: kw, mode: "insensitive" } },
         ]),
       },
-      take: 6,
+      take: 20,
       select: {
         id: true,
         name: true,
@@ -76,7 +76,7 @@ export async function findRelatedPlacesByKeywords(userMessage) {
   const featured = await prisma.place.findMany({
     where: { status: "approved", deletedAt: null },
     orderBy: [{ isFeatured: "desc" }, { ratingAvg: "desc" }, { viewCount: "desc" }],
-    take: 15,
+    take: 25,
     select: {
       id: true,
       name: true,
@@ -111,7 +111,7 @@ export async function findRelatedPlacesByKeywords(userMessage) {
  * @param {number} limit Giới hạn kết quả trả về
  * @returns {Promise<Array>} Danh sách địa điểm đã map dữ liệu
  */
-export async function findPlacesNearby(lat, lng, radiusKm = 10, limit = 10) {
+export async function findPlacesNearby(lat, lng, radiusKm = 10, limit = 20) {
   const latitude = parseFloat(lat);
   const longitude = parseFloat(lng);
   

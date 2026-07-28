@@ -41,6 +41,7 @@ import { getCategoryIconName } from "../../src/constants/categoryIcons";
 import { FeaturedSection } from "../../src/modules/explore/components/FeaturedSection";
 import { ExperienceBentoSection } from "../../src/modules/explore/components/ExperienceBentoSection";
 import { CategoryPlacesSection } from "../../src/modules/explore/components/CategoryPlacesSection";
+import { CategoryPlacesSheet } from "../../src/modules/explore/components/CategoryPlacesSheet";
 import { ExploreSkeleton } from "../../src/modules/explore/components/ExploreSkeleton";
 import { SearchOverlay } from "../../src/modules/explore/components/SearchOverlay";
 import { ExploreModernHeader } from "../../src/modules/explore/components/ExploreModernHeader";
@@ -91,6 +92,7 @@ export default function ExploreScreen() {
 
   const [searchVisible, setSearchVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [activeSheetCategory, setActiveSheetCategory] = useState(null);
   const { data: categories = [] } = useCategories();
 
   const {
@@ -213,10 +215,8 @@ export default function ExploreScreen() {
     return matched?.name || null;
   }, [categories, selectedCategory]);
 
-  const popularPlaces = allPlaces;
-
-  const placesByCategory = useMemo(() => {
-    if (selectedCategory != null) return [];
+  const fullPlacesByCategory = useMemo(() => {
+    if (selectedCategory != null) return new Map();
 
     const categoryMap = new Map();
     for (const place of allPlaces) {
@@ -234,17 +234,31 @@ export default function ExploreScreen() {
         categoryMap.get(catId).places.push(place);
       }
     }
+    return categoryMap;
+  }, [allPlaces, selectedCategory]);
 
-    return Array.from(categoryMap.values())
+  const placesByCategory = useMemo(() => {
+    return Array.from(fullPlacesByCategory.values())
       .sort((a, b) => b.places.length - a.places.length)
       .map((cat) => ({ ...cat, places: cat.places.slice(0, 8) }));
-  }, [allPlaces, selectedCategory]);
+  }, [fullPlacesByCategory]);
 
   const handleViewCategoryPlaces = useCallback(
     (category) => {
-      router.push({ pathname: "/explore/category-places", params: { id: category.id, name: category.name } });
+      const categoryId = category?.id;
+      const fullCategoryData = categoryId != null ? fullPlacesByCategory.get(categoryId) : null;
+      const placesToDisplay = fullCategoryData?.places?.length
+        ? fullCategoryData.places
+        : (category?.places?.length ? category.places : allPlaces);
+
+      setActiveSheetCategory({
+        id: category?.id,
+        name: category?.name || selectedCategoryName || "Tất cả địa điểm",
+        icon: category?.icon,
+        places: placesToDisplay,
+      });
     },
-    [router],
+    [fullPlacesByCategory, allPlaces, selectedCategoryName],
   );
 
   const culinaryPlaces = useMemo(() => {
@@ -553,6 +567,14 @@ export default function ExploreScreen() {
       )}
 
       <SearchOverlay visible={searchVisible} onClose={handleCloseSearch} />
+
+      <CategoryPlacesSheet
+        visible={!!activeSheetCategory}
+        category={activeSheetCategory}
+        places={activeSheetCategory?.places || []}
+        onClose={() => setActiveSheetCategory(null)}
+        onPressPlace={handlePressPlace}
+      />
     </View>
   );
 }

@@ -3,7 +3,7 @@ import { Marker } from "react-native-maps";
 import { Image } from "expo-image";
 import { MaterialIconsRounded } from "../../../components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../constants/design-tokens";
-import { resolveMediaUrl } from "../../../lib/media-url";
+import { resolveMediaUrl, resolvePlaceImageUri } from "../../../lib/media-url";
 import { ContextualBoundaryLayer } from "./BoundaryLayer";
 import MapView from "./MapView";
 import RoutePolyline from "./RoutePolyline";
@@ -122,7 +122,7 @@ export function MapScreenCanvas({
             ))
           : null}
 
-        {isTripPreviewMode && previewSegments.length > 0
+        {(isTripPreviewMode || (isActiveTripMode && previewStops.length > 0)) && previewSegments.length > 0
           ? previewSegments.map((segment) =>
               segment.labelCoordinate ? (
                 <Marker
@@ -136,27 +136,39 @@ export function MapScreenCanvas({
                       flexDirection: "row",
                       alignItems: "center",
                       gap: 4,
-                      paddingHorizontal: 8,
+                      paddingHorizontal: 9,
                       height: 28,
                       borderRadius: 14,
-                      backgroundColor: "rgba(17,24,39,0.9)",
-                      borderWidth: 1,
-                      borderColor: "rgba(255,255,255,0.82)",
+                      backgroundColor: "rgba(17,24,39,0.92)",
+                      borderWidth: 1.5,
+                      borderColor: "rgba(255,255,255,0.9)",
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.25,
+                      shadowRadius: 4,
+                      elevation: 4,
                     }}
                   >
+                    {/* Directional Arrow Icon rotated to segment bearing */}
                     <View
                       style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: 4,
-                        backgroundColor: segment.color,
+                        transform: [{ rotate: `${segment.bearing || 0}deg` }],
+                        alignItems: "center",
+                        justifyContent: "center",
                       }}
-                    />
+                    >
+                      <MaterialIconsRounded
+                        name="navigation"
+                        size={13}
+                        color={segment.color || "#38BDF8"}
+                      />
+                    </View>
                     <Text
                       style={{
                         color: "#FFFFFF",
                         fontSize: 11,
-                        fontFamily: TOKENS.font.semibold,
+                        fontFamily: TOKENS.font.bold,
+                        letterSpacing: -0.2,
                       }}
                     >
                       {[segment.label, segment.distanceLabel].filter(Boolean).join(" • ")}
@@ -167,75 +179,129 @@ export function MapScreenCanvas({
             )
           : null}
 
-        {isTripPreviewMode && previewStops.length > 0
+        {(isTripPreviewMode || (isActiveTripMode && previewStops.length > 0)) && previewStops.length > 0
           ? previewStops.map((stop) => {
-              const imageUri = resolveMediaUrl(stop.thumbnail);
+              const placeData = stop.place || stop.destination?.place || stop;
+              const imageUri =
+                resolvePlaceImageUri(placeData) ||
+                resolveMediaUrl(stop.thumbnail || placeData?.thumbnail || placeData?.images?.[0]);
+              const badgeColor =
+                previewSegments[stop.sequence - 1]?.color ||
+                previewSegments[stop.sequence - 2]?.color ||
+                "#EF4444";
+              const stopName = stop.name || placeData?.name || `Điểm ${stop.sequence}`;
+
               return (
                 <Marker
                   key={`preview-stop-${stop.id}`}
                   coordinate={stop.coordinate}
-                  anchor={{ x: 0.5, y: 0.92 }}
+                  anchor={{ x: 0.2, y: 0.5 }}
+                  zIndex={100 - stop.sequence}
                   tracksViewChanges
                 >
-                  <View style={{ alignItems: "center" }}>
+                  <View style={{ flexDirection: "row", alignItems: "center" }} pointerEvents="none">
+                    {/* 1. Khung Ảnh Marker Tương Tự MapView PlaceMarker */}
                     <View
                       style={{
-                        width: 56,
-                        height: 56,
+                        width: 48,
+                        height: 48,
                         borderRadius: 14,
                         backgroundColor: "#FFFFFF",
-                        padding: 3,
+                        borderWidth: 2.5,
+                        borderColor: badgeColor,
+                        padding: 2,
                         shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 3 },
-                        shadowOpacity: 0.22,
-                        shadowRadius: 5,
-                        elevation: 5,
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 6,
+                        elevation: 6,
+                        position: "relative",
                       }}
                     >
                       {imageUri ? (
                         <Image
                           source={{ uri: imageUri }}
-                          style={{ width: "100%", height: "100%", borderRadius: 11 }}
+                          style={{ width: "100%", height: "100%", borderRadius: 10 }}
                           contentFit="cover"
                         />
                       ) : (
                         <View
                           style={{
                             flex: 1,
-                            borderRadius: 11,
+                            borderRadius: 10,
                             alignItems: "center",
                             justifyContent: "center",
                             backgroundColor: "#F3F4F6",
                           }}
                         >
-                          <MaterialIconsRounded name="place" size={24} color="#6B7280" />
+                          <MaterialIconsRounded name="place" size={22} color={badgeColor} />
                         </View>
                       )}
+
+                      {/* 2. Tag Số Thứ Tự (Sequence Badge) Nổi Bật Sắc Nét */}
+                      <View
+                        style={{
+                          position: "absolute",
+                          top: -9,
+                          left: -9,
+                          minWidth: 24,
+                          height: 24,
+                          borderRadius: 12,
+                          paddingHorizontal: 5,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: "#181819",
+                          borderWidth: 2,
+                          borderColor: "#FFFFFF",
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.35,
+                          shadowRadius: 4,
+                          elevation: 5,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: "#FFFFFF",
+                            fontSize: 11.5,
+                            fontFamily: TOKENS.font.bold,
+                            textAlign: "center",
+                          }}
+                        >
+                          {stop.sequence}
+                        </Text>
+                      </View>
                     </View>
+
+                    {/* 3. Label Tên Địa Điểm Đi Kèm Giống MapView PlaceMarker */}
                     <View
                       style={{
-                        marginTop: -8,
-                        width: 26,
-                        height: 26,
-                        borderRadius: 13,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor:
-                          previewSegments[stop.sequence - 1]?.color ||
-                          previewSegments[stop.sequence - 2]?.color ||
-                          "#EF4444",
-                        borderWidth: 2,
-                        borderColor: "#FFFFFF",
+                        marginLeft: 6,
+                        maxWidth: 154,
+                        borderRadius: 14,
+                        backgroundColor: "#FFFFFF",
+                        paddingHorizontal: 10,
+                        paddingVertical: 5.5,
+                        borderWidth: 1,
+                        borderColor: "rgba(0,0,0,0.08)",
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.16,
+                        shadowRadius: 4,
+                        elevation: 3,
                       }}
                     >
                       <Text
                         style={{
-                          color: "#FFFFFF",
-                          fontSize: 12,
+                          fontSize: 11.5,
                           fontFamily: TOKENS.font.bold,
+                          color: "#181819",
+                          letterSpacing: -0.2,
                         }}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
                       >
-                        {stop.sequence}
+                        {stopName}
                       </Text>
                     </View>
                   </View>

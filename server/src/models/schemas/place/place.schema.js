@@ -266,12 +266,12 @@ export const getPlacesQuerySchema = paginationLargeSchema.extend({
 export const nearbyPlacesQuerySchema = z.object({
   latitude: z.coerce
     .number({ required_error: "Vĩ độ không được để trống" })
-    .min(8)
-    .max(11),
+    .min(-90)
+    .max(90),
   longitude: z.coerce
     .number({ required_error: "Kinh độ không được để trống" })
-    .min(104)
-    .max(107),
+    .min(-180)
+    .max(180),
   radius: z.coerce.number().int().min(100).max(50000).default(5000),
   limit: z.coerce.number().int().min(1).max(50).default(10),
   categoryId: z.coerce.number().int().positive().optional(),
@@ -294,10 +294,10 @@ export const placeV2ListQuerySchema = v2PlaceFiltersSchema.extend({
 });
 
 export const placeV2MapQuerySchema = z.object({
-  west: z.coerce.number().min(104).max(107),
-  south: z.coerce.number().min(8).max(11),
-  east: z.coerce.number().min(104).max(107),
-  north: z.coerce.number().min(8).max(11),
+  west: z.coerce.number().min(-180).max(180),
+  south: z.coerce.number().min(-90).max(90),
+  east: z.coerce.number().min(-180).max(180),
+  north: z.coerce.number().min(-90).max(90),
   zoom: z.coerce.number().min(1).max(22),
   limit: z.coerce.number().int().min(1).max(200).default(100),
 }).superRefine((value, context) => {
@@ -306,8 +306,8 @@ export const placeV2MapQuerySchema = z.object({
 });
 
 export const placeV2NearbyQuerySchema = z.object({
-  latitude: z.coerce.number().min(8).max(11),
-  longitude: z.coerce.number().min(104).max(107),
+  latitude: z.coerce.number().min(-90).max(90),
+  longitude: z.coerce.number().min(-180).max(180),
   radiusMeters: z.coerce.number().int().min(100).max(50_000).default(5_000),
   limit: z.coerce.number().int().min(1).max(50).default(20),
   categoryId: z.coerce.number().int().positive().optional(),

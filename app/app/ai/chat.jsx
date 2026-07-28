@@ -18,6 +18,7 @@ import { useGroqChat } from "../../src/modules/ai/hooks/useGroqChat";
 import { useGenieVoice } from "../../src/modules/ai/hooks/useGenieVoice";
 import { useAIContextStore } from "../../src/stores/aiContextStore";
 import { TOKENS } from "../../src/constants/design-tokens";
+import { VOICE_ERROR_CODES } from "../../src/constants/voice-error-codes";
 
 // Split components
 import { MessageBubble } from "../../src/modules/ai/components/chat/MessageBubble";
@@ -38,6 +39,7 @@ export default function GroqChatScreen() {
 
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+  const lastConsumedVoiceErrorRef = useRef(null);
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -50,6 +52,7 @@ export default function GroqChatScreen() {
 
   const {
     status: voiceStatus,
+    error: voiceError,
     startRecording,
     stopRecordingAndTranscribe,
   } = useGenieVoice();
@@ -57,13 +60,49 @@ export default function GroqChatScreen() {
   const isRecording = voiceStatus === "listening";
   const isTranscribing = voiceStatus === "transcribing";
 
-  // Scroll to bottom only when a new message is added
-  const prevMsgCountRef = useRef(conversationMemory.length);
+  // Surface pre-upload voice failures (permission denied, empty recording,
+  // session errors) in the chat error banner instead of failing silently.
+  // Transcription HTTP errors are handled by handleToggleRecord's catch.
+  // Use a ref to avoid re-triggering after user closes the banner.
   useEffect(() => {
-    if (conversationMemory.length > prevMsgCountRef.current) {
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    if (voiceStatus !== "error" || !voiceError) return;
+    if (voiceError === lastConsumedVoiceErrorRef.current) return;
+    lastConsumedVoiceErrorRef.current = voiceError;
+    if (voiceError === VOICE_ERROR_CODES.PERMISSION_DENIED) {
+      setError("Genie cần quyền micro để nghe bạn nói. Hãy cấp quyền trong Cài đặt nghen!");
+    } else if (voiceError === VOICE_ERROR_CODES.EMPTY_RECORDING) {
+      setError("Genie chưa nghe được gì, bạn thử nói lại nghen!");
+    } else if (voiceError === VOICE_ERROR_CODES.SESSION_FAILED) {
+      setError("Không thể mở phiên ghi âm, thử lại nghen!");
     }
-    prevMsgCountRef.current = conversationMemory.length;
+  }, [voiceStatus, voiceError]);
+
+  // Scroll to bottom on initial load with existing history AND when new messages arrive
+  const prevMsgCountRef = useRef(0);
+  const initialScrollDoneRef = useRef(false);
+
+  useEffect(() => {
+    const currentLength = conversationMemory.length;
+    if (currentLength > 0) {
+      const isInitial = !initialScrollDoneRef.current;
+      if (isInitial || currentLength > prevMsgCountRef.current) {
+        initialScrollDoneRef.current = true;
+        const timer = setTimeout(
+          () => scrollRef.current?.scrollToEnd({ animated: !isInitial }),
+          isInitial ? 60 : 100,
+        );
+        prevMsgCountRef.current = currentLength;
+        return () => clearTimeout(timer);
+      }
+    }
+    prevMsgCountRef.current = currentLength;
+  }, [conversationMemory.length]);
+
+  const handleContentSizeChange = useCallback(() => {
+    if (!initialScrollDoneRef.current && conversationMemory.length > 0) {
+      initialScrollDoneRef.current = true;
+      scrollRef.current?.scrollToEnd({ animated: false });
+    }
   }, [conversationMemory.length]);
 
   useEffect(() => {
@@ -137,9 +176,13 @@ export default function GroqChatScreen() {
 
   const handleToggleRecord = useCallback(async () => {
     if (isRecording) {
-      const text = await stopRecordingAndTranscribe();
-      if (text) {
-        setInputText((prev) => (prev ? `${prev} ${text}` : text));
+      try {
+        const text = await stopRecordingAndTranscribe();
+        if (text) {
+          setInputText((prev) => (prev ? `${prev} ${text}` : text));
+        }
+      } catch (err) {
+        setError(err?.message || "Không thể nhận dạng giọng nói, thử lại nghen!");
       }
     } else {
       await startRecording();
@@ -247,8 +290,13 @@ export default function GroqChatScreen() {
         data={hasMessages ? conversationMemory : []}
         keyExtractor={(item, index) => item.id ?? `${item.role}-${index}`}
         onScroll={handleScroll}
+        onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}
-        estimatedItemSize={120}
+        estimatedItemSize={140}
+        getItemType={(item) => (item?.plan || item?.suggestedPlaces?.length > 0 ? "complex" : "simple")}
+        overrideItemLayout={(layout, item) => {
+          layout.size = item?.plan || item?.suggestedPlaces?.length > 0 ? 340 : 110;
+        }}
         renderItem={renderChatItem}
         style={s.flex1}
         contentContainerStyle={hasMessages ? s.scrollContentMessages : s.scrollContentEmpty}

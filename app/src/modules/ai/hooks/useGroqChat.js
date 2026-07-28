@@ -10,7 +10,7 @@ import apiClient from "../../../api/client";
 import { AI_REQUEST_TIMEOUT } from "../../../constants/api";
 import { buildSafeChatContext } from "../lib/chatContext";
 
-const MAX_SUGGESTED_PLACES = 6;
+const MAX_SUGGESTED_PLACES = 20;
 
 /** Regex phát hiện truy vấn liên quan địa điểm (gợi ý, ăn gì, chơi gì...) */
 const PLACE_QUERY_PATTERN = /(suggest|gợi ý|đi đâu|ăn gì|chơi gì|check.?in|review|quán|nhà hàng|cafe|cà phê|khách sạn|chợ|bãi biển|du lịch|tham quan)/i;

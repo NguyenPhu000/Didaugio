@@ -206,6 +206,7 @@ const styles = StyleSheet.create({
     color: "#2563EB",
     fontSize: 12,
     fontFamily: TOKENS.font.semibold,
+    fontVariant: ["tabular-nums"],
     flex: 1,
     marginRight: 6,
   },
@@ -222,5 +223,6 @@ const styles = StyleSheet.create({
     color: "#92400E",
     fontSize: 11,
     fontFamily: TOKENS.font.semibold,
+    fontVariant: ["tabular-nums"],
   },
 });

@@ -10,33 +10,33 @@ import {
   formatRatingLabel,
 } from "../utils/exploreHelpers";
 
-const CARD_W = 156;
-const CARD_H = 224;
+const CARD_W = 164;
+const CARD_H = 264;
 
 function SmallPlaceCardInner({ place, onPress }) {
   const imageUri = resolvePlaceImageUri(place);
   const location = getPlaceLocation(place);
   const rating = Number(place?.ratingAvg ?? place?.averageRating);
   const hasRating = Number.isFinite(rating) && rating > 0;
-  const ratingCap = formatRatingLabel(place);
 
   return (
     <Pressable
       onPress={onPress}
-      style={{ width: CARD_W }}
-      className="rounded-[20px] bg-white shadow-md elevation-2 active:opacity-85 active:scale-[0.97]"
+      style={{ width: CARD_W, height: CARD_H }}
+      className="rounded-[22px] bg-white border border-black/[0.06] shadow-sm elevation-2 overflow-hidden justify-between active:opacity-90 active:scale-[0.97]"
     >
-      <View className="w-full h-[156px] rounded-t-[20px] rounded-b-[6px] overflow-hidden bg-[#F9FAFB] border border-black/[0.02] relative">
+      {/* 1. Hình ảnh ở trên */}
+      <View className="w-full h-[142px] bg-[#F4F4F5] relative overflow-hidden">
         {imageUri ? (
           <Image
             source={{ uri: imageUri }}
             contentFit="cover"
-            transition={300}
+            transition={280}
             cachePolicy="memory-disk"
             style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
           />
         ) : (
-          <View className="absolute inset-0 bg-[#F3F4F6] items-center justify-center">
+          <View className="absolute inset-0 bg-[#F4F4F5] items-center justify-center">
             <MaterialCommunityIcons
               name="image-outline"
               size={32}
@@ -45,37 +45,37 @@ function SmallPlaceCardInner({ place, onPress }) {
           </View>
         )}
         
-        {/* Rating badge absolutely positioned */}
+        {/* Rating badge góc trên-phải */}
         {hasRating ? (
-          <View className="absolute top-2.5 right-2.5 rounded-full overflow-hidden border border-white/20">
-            <BlurView intensity={80} tint="dark" style={{ position: 'absolute', top: 0, left: 0, bottom: 0, right: 0 }} />
-            <View className="flex-row items-center px-2 py-1.25 gap-1">
-              <MaterialCommunityIcons name="star" size={12} color="#FBBF24" />
-              <Text className="text-white text-[11px] font-semibold">{rating.toFixed(1)}</Text>
-            </View>
+          <View className="absolute top-2.5 right-2.5 flex-row items-center gap-1 px-2 py-0.5 rounded-full bg-white/95 shadow-sm">
+            <MaterialCommunityIcons name="star" size={12} color="#FBBF24" />
+            <Text className="text-[#181819] text-[11px] font-bold">{rating.toFixed(1)}</Text>
           </View>
         ) : null}
       </View>
 
-      <View className="pt-3 px-1 pb-3 gap-0.75">
-        <Text className="text-ink text-base font-semibold leading-5 tracking-[-0.3px]" numberOfLines={1}>
+      {/* 2. Khối Thông tin ở Dưới — Cố định layout chống đẩy card khi địa chỉ dài */}
+      <View className="p-3 gap-1 bg-white">
+        <Text className="text-[#181819] text-[14.5px] font-bold tracking-[-0.3px]" numberOfLines={1} ellipsizeMode="tail">
           {place?.name}
         </Text>
         
-        <View className="flex-row items-center gap-1">
+        <View className="flex-row items-center gap-1 h-[18px]">
           <MaterialCommunityIcons
             name="map-marker"
             size={12}
             color={APPLE_THEME.textMuted}
           />
-          <Text className="text-ink-muted text-xs font-medium flex-1" numberOfLines={1}>
-            {location}
+          <Text className="text-[#6B7280] text-[12px] font-medium flex-1" numberOfLines={1} ellipsizeMode="tail">
+            {location || "Cần Thơ"}
           </Text>
         </View>
 
-        <Text className="text-ink-muted text-[11px] font-medium mt-0.5 tracking-[-0.1px]" numberOfLines={1}>
-          {ratingCap}
-        </Text>
+        {/* Nút màu đen High-End */}
+        <View className="mt-1.5 h-[34px] rounded-xl bg-[#181819] flex-row items-center justify-center gap-1.5">
+          <Text className="text-white text-[12px] font-semibold">Khám phá</Text>
+          <MaterialCommunityIcons name="arrow-right" size={14} color="#FFFFFF" />
+        </View>
       </View>
     </Pressable>
   );
