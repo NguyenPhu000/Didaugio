@@ -11,6 +11,14 @@ import {
   normalizeProviderMessages,
   toAiServiceError,
 } from "./aiProviderPolicy.js";
+import { executeAiRequest } from "./runtime/aiRuntimeExecution.js";
+import prisma from "../../config/prismaClient.js";
+import {
+  findPlacesNearby,
+  findNearestDistrict,
+  findNearestWard,
+  findRelatedPlacesByKeywords,
+} from "../../utils/spatialQuery.js";
 
 // Pre-compiled Regular Expressions for better performance
 const REGEX_EXTRACT_PLACES = /[\(\[\{]\s*(?:PLACES?|PLACE_ID|ID)\s*:\s*([\d\s,]+)\s*[\)\]\}]/gi;
@@ -57,6 +65,36 @@ export async function resolveGroqProviderOptions(configData, feature) {
   };
 }
 
+// Bộ nhớ lưu thời gian cooldown của các Key bị Rate Limit (Key -> Timestamp hết hạn phạt)
+const keyCooldownMap = new Map();
+// Counter duy trì vị trí xoay vòng Round-Robin
+let keyRoundRobinIndex = 0;
+
+const COOLDOWN_DURATION_MS = 60 * 1000; // 60 giây phạt khi đụng 429
+
+/**
+ * Kiểm tra xem Key có đang trong thời gian cooldown hay không.
+ */
+function isKeyCoolingDown(apiKey) {
+  const expireTime = keyCooldownMap.get(apiKey);
+  if (!expireTime) return false;
+  if (Date.now() > expireTime) {
+    keyCooldownMap.delete(apiKey);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Đánh dấu Key bị tạm dừng sử dụng trong COOLDOWN_DURATION_MS (60s).
+ */
+function markKeyCooldown(apiKey) {
+  keyCooldownMap.set(apiKey, Date.now() + COOLDOWN_DURATION_MS);
+}
+
+/**
+ * Thực thi gọi Groq API sử dụng Key Pool với cơ chế Round-Robin + 60s Cooldown Memory.
+ */
 export async function executeGroqCompletionWithPool(providerOptions, executionCallback) {
   const keys = providerOptions?.apiKeys?.length > 0
     ? providerOptions.apiKeys
@@ -67,25 +105,62 @@ export async function executeGroqCompletionWithPool(providerOptions, executionCa
     return executionCallback(client);
   }
 
+  // 1. Lọc lấy danh sách các Key khả dụng (không nằm trong thời gian 60s cooldown)
+  let availableKeys = keys.filter((k) => !isKeyCoolingDown(k));
+
+  // Nếu tất cả các key đều bị cooldown, fallback sử dụng toàn bộ key danh sách gốc
+  if (availableKeys.length === 0) {
+    logger.warn(`[Groq Key Pool] Tất cả ${keys.length} Keys đều đang trong trạng thái Cooldown. Thử lại toàn bộ pool...`);
+    availableKeys = keys;
+  }
+
+  // 2. Chọn vị trí bắt đầu theo cơ chế Round-Robin để chia đều tải
+  const startIndex = keyRoundRobinIndex % availableKeys.length;
+  keyRoundRobinIndex = (keyRoundRobinIndex + 1) % Number.MAX_SAFE_INTEGER;
+
+  // Sắp xếp lại danh sách key ưu tiên từ vị trí startIndex
+  const rotatedKeys = [
+    ...availableKeys.slice(startIndex),
+    ...availableKeys.slice(0, startIndex),
+  ];
+
   let lastError;
-  for (let i = 0; i < keys.length; i++) {
+  for (let i = 0; i < rotatedKeys.length; i++) {
+    const currentKey = rotatedKeys[i];
     try {
-      const client = createGroqClient({ ...providerOptions, apiKey: keys[i] });
-      return await executionCallback(client);
+      const client = createGroqClient({ ...providerOptions, apiKey: currentKey });
+      const result = await executionCallback(client);
+      
+      // Xóa khỏi cooldown nếu gọi thành công
+      keyCooldownMap.delete(currentKey);
+      return result;
     } catch (error) {
       lastError = toAiServiceError(error);
-      const isRateLimit =
-        lastError.code === "QUOTA_EXCEEDED" ||
-        lastError.statusCode === 429 ||
-        error?.status === 429;
+      const statusCode = lastError.statusCode || error?.status || error?.response?.status;
+      const errorCode = lastError.code || error?.code;
+      
+      // Nhận diện lỗi Rate Limit (429) hoặc Key hỏng/hết hạn (401/403/INVALID_API_KEY)
+      const isRateLimitOrInvalid =
+        statusCode === 429 ||
+        statusCode === 401 ||
+        statusCode === 403 ||
+        errorCode === "QUOTA_EXCEEDED" ||
+        errorCode === "INVALID_API_KEY" ||
+        errorCode === "UNAUTHORIZED";
 
-      if (isRateLimit && i < keys.length - 1) {
-        logger.info(
-          `[Groq Key Pool] Key #${i + 1} hit rate limit (${lastError.code}). Rotating to Key #${i + 2}...`
-        );
-        continue;
+      if (isRateLimitOrInvalid) {
+        // Đánh dấu Key hỏng/429 vào danh sách tạm dừng 60s để bỏ qua ở các request sau
+        markKeyCooldown(currentKey);
+
+        if (i < rotatedKeys.length - 1) {
+          logger.info(
+            `[Groq Key Pool] Key ...${currentKey.slice(-6)} không khả dụng (Code: ${statusCode || errorCode}). LẬP TỨC xoay sang Key tiếp theo...`
+          );
+          // Tiếp tục vòng lặp NGAY LẬP TỨC (0ms delay) sang key tiếp theo trong rotatedKeys
+          continue;
+        }
       }
-      throw lastError; // Ném lỗi nếu không phải rate limit hoặc đã hết key
+      throw lastError;
     }
   }
   throw lastError;
@@ -122,112 +197,119 @@ function formatPriceRange(from, to) {
 function buildGroqSystemPrompt(context = {}, configuredPrompt = "") {
   const parts = [
     renderConfiguredPrompt(configuredPrompt, context),
-    `Bạn là "Genie" — trợ lý du lịch ảo của ứng dụng "iPoint Genie", đóng vai một người bạn địa phương Cần Thơ am hiểu, hay đi đây đi đó.`,
-    `Nhiệm vụ: tư vấn lịch trình, gợi ý quán ăn, điểm check-in một cách tự nhiên, như đang trò chuyện với bạn bè.`,
+    `Ban la "Genie" — tro ly du lich ao cua ung dung "iPoint Genie", dong vai mot nguoi ban dia phuong Can Tho am hieu, hay di day di do.`,
+    `Nhiem vu: tu van lich trinh, goi y quan an, diem check-in mot cach tu nhien, nhu dang tro chuyen voi ban be.`,
     ``,
-    `Phong cách trả lời:`,
-    `- Trò chuyện tự nhiên, như đang nhắn tin cho bạn, KHÔNG phải robot đọc danh sách`,
-    `- Dùng ngôn ngữ miền Nam nhẹ nhàng: "nè", "đó", "ha", "nghen", "ơi" ở cuối câu khi phù hợp`,
-    `- Khi gợi ý địa điểm: kể như đang giới thiệu cho bạn, nhấn mạnh điểm đặc biệt nhất trước`,
-    `- Nếu người dùng yêu cầu số lượng cụ thể (ví dụ: "gợi ý 10 chỗ"), hãy gợi ý ĐÚNG số lượng đó từ danh sách CSDL. Nếu người dùng không chỉ định số lượng, hãy gợi ý 3-5 chỗ cụ thể kèm GIÁ THẬT từ dữ liệu, KHÔNG nói chung chung`,
-    `- Nếu người dùng hỏi mơ hồ (ví dụ: "đi đâu chơi"), hãy hỏi lại cho rõ: muốn ăn gì, budget bao nhiêu, thích kiểu nào`,
-    `- Nhớ ngữ cảnh cuộc trò chuyện trước đó, nếu user từng hỏi thì nhắc lại để tạo liền mạch`,
-    `- Nếu người dùng chê "đắt quá" hoặc muốn "rẻ hơn", gợi ý thay thế từ dữ liệu có giá thấp hơn`,
-    `- Trả lời ngắn gọn, xuống dòng rõ ràng, mỗi ý cách một dòng trống cho dễ đọc trên điện thoại`,
+    `Phong cach tra loi:`,
+    `- Tro chuyen tu nhien, nhu dang nhan tin cho ban, KHONG phai robot doc danh sach`,
+    `- Dung ngon ngu mien Nam nhe nhang: "ne", "do", "ha", "nghen", "oi" o cuoi cau khi phu hop`,
+    `- Khi goi y dia diem: ke nhu dang gioi thieu cho ban, nhan manh diem dac biet nhat truoc`,
+    `- Neu nguoi dung yeu cau so luong cu the (vi du: "goi y 5 cho", "goi y 10 cho"), hay goi y DUNG so luong do tu danh sach CSDL. Neu nguoi dung khong chi dinh so luong, hay goi y 3-5 cho cu the kem GIA THAT tu du lieu, KHONG noi chung chung`,
+    `- DIEM THEN CHOT: So luong dia diem trong van ban phai KHOP CHINH XAC voi so luong ID trong [PLACES:...]. Vi du: neu van ban nhac 5 dia diem, phai co dung 5 ID. Neu van ban nhac 3, phai co dung 3 ID.`,
+    `- Neu nguoi dung hoi mo ho (vi du: "di dau choi"), hay hoi lai cho ro: muon an gi, budget bao nhieu, thich kieu nao`,
+    `- Nho ngu canh cuoc tro chuyen truoc do, neu user tung hoi thi nhac lai de tao lien mach`,
+    `- Neu nguoi dung che "dat qua" hoac muon "re hon", goi y thay the tu du lieu co gia thap hon`,
+    `- Tra loi ngan gon, xuong dong ro rang, moi y cach mot dong trong cho de doc tren dien thoai`,
     ``,
-    `Định dạng giá cả (RẤT QUAN TRỌNG):`,
-    `- Giá dưới 1 triệu: viết dạng "120k", "50k", "250k"`,
-    `- Giá từ 1 triệu trở lên: viết dạng "1.5 triệu", "2 triệu"`,
-    `- Khoảng giá: "120k - 250k" hoặc "1.5 - 2 triệu"`,
-    `- KHÔNG BAO GIỜ viết dạng "120000đ" hay "1500000đ" — rất khó đọc`,
+    `Dinh dang gia ca (RAT QUAN TRONG):`,
+    `- Gia duoi 1 trieu: viet dang "120k", "50k", "250k"`,
+    `- Gia tu 1 trieu tro len: viet dang "1.5 trieu", "2 trieu"`,
+    `- Khoang gia: "120k - 250k" hoac "1.5 - 2 trieu"`,
+    `- KHONG BAO GIO viet dang "120000d" hay "1500000d" — rat kho doc`,
     ``,
-    `Nguyên tắc bắt buộc:`,
-    `- Nếu không biết → thành thật nói "Genie chưa có thông tin nè", KHÔNG bịa đặt`,
-    `- Trả lời bằng tiếng Việt trừ khi được yêu cầu`,
-    `- NGHIÊM CẤM sử dụng bất kỳ emoji hoặc biểu tượng nào trong văn bản trả về. Chỉ trả về văn bản chữ thuần túy.`,
+    `Nguyen tac bat buoc:`,
+    `- Neu khong biet → thanh that noi "Genie chua co thong tin ne", KHONG bia dat`,
+    `- Tra loi bang tieng Viet tru khi duoc yeu cau`,
+    `- NGHIEM CAM su dung bat ky emoji hoac bieu tuong nao trong van ban tra ve. Chi tra ve van ban chu thuan tuy.`,
   ];
 
-  // 1. Vị trí địa lý (Spatial Context)
+  // 1. Vi tri dia ly (Spatial Context)
   if (context.locationContext) {
     const { district, ward, coords } = context.locationContext;
-    const locParts = ["Ngữ cảnh vị trí hiện tại của người dùng:"];
-    if (ward) locParts.push(`Phường/Xã ${ward},`);
-    if (district) locParts.push(`Quận/Huyện ${district},`);
-    locParts.push("Cần Thơ.");
+    const locParts = ["Ngu canh vi tri hien tai cua nguoi dung:"];
+    if (ward) locParts.push(`Phuong/Xa ${ward},`);
+    if (district) locParts.push(`Quan/Huyen ${district},`);
+    locParts.push("Can Tho.");
     
     parts.push(`\n${locParts.join(" ")}`);
     if (coords) {
-      parts.push(`Tọa độ GPS hiện tại: ${coords.latitude}, ${coords.longitude}`);
+      parts.push(`Toa do GPS hien tai: ${coords.latitude}, ${coords.longitude}`);
     }
   } else {
     if (context.currentCity) {
-      parts.push(`\nNgữ cảnh vị trí: Tỉnh/Thành phố — ${context.currentCity}`);
+      parts.push(`\nNgu canh vi tri: Tinh/Thanh pho — ${context.currentCity}`);
     }
     if (context.currentCoords?.latitude && context.currentCoords?.longitude) {
-      parts.push(`Tọa độ GPS: ${context.currentCoords.latitude}, ${context.currentCoords.longitude}`);
+      parts.push(`Toa do GPS: ${context.currentCoords.latitude}, ${context.currentCoords.longitude}`);
     }
   }
 
-  // 2. Thời gian (Time-aware Context)
+  // 2. Thoi gian (Time-aware Context)
   let timeOfDay = context.timeOfDay;
   if (!timeOfDay) {
     const hour = new Date().getHours();
-    timeOfDay = hour < 5 ? "Buổi tối" : hour < 11 ? "Buổi sáng" : hour < 14 ? "Buổi trưa" : hour < 18 ? "Buổi chiều" : "Buổi tối";
+    timeOfDay = hour < 5 ? "Buoi toi" : hour < 11 ? "Buoi sang" : hour < 14 ? "Buoi trua" : hour < 18 ? "Buoi chieu" : "Buoi toi";
   }
-  parts.push(`Thời điểm hiện tại: ${timeOfDay}`);
+  parts.push(`Thoi diem hien tai: ${timeOfDay}`);
 
-  // 3. Sở thích (Travel Preferences Context)
+  // 3. So thich (Travel Preferences Context)
   if (context.travelPreferences) {
     const { travelStyles, budget, notes } = context.travelPreferences;
     const prefParts = [];
     
-    if (travelStyles?.length) prefParts.push(`Gu du lịch: ${travelStyles.join(", ")}`);
-    if (budget) prefParts.push(`Ngân sách dự tính: ${budget}`);
-    if (notes) prefParts.push(`Ghi chú cá nhân: ${notes}`);
+    if (travelStyles?.length) prefParts.push(`Gu du lich: ${travelStyles.join(", ")}`);
+    if (budget) prefParts.push(`Ngan sach du tinh: ${budget}`);
+    if (notes) prefParts.push(`Ghi chu ca nhan: ${notes}`);
     
     if (prefParts.length) {
-      parts.push(`\nThông tin sở thích của người dùng để cá nhân hóa gợi ý:\n${prefParts.join("\n")}`);
+      parts.push(`\nThong tin so thich cua nguoi dung de ca nhan hoa goi y:\n${prefParts.join("\n")}`);
     }
   } else if (context.preferences?.travelStyles?.length) {
-    parts.push(`Sở thích: ${context.preferences.travelStyles.join(", ")}`);
+    parts.push(`So thich: ${context.preferences.travelStyles.join(", ")}`);
   }
 
   if (context.visitedPlaceIds?.length) {
-    parts.push(`Đã xem: ${context.visitedPlaceIds.slice(-5).join(", ")}`);
+    parts.push(`Da xem: ${context.visitedPlaceIds.slice(-5).join(", ")}`);
   }
 
-  // 4. RAG Places Context từ DB (Đã fix lỗi bị thiếu formattedPlaceLines)
+  // 4. RAG Places Context tu DB
   if (Array.isArray(context.systemPlaces) && context.systemPlaces.length > 0) {
     const allowedNames = context.systemPlaces.map((p) => `"${p.name}"`).join(", ");
     const formattedPlaceLines = context.systemPlaces.map((p) => {
-      const category = p.categoryName || p.category?.name || "Địa điểm";
-      let line = `- ID ${p.id}: "${p.name}" (Danh mục: ${category}`;
-      if (p.address) line += `, Địa chỉ: ${p.address}`;
+      const category = p.categoryName || p.category?.name || "Dia diem";
+      let line = `- ID ${p.id}: "${p.name}" (Danh muc: ${category}`;
+      if (p.address) line += `, Dia chi: ${p.address}`;
       
       const priceStr = formatPriceRange(p.priceFrom, p.priceTo);
-      if (priceStr) line += `, Giá: ${priceStr}`;
-      if (p.ratingAvg) line += `, Đánh giá: ${p.ratingAvg}/5`;
-      if (p.shortDescription) line += `, Mô tả: ${p.shortDescription.substring(0, 80)}`;
+      if (priceStr) line += `, Gia: ${priceStr}`;
+      if (p.ratingAvg) line += `, Danh gia: ${p.ratingAvg}/5`;
+      if (p.shortDescription) line += `, Mo ta: ${p.shortDescription.substring(0, 80)}`;
       
       return line + `)`;
     }).join("\n");
 
     parts.push(
-      `\nQUY TẮC CHỐNG BỊA ĐẶT KHẮC NGHIỆT (ZERO HALLUCINATION):`,
-      `DANH SÁCH TÊN ĐỊA ĐIỂM DUY NHẤT ĐƯỢC PHÉP NHẮC TỚI: [ ${allowedNames} ]`,
-      `TUYỆT ĐỐI KHÔNG TỰ NÓI HOẶC BỊA BẤT KỲ TÊN QUÁN/ĐỊA ĐIỂM NÀO KHÁC BÊN NGOÀI DANH SÁCH TRÊN (ví dụ: không được bịa "Quán bún Cái Bè", "Quán bún Bè", hay bất kỳ quán nào không có trong danh sách trên).`,
-      `Nếu người dùng hỏi món ăn/quán mà trong CSDL không có, hãy trả lời thẳng thắn: "Hiện tại Genie chưa có thông tin quán này trong hệ thống Cần Thơ nè" và gợi ý 1 trong các quán có sẵn trong danh sách CSDL dưới đây.`,
-      `\nDANH SÁCH CHI TIẾT ĐỊA ĐIỂM CSDL:\n${formattedPlaceLines}`,
-      `\nQUY TẮC HIỂN THỊ MÃ ID: TUYỆT ĐỐI CẤM VIẾT BẤT KỲ MÃ ID NÀO (như (PLACES:254), [PLACES:254], ID 240, (ID 240), mã 240...) VÀO TRONG NỘI DUNG VĂN BẢN TRẢ LỜI NGƯỜI DÙNG.`,
-      `Khi gợi ý địa điểm từ danh sách trên, CHỈ ĐÍNH KÈM DUY NHẤT DÒNG HỆ THỐNG: [PLACES: id1, id2, ...] Ở DÒNG CUỐI CÙNG VÀ NGOÀI RA KHÔNG VIẾT MÃ ID Ở BẤT KỲ ĐÂU KHÁC.`
+      `\nQUY TAC CHONG BIA DAT KHAC NGHIET (ZERO HALLUCINATION):`,
+      `DANH SACH TEN DIA DIEM DUY NHAT DUOC PHEP NHAC TOI: [ ${allowedNames} ]`,
+      `TUYET DOI KHONG TU NOI HOAC BIA BAT KY TEN QUAN/DIA DIEM NAO KHAC BEN NGOAI DANH SACH TREN.`,
+      `Neu nguoi dung hoi mon an/quan ma trong CSDL khong co, hay tra loi thang than: "Hien tai Genie chua co thong tin quan nay trong he thong Can Tho ne" va goi y 1 trong cac quan co san trong danh sach CSDL duoi day.`,
+      `\nDANH SACH CHI TIET DIA DIEM CSDL:\n${formattedPlaceLines}`,
+      `\nQUY TAC [PLACES:...] TAG — BAT BUOC TUAN THU:`,
+      `1. TUYET DOI CAM viet bat ky ma ID nao (nhu (PLACES:254), [PLACES:254], ID 240, (ID 240), ma 240...) VAO TRONG NOI DUNG VAN BAN TRA LOI.`,
+      `2. O CUOI CUNG cua toan bo cau tra loi, DINH KEM DUY NHAT 1 dong he thong chua TAT CA ID dia diem duoc goi y.`,
+      `3. FORMAT CHINH XAC: [PLACES: id1, id2, id3, id4, id5]`,
+      `4. SO LUONG ID phai KHOP CHINH XAC voi so luong dia diem duoc nhac trong van ban. Van ban nhac 5 dia diem = phai co 5 ID. Van ban nhac 3 = phai co 3 ID.`,
+      `5. VI DU DUNG: Neu goi y 5 dia diem co ID 10, 25, 37, 42, 56 thi dong cuoi la: [PLACES: 10, 25, 37, 42, 56]`,
+      `6. NGHIEM CAM viet nhieu dong [PLACES:...] rieng le. Chi duy nhat 1 block.`,
+      `7. Neu KHONG goi y dia diem nao, KHONG can dong [PLACES:...].`
     );
   } else {
     parts.push(
-      `\nQUY TẮC CHỐNG BỊA ĐẶT: Hiện tại CSDL chưa có địa điểm nào phù hợp. Bạn KHÔNG ĐƯỢC BỊA NÓI bất kỳ tên quán/địa điểm nào. Hãy thông báo: "Genie chưa tìm thấy địa điểm phù hợp trong CSDL nè" và hỏi lại nhu cầu của người dùng.`
+      `\nQUY TAC CHONG BIA DAT: Hien tai CSDL chua co dia diem nao phu hop. Ban KHONG DUOC BIA NOI bat ky ten quan/dia diem nao. Hay thong bao: "Genie chua tim thay dia diem phu hop trong CSDL ne" va hoi lai nhu cau cua nguoi dung.`
     );
   }
 
-  parts.push(`\nLƯU Ý BẮT BUỘC CUỐI CÙNG: Không bao giờ nhắc đến bất kỳ tên địa điểm nào nằm ngoài danh sách CSDL trên.`);
+  parts.push(`\nLUU Y BAT BUOC CUOI CUNG: Khong bao gio nhac den bat ky ten dia diem nao nam ngoai danh sach CSDL tren.`);
 
   return parts.join("\n");
 }
@@ -302,6 +384,174 @@ export async function chatWithGroq(messages, context = {}, providerOptions = {})
     suggestedPlaceIds: [...new Set(suggestedPlaceIds)],
     inputTokens: completion.usage?.prompt_tokens ?? null,
     outputTokens: completion.usage?.completion_tokens ?? null,
+  };
+}
+
+/**
+ * Validate và chuẩn hóa tọa độ GPS từ context.
+ */
+export function getValidatedCoordinates(context = {}) {
+  const coords = context.currentCoords;
+  if (!coords) return null;
+  const { latitude, longitude } = coords;
+  return Number.isFinite(latitude) && Number.isFinite(longitude)
+    ? { latitude, longitude }
+    : null;
+}
+
+/**
+ * Normalize text for diacritic-insensitive matching.
+ */
+function normalizeText(str) {
+  return String(str || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+/**
+ * Normalize a raw DB place object to a consistent key-value contract for the client.
+ * Client expects: id, name, address, description, images (array of {secureUrl, thumbnailUrl}),
+ * thumbnailUrl, priceFrom, priceTo, ratingAvg, reviewCount, categoryName, category, ward, district.
+ */
+function normalizeResponsePlace(raw) {
+  if (!raw) return null;
+
+  const images = Array.isArray(raw.images) ? raw.images : [];
+  const firstImage = images[0] || {};
+
+  return {
+    id: raw.id,
+    name: raw.name || "",
+    address: raw.address || "",
+    description: raw.description || "",
+    images,
+    thumbnailUrl: firstImage.thumbnailUrl || firstImage.secureUrl || null,
+    imageUrl: firstImage.secureUrl || firstImage.thumbnailUrl || null,
+    priceFrom: Number(raw.priceFrom ?? 0),
+    priceTo: Number(raw.priceTo ?? 0),
+    ratingAvg: raw.ratingAvg ? parseFloat(raw.ratingAvg) : 0,
+    reviewCount: Number(raw.reviewCount ?? raw._count?.reviews ?? 0),
+    categoryName: raw.categoryName || raw.category?.name || "",
+    category: raw.category || null,
+    ward: raw.ward || null,
+    district: raw.district || null,
+  };
+}
+
+/**
+ * Match systemPlaces against suggestedPlaceIds (ID tag) and fallback name-match in reply text.
+ * Returns normalized place objects with consistent key-value contract.
+ */
+function resolveResponsePlaces(systemPlaces, suggestedPlaceIds, reply) {
+  const responsePlaces = [];
+  const matchedIds = new Set();
+
+  // Primary: ID tag match — preserves AI's recommended order
+  if (suggestedPlaceIds?.length > 0) {
+    const placeMap = new Map(systemPlaces.map((p) => [p.id, p]));
+    for (const id of suggestedPlaceIds) {
+      if (placeMap.has(id)) {
+        responsePlaces.push(normalizeResponsePlace(placeMap.get(id)));
+        matchedIds.add(id);
+      }
+    }
+  }
+
+  // Fallback: normalized name-match in reply text
+  const replyNorm = normalizeText(reply);
+  for (const p of systemPlaces) {
+    if (!matchedIds.has(p.id)) {
+      const nameNorm = normalizeText(p.name);
+      if (nameNorm.length >= 3 && replyNorm.includes(nameNorm)) {
+        responsePlaces.push(normalizeResponsePlace(p));
+        matchedIds.add(p.id);
+      }
+    }
+  }
+
+  return responsePlaces;
+}
+
+/**
+ * Core business logic for Groq Chat.
+ * Resolves context, fetches places, calls AI, matches returned place IDs.
+ *
+ * @param {{ messages: Array, context: Object, userId?: number|string }} params
+ * @returns {{ reply: string, relatedPlaces: Array, requestLogId: number|null }}
+ */
+export async function processGroqChat({ messages, context = {}, userId }) {
+  // 1. Travel preferences from user profile
+  let travelPreferences = null;
+  if (userId) {
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId },
+      select: { travelPreferences: true },
+    });
+    travelPreferences = profile?.travelPreferences;
+  }
+
+  // 2. Spatial query for nearby places when client sends GPS coords
+  let systemPlaces = [];
+  let locationContext = null;
+  const currentCoords = getValidatedCoordinates(context);
+
+  if (currentCoords) {
+    const { latitude: lat, longitude: lng } = currentCoords;
+    systemPlaces = await findPlacesNearby(lat, lng, 10, 20);
+
+    const district = await findNearestDistrict(lat, lng);
+    const ward = await findNearestWard(lat, lng);
+    if (district) {
+      locationContext = {
+        district: district.name,
+        ward: ward ? ward.name : null,
+        coords: { latitude: lat, longitude: lng },
+      };
+    }
+  }
+
+  // 3. Keyword fallback when no GPS or no nearby places found
+  const lastUserMessage =
+    [...messages].reverse().find((m) => m.role === "user")?.content || "";
+
+  if (systemPlaces.length === 0) {
+    systemPlaces = await findRelatedPlacesByKeywords(lastUserMessage);
+  }
+
+  // 4. Execute AI request
+  const execution = await executeAiRequest({
+    feature: "chat",
+    user: { userId },
+    inputText: lastUserMessage,
+    context: {
+      currentCity: locationContext?.district || context.currentCity,
+      timeOfDay: context.timeOfDay,
+      travelPreferences,
+      places: systemPlaces,
+      messages,
+    },
+    operation: async ({ configData, context: allowedContext }) => {
+      const providerOptions = await resolveGroqProviderOptions(configData, "chat");
+      const activePlaces =
+        allowedContext.places?.length > 0 ? allowedContext.places : systemPlaces;
+      return chatWithGroq(
+        allowedContext.messages || [{ role: "user", content: lastUserMessage }],
+        { ...allowedContext, systemPlaces: activePlaces },
+        providerOptions,
+      );
+    },
+  });
+
+  const { reply, suggestedPlaceIds } = execution.result;
+
+  // 5. Match returned place IDs → place objects
+  const relatedPlaces = resolveResponsePlaces(systemPlaces, suggestedPlaceIds, reply);
+
+  return {
+    reply,
+    relatedPlaces,
+    requestLogId: execution.requestLogId ?? null,
   };
 }
 

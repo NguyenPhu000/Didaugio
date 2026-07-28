@@ -74,6 +74,10 @@ export async function generateHybridPlan(
       ? `${fmtPrice(p.priceFrom)} - ${fmtPrice(p.priceTo)}`
       : "Chưa cập nhật",
   }));
+  const requestedPlaceCount = placesContext.length;
+  const selectionInstruction = requestedPlaceCount > 0
+    ? `Use the place count requested by the user. If the user asks to plan with the provided or previous places, include all ${requestedPlaceCount} DB places in the timeline. Do not default to 3-4 places when more places were requested.`
+    : "Choose a practical number of places that matches the user request.";
 
   const systemPrompt = `${renderConfiguredPrompt(
     providerOptions.configuredPrompt,
@@ -129,7 +133,8 @@ Sở thích du lịch: ${allowedPreferences ? JSON.stringify(allowedPreferences)
 Danh sách địa điểm từ DB (có priceReadable để tham khảo nhanh):
 ${JSON.stringify(placesContext)}
 
-Hãy chọn 3-4 địa điểm phù hợp nhất, sắp xếp tuyến đường tối ưu, và trả về JSON chuẩn.`;
+${selectionInstruction}
+Sắp xếp tuyến đường tối ưu, và trả về JSON chuẩn.`;
 
   const fullUserPrompt = buildHybridPlanUserPrompt(userPrompt, userRequest);
 

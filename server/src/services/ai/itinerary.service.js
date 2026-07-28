@@ -103,15 +103,32 @@ export function generateFallbackItinerary(preferences = {}, places = []) {
   );
   const groupSize = Math.max(toPositiveInt(preferences.groupSize, 1), 1);
   const budgetPerPerson = Number(preferences.budget);
+  const selectedIds = Array.isArray(preferences.selectedPlaceIds)
+    ? preferences.selectedPlaceIds.map((id) => Number(id)).filter(Boolean)
+    : [];
   const destinationsPerDay = Math.max(
     1,
-    Math.min(DEFAULT_DESTINATIONS_PER_DAY, places.length),
+    Math.min(
+      selectedIds.length > 0
+        ? Math.ceil(selectedIds.length / totalDays)
+        : DEFAULT_DESTINATIONS_PER_DAY,
+      places.length,
+      12,
+    ),
   );
 
-  const requiredStops = Math.max(totalDays * destinationsPerDay, 1);
+  const placeById = new Map(places.map((place) => [Number(place?.id), place]));
+  const selectedPlaces = selectedIds
+    .map((id) => placeById.get(id))
+    .filter(Boolean);
+  const requiredStops = Math.max(
+    selectedPlaces.length || totalDays * destinationsPerDay,
+    1,
+  );
+  const fallbackSource = selectedPlaces.length > 0 ? selectedPlaces : places;
   const pickedPlaces = Array.from(
     { length: requiredStops },
-    (_, index) => places[index % places.length],
+    (_, index) => fallbackSource[index % fallbackSource.length],
   );
 
   let totalEstimatedCost = 0;
@@ -197,6 +214,12 @@ function buildItineraryPrompt(
   promptVariables = {},
 ) {
   const { totalDays, travelStyle, groupSize, budget, notes } = preferences;
+  const selectedPlaceIds = Array.isArray(preferences.selectedPlaceIds)
+    ? preferences.selectedPlaceIds.map((id) => Number(id)).filter(Boolean)
+    : [];
+  const selectedRequirement = selectedPlaceIds.length > 0
+    ? `- Mandatory selected place IDs: ${selectedPlaceIds.join(", ")}. Include every one of these placeId values exactly once when the ID exists in the DB list. Do not reduce the itinerary to only 3 places.`
+    : "";
 
   const minifiedClustered = clusteredPlaces.map((cluster, idx) => ({
     dayNumber: idx + 1,
@@ -218,6 +241,7 @@ Hãy tạo lịch trình du lịch Cần Thơ chi tiết dựa theo các thông 
 - Số người: ${groupSize || 1}
 - Ngân sách ước tính: ${budget ? budget + " VNĐ/người" : "Không giới hạn"}
 ${notes ? `- Ghi chú: ${notes}` : ""}
+${selectedRequirement}
 
 **Danh sách địa điểm CSDL khả dụng theo từng ngày:**
 ${JSON.stringify(minifiedClustered, null, 2)}
@@ -271,12 +295,27 @@ export async function generateItinerary(
     Math.max(toPositiveInt(preferences.totalDays, 1), 1),
     7,
   );
-  const allowedPlaces =
+  const rawAllowedPlaces =
     Array.isArray(providerContext?.places) && providerContext.places.length > 0
       ? providerContext.places
       : Array.isArray(places) && places.length > 0
         ? places
         : [];
+
+  // Nếu người dùng chọn/yêu cầu địa điểm cụ thể, đưa các địa điểm đó lên đầu mảng
+  const selectedIds = new Set(
+    Array.isArray(preferences.selectedPlaceIds)
+      ? preferences.selectedPlaceIds.map((id) => Number(id)).filter(Boolean)
+      : [],
+  );
+
+  const allowedPlaces = selectedIds.size > 0
+    ? [
+        ...rawAllowedPlaces.filter((p) => selectedIds.has(p.id)),
+        ...rawAllowedPlaces.filter((p) => !selectedIds.has(p.id)),
+      ]
+    : rawAllowedPlaces;
+
   const clusteredPlaces = kMeansClustering(allowedPlaces, totalDays);
 
   // Caching nâng cao
@@ -420,6 +459,6 @@ export async function generateItinerary(
     parsed,
     raw: rawText,
     tokensUsed,
-    responseTimeMs,
+    responseTimeMs: Date.now() - start,
   };
 }

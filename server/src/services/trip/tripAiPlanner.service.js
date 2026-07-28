@@ -54,9 +54,20 @@ const normalizeConfirmedMoney = (value) => {
   return Math.min(Math.round(number), ITINERARY_MONEY_MAX);
 };
 
-const buildSuggestedPlaces = (days, placeById) => {
+const buildSuggestedPlaces = (days, placeById, selectedPlaceIds = []) => {
   const orderedIds = [];
   const seen = new Set();
+
+  // Ưu tiên đưa các địa điểm người dùng đã chọn vào danh sách trước
+  if (Array.isArray(selectedPlaceIds) && selectedPlaceIds.length > 0) {
+    for (const id of selectedPlaceIds) {
+      const pId = toInt(id);
+      if (pId && !seen.has(pId) && placeById.has(pId)) {
+        seen.add(pId);
+        orderedIds.push(pId);
+      }
+    }
+  }
 
   for (const day of days) {
     const safeDestinations = Array.isArray(day?.destinations)
@@ -111,53 +122,77 @@ export const filterItineraryToSelectedPlaces = (
     return itinerary;
   }
 
+  const existingDays = itinerary?.days || [];
+  if (existingDays.length === 0) return itinerary;
+
   const draftPlaceIds = new Set(
-    (itinerary?.days || []).flatMap((day) =>
+    existingDays.flatMap((day) =>
       (day?.destinations || [])
         .map((destination) => toInt(destination?.placeId))
         .filter(Boolean),
     ),
   );
+
+  // Tìm những địa điểm được người dùng yêu cầu chọn mà chưa xuất hiện trong draft đại điểm AI tạo
+  const unplacedSelectedIds = [];
   for (const selectedPlaceId of selectedPlaceIdSet) {
     if (!draftPlaceIds.has(selectedPlaceId)) {
-      throw createInvalidConfirmationError();
+      unplacedSelectedIds.push(selectedPlaceId);
     }
   }
 
   let estimatedCost = 0;
-  const days = (itinerary?.days || [])
-    .map((day) => {
-      const destinations = (day?.destinations || [])
-        .filter((destination) =>
-          selectedPlaceIdSet.has(toInt(destination?.placeId)),
-        )
-        .map((destination) => {
-          const normalizedCost = normalizeConfirmedMoney(
-            destination?.estimatedCost,
-          );
-          if (normalizedCost === null) {
-            return { ...destination, estimatedCost: null };
-          }
+  const days = existingDays.map((day, dayIndex) => {
+    const destinations = (day?.destinations || [])
+      .filter((destination) =>
+        selectedPlaceIdSet.has(toInt(destination?.placeId)),
+      )
+      .map((destination) => {
+        const normalizedCost = normalizeConfirmedMoney(
+          destination?.estimatedCost,
+        );
+        if (normalizedCost === null) {
+          return { ...destination, estimatedCost: null };
+        }
 
-          const boundedCost = Math.min(
-            normalizedCost,
-            Math.max(ITINERARY_MONEY_MAX - estimatedCost, 0),
-          );
-          estimatedCost += boundedCost;
-          return { ...destination, estimatedCost: boundedCost };
-        });
+        const boundedCost = Math.min(
+          normalizedCost,
+          Math.max(ITINERARY_MONEY_MAX - estimatedCost, 0),
+        );
+        estimatedCost += boundedCost;
+        return { ...destination, estimatedCost: boundedCost };
+      });
 
-      return {
-        ...day,
-        destinations,
-      };
-    })
-    .filter((day) => day.destinations.length > 0);
+    return {
+      ...day,
+      destinations,
+    };
+  });
+
+  // Phân bổ các địa điểm còn thiếu đều vào các ngày trong lịch trình
+  if (unplacedSelectedIds.length > 0) {
+    unplacedSelectedIds.forEach((missingPlaceId, idx) => {
+      const targetDayIndex = idx % days.length;
+      const targetDay = days[targetDayIndex];
+      const nextOrder = (targetDay.destinations.length || 0) + 1;
+
+      targetDay.destinations.push({
+        placeId: missingPlaceId,
+        order: nextOrder,
+        startTime: null,
+        endTime: null,
+        durationMinutes: 120,
+        note: "Địa điểm đã chọn theo yêu cầu",
+        transportToNext: "Di chuyển bằng xe máy",
+        estimatedCost: null,
+      });
+    });
+  }
 
   return {
     ...itinerary,
     estimatedCost,
-    days,
+    days: days.filter((day) => day.destinations.length > 0),
   };
 };
 
@@ -364,6 +399,22 @@ const buildFallbackDestinationsFromSelection = ({
   });
 };
 
+const normalizeDestinationSequences = (destinations = []) => {
+  const nextSequenceByDay = new Map();
+
+  return (Array.isArray(destinations) ? destinations : []).map((dest) => {
+    const dayNumber = Math.max(toInt(dest?.dayNumber, 1), 1);
+    const nextSequence = (nextSequenceByDay.get(dayNumber) ?? 0) + 1;
+    nextSequenceByDay.set(dayNumber, nextSequence);
+
+    return {
+      ...dest,
+      dayNumber,
+      order: nextSequence,
+    };
+  });
+};
+
 export const generateAndSaveTrip = async (userId, preferences = {}) => {
   const {
     totalDays = 1,
@@ -378,7 +429,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
   const where = { ...approvedPlaceWhere };
   if (categoryId) where.categoryId = toInt(categoryId);
 
-  const places = await prisma.place.findMany({
+  let places = await prisma.place.findMany({
     where,
     orderBy: [{ ratingAvg: "desc" }, { viewCount: "desc" }],
     take: 50,
@@ -507,7 +558,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
             "planner",
           );
           const result = await generateItinerary(
-            preferences,
+            { ...preferences, selectedPlaceIds: normalizedSelectedPlaceIds },
             places,
             providerOptions,
             allowedContext,
@@ -550,7 +601,11 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
   }
   assertAuthoritativeItineraryPlaces(itinerary, placeIdSet);
 
-  const suggestedPlaces = buildSuggestedPlaces(itinerary.days, placeById);
+  const suggestedPlaces = buildSuggestedPlaces(
+    itinerary.days,
+    placeById,
+    normalizedSelectedPlaceIds,
+  );
   const suggestedPlaceIds = suggestedPlaces.map((place) => place.id);
 
   const effectiveSelectedPlaceIds =
@@ -637,6 +692,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
         totalDays: itinerary.totalDays,
       });
     }
+    allDestinations = normalizeDestinationSequences(allDestinations);
 
     if (allDestinations.length > 0) {
       const stopsData = allDestinations.map((dest) => ({

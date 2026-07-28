@@ -114,6 +114,8 @@ export function canUseHybridFallback(error) {
     "AI_MAINTENANCE",
     "AI_SECRET_UNAVAILABLE",
     "AI_REQUEST_LOG_UNAVAILABLE",
+    "AI_ERROR",
+    "AI_INVALID_OUTPUT",
   ].includes(code);
 }
 
