@@ -26,21 +26,14 @@ const PLATFORM = {
   position: "Người Vận hành",
 };
 
-/**
- * Load font bytes (cached after first load)
- */
-let _fontRegular = null;
-let _fontBold = null;
-
-const loadFonts = async () => {
-  if (!_fontRegular) {
-    _fontRegular = await fs.readFile(path.join(ASSETS_DIR, "NotoSerif-Regular.ttf"));
-  }
-  if (!_fontBold) {
-    _fontBold = await fs.readFile(path.join(ASSETS_DIR, "NotoSerif-Bold.ttf"));
-  }
-  return { fontRegular: _fontRegular, fontBold: _fontBold };
-};
+function removeAccents(str) {
+  if (!str) return "";
+  return String(str)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D");
+}
 
 /**
  * Tạo PDF hợp đồng từ thông tin doanh nghiệp
@@ -48,13 +41,23 @@ const loadFonts = async () => {
  * @returns {Promise<Buffer>}
  */
 export const generateContractPdf = async (businessData) => {
-  const { fontRegular, fontBold } = await loadFonts();
-
   const pdfDoc = await PDFDocument.create();
-  pdfDoc.registerFontkit(fontkit);
+  let fontNormal, fontBoldEmbedded;
+  let isUnicodeFont = true;
 
-  const fontNormal = await pdfDoc.embedFont(fontRegular);
-  const fontBoldEmbedded = await pdfDoc.embedFont(fontBold);
+  try {
+    const fontRegularBytes = await fs.readFile(path.join(ASSETS_DIR, "NotoSerif-Regular.ttf"));
+    const fontBoldBytes = await fs.readFile(path.join(ASSETS_DIR, "NotoSerif-Bold.ttf"));
+    pdfDoc.registerFontkit(fontkit);
+    fontNormal = await pdfDoc.embedFont(fontRegularBytes);
+    fontBoldEmbedded = await pdfDoc.embedFont(fontBoldBytes);
+  } catch {
+    isUnicodeFont = false;
+    fontNormal = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    fontBoldEmbedded = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  }
+
+  const safeStr = (s) => (isUnicodeFont ? String(s || "") : removeAccents(String(s || "")));
 
   const W = 595;
   const H = 842;
@@ -81,7 +84,7 @@ export const generateContractPdf = async (businessData) => {
     const color = options.color || rgb(0.05, 0.05, 0.05);
     const lh = options.lh || (size + 4);
     ensureSpace(lh + 4);
-    page.drawText(String(text || ""), { x, y, size, font, color });
+    page.drawText(safeStr(text), { x, y, size, font, color });
     y -= lh;
   };
 
@@ -100,7 +103,7 @@ export const generateContractPdf = async (businessData) => {
 
   // ── HEADER ────────────────────────────────────────────────────────────────
   // Bên trái: tên tổ chức
-  page.drawText(PLATFORM.nameFull.toUpperCase(), {
+  page.drawText(safeStr(PLATFORM.nameFull.toUpperCase()), {
     x: margin,
     y,
     size: 12,
@@ -111,15 +114,15 @@ export const generateContractPdf = async (businessData) => {
   // Bên phải: tính toán căn giữa Quốc hiệu - Tiêu ngữ
   const rightCenter = W - margin - 110;
   const textRep = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM";
-  const wRep = fontBoldEmbedded.widthOfTextAtSize(textRep, 9.5);
+  const wRep = fontBoldEmbedded.widthOfTextAtSize(safeStr(textRep), 9.5);
   const xRep = rightCenter - (wRep / 2);
 
   const textMotto = "Độc Lập - Tự Do - Hạnh Phúc";
-  const wMotto = fontBoldEmbedded.widthOfTextAtSize(textMotto, 9.5);
+  const wMotto = fontBoldEmbedded.widthOfTextAtSize(safeStr(textMotto), 9.5);
   const xMotto = rightCenter - (wMotto / 2);
 
   const textO = "---o0o---";
-  const wO = fontNormal.widthOfTextAtSize(textO, 9);
+  const wO = fontNormal.widthOfTextAtSize(safeStr(textO), 9);
   const xO = rightCenter - (wO / 2);
 
   // Bên phải: quốc hiệu

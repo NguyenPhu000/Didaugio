@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/stores/authStore";
 import { authService } from "@/apis";
+import { BUSINESS_ROUTES } from "@/constants/routes";
 import OtpInput from "@/components/auth/OtpInput";
 
 const CheckEmailPage = () => {
@@ -43,22 +44,33 @@ const CheckEmailPage = () => {
   const handleVerifyOtp = async () => {
     setOtpError(null);
     if (!email) {
-      setOtpError("Vui long nhap email de xac thuc.");
+      setOtpError("Vui lòng nhập email để xác thực.");
       return;
     }
     if (otp.length !== 6) {
-      setOtpError("Nhap du 6 so OTP trong email.");
+      setOtpError("Vui lòng nhập đủ 6 số OTP trong email.");
       return;
     }
 
     setIsVerifying(true);
     try {
-      await authService.verifyEmailOtp({ email, otp });
-      toast.success("Xac thuc email thanh cong. Vui long dang nhap.");
+      const res = await authService.verifyEmailOtp({ email, otp, context: "business" });
+      const payload = res.data || res;
+      if (payload?.accessToken && payload?.user) {
+        toast.success("Xác thực email thành công! Đang chuyển sang thủ tục đăng ký...");
+        useAuthStore.getState().setSession({
+          user: payload.user,
+          accessToken: payload.accessToken,
+          refreshToken: payload.refreshToken,
+        });
+        navigate(BUSINESS_ROUTES.REGISTER, { replace: true });
+        return;
+      }
+      toast.success("Xác thực email thành công. Vui lòng đăng nhập.");
       logout();
       navigate("/login", { replace: true, state: { identifier: email } });
     } catch (error) {
-      setOtpError(error.message || "Ma OTP khong hop le hoac da het han.");
+      setOtpError(error.message || "Mã OTP không hợp lệ hoặc đã hết hạn.");
     } finally {
       setIsVerifying(false);
     }

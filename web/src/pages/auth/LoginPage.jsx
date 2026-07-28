@@ -1,4 +1,4 @@
-import { User, Lock, ArrowRight, Shield, Activity, BriefcaseBusiness } from "lucide-react";
+import { User, Lock, ArrowRight, Shield, BriefcaseBusiness } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -8,11 +8,6 @@ import { useTranslation } from "react-i18next";
 import {
   Button,
   Input,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardDescription,
 } from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
 import { authService } from "@/apis/authService";
@@ -59,7 +54,6 @@ const LoginPage = () => {
   const handleGoogleSuccess = async (credentialResponse) => {
     setIsLoading(true);
     try {
-      // GoogleLogin default flow returns { credential: "<id_token>" }
       const idToken = credentialResponse.credential;
       if (!idToken) {
         toast.error(t("auth.login.googleNoToken"));
@@ -68,10 +62,13 @@ const LoginPage = () => {
       const response = await authService.googleLogin(idToken);
       if (response.success) {
         const user = response.data.user;
+        // DEBUG: xác nhận roleId nhận được từ Google login
+        console.log("[Google Login] user.roleId:", user?.roleId, "| role:", user?.role?.name);
         setAuth(user, response.data.accessToken, response.data.refreshToken);
         toast.success(t("auth.login.googleSuccess"));
 
         const dashboardUrl = resolvePostLoginRoute(user);
+        console.log("[Google Login] dashboardUrl:", dashboardUrl);
         navigate(
           dashboardUrl === AUTH_ROUTES.LOGIN
             ? BUSINESS_ROUTES.REGISTER
@@ -94,7 +91,7 @@ const LoginPage = () => {
       });
       if (response.success) {
         const dashboardUrl = resolvePostLoginRoute(response.data.user);
-        // Save identifier to localStorage for "Remember me"
+
         if (rememberMe) {
           localStorage.setItem(REMEMBER_KEY, JSON.stringify({ identifier: data.identifier }));
         } else {
@@ -144,7 +141,6 @@ const LoginPage = () => {
         return;
       }
 
-      // Show helpful message for inactive accounts
       if (error?.errorCode === "ACCOUNT_INACTIVE") {
         toast.error(error.message || "Tài khoản chưa được kích hoạt. Vui lòng đăng nhập bằng Google để kích hoạt.");
         return;

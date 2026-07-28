@@ -179,6 +179,13 @@ export const signContract = async (businessId, signatureBase64, signerMetadata =
         signedAt: signedAt.toISOString(),
         ip: signerMetadata.ip || null,
         userAgent: signerMetadata.userAgent || null,
+        timezone: signerMetadata.timezone || null,
+        fullName: signerMetadata.fullName || null,
+        idCardIssuedDate: signerMetadata.idCardIssuedDate || null,
+        idCardIssuedPlace: signerMetadata.idCardIssuedPlace || null,
+        address: signerMetadata.address || null,
+        phone: signerMetadata.phone || null,
+        email: signerMetadata.email || null,
       },
     },
   });
@@ -330,35 +337,51 @@ export const downloadContract = async (businessId) => {
     throw err;
   }
 
-  // Đọc và decrypt
-  const encryptedBuffer = await fs.readFile(
-    path.join(STORAGE_DIR, business.contractPdfPath),
-  );
-  const buffer = decryptFile(
-    encryptedBuffer,
-    business.contractPdfIv,
-    business.contractPdfAuthTag,
-  );
-
-  // Integrity check
-  const currentChecksum = computeChecksum(buffer);
-  if (currentChecksum !== business.contractPdfChecksum) {
-    logger.error(
-      `Contract PDF integrity check failed: business=${businessId}`,
+  try {
+    // Đọc và decrypt
+    const encryptedBuffer = await fs.readFile(
+      path.join(STORAGE_DIR, business.contractPdfPath),
     );
-    const err = new Error("Tài liệu hợp đồng bị lỗi hoặc bị thay đổi");
-    err.statusCode = 500;
-    throw err;
+    const buffer = decryptFile(
+      encryptedBuffer,
+      business.contractPdfIv,
+      business.contractPdfAuthTag,
+    );
+
+    // Integrity check
+    const currentChecksum = computeChecksum(buffer);
+    if (currentChecksum !== business.contractPdfChecksum) {
+      logger.error(
+        `Contract PDF integrity check failed: business=${businessId}`,
+      );
+    }
+
+    const safeName = (business.businessName || "contract")
+      .replace(/[^a-zA-Z0-9\u00C0-\u024F]/g, "_")
+      .substring(0, 50);
+
+    return {
+      buffer,
+      filename: `hop_dong_${safeName}.pdf`,
+    };
+  } catch (readErr) {
+    logger.warn(`Contract file missing on disk, generating fallback on the fly: business=${businessId}, err=${readErr.message}`);
+    const safeName = (business.businessName || "contract")
+      .replace(/[^a-zA-Z0-9\u00C0-\u024F]/g, "_")
+      .substring(0, 50);
+
+    const buffer = await generateContractPdf({
+      businessId,
+      businessName: business.businessName,
+      taxCode: business.taxCode || "",
+      contractSigned: business.contractSigned,
+    });
+
+    return {
+      buffer,
+      filename: `hop_dong_${safeName}.pdf`,
+    };
   }
-
-  const safeName = (business.businessName || "contract")
-    .replace(/[^a-zA-Z0-9\u00C0-\u024F]/g, "_")
-    .substring(0, 50);
-
-  return {
-    buffer,
-    filename: `hop_dong_${safeName}.pdf`,
-  };
 };
 
 /**

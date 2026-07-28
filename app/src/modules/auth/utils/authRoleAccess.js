@@ -12,7 +12,7 @@ export const assertMobileUserRole = (user) => {
   if (isMobileUserRole(user)) return;
 
   const error = new Error(
-    "Tài khoản này không dùng cho ứng dụng dụ lịch. Vui lòng đăng nhập đúng cổng thông tin theo vai trò của bạn.",
+    "Tài khoản Doanh nghiệp/Admin vui lòng đăng nhập trên cổng thông tin Web Quản trị.",
   );
   error.code = "ROLE_NOT_ALLOWED_ON_MOBILE";
   throw error;

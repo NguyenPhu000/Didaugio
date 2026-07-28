@@ -7,6 +7,7 @@ import { buildQrUrl } from "../payment/sepay.service.js";
 import { parseBankWebhook, verifyWebhookSignature } from "../payment/sepayWebhook.service.js";
 import {
   buildScheduledDowngradeMetadata,
+  calculateSubscriptionUpgradeCharge,
   clearScheduledDowngrade,
   getPlanChangeDirection,
   getScheduledDowngrade,
@@ -519,12 +520,16 @@ export async function calculateProration(businessId, targetPlanId, requestedBill
   const currentPrice = getSubscriptionPrice(subscription.plan, subscription.billingCycle);
   const targetPrice = getSubscriptionPrice(targetPlan, requestedBillingCycle);
 
-  const unusedCredit = Math.round((currentPrice / totalDays) * remainingDays);
-  const isBillingCycleChange = subscription.billingCycle !== requestedBillingCycle;
-  const prorationAmount = isBillingCycleChange
-    ? targetPrice
-    : Math.round((targetPrice / totalDays) * remainingDays);
-  const chargeAmount = Math.max(0, prorationAmount - unusedCredit);
+  const { unusedCredit, prorationAmount, chargeAmount } = calculateSubscriptionUpgradeCharge({
+    currentPlan: subscription.plan,
+    targetPlan,
+    currentBillingCycle: subscription.billingCycle,
+    requestedBillingCycle,
+    currentPeriodStart: subscription.currentPeriodStart,
+    currentPeriodEnd: subscription.currentPeriodEnd,
+    now,
+    isCanceled,
+  });
 
   const planDirection = getPlanChangeDirection(subscription.plan, targetPlan);
   const direction = planDirection === "same" ? "upgrade" : planDirection;
@@ -585,6 +590,18 @@ export async function upgrade(businessId, targetPlanId, requestedBillingCycle = 
   }
 
   // Kiểm tra invoice upgrade pending trùng lặp (chống race condition khi user click nhiều lần)
+  const now = new Date();
+  const { chargeAmount } = calculateSubscriptionUpgradeCharge({
+    currentPlan: subscription.plan,
+    targetPlan,
+    currentBillingCycle: subscription.billingCycle,
+    requestedBillingCycle,
+    currentPeriodStart: subscription.currentPeriodStart,
+    currentPeriodEnd: subscription.currentPeriodEnd,
+    now,
+    isCanceled,
+  });
+
   const pendingUpgradeInvoices = await prisma.subscriptionInvoice.findMany({
     where: {
       subscriptionId: subscription.id,
@@ -595,7 +612,8 @@ export async function upgrade(businessId, targetPlanId, requestedBillingCycle = 
   const existingUpgradeInvoice = pendingUpgradeInvoices.find((invoice) => {
     const metadata = invoice.metadata || {};
     return Number(metadata.targetPlanId) === Number(targetPlanId)
-      && metadata.billingCycle === requestedBillingCycle;
+      && metadata.billingCycle === requestedBillingCycle
+      && Number(invoice.amount) === chargeAmount;
   });
   if (existingUpgradeInvoice) {
     return {
@@ -615,27 +633,6 @@ export async function upgrade(businessId, targetPlanId, requestedBillingCycle = 
         notes: "Thay bằng yêu cầu đổi gói mới",
       },
     });
-  }
-
-  const now = new Date();
-  const targetPrice = getSubscriptionPrice(targetPlan, requestedBillingCycle);
-  let chargeAmount = targetPrice;
-
-  if (!isCanceled) {
-    const periodEnd = new Date(subscription.currentPeriodEnd);
-    const totalDays = Math.max(
-      1,
-      Math.ceil((periodEnd - new Date(subscription.currentPeriodStart)) / (1000 * 60 * 60 * 24)),
-    );
-    const remainingDays = Math.max(0, Math.ceil((periodEnd - now) / (1000 * 60 * 60 * 24)));
-
-    const currentPrice = getSubscriptionPrice(subscription.plan, subscription.billingCycle);
-    const unusedCredit = Math.round((currentPrice / totalDays) * remainingDays);
-    const isBillingCycleChange = subscription.billingCycle !== requestedBillingCycle;
-    const prorationAmount = isBillingCycleChange
-      ? targetPrice
-      : Math.round((targetPrice / totalDays) * remainingDays);
-    chargeAmount = Math.max(0, prorationAmount - unusedCredit);
   }
 
   if (chargeAmount === 0) {

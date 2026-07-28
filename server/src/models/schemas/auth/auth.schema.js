@@ -159,21 +159,22 @@ export const resendVerificationPublicSchema = z.object({
 
 export const verifyEmailOtpSchema = z.object({
   email: z
-    .string({ required_error: "Email khong duoc de trong" })
-    .min(1, "Email khong duoc de trong")
-    .email("Email khong hop le")
+    .string({ required_error: "Email không được để trống" })
+    .min(1, "Email không được để trống")
+    .email("Email không hợp lệ")
     .toLowerCase()
     .trim(),
   otp: z
-    .string({ required_error: "Ma OTP khong duoc de trong" })
-    .regex(/^\d{6}$/, "Ma OTP phai gom 6 chu so"),
+    .string({ required_error: "Mã OTP không được để trống" })
+    .regex(/^\d{6}$/, "Mã OTP phải gồm 6 chữ số"),
+  context: z.enum(["business", "web_business"]).optional(),
 });
 
 export const loginGoogleSchema = z.object({
   idToken: z
     .string({ required_error: "idToken không được để trống" })
     .min(1, "idToken không được để trống"),
-  context: z.enum(["web_business"]).optional(),
+  context: z.enum(["web_business", "business"]).optional(),
 });
 
 export const logoutSchema = z.object({

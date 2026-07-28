@@ -10,9 +10,11 @@ import {
   Store,
   CreditCard,
   FileText,
+  FileSignature,
   ArrowRight,
   ArrowLeft,
   Check,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,12 +32,16 @@ import {
 } from "@/hooks/queries/useBusinessQueries";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { BUSINESS_STATUS } from "@/constants/businessConstants";
+import { ROLES } from "@/constants/constants";
+import { useAuthStore } from "@/stores/authStore";
 import {
   BusinessPageHeader,
   BusinessSectionCard,
 } from "@/components/business/ui";
 import DocumentImageUploadField from "@/components/business/DocumentImageUploadField";
+import ContractSignModal from "@/components/business/ContractSignModal";
 import { DOCUMENT_SAMPLE_IMAGES } from "@/components/business/documentImageConstants";
+import { cn } from "@/lib/utils";
 
 const registerSchema = z.object({
   businessName: z.string().min(2),
@@ -62,6 +68,7 @@ const STEPS = [
   { key: "info", icon: Store, labelKey: "business.register.stepInfo" },
   { key: "bank", icon: CreditCard, labelKey: "business.register.stepBank" },
   { key: "docs", icon: FileText, labelKey: "business.register.stepDocs" },
+  { key: "contract", icon: FileSignature, labelKey: "Ký hợp đồng" },
 ];
 
 function StepIndicator({ currentStep, steps }) {
@@ -122,6 +129,8 @@ const BusinessRegisterPage = () => {
     businessLicense: [],
   });
   const [documentErrors, setDocumentErrors] = useState({});
+  const [signOpen, setSignOpen] = useState(false);
+  const [signedContract, setSignedContract] = useState(false);
 
   const BUSINESS_TYPES = [
     { value: "individual", label: t("business.register.businessTypeIndividual") },
@@ -134,6 +143,7 @@ const BusinessRegisterPage = () => {
     handleSubmit,
     control,
     setValue,
+    watch,
     trigger,
     formState: { errors },
   } = useForm({
@@ -163,8 +173,30 @@ const BusinessRegisterPage = () => {
     if (currentStep === 1) {
       return true; // Bank info is optional
     }
+    if (currentStep === 2) {
+      const nextErrors = {
+        businessLicense:
+          documents.businessLicense.length === 0
+            ? t("business.register.errorBusinessLicense")
+            : "",
+        idCardFront:
+          documents.idCardFront.length === 0
+            ? t("business.register.errorIdCardFront")
+            : "",
+        idCardBack:
+          documents.idCardBack.length === 0
+            ? t("business.register.errorIdCardBack")
+            : "",
+      };
+      setDocumentErrors(nextErrors);
+      if (Object.values(nextErrors).some(Boolean)) {
+        toast.error(t("business.register.errorAllDocuments"));
+        return false;
+      }
+      return true;
+    }
     return true;
-  }, [currentStep, trigger]);
+  }, [currentStep, trigger, documents, t]);
 
   const handleNext = async () => {
     const valid = await canGoNext();
@@ -180,24 +212,8 @@ const BusinessRegisterPage = () => {
   };
 
   const onSubmit = async (data) => {
-    const nextErrors = {
-      businessLicense:
-        documents.businessLicense.length === 0
-          ? t("business.register.errorBusinessLicense")
-          : "",
-      idCardFront:
-        documents.idCardFront.length === 0
-          ? t("business.register.errorIdCardFront")
-          : "",
-      idCardBack:
-        documents.idCardBack.length === 0
-          ? t("business.register.errorIdCardBack")
-          : "",
-    };
-
-    setDocumentErrors(nextErrors);
-    if (Object.values(nextErrors).some(Boolean)) {
-      toast.error(t("business.register.errorAllDocuments"));
+    if (!signedContract) {
+      toast.error("Vui lòng thực hiện ký hợp đồng điện tử trước khi gửi đăng ký!");
       return;
     }
 
@@ -209,11 +225,14 @@ const BusinessRegisterPage = () => {
         businessLicense: documents.businessLicense[0],
       });
       toast.success(t("business.register.title"));
-      navigate(BUSINESS_ROUTES.WELCOME);
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        useAuthStore.getState().setSession({
+          user: { ...currentUser, roleId: ROLES.BUSINESS },
+        });
+      }
+      navigate(BUSINESS_ROUTES.WELCOME, { replace: true });
     } catch (error) {
-      const errorMessage =
-        error?.response?.data?.message ||
-        error?.message ||
         t("common.operationFailed");
       const errorCode = error?.errorCode || error?.response?.data?.errorCode;
 
@@ -400,6 +419,38 @@ const BusinessRegisterPage = () => {
               </div>
             </div>
           )}
+
+          {/* Step 4: Contract */}
+          {currentStep === 3 && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border/70 bg-muted/20 p-5 space-y-4">
+                <div className="flex items-center gap-2 text-foreground font-bold text-base">
+                  <FileSignature className="h-5 w-5 text-amber-500" />
+                  <h4>Hợp đồng hợp tác Doanh nghiệp</h4>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Vui lòng thực hiện ký hợp đồng hợp tác dịch vụ trực tuyến. Hợp đồng mã hóa PDF kèm chữ ký điện tử sẽ được sinh tự động ngay sau khi bạn hoàn tất.
+                </p>
+
+                <div className="p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div>
+                    <span className="text-xs text-muted-foreground block">Trạng thái hợp đồng:</span>
+                    <span className={cn("text-sm font-bold mt-0.5 block", signedContract ? "text-emerald-600" : "text-amber-600")}>
+                      {signedContract ? "Đã ký thành công" : "Chưa ký"}
+                    </span>
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={() => setSignOpen(true)}
+                    className="bg-[#F3E600] text-black font-black uppercase tracking-wide hover:bg-black hover:text-[#F3E600] border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all px-6 py-2.5"
+                  >
+                    {signedContract ? "Xem / Ký lại hợp đồng" : "Ký hợp đồng ngay"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </BusinessSectionCard>
 
         {/* Navigation Buttons */}
@@ -424,8 +475,8 @@ const BusinessRegisterPage = () => {
               <ArrowRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button type="submit" disabled={isLoading} className="gap-2">
-              {isLoading ? t("business.register.submitting") : t("business.register.submit")}
+            <Button type="submit" disabled={isLoading} className="gap-2 bg-[#F3E600] text-black font-bold border border-black hover:bg-black hover:text-[#F3E600]">
+              {isLoading ? t("business.register.submitting") : "Tạo & Hoàn tất đăng ký"}
               {!isLoading && <Check className="h-4 w-4" />}
             </Button>
           )}
@@ -433,6 +484,23 @@ const BusinessRegisterPage = () => {
       </form>
         </>
       )}
+
+      <ContractSignModal
+        open={signOpen}
+        onOpenChange={setSignOpen}
+        onSubmit={async () => {
+          setSignedContract(true);
+          setSignOpen(false);
+          toast.success("Ký hợp đồng điện tử thành công!");
+        }}
+        loading={false}
+        contractVersion="v1"
+        business={{
+          businessName: watch("businessName") || "Doanh nghiệp mới",
+          taxCode: watch("taxCode") || "",
+          idCardNumber: watch("idCardNumber") || "",
+        }}
+      />
     </div>
   );
 };

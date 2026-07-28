@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import prisma from "../../config/prismaClient.js";
 import bcrypt from "bcrypt";
 import { encryptField, decryptField, isEncrypted } from "../../utils/fieldEncryption.js";
-import { BUSINESS_STATUS, CURRENT_CONTRACT_VERSION } from "../../config/constants.js";
+import { BUSINESS_STATUS, CURRENT_CONTRACT_VERSION, ROLES } from "../../config/constants.js";
 import { sendContractVerificationEmail } from "../communication/mailer.service.js";
 import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import {
@@ -60,7 +60,7 @@ const getMonthRange = () => {
 };
 
 const mapProfileResponse = async (business) => {
-  const serialized = serializeBusiness(business, { includeDocumentUrls: true });
+  const serialized = serializeBusiness(business, { includeDocumentUrls: true, decryptSensitive: true });
   const { monthStart, nextMonthStart, now } = getMonthRange();
 
   const [
@@ -263,6 +263,12 @@ export const register = async (data, userId) => {
         create: { userId, ...profileData },
       });
     }
+
+    // Tự động nâng cấp vai trò tài khoản sang BUSINESS nếu đang ở quyền USER
+    await tx.user.update({
+      where: { id: userId },
+      data: { roleId: ROLES.BUSINESS },
+    });
 
     return tx.business.create({
       data: {
@@ -502,7 +508,17 @@ export const updateProfile = async (data, userId) => {
   return mapProfileResponse(updated);
 };
 
-export const signContract = async (userId, payload = {}) => {
+const decryptIfPossible = (value) => {
+  if (!value) return "";
+  if (!isEncrypted(value)) return value;
+  try {
+    return decryptField(value);
+  } catch {
+    return "";
+  }
+};
+
+export const verifyContractSigningRequest = async (userId, payload = {}) => {
   const business = await prisma.business.findUnique({
     where: { ownerId: userId },
     include: defaultInclude,
@@ -510,6 +526,18 @@ export const signContract = async (userId, payload = {}) => {
 
   if (!business) {
     const error = new Error("Bạn chưa đăng ký doanh nghiệp");
+    error.statusCode = 404;
+    error.errorCode = "NO_BUSINESS_PROFILE";
+    throw error;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+
+  if (!user) {
+    const error = new Error("Tài khoản không tồn tại");
     error.statusCode = 404;
     throw error;
   }
@@ -523,84 +551,107 @@ export const signContract = async (userId, payload = {}) => {
     throw error;
   }
 
-  // Xác thực OTP gửi qua email
+  if (business.contractSigned && business.contractVersion === CURRENT_CONTRACT_VERSION) {
+    const error = new Error("Hợp đồng đã được ký trước đó");
+    error.statusCode = 409;
+    error.errorCode = "CONTRACT_ALREADY_SIGNED";
+    throw error;
+  }
+
   const settings = typeof business.settings === "object" && business.settings !== null ? business.settings : {};
   const storedOtp = settings.contractOtp;
   const otpExpiresAt = settings.contractOtpExpiresAt;
 
   if (!storedOtp || !otpExpiresAt || new Date() > new Date(otpExpiresAt)) {
-    const error = new Error("Ma OTP da het han hoac khong ton tai, vui long gui lai ma moi");
+    const error = new Error("Mã OTP đã hết hạn hoặc không tồn tại, vui lòng gửi lại mã mới");
     error.statusCode = 400;
     throw error;
   }
 
   if (storedOtp !== payload.otp) {
-    const error = new Error("Ma OTP xac nhan khong chinh xac");
+    const error = new Error("Mã OTP xác nhận không chính xác");
     error.statusCode = 400;
     throw error;
   }
 
-  // Allow re-signing if contract version is outdated
-  if (business.contractSigned && business.contractVersion === CURRENT_CONTRACT_VERSION) {
-    return mapProfileResponse(business);
-  }
-
   const signedAt = payload.signedAt ? new Date(payload.signedAt) : new Date();
-
   if (Number.isNaN(signedAt.getTime())) {
     const error = new Error("Thời gian ký hợp đồng không hợp lệ");
     error.statusCode = 400;
     throw error;
   }
 
-  const signerMetadata = {
-    ...(payload.signerMetadata || {}),
-    signatureData: payload.signatureData,
-    idCardIssuedDate: payload.idCardIssuedDate || null,
-    idCardIssuedPlace: payload.idCardIssuedPlace || null,
+  const ownerProfile = business.owner?.profile || {};
+  const signerData = {
+    fullName: payload.fullName || ownerProfile.fullName || business.businessName || "",
+    idCard: payload.idCard || decryptIfPossible(business.idCardNumber) || "",
+    idCardIssuedDate: payload.idCardIssuedDate || "",
+    idCardIssuedPlace: payload.idCardIssuedPlace || "",
+    address: payload.address || ownerProfile.address || "",
+    phone: payload.phone || ownerProfile.phone || "",
+    email: business.owner?.email || user.email || "",
+    signedAt,
   };
 
-  // Cập nhật thông tin profile của chủ sở hữu nếu có gửi kèm từ Form ký Bước 1
-  const profileData = {};
-  if (payload.fullName) profileData.fullName = payload.fullName;
-  if (payload.phone) profileData.phone = payload.phone;
-  if (payload.address) profileData.address = payload.address;
-
-  if (Object.keys(profileData).length > 0) {
-    await prisma.userProfile.upsert({
+  await prisma.$transaction(async (tx) => {
+    await tx.userProfile.upsert({
       where: { userId },
-      update: profileData,
-      create: { userId, ...profileData },
+      update: {
+        fullName: signerData.fullName || undefined,
+        phone: signerData.phone || undefined,
+        address: signerData.address || undefined,
+      },
+      create: {
+        userId,
+        fullName: signerData.fullName || null,
+        phone: signerData.phone || null,
+        address: signerData.address || null,
+      },
     });
+
+    await tx.business.update({
+      where: { id: business.id },
+      data: {
+        ...(signerData.idCard ? { idCardNumber: encryptField(signerData.idCard) } : {}),
+        signerMetadata: {
+          ...(typeof business.signerMetadata === "object" && business.signerMetadata !== null
+            ? business.signerMetadata
+            : {}),
+          fullName: signerData.fullName,
+          idCardIssuedDate: signerData.idCardIssuedDate,
+          idCardIssuedPlace: signerData.idCardIssuedPlace,
+          address: signerData.address,
+          phone: signerData.phone,
+          email: signerData.email,
+        },
+      },
+    });
+  });
+
+  return { business, signerData };
+};
+
+export const completeContractSigning = async (userId, businessId, signedAtInput) => {
+  const signedAt = signedAtInput ? new Date(signedAtInput) : new Date();
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    include: defaultInclude,
+  });
+
+  if (!business) {
+    const error = new Error("Doanh nghiệp không tồn tại");
+    error.statusCode = 404;
+    throw error;
   }
 
-  // Xóa OTP khỏi settings sau khi đã verify thành công
+  const settings = typeof business.settings === "object" && business.settings !== null ? business.settings : {};
   const updatedSettings = { ...settings };
   delete updatedSettings.contractOtp;
   delete updatedSettings.contractOtpExpiresAt;
 
-  const encryptIfConfigured = (value) => {
-    if (value === null || value === undefined) return value;
-    if (isEncrypted(value)) return value;
-    try {
-      return encryptField(value) ?? value;
-    } catch {
-      return value;
-    }
-  };
-
   const updated = await prisma.business.update({
-    where: { id: business.id },
-    data: {
-      contractSigned: true,
-      contractSignedAt: signedAt,
-      contractVersion: payload.contractVersion || "v1",
-      signerMetadata,
-      settings: updatedSettings,
-      ...(payload.idCard && {
-        idCardNumber: encryptIfConfigured(payload.idCard.trim()),
-      }),
-    },
+    where: { id: businessId },
+    data: { settings: updatedSettings },
     include: defaultInclude,
   });
 
@@ -609,12 +660,16 @@ export const signContract = async (userId, payload = {}) => {
     businessName: updated.businessName,
     ownerId: userId,
     contractVersion: updated.contractVersion,
-    signedAt: updated.contractSignedAt,
+    signedAt,
   });
 
   return mapProfileResponse(updated);
 };
 
+export const signContract = async (userId, payload = {}) => {
+  const { business } = await verifyContractSigningRequest(userId, payload);
+  return completeContractSigning(userId, business.id, payload.signedAt);
+};
 export const decryptProfile = async (userId, password) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -644,7 +699,7 @@ export const decryptProfile = async (userId, password) => {
     throw error;
   }
 
-  const getDecrypted = (val) => {
+  const getDecryptedValue = (val) => {
     if (!val) return null;
     if (isEncrypted(val)) {
       try {
@@ -657,10 +712,10 @@ export const decryptProfile = async (userId, password) => {
   };
 
   return {
-    idCardNumber: getDecrypted(business.idCardNumber),
-    taxCode: getDecrypted(business.taxCode),
-    bankAccountNumber: getDecrypted(business.bankAccount),
-    bankAccountOwner: getDecrypted(business.bankOwner),
+    idCardNumber: getDecryptedValue(business.idCardNumber),
+    taxCode: getDecryptedValue(business.taxCode),
+    bankAccountNumber: getDecryptedValue(business.bankAccountNumber),
+    bankAccountOwner: getDecryptedValue(business.bankAccountOwner),
   };
 };
 
@@ -670,51 +725,76 @@ export const sendContractOtp = async (userId) => {
     include: defaultInclude,
   });
 
+  let toEmail = null;
+  let ownerName = null;
+
   if (!business) {
-    const error = new Error("Bạn chưa đăng ký doanh nghiệp");
-    error.statusCode = 404;
-    throw error;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true },
+    });
+    if (!user) {
+      const error = new Error("Tài khoản không tồn tại");
+      error.statusCode = 404;
+      throw error;
+    }
+    toEmail = user.email;
+    ownerName = user.profile?.fullName || user.email;
+  } else {
+    if (
+      business.status !== BUSINESS_STATUS.APPROVED &&
+      business.status !== BUSINESS_STATUS.PENDING
+    ) {
+      const error = new Error("Chỉ doanh nghiệp ở trạng thái chờ duyệt hoặc đã duyệt mới được gửi OTP");
+      error.statusCode = 422;
+      throw error;
+    }
+    toEmail = business.owner?.email;
+    ownerName = business.owner?.profile?.fullName || business.businessName;
   }
-
-  if (
-    business.status !== BUSINESS_STATUS.APPROVED &&
-    business.status !== BUSINESS_STATUS.PENDING
-  ) {
-    const error = new Error("Chỉ doanh nghiệp ở trạng thái chờ duyệt hoặc đã duyệt mới được gửi OTP");
-    error.statusCode = 422;
-    throw error;
-  }
-
-  // Sinh OTP 6 chữ số
-  const code = crypto.randomInt(100000, 1000000).toString();
-  const ownerName = business.owner?.profile?.fullName || business.businessName;
-  const toEmail = business.owner?.email;
 
   if (!toEmail) {
-    const error = new Error("Không tìm thấy email của chủ sở hữu");
+    const error = new Error("Không tìm thấy email của tài khoản");
     error.statusCode = 400;
     throw error;
   }
 
-  // Gửi qua nodemailer
+  const code = crypto.randomInt(100000, 1000000).toString();
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
   await sendContractVerificationEmail({
     to: toEmail,
     code,
     name: ownerName,
   });
 
-  // Lưu mã OTP và thời gian hết hạn vào settings của business
-  const currentSettings = typeof business.settings === "object" && business.settings !== null ? business.settings : {};
-  const updatedSettings = {
-    ...currentSettings,
-    contractOtp: code,
-    contractOtpExpiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-  };
-
-  await prisma.business.update({
-    where: { id: business.id },
-    data: { settings: updatedSettings },
-  });
+  if (business) {
+    const currentSettings = typeof business.settings === "object" && business.settings !== null ? business.settings : {};
+    const updatedSettings = {
+      ...currentSettings,
+      contractOtp: code,
+      contractOtpExpiresAt: expiresAt.toISOString(),
+    };
+    await prisma.business.update({
+      where: { id: business.id },
+      data: { settings: updatedSettings },
+    });
+  } else {
+    const otpHash = crypto.createHash("sha256").update(String(code)).digest("hex");
+    await prisma.emailVerification.deleteMany({
+      where: { userId },
+    });
+    await prisma.emailVerification.create({
+      data: {
+        userId,
+        email: toEmail,
+        token: crypto.randomBytes(32).toString("hex"),
+        otpHash,
+        otpExpiresAt: expiresAt,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
+    });
+  }
 
   // Ghi log ra console để dev dễ test
   console.log(`[Didaugio Email OTP] Đã gửi mã OTP ${code} đến email ${toEmail}`);

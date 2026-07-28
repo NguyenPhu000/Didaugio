@@ -205,7 +205,13 @@ export const verifyEmailOtp = async (req, res, next) => {
     const result = await authService.verifyEmailOtp(req.body);
     res.json({
       success: true,
-      data: null,
+      data: result.user
+        ? {
+            user: result.user,
+            accessToken: result.accessToken,
+            refreshToken: result.refreshToken,
+          }
+        : null,
       message: result.message,
     });
   } catch (error) {

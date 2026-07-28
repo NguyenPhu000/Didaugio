@@ -1963,6 +1963,7 @@
       "noContract": "No contract available",
       "contractPreview": "Contract Preview",
       "contractPdf": "Contract PDF",
+      "openPdf": "Open PDF",
       "downloadStarted": "Download started"
     },
     "staff": {
@@ -2657,11 +2658,20 @@
     },
     "vouchers": {
       "title": "Vouchers",
+      "subtitle": "Create and manage discount codes and promotional vouchers for your business.",
       "page": {
         "title": "Promotion Management",
         "subtitle": "Create and manage discount codes and promotional vouchers for your business."
       },
       "createBtn": "Create New",
+      "metrics": {
+        "totalActive": "Active vouchers",
+        "totalUsed": "Total used",
+        "totalDiscounted": "Total discounted"
+      },
+      "searchPlaceholder": "Search code, voucher name...",
+      "used": "Used",
+      "noExpiry": "No expiry",
       "status": {
         "all": "All",
         "active": "Active",
@@ -2686,12 +2696,16 @@
         "createSubtitle": "Fill in the details to create a new promotion code.",
         "basicInfo": "Basic Information",
         "voucherCode": "Voucher Code",
+        "generateRandom": "Generate",
         "voucherName": "Voucher Name",
         "namePlaceholder": "e.g., Summer 2026 Promotion",
         "description": "Description",
         "descriptionPlaceholder": "Brief description of the voucher...",
         "discountSection": "Discount Value",
+        "discountRules": "Discount Rules",
         "discountType": "Discount Type",
+        "typePercentage": "Percentage (%)",
+        "typeFixed": "Fixed (VND)",
         "discountValue": "Value",
         "preview": "Preview",
         "limitsSection": "Usage Limits",
@@ -2716,6 +2730,7 @@
         "duplicate": "Duplicate",
         "pause": "Pause",
         "activate": "Activate",
+        "deactivate": "Deactivate",
         "delete": "Delete"
       },
       "card": {
@@ -2749,6 +2764,8 @@
         "clearFilters": "Clear Filters"
       },
       "empty": {
+        "title": "No vouchers yet",
+        "description": "Click 'Create New' to start creating promotion codes.",
         "noMatchTitle": "No matching vouchers found",
         "noMatchDesc": "Try changing the filters or create a new voucher.",
         "noMatchAction": "Clear Filters",
@@ -2758,7 +2775,9 @@
       "toasts": {
         "error": "An error occurred",
         "createSuccess": "Voucher created successfully",
+        "editSuccess": "Voucher updated successfully",
         "updateSuccess": "Voucher updated successfully",
+        "statusSuccess": "Voucher status updated",
         "deleteSuccess": "Voucher deleted successfully",
         "deleteFailed": "Cannot delete voucher",
         "duplicateSuccess": "Voucher duplicated successfully",

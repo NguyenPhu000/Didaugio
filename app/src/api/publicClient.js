@@ -22,6 +22,7 @@ export async function getPublicWithFallback(endpoint, config = {}) {
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
+          ...(__DEV__ && { "ngrok-skip-browser-warning": "true" }),
         },
         ...config,
       });

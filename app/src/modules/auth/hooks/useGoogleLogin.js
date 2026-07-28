@@ -18,6 +18,7 @@ let statusCodes = {
   IN_PROGRESS: "IN_PROGRESS",
   PLAY_SERVICES_NOT_AVAILABLE: "PLAY_SERVICES_NOT_AVAILABLE",
 };
+let isGoogleSigninConfigured = false;
 
 try {
   const GoogleModule = require("@react-native-google-signin/google-signin");
@@ -141,6 +142,8 @@ export function useGoogleLogin() {
       return;
     }
 
+    if (isGoogleSigninConfigured) return;
+
     GoogleSignin.configure({
       webClientId: googleConfig.webClientId,
       iosClientId: googleConfig.iosClientId,
@@ -148,6 +151,7 @@ export function useGoogleLogin() {
       forceCodeForRefreshToken: false,
       profileImageSize: 120,
     });
+    isGoogleSigninConfigured = true;
   }, [googleConfig.iosClientId, googleConfig.webClientId, isExpoGo]);
 
   const finalizeGoogleSession = useCallback(

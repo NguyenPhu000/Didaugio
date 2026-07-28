@@ -116,7 +116,7 @@ router.put(
 );
 
 // Download contract PDF (business owner or admin)
-router.get("/:id/contract", downloadContract);
+router.get("/:id/contract", authenticate, downloadContract);
 
 // ========== Admin (business.view, business.approve) ==========
 router.get(

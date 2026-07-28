@@ -680,11 +680,56 @@ export const verifyEmail = async (data) => {
 };
 
 export const verifyEmailOtp = async (data) => {
+  const isBusinessContext = data.context === "business" || data.context === "web_business";
   const validated = verifyEmailOtpSchema.parse(data);
 
   try {
-    await emailVerificationService.verifyOtp(validated);
-    return { message: "Xac thuc email thanh cong" };
+    const updatedVerification = await emailVerificationService.verifyOtp({
+      ...validated,
+      upgradeToBusiness: isBusinessContext,
+    });
+
+    const user = await prisma.user.findUnique({
+      where: { id: updatedVerification.userId },
+      include: { role: true, profile: true },
+    });
+
+    if (!user) {
+      return { message: "Xác thực email thành công" };
+    }
+
+    const { password, ...userWithoutPassword } = user;
+    const permissions = await getUserPermissionNames(user.id, user.roleId);
+
+    const accessToken = generateAccessToken({
+      userId: user.id,
+      email: user.email,
+      roleId: user.roleId,
+      roleName: user.role.name,
+    });
+
+    const refreshToken = generateRefreshToken();
+
+    await prisma.userSession.create({
+      data: {
+        userId: user.id,
+        refreshToken: hashToken(refreshToken),
+        deviceName: "Web Browser (OTP Verified)",
+        expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRES_MS),
+      },
+    });
+
+    invalidateUserCache(user.id);
+
+    return {
+      user: {
+        ...userWithoutPassword,
+        permissions,
+      },
+      accessToken,
+      refreshToken,
+      message: "Xác thực email và kích hoạt tài khoản Doanh nghiệp thành công",
+    };
   } catch (error) {
     if (error.statusCode) throw error;
     throw new ServiceError(
@@ -881,6 +926,8 @@ export const loginWithGoogle = async (
     );
   }
 
+  const isBusinessContext = options.context === "web_business";
+
   // Tìm hoặc tạo user
   let user = await prisma.user.findUnique({
     where: { email },
@@ -895,13 +942,13 @@ export const loginWithGoogle = async (
       fallback: "google_user",
     });
 
-    // Tạo tài khoản mới
+    // Tạo tài khoản mới - nếu đăng ký trong luồng web_business thì trực tiếp gán vai trò BUSINESS
     user = await prisma.user.create({
       data: {
         email,
         username: generatedUsername,
         password: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), BCRYPT_ROUNDS),
-        roleId: ROLES.USER,
+        roleId: isBusinessContext ? ROLES.BUSINESS : ROLES.USER,
         status: USER_STATUS.ACTIVE,
         emailVerified: true, // Google đã xác thực rồi
         profile: {
@@ -917,6 +964,8 @@ export const loginWithGoogle = async (
     const shouldUpdateAvatar = picture && !user.profile?.avatar;
     const shouldVerifyEmail = !user.emailVerified;
     const shouldBackfillUsername = !user.username;
+    const shouldUpgradeToBusiness = isBusinessContext && user.roleId === ROLES.USER;
+
     const nextUsername = shouldBackfillUsername
       ? await generateUniqueUsername({
           prismaClient: prisma,
@@ -927,10 +976,11 @@ export const loginWithGoogle = async (
         })
       : null;
 
-    if (shouldUpdateAvatar || shouldVerifyEmail || shouldBackfillUsername) {
+    if (shouldUpdateAvatar || shouldVerifyEmail || shouldBackfillUsername || shouldUpgradeToBusiness) {
       user = await prisma.user.update({
         where: { id: user.id },
         data: {
+          ...(shouldUpgradeToBusiness ? { roleId: ROLES.BUSINESS } : {}),
           ...(shouldVerifyEmail ? { emailVerified: true } : {}),
           ...(shouldBackfillUsername ? { username: nextUsername } : {}),
           ...(shouldUpdateAvatar
@@ -945,6 +995,9 @@ export const loginWithGoogle = async (
         },
         include: { role: true, profile: true },
       });
+      if (shouldUpgradeToBusiness) {
+        invalidateUserCache(user.id);
+      }
     }
   }
 

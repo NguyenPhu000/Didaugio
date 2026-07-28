@@ -6,6 +6,18 @@ export function getSubscriptionPrice(plan, billingCycle = "monthly") {
   return Number(plan.priceMonthly || 0);
 }
 
+export function calculateSubscriptionUpgradeCharge({
+  targetPlan,
+  requestedBillingCycle = "monthly",
+}) {
+  const targetPrice = getSubscriptionPrice(targetPlan, requestedBillingCycle);
+  return {
+    unusedCredit: 0,
+    prorationAmount: targetPrice,
+    chargeAmount: targetPrice,
+  };
+}
+
 export function getPlanChangeDirection(currentPlan, targetPlan) {
   if (!currentPlan || !targetPlan) return "unknown";
   if (Number(currentPlan.id) === Number(targetPlan.id)) return "same";

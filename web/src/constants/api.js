@@ -72,6 +72,27 @@ const clearAuthAndRedirect = () => {
   redirectToLogin();
 };
 
+const shouldForceLogoutForError = (response, requestUrl, isPublicRequest) => {
+  if (isPublicRequest) return false;
+
+  const errorCode = response?.data?.errorCode;
+  const status = response?.status;
+  const normalizedPath = normalizeRequestPath(requestUrl);
+
+  if (errorCode === "USER_NOT_FOUND") return true;
+  if (errorCode === "TOKEN_EXPIRED") return true;
+  if (errorCode === "INVALID_TOKEN") return true;
+  if (errorCode === "ACCOUNT_BANNED") return true;
+  if (errorCode === "ACCOUNT_INACTIVE") return true;
+  if (status === 401) return true;
+
+  if (status === 403 && normalizedPath.startsWith("/business")) {
+    return ["BUSINESS_TERMINATED"].includes(errorCode);
+  }
+
+  return false;
+};
+
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -262,6 +283,15 @@ api.interceptors.response.use(
     apiError.status = response?.status;
     apiError.errorCode = response?.data?.errorCode;
     apiError.data = response?.data;
+
+    if (
+      hasAccessToken &&
+      shouldForceLogoutForError(response, requestUrl, isPublicRequest) &&
+      !isLogoutInProgress &&
+      !skipAuthRedirect
+    ) {
+      clearAuthAndRedirect();
+    }
 
     if (
       !originalRequest?.skipBusinessErrorUX &&

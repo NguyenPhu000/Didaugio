@@ -47,6 +47,12 @@ export const connectSocket = () => {
 
   socket.on("connect_error", (err) => {
     console.warn("[Socket] Connection error:", err.message);
+    if (String(err?.message || "").toLowerCase().includes("user not found")) {
+      socket.removeAllListeners();
+      socket.disconnect();
+      socket = null;
+      socketIdentity = null;
+    }
   });
 
   return socket;

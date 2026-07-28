@@ -170,8 +170,11 @@ export const signContract = async (req, res, next) => {
     const userId = req.user.userId;
 
     // 1. Xác thực OTP và cập nhật thông tin Bên A (CCCD, địa chỉ, họ tên) vào DB
-    const business = await businessProfileService.signContract(userId, req.body);
-    const businessId = business.id;
+    const signing = await businessProfileService.verifyContractSigningRequest(
+      userId,
+      req.body,
+    );
+    const businessId = signing.business.id;
 
     // 2. Nếu chưa có PDF hợp đồng thì tạo trước
     const rawBusiness = await prisma.business.findUnique({
@@ -192,7 +195,15 @@ export const signContract = async (req, res, next) => {
       },
     });
 
-    if (!rawBusiness?.contractPdfPath) {
+    if (!rawBusiness) {
+      return res.status(404).json({
+        success: false,
+        data: null,
+        message: "Doanh nghiệp không tồn tại",
+      });
+    }
+
+    {
       const getDecrypted = (val) => {
         if (!val) return "";
         if (isEncrypted(val)) {
@@ -216,13 +227,13 @@ export const signContract = async (req, res, next) => {
         businessId,
         businessName: rawBusiness?.businessName || `Business #${businessId}`,
         taxCode: decTaxCode || "",
-        address: rawBusiness?.owner?.profile?.address || "",
+        address: signing.signerData.address || rawBusiness?.owner?.profile?.address || "",
         commissionRate: rawBusiness?.commissionRate ? Number(rawBusiness.commissionRate) : 15,
-        ownerName: rawBusiness?.owner?.profile?.fullName || "",
-        idCardNumberMasked: decIdCard || "",
-        idCardIssuedDate: meta.idCardIssuedDate || "",
-        idCardIssuedPlace: meta.idCardIssuedPlace || "",
-        phone: rawBusiness?.owner?.profile?.phone || "",
+        ownerName: signing.signerData.fullName || rawBusiness?.owner?.profile?.fullName || "",
+        idCardNumberMasked: signing.signerData.idCard || decIdCard || "",
+        idCardIssuedDate: signing.signerData.idCardIssuedDate || meta.idCardIssuedDate || "",
+        idCardIssuedPlace: signing.signerData.idCardIssuedPlace || meta.idCardIssuedPlace || "",
+        phone: signing.signerData.phone || rawBusiness?.owner?.profile?.phone || "",
         email: rawBusiness?.owner?.email || "",
       });
     }
@@ -230,7 +241,15 @@ export const signContract = async (req, res, next) => {
     // 3. Gọi contractStorage.signContract để embed chữ ký vào PDF
     const signerMetadata = buildTrustedSignerMetadata(
       req,
-      req.body.signerMetadata,
+      {
+        ...req.body.signerMetadata,
+        fullName: signing.signerData.fullName,
+        idCardIssuedDate: signing.signerData.idCardIssuedDate,
+        idCardIssuedPlace: signing.signerData.idCardIssuedPlace,
+        address: signing.signerData.address,
+        phone: signing.signerData.phone,
+        email: signing.signerData.email,
+      },
       req.body.signedAt,
     );
 
@@ -238,6 +257,12 @@ export const signContract = async (req, res, next) => {
       businessId,
       req.body.signatureData,
       signerMetadata,
+    );
+
+    await businessProfileService.completeContractSigning(
+      userId,
+      businessId,
+      result.contractSignedAt,
     );
 
     res.json({
@@ -268,8 +293,23 @@ export const downloadContract = async (req, res, next) => {
     // Kiểm tra quyền: chỉ chủ doanh nghiệp hoặc admin mới được download
     const isAdmin = isAdminOrSuperAdminRole(req.user?.roleId);
     if (!isAdmin) {
-      const profile = await businessProfileService.getProfile(req.user.userId);
-      if (profile?.id !== businessId) {
+      if (!req.user || !req.user.userId) {
+        return res.status(401).json({
+          success: false,
+          data: null,
+          message: "Vui lòng đăng nhập để thực hiện thao tác này",
+        });
+      }
+      try {
+        const profile = await businessProfileService.getProfile(req.user.userId);
+        if (profile?.id !== businessId) {
+          return res.status(403).json({
+            success: false,
+            data: null,
+            message: "Bạn không có quyền tải hợp đồng này",
+          });
+        }
+      } catch {
         return res.status(403).json({
           success: false,
           data: null,
@@ -278,7 +318,6 @@ export const downloadContract = async (req, res, next) => {
       }
     }
 
-    // Kiểm tra business có PDF chưa, nếu chưa → tạo lại
     const rawBusiness = await prisma.business.findUnique({
       where: { id: businessId },
       select: {
@@ -310,60 +349,65 @@ export const downloadContract = async (req, res, next) => {
 
     const adminSignedParam = req.query.adminSigned === "true";
 
-    if (!rawBusiness.contractPdfPath || adminSignedParam) {
-      const getDecrypted = (val) => {
-        if (!val) return "";
-        if (isEncrypted(val)) {
-          try {
-            return decryptField(val);
-          } catch {
-            return "";
-          }
+    const getDecrypted = (val) => {
+      if (!val) return "";
+      if (isEncrypted(val)) {
+        try {
+          return decryptField(val);
+        } catch {
+          return "";
         }
-        return val;
-      };
-
-      const decTaxCode = getDecrypted(rawBusiness.taxCode);
-      const decIdCard = getDecrypted(rawBusiness.idCardNumber);
-      const meta = typeof rawBusiness.signerMetadata === "object" && rawBusiness.signerMetadata !== null 
-        ? rawBusiness.signerMetadata 
-        : {};
-
-      const businessData = {
-        businessId,
-        businessName: rawBusiness.businessName || `Business #${businessId}`,
-        taxCode: decTaxCode || "",
-        address: rawBusiness.owner?.profile?.address || "",
-        commissionRate: rawBusiness.commissionRate ? Number(rawBusiness.commissionRate) : 10,
-        ownerName: rawBusiness.owner?.profile?.fullName || "",
-        idCardNumberMasked: decIdCard || "",
-        idCardIssuedDate: meta.idCardIssuedDate || "",
-        idCardIssuedPlace: meta.idCardIssuedPlace || "",
-        phone: rawBusiness.owner?.profile?.phone || "",
-        email: rawBusiness.owner?.email || "",
-        signatureImage: meta.signatureData || null,
-        approvedAt: adminSignedParam ? (rawBusiness.approvedAt || new Date()) : (rawBusiness.approvedAt || null),
-        status: adminSignedParam ? "approved" : (rawBusiness.status || null),
-      };
-
-      if (adminSignedParam) {
-        const pdfBuffer = await contractStorageService.generateContractPdf(businessData);
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", `inline; filename="preview-contract-${businessId}.pdf"`);
-        res.setHeader("Content-Length", pdfBuffer.length);
-        return res.send(pdfBuffer);
-      } else {
-        // Tạo lại PDF cho hợp đồng đã ký nhưng thiếu file
-        await contractStorageService.createContract(businessData);
       }
+      return val;
+    };
+
+    const decTaxCode = getDecrypted(rawBusiness.taxCode);
+    const decIdCard = getDecrypted(rawBusiness.idCardNumber);
+    const meta = typeof rawBusiness.signerMetadata === "object" && rawBusiness.signerMetadata !== null 
+      ? rawBusiness.signerMetadata 
+      : {};
+
+    const businessData = {
+      businessId,
+      businessName: rawBusiness.businessName || `Business #${businessId}`,
+      taxCode: decTaxCode || "",
+      address: rawBusiness.owner?.profile?.address || "",
+      commissionRate: rawBusiness.commissionRate ? Number(rawBusiness.commissionRate) : 10,
+      ownerName: rawBusiness.owner?.profile?.fullName || "",
+      idCardNumberMasked: decIdCard || "",
+      idCardIssuedDate: meta.idCardIssuedDate || "",
+      idCardIssuedPlace: meta.idCardIssuedPlace || "",
+      phone: rawBusiness.owner?.profile?.phone || "",
+      email: rawBusiness.owner?.email || "",
+      signatureImage: meta.signatureData || null,
+      approvedAt: adminSignedParam ? (rawBusiness.approvedAt || new Date()) : (rawBusiness.approvedAt || null),
+      status: adminSignedParam ? "approved" : (rawBusiness.status || null),
+      contractSigned: rawBusiness.contractSigned,
+    };
+
+    // Nếu là admin preview, hoặc chưa có file đĩa mã hóa -> Luôn sinh trực tiếp PDF thời gian thực
+    if (!rawBusiness.contractPdfPath || adminSignedParam || isAdmin) {
+      const pdfBuffer = await contractStorageService.generateContractPdf(businessData);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", "inline");
+      res.setHeader("Content-Length", pdfBuffer.length);
+      return res.send(pdfBuffer);
     }
 
-    const { buffer, filename } = await contractStorageService.downloadContract(businessId);
-
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
-    res.setHeader("Content-Length", buffer.length);
-    res.send(buffer);
+    try {
+      const { buffer } = await contractStorageService.downloadContract(businessId);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", "inline");
+      res.setHeader("Content-Length", buffer.length);
+      return res.send(buffer);
+    } catch {
+      // Fallback sinh PDF thời gian thực nếu đọc file mã hóa gặp sự cố
+      const pdfBuffer = await contractStorageService.generateContractPdf(businessData);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", "inline");
+      res.setHeader("Content-Length", pdfBuffer.length);
+      return res.send(pdfBuffer);
+    }
   } catch (error) {
     next(error);
   }

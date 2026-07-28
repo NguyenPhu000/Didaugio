@@ -21,6 +21,7 @@ const GoogleLoginButton = ({ onSuccess, onError, disabled }) => {
         shape="rectangular"
         text="signin_with"
         size="large"
+        useOneTap={false}
       />
     </div>
   );

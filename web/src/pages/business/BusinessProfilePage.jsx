@@ -234,14 +234,15 @@ const BusinessProfilePage = () => {
 
   useEffect(() => {
     if (business) {
+      const info = business.businessInfo || business;
       reset({
-        businessName: business.businessName || "",
-        businessType: business.businessType || "individual",
-        taxCode: business.taxCode || "",
-        idCardNumber: business.idCardNumber || "",
-        bankName: business.bankName || "",
-        bankAccountNumber: business.bankAccountNumber || "",
-        bankAccountOwner: business.bankAccountOwner || "",
+        businessName: info.businessName || business.businessName || "",
+        businessType: info.businessType || business.businessType || "individual",
+        taxCode: info.taxCode || business.taxCode || "",
+        idCardNumber: info.idCardNumber || business.idCardNumber || "",
+        bankName: info.bankName || business.bankName || "",
+        bankAccountNumber: info.bankAccountNumber || business.bankAccountNumber || "",
+        bankAccountOwner: info.bankAccountOwner || business.bankAccountOwner || "",
       });
     }
   }, [business, reset]);
@@ -297,52 +298,66 @@ const BusinessProfilePage = () => {
     setIsEditing(false);
   };
 
+  const bInfo = useMemo(() => business?.businessInfo || business || {}, [business]);
   const businessTypeLabel = BUSINESS_TYPES.find(
-    (t) => t.value === business?.businessType,
+    (t) => t.value === (bInfo?.businessType || business?.businessType),
   )?.label;
+
   const basicInfoRows = useMemo(
     () => [
-      { label: t("business.profile.displayBusinessName"), value: business?.businessName },
+      { label: t("business.profile.displayBusinessName"), value: bInfo?.businessName || business?.businessName },
       { label: t("business.profile.displayBusinessType"), value: businessTypeLabel },
       { 
         label: t("business.profile.displayIdCardNumber"), 
-        value: showDecrypted ? decryptedData?.idCardNumber : business?.idCardNumberMasked,
+        value: showDecrypted ? decryptedData?.idCardNumber : (bInfo?.idCardNumber || business?.idCardNumberMasked || business?.idCardNumber),
         isSensitive: true
       },
       { 
         label: t("business.profile.displayTaxCode"), 
-        value: showDecrypted ? decryptedData?.taxCode : business?.taxCodeMasked,
+        value: showDecrypted ? decryptedData?.taxCode : (bInfo?.taxCode || business?.taxCodeMasked || business?.taxCode),
         isSensitive: true
       },
     ],
     [
+      bInfo?.businessName,
+      bInfo?.businessType,
+      bInfo?.idCardNumber,
+      bInfo?.taxCode,
       business?.businessName,
       business?.idCardNumberMasked,
+      business?.idCardNumber,
       business?.taxCodeMasked,
+      business?.taxCode,
       businessTypeLabel,
       showDecrypted,
       decryptedData,
       t,
     ],
   );
+
   const bankInfoRows = useMemo(
     () => [
-      { label: t("business.profile.displayBankName"), value: business?.bankName },
+      { label: t("business.profile.displayBankName"), value: bInfo?.bankName || business?.bankName },
       { 
         label: t("business.profile.displayBankAccount"), 
-        value: showDecrypted ? decryptedData?.bankAccountNumber : business?.bankAccountNumberMasked,
+        value: showDecrypted ? decryptedData?.bankAccountNumber : (bInfo?.bankAccountNumber || business?.bankAccountNumberMasked || business?.bankAccountNumber),
         isSensitive: true
       },
       { 
         label: t("business.profile.displayAccountHolder"), 
-        value: showDecrypted ? decryptedData?.bankAccountOwner : business?.bankAccountOwnerMasked,
+        value: showDecrypted ? decryptedData?.bankAccountOwner : (bInfo?.bankAccountOwner || business?.bankAccountOwnerMasked || business?.bankAccountOwner),
         isSensitive: true
       },
     ],
     [
-      business?.bankAccountNumberMasked,
-      business?.bankAccountOwnerMasked,
+      bInfo?.bankName,
+      bInfo?.bankAccountNumber,
+      bInfo?.bankAccountOwner,
       business?.bankName,
+      business?.bankAccountNumberMasked,
+      business?.bankAccountNumber,
+      business?.bankAccountOwnerMasked,
+      business?.bankAccountOwner,
       showDecrypted,
       decryptedData,
       t,
@@ -508,7 +523,7 @@ const BusinessProfilePage = () => {
             description={t("business.profile.secureDocumentsDesc")}
             className="lg:col-span-2"
           >
-            <DocumentUploadCard businessId={business?.id} />
+            <DocumentUploadCard businessId={business?.id} business={business} />
           </BusinessSectionCard>
 
           <div
@@ -540,7 +555,7 @@ const BusinessProfilePage = () => {
                   )}
                 </div>
 
-                {business?.contractSigned && business?.id && (
+                {business?.id && (
                   <ContractPdfViewer businessId={business.id} />
                 )}
 

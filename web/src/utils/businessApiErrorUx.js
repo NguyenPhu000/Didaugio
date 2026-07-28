@@ -64,16 +64,20 @@ export function applyBusinessApiErrorUx(error) {
 
   error.globalBusinessUxHandled = true;
 
+  const skipRedirect = shouldSkipRedirect(code);
   const message =
     error.message || i18n.t("apiError.generic");
 
-  toast.error(message, {
-    id: TOAST_ID,
-    duration: 6000,
-  });
+  // Chỉ bắn toast báo lỗi nếu người dùng chưa ở đúng trang xử lý
+  if (!skipRedirect) {
+    toast.error(message, {
+      id: TOAST_ID,
+      duration: 6000,
+    });
+  }
 
   const dest = REDIRECT_BY_CODE[code];
-  if (dest && !shouldSkipRedirect(code)) {
+  if (dest && !skipRedirect) {
     appNavigate(dest);
   }
 

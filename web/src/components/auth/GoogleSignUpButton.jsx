@@ -17,6 +17,7 @@ const GoogleSignUpButton = ({ onSuccess, onError, disabled }) => {
         shape="rectangular"
         text="signup_with"
         size="large"
+        useOneTap={false}
       />
     </div>
   );

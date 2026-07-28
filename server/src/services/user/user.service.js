@@ -413,14 +413,6 @@ export const deleteUser = async (id) => {
     );
   }
 
-  if (existingUser.deletedAt) {
-    throw new ServiceError(
-      "Người dùng đã bị xóa trước đó",
-      400,
-      ERROR_CODES.VALIDATION_ERROR,
-    );
-  }
-
   // Last Super Admin protection
   const userWithRole = await prisma.user.findUnique({
     where: { id: userId },
@@ -428,7 +420,7 @@ export const deleteUser = async (id) => {
   });
   if (userWithRole?.roleId === ROLES.SUPER_ADMIN) {
     const superAdminCount = await prisma.user.count({
-      where: { roleId: ROLES.SUPER_ADMIN, deletedAt: null },
+      where: { roleId: ROLES.SUPER_ADMIN },
     });
     if (superAdminCount <= 1) {
       throw new ServiceError(
@@ -439,19 +431,34 @@ export const deleteUser = async (id) => {
     }
   }
 
-  const deletedUser = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      deletedAt: new Date(),
-      status: USER_STATUS.INACTIVE,
-    },
-    select: {
-      id: true,
-      email: true,
-      deletedAt: true,
-    },
+  // Hard delete khỏi Database (Xóa vĩnh viễn user và các bản ghi phụ thuộc)
+  const deletedUser = await prisma.$transaction(async (tx) => {
+    await tx.auditLog.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.aiPromptHistory.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.reviewReply.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.review.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.eventParticipant.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.eventMoment.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.userCheckin.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.savedTrip.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.tripExecutionOperation.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.tripExecutionSession.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.tripPlan.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.userSession.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.userPermission.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.userProfile.deleteMany({ where: { userId } }).catch(() => {});
+
+    return await tx.user.delete({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+      },
+    });
   });
 
+  invalidateUserCache(userId);
   invalidateUserStatusCache(userId);
 
   return deletedUser;

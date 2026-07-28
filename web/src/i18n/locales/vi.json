@@ -1968,6 +1968,7 @@
       "noContract": "Chưa có hợp đồng",
       "contractPreview": "Xem trước hợp đồng",
       "contractPdf": "Hợp đồng PDF",
+      "openPdf": "Mở PDF",
       "downloadStarted": "Bắt đầu tải xuống"
     },
     "staff": {
@@ -2715,11 +2716,20 @@
     },
     "vouchers": {
       "title": "Voucher",
+      "subtitle": "Tạo và quản lý mã giảm giá, voucher khuyến mãi cho doanh nghiệp của bạn.",
       "page": {
         "title": "Quản lý Khuyến Mãi",
         "subtitle": "Tạo và quản lý mã giảm giá, voucher khuyến mãi cho doanh nghiệp của bạn."
       },
       "createBtn": "Tạo mã mới",
+      "metrics": {
+        "totalActive": "Đang hoạt động",
+        "totalUsed": "Lượt sử dụng",
+        "totalDiscounted": "Tổng giảm giá"
+      },
+      "searchPlaceholder": "Tìm mã, tên voucher...",
+      "used": "Đã dùng",
+      "noExpiry": "Không hết hạn",
       "status": {
         "all": "Tất cả",
         "active": "Đang hoạt động",
@@ -2744,12 +2754,16 @@
         "createSubtitle": "Điền thông tin để tạo mã khuyến mãi mới.",
         "basicInfo": "Thông tin cơ bản",
         "voucherCode": "Mã voucher",
+        "generateRandom": "Tạo ngẫu nhiên",
         "voucherName": "Tên voucher",
         "namePlaceholder": "VD: Khuyến mãi hè 2026",
         "description": "Mô tả",
         "descriptionPlaceholder": "Mô tả ngắn gọn về voucher...",
         "discountSection": "Giá trị giảm giá",
+        "discountRules": "Quy tắc giảm giá",
         "discountType": "Loại giảm",
+        "typePercentage": "Phần trăm (%)",
+        "typeFixed": "Cố định (VND)",
         "discountValue": "Giá trị",
         "preview": "Xem trước",
         "limitsSection": "Giới hạn sử dụng",
@@ -2774,6 +2788,7 @@
         "duplicate": "Nhân bản",
         "pause": "Tạm dừng",
         "activate": "Kích hoạt",
+        "deactivate": "Tắt kích hoạt",
         "delete": "Xóa"
       },
       "card": {
@@ -2807,6 +2822,8 @@
         "clearFilters": "Xóa bộ lọc"
       },
       "empty": {
+        "title": "Chưa có voucher nào",
+        "description": "Nhấn 'Tạo mã mới' để bắt đầu tạo mã khuyến mãi.",
         "noMatchTitle": "Không tìm thấy voucher phù hợp",
         "noMatchDesc": "Thử thay đổi bộ lọc hoặc tạo voucher mới.",
         "noMatchAction": "Xóa bộ lọc",
@@ -2816,7 +2833,9 @@
       "toasts": {
         "error": "Có lỗi xảy ra",
         "createSuccess": "Tạo voucher thành công",
+        "editSuccess": "Cập nhật voucher thành công",
         "updateSuccess": "Cập nhật voucher thành công",
+        "statusSuccess": "Đã cập nhật trạng thái voucher",
         "deleteSuccess": "Xóa voucher thành công",
         "deleteFailed": "Không thể xóa voucher",
         "duplicateSuccess": "Nhân bản voucher thành công",

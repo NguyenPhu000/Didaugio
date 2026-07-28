@@ -75,8 +75,12 @@ export const authService = {
     return response;
   },
 
-  verifyEmailOtp: async ({ email, otp }) => {
-    const response = await api.post("/auth/verify-email-otp", { email, otp });
+  verifyEmailOtp: async ({ email, otp, context }) => {
+    const response = await api.post("/auth/verify-email-otp", {
+      email,
+      otp,
+      ...(context ? { context } : {}),
+    });
     return response;
   },
 
@@ -122,6 +126,7 @@ export const authService = {
   googleLogin: async (idToken) => {
     const response = await api.post("/auth/google", {
       idToken,
+      context: "web_business",
     });
     return response;
   },
@@ -143,7 +148,7 @@ export const authService = {
 
   // Nâng cấp USER lên BUSINESS role
   upgradeToBusiness: async () => {
-    const response = await api.post("/auth/upgrade-to-business", null, {
+    const response = await api.post("/auth/upgrade-to-business", {}, {
       skipPermissionToast: true,
     });
     return response;

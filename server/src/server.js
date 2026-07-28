@@ -143,9 +143,9 @@ app.use(
           ...allowedOriginPatterns.map((o) => o.replace(/^http/, "ws")),
         ],
         fontSrc: ["'self'"],
-        objectSrc: ["'none'"],
+        objectSrc: ["'self'", "blob:"],
         mediaSrc: ["'self'", ...cloudinaryDomains],
-        frameSrc: ["'none'"],
+        frameSrc: ["'self'", "blob:", "data:"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
         upgradeInsecureRequests: isProduction ? true : null,
@@ -176,6 +176,7 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    exposedHeaders: ["Content-Disposition", "Content-Type"],
   }),
 );
 

@@ -5,14 +5,17 @@ import {
   Platform,
   StyleSheet,
   KeyboardAvoidingView,
+  Image,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
-import { ArrowLeft, ArrowDown, Home, MapPinned, MessageCircle, Sparkles, Trash2 } from "lucide-react-native";
+import { ArrowLeft, ArrowDown, Home, MessageCircle, Trash2 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+
+import avaGenie from "../../assets/ai/ava_Genie.png";
 
 import { useGroqChat } from "../../src/modules/ai/hooks/useGroqChat";
 import { useGenieVoice } from "../../src/modules/ai/hooks/useGenieVoice";
@@ -246,7 +249,7 @@ export default function GroqChatScreen() {
               colors={["#2563EB", "#7C3AED", "#DB2777"]}
               style={s.avatarContainer}
             >
-              <Sparkles size={18} color="#FFFFFF" />
+              <Image source={avaGenie} style={s.avatarImage} resizeMode="cover" />
             </LinearGradient>
           </Glow>
           
@@ -310,9 +313,7 @@ export default function GroqChatScreen() {
                 colors={["#2563EB", "#7C3AED", "#DB2777"]}
                 style={s.heroAvatarRing}
               >
-                <View style={s.heroAvatarInner}>
-                  <MapPinned size={33} color="#2563EB" />
-                </View>
+                <Image source={avaGenie} style={s.heroAvatarImage} resizeMode="cover" />
               </LinearGradient>
             </Glow>
 
@@ -420,11 +421,17 @@ const s = StyleSheet.create({
     backgroundColor: "#F1F5F9",
   },
   avatarContainer: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    padding: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarImage: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
   },
   headerTitle: {
     fontSize: 16,
@@ -464,12 +471,18 @@ const s = StyleSheet.create({
     paddingVertical: 20,
   },
   heroAvatarRing: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    padding: 3,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
+  },
+  heroAvatarImage: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
   },
   heroAvatarInner: {
     width: 76,
