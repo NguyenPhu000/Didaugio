@@ -103,10 +103,6 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
           <Metric icon="route" value={legCount} label="chặng" />
         </View>
 
-        <View style={styles.cta}>
-          <Text style={styles.ctaText}>Mở chiến dịch</Text>
-          <MaterialIconsRounded name="arrow-forward" size={14} color="#181819" />
-        </View>
       </View>
     </AnimatedPressable>
   );

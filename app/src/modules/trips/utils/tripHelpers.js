@@ -148,7 +148,7 @@ export function getDisplayStatus(trip) {
   }
   if (daysUntil < 0) {
     const endDaysUntil = getDaysUntil(trip.endDate);
-    if (endDaysUntil !== null && endDaysUntil < 0) return "completed";
+    if (endDaysUntil === null || endDaysUntil <= 0) return "completed";
     return "ongoing";
   }
   return "upcoming";
@@ -188,7 +188,7 @@ export function getTimelineLabel(trip) {
   return i18n.t("tripHelpers.canAddLater");
 }
 
-export function getHeroTrip(trips) {
+export function getHeroTrips(trips) {
   const STATUS_PRIORITY = {
     ongoing: 0,
     upcoming: 1,
@@ -206,9 +206,15 @@ export function getHeroTrip(trips) {
       const aDate = getSafeDateTime(a.trip.startDate, Number.MAX_SAFE_INTEGER);
       const bDate = getSafeDateTime(b.trip.startDate, Number.MAX_SAFE_INTEGER);
       return aDate - bDate;
-    });
+    })
+    .map(({ trip }) => trip);
 
-  return candidates[0]?.trip ?? null;
+  return candidates;
+}
+
+export function getHeroTrip(trips) {
+  const heroTrips = getHeroTrips(trips);
+  return heroTrips[0] ?? null;
 }
 
 export function sortTripsForDashboard(trips) {

@@ -111,7 +111,7 @@ function ImmersiveCard({
       ) : null}
 
       {/* Card Content Footer */}
-      <Box className="absolute bottom-0 left-0 right-0 gap-2.5 px-5 pb-4 pt-8">
+      <Box className="absolute bottom-0 left-0 right-0 gap-2.5 px-5 pb-4 pt-8 z-20">
         <Text
           className="text-[20px] font-bold text-white leading-[25px] tracking-[-0.3px]"
           numberOfLines={2}
@@ -120,7 +120,7 @@ function ImmersiveCard({
         </Text>
 
         <Box className="flex-row items-center justify-between pt-2 border-t border-white/20">
-          <Box className="flex-row flex-1 items-center gap-3">
+          <Box className="flex-row flex-1 items-center gap-3 flex-wrap">
             {dateText ? <MetaRow icon="event" label={dateText} /> : null}
             <MetaRow
               icon="today"

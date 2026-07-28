@@ -526,11 +526,11 @@ export default function ExploreScreen() {
               </View>
             ) : null}
 
-            {selectedCategory != null && popularPlaces.length > 0 ? (
+            {selectedCategory != null && allPlaces.length > 0 ? (
               <CategoryPlacesSection
                 categoryName={selectedCategoryName}
                 categoryId={selectedCategory}
-                places={popularPlaces.slice(0, 8)}
+                places={allPlaces.slice(0, 8)}
                 onPressPlace={handlePressPlace}
                 onPressViewAll={() =>
                   handleViewCategoryPlaces({ id: selectedCategory, name: selectedCategoryName })
