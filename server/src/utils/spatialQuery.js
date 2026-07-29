@@ -52,7 +52,7 @@ export async function findRelatedPlacesByKeywords(userMessage) {
         ratingAvg: true,
         category: { select: { name: true, slug: true } },
         images: {
-          select: { secureUrl: true, thumbnailUrl: true },
+          select: { secureUrl: true, thumbnailUrl: true, imageData: true },
           orderBy: { order: "asc" },
           take: 3,
         },
@@ -87,7 +87,7 @@ export async function findRelatedPlacesByKeywords(userMessage) {
       ratingAvg: true,
       category: { select: { name: true, slug: true } },
       images: {
-        select: { secureUrl: true, thumbnailUrl: true },
+        select: { secureUrl: true, thumbnailUrl: true, imageData: true },
         orderBy: { order: "asc" },
         take: 3,
       },
@@ -157,7 +157,7 @@ export async function findPlacesNearby(lat, lng, radiusKm = 10, limit = 20) {
   const placeImages = placeIds.length > 0
     ? await prisma.placeImage.findMany({
         where: { placeId: { in: placeIds } },
-        select: { placeId: true, secureUrl: true, thumbnailUrl: true },
+        select: { placeId: true, secureUrl: true, thumbnailUrl: true, imageData: true },
         orderBy: { order: "asc" },
       })
     : [];
@@ -170,6 +170,7 @@ export async function findPlacesNearby(lat, lng, radiusKm = 10, limit = 20) {
       imagesByPlace[img.placeId].push({
         secureUrl: img.secureUrl,
         thumbnailUrl: img.thumbnailUrl,
+        imageData: img.imageData,
       });
     }
   }

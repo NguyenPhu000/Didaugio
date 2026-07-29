@@ -80,6 +80,8 @@
     "statusCancelled": "Đã hủy",
     "draft": "Nháp",
     "pendingApproval": "Chờ duyệt",
+    "others": "khác",
+    "exporting": "Đang xuất...",
     "reviewing": "Đang duyệt",
     "invalidImageFormat": "Chỉ hỗ trợ ảnh PNG/JPG/JPEG/WEBP",
     "invalidFileFormat": "Chỉ hỗ trợ ảnh PNG/JPG/JPEG/WEBP hoặc PDF",
@@ -1855,16 +1857,6 @@
       "confirmRefundBtn": "Xác nhận hoàn tiền",
       "qrCodePresent": "Khách hàng xuất trình mã này khi đến",
       "voucherDiscount": "Giảm",
-      "guestLabel": "Khách",
-      "selectedCount": "{{count}} được chọn",
-      "conditionLabel": "Điều kiện",
-      "noCondition": "Không có điều kiện",
-      "priorityLabel": "Độ ưu tiên",
-      "confirmDeleteRule": "Bạn có chắc muốn xóa rule này?",
-      "timeSlot": "Khung giờ",
-      "minGuests": "Tối thiểu",
-      "maxGuests": "Tối đa",
-      "errorOccurred": "Lỗi xảy ra",
       "title": "Chi tiết đặt chỗ"
     },
     "profile": {
@@ -2367,6 +2359,7 @@
       "title": "Quản lý đặt chỗ",
       "subtitle": "Xem và xử lý tất cả đặt chỗ",
       "loadFailed": "Tải danh sách đặt chỗ thất bại",
+      "notFound": "Không tìm thấy đặt chỗ",
       "confirmedSuccess": "Đã xác nhận đặt chỗ",
       "cannotConfirm": "Không thể xác nhận đặt chỗ",
       "cancelledSuccess": "Đã hủy đặt chỗ",
@@ -2435,6 +2428,47 @@
         "doubleBooking": "Trùng lịch đặt",
         "serviceUnavailable": "Dịch vụ không khả dụng",
         "weather": "Thời tiết xấu"
+      },
+      "scanQr": "Quét QR",
+      "exportCsv": "Xuất CSV",
+      "viewDetail": "Xem chi tiết",
+      "guestLabel": "Khách",
+      "selectedCount": "{{count}} được chọn",
+      "bulkConfirmSuccess": "Đã xác nhận {{count}} đặt chỗ",
+      "bulkRejectSuccess": "Đã từ chối {{count}} đặt chỗ",
+      "export": {
+        "filename": "danh_sach_dat_cho",
+        "headers": {
+          "id": "ID",
+          "guestName": "Tên khách",
+          "phone": "Số điện thoại",
+          "service": "Dịch vụ",
+          "status": "Trạng thái",
+          "price": "Giá",
+          "createdAt": "Ngày tạo"
+        }
+      },
+      "qr": {
+        "title": "Quét QR check-in",
+        "description": "Quét QR trên vé booking của khách hoặc nhập mã booking thủ công.",
+        "ready": "Sẵn sàng quét QR",
+        "cameraSession": "Camera sẽ chỉ dùng trong phiên quét này.",
+        "openCamera": "Mở camera",
+        "stopCamera": "Dừng camera",
+        "verifying": "Đang xác thực",
+        "manualLabel": "Nhập mã hoặc dán dữ liệu QR",
+        "manualPlaceholder": "BK-12345 hoặc JSON QR",
+        "submit": "Xác nhận check-in",
+        "invalid": "Mã QR booking không hợp lệ",
+        "valid": "QR hợp lệ",
+        "checkedIn": "Check-in thành công",
+        "verifyFailed": "Không thể xác thực mã QR",
+        "unsupported": "Trình duyệt này chưa hỗ trợ quét QR bằng camera. Hãy nhập hoặc dán mã QR.",
+        "cameraUnavailable": "Thiết bị này chưa hỗ trợ mở camera trong trình duyệt. Hãy nhập hoặc dán mã QR.",
+        "cameraPermission": "Bạn cần cấp quyền camera để quét QR.",
+        "cameraOpenFailed": "Không mở được camera. Hãy nhập hoặc dán mã QR.",
+        "customer": "Khách hàng",
+        "service": "Dịch vụ"
       }
     },
     "earnings": {
@@ -2608,6 +2642,7 @@
       "loadFailed": "Tải đánh giá thất bại",
       "replySuccess": "Đã phản hồi đánh giá",
       "replyFailed": "Phản hồi đánh giá thất bại",
+      "replyLowRating": "Phản hồi",
       "responseRate": "Tỷ lệ phản hồi",
       "avgResponseTime": "Thời gian phản hồi",
       "quickReplies": {
@@ -2662,6 +2697,7 @@
     },
     "quickProcess": {
       "title": "Xử lý nhanh",
+      "automationTab": "Quy tắc tự động",
       "loadFailed": "Tải dữ liệu thất bại",
       "loadListFailed": "Không tải được danh sách",
       "loadRuleFailed": "Không tải được rule",
@@ -2669,7 +2705,10 @@
       "confirmDeleteRule": "Bạn có chắc muốn xóa rule này?",
       "timeSlot": "Khung giờ",
       "minGuests": "Tối thiểu",
-      "maxGuests": "Tối đa"
+      "maxGuests": "Tối đa",
+      "conditionLabel": "Điều kiện",
+      "noCondition": "Không có điều kiện",
+      "priorityLabel": "Độ ưu tiên"
     },
     "register": {
       "title": "Đăng ký doanh nghiệp",
@@ -3356,9 +3395,11 @@
       "subtitle": "Chọn gói phù hợp với doanh nghiệp của bạn",
       "monthly": "Theo tháng",
       "yearly": "Theo năm",
+      "yearlyDiscount": "-20%",
       "popular": "Phổ biến nhất",
       "current": "Gói hiện tại",
       "select": "Chọn gói",
+      "unavailable": "Không khả dụng cho chu kỳ này",
       "compareFeatures": "So sánh tính năng",
       "feature": "Tính năng"
     },
@@ -3417,6 +3458,11 @@
     },
     "grace": {
       "warning": "Gói của bạn đã hết hạn. Còn {{days}} ngày để gia hạn."
+    },
+    "featureGate": {
+      "upgradeRequired": "Tính năng này yêu cầu gói {{plan}} trở lên.",
+      "upgradeBtn": "Nâng cấp gói",
+      "andAbove": "trở lên"
     },
     "admin": {
       "title": "Quản lý Subscription",

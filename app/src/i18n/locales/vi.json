@@ -61,7 +61,7 @@
     "login": {
       "title": "ĐĂNG NHẬP",
       "subtitle": "TRUY CẬP HỆ THỐNG",
-      "brandTagline": "Khám Phá Cần Thơ theo cách của bạn",
+      "brandTagline": "Khám Phá Cần Thơ theo cách của bạn nhó",
       "emailOrUsername": "Email hoặc tên đăng nhập",
       "password": "Mật khẩu",
       "rememberMe": "GHI NHỚ ĐĂNG NHẬP",
@@ -91,7 +91,11 @@
       "hasAccount": "Đã có tài khoản?",
       "loginNow": "Đăng nhập ngay",
       "success": "Đăng ký thành công!",
-      "failed": "Đăng ký thất bại"
+      "failed": "Đăng ký thất bại",
+      "strengthWeak": "Yếu",
+      "strengthFair": "Trung bình",
+      "strengthGood": "Tốt",
+      "strengthStrong": "Mạnh"
     },
     "forgotPassword": {
       "title": "QUÊN MẬT KHẨU",
@@ -412,15 +416,16 @@
     "viewDetail": "Xem chi tiết booking"
   },
   "bookingTicket": {
-    "notAvailable": "Chua co thong tin",
-    "quantityValue": "{{count}} khach",
-    "location": "Dia diem",
-    "date": "Ngay",
-    "time": "Gio",
-    "quantity": "So khach",
-    "address": "Dia chi",
-    "total": "Tong tien",
-    "qrPending": "QR mo sau khi booking duoc xac nhan"
+    "notAvailable": "Chưa có thông tin",
+    "quantityValue": "{{count}} khách",
+    "quantityValue_plural": "{{count}} khách",
+    "location": "Địa điểm",
+    "date": "Ngày",
+    "time": "Giờ",
+    "quantity": "Số khách",
+    "address": "Địa chỉ",
+    "total": "Tổng tiền",
+    "qrPending": "QR mở sau khi booking được xác nhận"
   },
   "bookingDetail": {
     "title": "Chi tiết booking",
@@ -432,6 +437,7 @@
     "qrTitle": "Mã QR check-in",
     "qrDescription": "Quét mã này tại địa điểm để xác nhận booking.",
     "qrLoading": "Đang tải mã QR...",
+    "loadingQR": "Đang tải mã QR...",
     "qrNotLoaded": "Chưa tải được mã QR.",
     "qrUnavailable": "QR không khả dụng cho booking này.",
     "qrPending": "QR sẽ xuất hiện khi booking được xác nhận.",
@@ -570,7 +576,23 @@
       "contact": "Liên hệ",
       "depositLabel": "Tiền cọc: {{amount}}",
       "refundable": "Hoàn được {{percent}}%",
-      "nonRefundable": "Không hoàn tiền"
+      "nonRefundable": "Không hoàn tiền",
+      "finalTotal": "Thành tiền (sau giảm)"
+    },
+    "voucher": {
+      "title": "Mã giảm giá (Voucher)",
+      "placeholder": "Nhập mã (VD: CANTHO2026)",
+      "apply": "ÁP DỤNG",
+      "remove": "Bỏ voucher",
+      "validating": "Đang kiểm tra mã...",
+      "invalid": "Mã không hợp lệ hoặc không áp dụng được",
+      "discountLabel": "Đã giảm {{amount}}",
+      "discountApplied": "Voucher {{code}}",
+      "showList": "Có {{count}} mã khả dụng",
+      "hideList": "Ẩn danh sách",
+      "upTo": "(tối đa {{amount}})",
+      "minOrder": "Đơn tối thiểu {{amount}}",
+      "expires": "HSD: {{date}}"
     },
     "submitRequest": "Gửi yêu cầu đặt chỗ",
     "payAtPlace": "Thanh toán tại địa điểm",

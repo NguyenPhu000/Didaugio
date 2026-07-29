@@ -99,6 +99,11 @@
         "NSCameraUsageDescription": "iPoint Genie cần truy cập máy ảnh để bạn chụp hình trực tiếp."
       }
     },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/icon.png"
+    },
     "extra": {
       "router": {},
       "eas": {

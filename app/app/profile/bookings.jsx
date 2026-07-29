@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { TicketIllustration } from "@/components/primitives/TicketIllustration";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -76,28 +77,37 @@ export default function MyBookingsScreen() {
           }
         >
           <View className="flex-row gap-2">
-            <View className="flex-1 rounded-[14px] border border-[#D2D2D7] bg-white px-[10px] py-[10px] gap-1">
-              <Text className="text-[rgba(0,0,0,0.48)] text-[11px] font-medium">{t("bookings.stats.total")}</Text>
-              <Text className="text-[#1D1D1F] text-[17px] font-semibold">{stats.total}</Text>
-            </View>
-            <View className="flex-1 rounded-[14px] border border-[#D2D2D7] bg-white px-[10px] py-[10px] gap-1">
-              <Text className="text-[rgba(0,0,0,0.48)] text-[11px] font-medium">{t("bookings.stats.confirmed")}</Text>
-              <Text className="text-[#1D1D1F] text-[17px] font-semibold">{stats.confirmed}</Text>
-            </View>
-            <View className="flex-1 rounded-[14px] border border-[#D2D2D7] bg-white px-[10px] py-[10px] gap-1">
-              <Text className="text-[rgba(0,0,0,0.48)] text-[11px] font-medium">{t("bookings.stats.pending")}</Text>
-              <Text className="text-[#1D1D1F] text-[17px] font-semibold">{stats.pending}</Text>
-            </View>
+            <StatCard
+              label={t("bookings.stats.total")}
+              value={stats.total}
+              accent="#1D1D1F"
+            />
+            <StatCard
+              label={t("bookings.stats.confirmed")}
+              value={stats.confirmed}
+              accent="#0F766E"
+              hint={stats.confirmed > 0 ? "ready" : "none"}
+            />
+            <StatCard
+              label={t("bookings.stats.pending")}
+              value={stats.pending}
+              accent="#D97706"
+              hint={stats.pending > 0 ? "awaiting" : "none"}
+            />
           </View>
 
           {bookings.length === 0 ? (
-            <View className="mt-9 bg-white rounded-[20px] border border-[#D2D2D7] p-5 items-center">
-              <MaterialIconsRounded
-                name="confirmation-number"
-                size={30}
-                color={THEME.textMuted}
-              />
-              <Text className="mt-2 text-[17px] text-[#1D1D1F] font-semibold">{t("bookings.empty.noBookings")}</Text>
+            <View className="mt-9 bg-white rounded-[20px] border border-[#D2D2D7] p-5 items-center overflow-hidden">
+              <View className="w-full items-center py-2">
+                <TicketIllustration
+                  width={320}
+                  height={220}
+                  number="00"
+                  eyebrow="NO PASSES YET"
+                  variant="empty"
+                />
+              </View>
+              <Text className="mt-3 text-[17px] text-[#1D1D1F] font-semibold">{t("bookings.empty.noBookings")}</Text>
               <Text className="mt-[6px] text-[13px] leading-5 text-[rgba(0,0,0,0.8)] text-center font-sans">
                 {t("bookings.empty.description")}
               </Text>
@@ -120,6 +130,41 @@ export default function MyBookingsScreen() {
           )}
         </ScrollView>
       )}
+    </View>
+  );
+}
+
+function StatCard({ label, value, accent, hint }) {
+  return (
+    <View
+      className="flex-1 rounded-[14px] border border-black/[0.06] bg-white px-3 py-3"
+      style={{
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      }}
+    >
+      <View className="flex-row items-center gap-1.5">
+        <View
+          className="w-1.5 h-1.5 rounded-full"
+          style={{ backgroundColor: accent }}
+        />
+        <Text className="text-[rgba(0,0,0,0.48)] text-[10px] font-semibold tracking-[0.06em] uppercase">
+          {label}
+        </Text>
+      </View>
+      <Text className="mt-1.5 text-[#1D1D1F] text-[20px] font-extrabold tracking-[-0.4px]">
+        {value}
+      </Text>
+      {hint ? (
+        <Text
+          className="mt-0.5 text-[10px] font-semibold"
+          style={{ color: accent, opacity: 0.7 }}
+        >
+          {hint}
+        </Text>
+      ) : null}
     </View>
   );
 }

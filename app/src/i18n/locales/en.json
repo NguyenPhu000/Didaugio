@@ -91,7 +91,11 @@
       "hasAccount": "Already have an account?",
       "loginNow": "Log in now",
       "success": "Registration successful!",
-      "failed": "Registration failed"
+      "failed": "Registration failed",
+      "strengthWeak": "Weak",
+      "strengthFair": "Fair",
+      "strengthGood": "Good",
+      "strengthStrong": "Strong"
     },
     "forgotPassword": {
       "title": "FORGOT PASSWORD",
@@ -572,7 +576,23 @@
       "contact": "Contact",
       "depositLabel": "Deposit: {{amount}}",
       "refundable": "Refundable {{percent}}%",
-      "nonRefundable": "Non-refundable"
+      "nonRefundable": "Non-refundable",
+      "finalTotal": "Final total"
+    },
+    "voucher": {
+      "title": "Discount voucher",
+      "placeholder": "Enter code (e.g. CANTHO2026)",
+      "apply": "APPLY",
+      "remove": "Remove voucher",
+      "validating": "Validating code...",
+      "invalid": "Code is invalid or cannot be applied",
+      "discountLabel": "You saved {{amount}}",
+      "discountApplied": "Voucher {{code}}",
+      "showList": "{{count}} available codes",
+      "hideList": "Hide list",
+      "upTo": "(up to {{amount}})",
+      "minOrder": "Min order {{amount}}",
+      "expires": "Exp: {{date}}"
     },
     "submitRequest": "Submit booking request",
     "payAtPlace": "Pay at venue",
@@ -1598,7 +1618,8 @@
     "googleMissingConfig": "Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in app/.env.",
     "googleMissingOwner": "Missing EXPO_PUBLIC_EXPO_OWNER or EXPO_PUBLIC_EXPO_SLUG in app/.env.",
     "googleNotReady": "Google OAuth not ready. Please try again in a few seconds.",
-    "apiPointingToExpo": "Login API is pointing to Expo/Metro instead of backend. Check EXPO_PUBLIC_API_URL and app/server port."
+    "apiPointingToExpo": "Login API is pointing to Expo/Metro instead of backend. Check EXPO_PUBLIC_API_URL and app/server port.",
+    "accountInactive": "Account not yet activated. Please sign in with Google to activate it."
   },
   "tripHelpers": {
     "all": "All",

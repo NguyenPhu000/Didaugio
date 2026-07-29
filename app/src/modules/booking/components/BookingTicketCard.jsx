@@ -1,6 +1,8 @@
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIconsRounded } from "../../../components/primitives/MaterialIconsRounded";
+import { TicketIllustration } from "../../../components/primitives/TicketIllustration";
 import { normalizeBookingTicket } from "../utils/bookingTicket";
 import { useTranslation } from "react-i18next";
 
@@ -164,8 +166,14 @@ export function BookingTicketMiniRow({ booking, onPress }) {
             style={{ width: "100%", height: "100%" }}
           />
         ) : (
-          <View className="h-full w-full items-center justify-center">
-            <MaterialIconsRounded name="confirmation-number" size={28} color="rgba(255,255,255,0.72)" />
+          <View className="h-full w-full items-center justify-center bg-[#FFF8EC]">
+            <TicketIllustration
+              width={84}
+              height={92}
+              number={String(ticket.bookingCode || "01").slice(-2)}
+              eyebrow="PASS"
+              variant="mini"
+            />
           </View>
         )}
       </View>
@@ -247,11 +255,21 @@ export default function BookingTicketCard({
             style={{ width: "100%", height: "100%" }}
           />
         ) : (
-          <View className="h-full w-full items-center justify-center bg-zinc-900">
-            <MaterialIconsRounded name="confirmation-number" size={42} color="rgba(255,255,255,0.72)" />
+          <View className="h-full w-full items-center justify-center bg-[#FFF8EC]">
+            <TicketIllustration
+              width={compact ? 220 : 320}
+              height={compact ? 142 : 190}
+              number={String(ticket.bookingCode || "01").slice(-2)}
+              eyebrow={compact ? "PASS" : "BOARDING PASS"}
+              variant="hero"
+            />
           </View>
         )}
-        <View className="absolute inset-0 bg-black/25" />
+        <View className="absolute inset-0 bg-black/20" />
+        <LinearGradient
+          colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.65)"]}
+          style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "65%" }}
+        />
         <View className="absolute bottom-0 left-0 right-0 px-5 pb-4">
           <View className="mb-2 flex-row items-center justify-between gap-3">
             <View className={`rounded-full px-3 py-1 ${statusStyle.bg}`}>

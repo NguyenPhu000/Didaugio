@@ -584,7 +584,7 @@ const BookingDetailPage = memo(() => {
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <AlertTriangle className="h-10 w-10 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
-          {t("business.bookingDetail.title")}
+          {t("business.bookings.notFound")}
         </p>
         <Button
           variant="outline"

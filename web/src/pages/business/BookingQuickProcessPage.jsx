@@ -198,7 +198,7 @@ const BookingQuickProcessPage = memo(() => {
       const successCount = results.filter((r) => r.status === "fulfilled" && r.value?.success).length;
       const failCount = results.length - successCount;
 
-      if (successCount > 0) toast.success(`${t("business.bookings.confirmedSuccess")} ${successCount}`);
+      if (successCount > 0) toast.success(t("business.bookings.bulkConfirmSuccess", { count: successCount }));
       if (failCount > 0) toast.error(`${failCount} ${t("common.operationFailed")}`);
 
       setSelected([]);
@@ -217,7 +217,7 @@ const BookingQuickProcessPage = memo(() => {
       const successCount = results.filter((r) => r.status === "fulfilled" && r.value?.success).length;
       const failCount = results.length - successCount;
 
-      if (successCount > 0) toast.success(`${t("business.bookings.rejectedSuccess")} ${successCount}`);
+      if (successCount > 0) toast.success(t("business.bookings.bulkRejectSuccess", { count: successCount }));
       if (failCount > 0) toast.error(`${failCount} ${t("common.operationFailed")}`);
 
       setSelected([]);
@@ -362,7 +362,7 @@ const BookingQuickProcessPage = memo(() => {
             )}
           >
             <Sparkles className="h-4 w-4 text-zinc-500" />
-            {t("business.schedule.processing")}
+            {t("business.quickProcess.automationTab")}
           </TabsTrigger>
         </TabsList>
 
@@ -371,7 +371,7 @@ const BookingQuickProcessPage = memo(() => {
             <div className="sticky top-20 z-30 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-250/80 bg-white/95 dark:bg-zinc-950/95 p-4 shadow-xl backdrop-blur animate-in fade-in slide-in-from-top-3 dark:border-zinc-800">
               <div className="flex items-center gap-3">
                 <Badge className="text-xs px-3 py-1.5 bg-primary/10 text-primary border-none font-bold">
-                  {t("business.bookingDetail.selectedCount", { count: selected.length })}
+                  {t("business.bookings.selectedCount", { count: selected.length })}
                 </Badge>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -484,7 +484,7 @@ const BookingQuickProcessPage = memo(() => {
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2 mb-2">
                           <h4 className="font-semibold text-zinc-950 dark:text-zinc-50 text-base">
-                            {b.guestName || t("business.bookingDetail.guestLabel")}
+                            {b.guestName || t("business.bookings.guestLabel")}
                           </h4>
                           <Badge variant="outline" className="font-mono text-[10px] text-muted-foreground">
                             {b.bookingCode}

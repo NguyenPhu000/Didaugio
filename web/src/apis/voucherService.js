@@ -1,6 +1,7 @@
 import api from "@/constants/api";
 
 const BASE_URL = "/business/vouchers";
+const PUBLIC_URL = "/vouchers";
 
 export const getAll = async (params = {}) => {
   const response = await api.get(BASE_URL, { params });
@@ -57,6 +58,33 @@ export const duplicateVoucher = async (id) => {
   return response;
 };
 
+/**
+ * PUBLIC APIs (cho User/Khách đặt dịch vụ).
+ * Không yêu cầu quyền business.
+ */
+
+/**
+ * Lấy danh sách voucher đang khả dụng cho 1 service/business.
+ * @param {{ serviceId: number, businessId?: number, amount?: number }} params
+ */
+export const getApplicableVouchers = async (params = {}) => {
+  const response = await api.get(`${PUBLIC_URL}/public`, {
+    params,
+    // Cho phép gọi khi chưa đăng nhập
+    skipAuthRedirect: true,
+  });
+  return response;
+};
+
+/**
+ * Validate mã voucher do User nhập thủ công.
+ * @param {{ code: string, serviceId: number, originalPrice: number }} payload
+ */
+export const validateVoucherCode = async (payload) => {
+  const response = await api.post(`${PUBLIC_URL}/validate`, payload);
+  return response;
+};
+
 export default {
   getAll,
   getById,
@@ -69,4 +97,6 @@ export default {
   getVoucherAnalytics,
   bulkUpdate,
   duplicateVoucher,
+  getApplicableVouchers,
+  validateVoucherCode,
 };

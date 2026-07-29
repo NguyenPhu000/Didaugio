@@ -30,6 +30,7 @@ import {
   useBusinessProfile,
   useRegisterBusiness,
 } from "@/hooks/queries/useBusinessQueries";
+import businessApi from "@/apis/businessApi";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { BUSINESS_STATUS } from "@/constants/businessConstants";
 import { ROLES } from "@/constants/constants";
@@ -130,7 +131,11 @@ const BusinessRegisterPage = () => {
   });
   const [documentErrors, setDocumentErrors] = useState({});
   const [signOpen, setSignOpen] = useState(false);
-  const [signedContract, setSignedContract] = useState(false);
+  // Payload ký hợp đồng do ContractSignModal trả về (OTP, chữ ký, thông tin Bên A).
+  // Được gửi lên server ngay sau khi tạo doanh nghiệp thành công.
+  const [contractPayload, setContractPayload] = useState(null);
+  const signedContract = Boolean(contractPayload);
+  const authUser = useAuthStore((state) => state.user);
 
   const BUSINESS_TYPES = [
     { value: "individual", label: t("business.register.businessTypeIndividual") },
@@ -212,7 +217,7 @@ const BusinessRegisterPage = () => {
   };
 
   const onSubmit = async (data) => {
-    if (!signedContract) {
+    if (!contractPayload) {
       toast.error("Vui lòng thực hiện ký hợp đồng điện tử trước khi gửi đăng ký!");
       return;
     }
@@ -220,6 +225,9 @@ const BusinessRegisterPage = () => {
     try {
       await registerMutation.mutateAsync({
         ...data,
+        fullName: contractPayload.fullName,
+        phone: contractPayload.phone,
+        address: contractPayload.address,
         idCardFront: documents.idCardFront[0],
         idCardBack: documents.idCardBack[0],
         businessLicense: documents.businessLicense[0],
@@ -231,8 +239,22 @@ const BusinessRegisterPage = () => {
           user: { ...currentUser, roleId: ROLES.BUSINESS },
         });
       }
+
+      // Doanh nghiệp đã tồn tại -> gửi chữ ký điện tử để server sinh & ký PDF hợp đồng.
+      try {
+        await businessApi.contractSign(contractPayload);
+      } catch (signError) {
+        console.error("Business contract signing error:", signError);
+        toast.warning(
+          "Đăng ký thành công nhưng chưa lưu được hợp đồng điện tử. Vui lòng ký lại trong mục Hồ sơ doanh nghiệp.",
+        );
+      }
+
       navigate(BUSINESS_ROUTES.WELCOME, { replace: true });
     } catch (error) {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
         t("common.operationFailed");
       const errorCode = error?.errorCode || error?.response?.data?.errorCode;
 
@@ -488,8 +510,8 @@ const BusinessRegisterPage = () => {
       <ContractSignModal
         open={signOpen}
         onOpenChange={setSignOpen}
-        onSubmit={async () => {
-          setSignedContract(true);
+        onSubmit={async (payload) => {
+          setContractPayload(payload);
           setSignOpen(false);
           toast.success("Ký hợp đồng điện tử thành công!");
         }}
@@ -499,6 +521,7 @@ const BusinessRegisterPage = () => {
           businessName: watch("businessName") || "Doanh nghiệp mới",
           taxCode: watch("taxCode") || "",
           idCardNumber: watch("idCardNumber") || "",
+          owner: { email: authUser?.email || "" },
         }}
       />
     </div>

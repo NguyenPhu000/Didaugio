@@ -39,11 +39,11 @@ const CategorySection = memo(function CategorySection({ category }) {
         </Pressable>
       </View>
       {isLoading ? (
-        <View className="h-[220px] items-center justify-center"><ActivityIndicator color="#000" /></View>
+        <View className="h-[282px] items-center justify-center"><ActivityIndicator color="#000" /></View>
       ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: TOKENS.space[6], paddingBottom: 8 }} snapToInterval={SMALL_CARD_W + 16} decelerationRate="fast">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: TOKENS.space[6], paddingVertical: 4 }} snapToInterval={SMALL_CARD_W + 12} decelerationRate="fast">
           {places.slice(0, 8).map((place) => (
-            <View key={place.id} className="mr-4">
+            <View key={place.id} className="mr-3">
               <SmallPlaceCard place={place} onPress={() => router.push({ pathname: "/place/[id]", params: { id: place.id } })} />
             </View>
           ))}

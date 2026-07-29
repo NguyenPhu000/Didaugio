@@ -87,6 +87,8 @@ export const queryKeys = {
     detail: (id) => ["vouchers", "detail", id],
     stats: () => ["vouchers", "stats"],
     analytics: (id) => ["vouchers", "analytics", id],
+    applicable: (params) => ["vouchers", "applicable", params],
+    validate: (code, serviceId) => ["vouchers", "validate", code, serviceId],
   },
 
   staff: {

@@ -7,6 +7,12 @@ import { BUSINESS_ROUTES } from "@/constants/routes";
 
 const PLAN_LEVEL = { basic: 1, plus: 2, pro: 3 };
 
+const PLAN_NAMES = {
+  basic: "Basic",
+  plus: "Plus",
+  pro: "Pro",
+};
+
 /**
  * Wraps children content and shows a lock overlay
  * when the current plan level is below the required level.
@@ -41,12 +47,13 @@ export default function FeatureGateWrapper({
               <Lock className="h-6 w-6 text-muted-foreground" />
             </div>
             <p className="text-sm text-muted-foreground">
-              Tính năng này yêu cầu gói{" "}
-              <span className="font-semibold capitalize">{requiredPlan}</span> trở lên.
+              {t("subscription.featureGate.upgradeRequired", {
+                plan: PLAN_NAMES[requiredPlan] || requiredPlan,
+              })}
             </p>
             <Button asChild size="sm">
               <Link to={BUSINESS_ROUTES.SUBSCRIPTION_PLANS}>
-                {t("subscription.upgradeBtn")}
+                {t("subscription.featureGate.upgradeBtn")}
               </Link>
             </Button>
           </CardContent>

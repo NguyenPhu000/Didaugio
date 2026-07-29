@@ -420,14 +420,24 @@ function normalizeResponsePlace(raw) {
   const images = Array.isArray(raw.images) ? raw.images : [];
   const firstImage = images[0] || {};
 
+  // Ưu tiên: URL cloud (Cloudinary) → thumbnail_url → image_data (Base64) → thumbnail cột places
+  const resolvedImageUrl =
+    firstImage.secureUrl ||
+    firstImage.thumbnailUrl ||
+    firstImage.imageData ||
+    raw.thumbnail ||
+    null;
+
   return {
     id: raw.id,
     name: raw.name || "",
     address: raw.address || "",
     description: raw.description || "",
     images,
-    thumbnailUrl: firstImage.thumbnailUrl || firstImage.secureUrl || null,
-    imageUrl: firstImage.secureUrl || firstImage.thumbnailUrl || null,
+    thumbnailUrl: firstImage.thumbnailUrl || firstImage.secureUrl || firstImage.imageData || raw.thumbnail || null,
+    imageUrl: resolvedImageUrl,
+    // Expose imageData riêng để client-side resolvePlaceImageUri có thể nhận diện Base64
+    imageData: firstImage.imageData || null,
     priceFrom: Number(raw.priceFrom ?? 0),
     priceTo: Number(raw.priceTo ?? 0),
     ratingAvg: raw.ratingAvg ? parseFloat(raw.ratingAvg) : 0,

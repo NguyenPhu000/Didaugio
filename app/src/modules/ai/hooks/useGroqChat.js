@@ -49,6 +49,7 @@ function normalizePlaces(places = []) {
       thumbnailUrl: raw.thumbnailUrl || null,
       thumbnail: raw.thumbnail || null,
       imageUrl: raw.imageUrl || null,
+      imageData: raw.imageData || null,
       image: raw.image || null,
       priceFrom: Number(raw.priceFrom ?? raw.price_from ?? 0),
       priceTo: Number(raw.priceTo ?? raw.price_to ?? 0),

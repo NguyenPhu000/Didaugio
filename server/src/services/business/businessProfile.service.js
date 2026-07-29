@@ -518,6 +518,43 @@ const decryptIfPossible = (value) => {
   }
 };
 
+/**
+ * Xác minh OTP ký hợp đồng theo cả hai nguồn lưu trữ:
+ * - `business.settings` khi OTP được gửi lúc doanh nghiệp đã tồn tại.
+ * - `emailVerification` (hash sha256) khi OTP được gửi TRƯỚC khi doanh nghiệp
+ *   tồn tại — đây là trường hợp trong luồng đăng ký (business chưa được tạo tại
+ *   thời điểm bấm "Ký hợp đồng"). Giữ hàm thuần để dễ kiểm thử.
+ */
+export const resolveContractOtpVerification = ({
+  settingsOtp,
+  settingsOtpExpiresAt,
+  emailVerification = null,
+  providedOtp,
+  now = new Date(),
+}) => {
+  if (settingsOtp && settingsOtpExpiresAt) {
+    if (now > new Date(settingsOtpExpiresAt)) return { ok: false, reason: "EXPIRED" };
+    if (settingsOtp !== providedOtp) return { ok: false, reason: "MISMATCH" };
+    return { ok: true, source: "settings" };
+  }
+
+  if (emailVerification?.otpHash && emailVerification?.otpExpiresAt) {
+    if (now > new Date(emailVerification.otpExpiresAt)) {
+      return { ok: false, reason: "EXPIRED" };
+    }
+    const providedHash = crypto
+      .createHash("sha256")
+      .update(String(providedOtp))
+      .digest("hex");
+    if (providedHash !== emailVerification.otpHash) {
+      return { ok: false, reason: "MISMATCH" };
+    }
+    return { ok: true, source: "emailVerification" };
+  }
+
+  return { ok: false, reason: "MISSING" };
+};
+
 export const verifyContractSigningRequest = async (userId, payload = {}) => {
   const business = await prisma.business.findUnique({
     where: { ownerId: userId },
@@ -562,14 +599,30 @@ export const verifyContractSigningRequest = async (userId, payload = {}) => {
   const storedOtp = settings.contractOtp;
   const otpExpiresAt = settings.contractOtpExpiresAt;
 
-  if (!storedOtp || !otpExpiresAt || new Date() > new Date(otpExpiresAt)) {
-    const error = new Error("Mã OTP đã hết hạn hoặc không tồn tại, vui lòng gửi lại mã mới");
-    error.statusCode = 400;
-    throw error;
+  // Trong luồng đăng ký, OTP được gửi trước khi doanh nghiệp tồn tại nên được
+  // lưu (hash) ở bảng emailVerification thay vì business.settings. Đọc bản ghi
+  // gần nhất để fallback xác minh khi settings chưa có OTP.
+  let contractEmailVerification = null;
+  if (!storedOtp || !otpExpiresAt) {
+    contractEmailVerification = await prisma.emailVerification.findFirst({
+      where: { userId, otpHash: { not: null } },
+      orderBy: { createdAt: "desc" },
+    });
   }
 
-  if (storedOtp !== payload.otp) {
-    const error = new Error("Mã OTP xác nhận không chính xác");
+  const otpCheck = resolveContractOtpVerification({
+    settingsOtp: storedOtp,
+    settingsOtpExpiresAt: otpExpiresAt,
+    emailVerification: contractEmailVerification,
+    providedOtp: payload.otp,
+  });
+
+  if (!otpCheck.ok) {
+    const error = new Error(
+      otpCheck.reason === "MISMATCH"
+        ? "Mã OTP xác nhận không chính xác"
+        : "Mã OTP đã hết hạn hoặc không tồn tại, vui lòng gửi lại mã mới",
+    );
     error.statusCode = 400;
     throw error;
   }
@@ -626,6 +679,11 @@ export const verifyContractSigningRequest = async (userId, payload = {}) => {
         },
       },
     });
+
+    // OTP dùng một lần: xóa bản ghi emailVerification đã dùng để không tái sử dụng.
+    if (otpCheck.source === "emailVerification") {
+      await tx.emailVerification.deleteMany({ where: { userId } });
+    }
   });
 
   return { business, signerData };

@@ -247,8 +247,26 @@ export default function CinematicSplash({ active, onFinish }) {
           brandStyle,
         ]}
       >
-        <Text style={styles.wordmark}>iPoint Genie</Text>
-        <Text style={styles.tagline}>Trợ lý hành trình thông minh</Text>
+        <Text
+          style={[
+            styles.wordmark,
+            { fontFamily: undefined, fontWeight: "700" },
+          ]}
+          allowFontScaling={false}
+          numberOfLines={1}
+        >
+          iPoint Genie
+        </Text>
+        <Text
+          style={[
+            styles.tagline,
+            { fontFamily: undefined, fontWeight: "500" },
+          ]}
+          allowFontScaling={false}
+          numberOfLines={2}
+        >
+          Trợ lý hành trình thông minh
+        </Text>
       </Animated.View>
 
       <View
@@ -286,16 +304,15 @@ const styles = StyleSheet.create({
   },
   brandLockup: {
     position: "absolute",
-    right: 24,
-    left: 24,
+    right: 12,
+    left: 12,
     alignItems: "center",
   },
   wordmark: {
     color: "#F8FAFF",
-    fontFamily: "BeVietnamPro_600SemiBold",
-    fontSize: 31,
-    letterSpacing: -0.8,
-    lineHeight: 39,
+    fontSize: 30,
+    letterSpacing: -0.6,
+    lineHeight: 38,
     textAlign: "center",
     textShadowColor: "rgba(4, 8, 22, 0.72)",
     textShadowOffset: { width: 0, height: 2 },
@@ -304,7 +321,6 @@ const styles = StyleSheet.create({
   tagline: {
     marginTop: 7,
     color: "rgba(244, 247, 255, 0.78)",
-    fontFamily: "BeVietnamPro_400Regular",
     fontSize: 13,
     letterSpacing: 0.25,
     lineHeight: 19,

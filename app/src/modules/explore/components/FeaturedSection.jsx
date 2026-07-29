@@ -1,79 +1,66 @@
 import { memo, useCallback, useMemo, useState } from "react";
-import { FlatList, Text, View, useWindowDimensions } from "react-native";
+import { FlatList, View, useWindowDimensions } from "react-native";
 import { useTranslation } from "react-i18next";
-import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
-} from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
-import { FeaturedCard } from "./FeaturedCard";
+import { FeaturedCard, getFeaturedCardWidth } from "./FeaturedCard";
+import { INK, SectionHeading } from "./cinematic";
 
-const PAD = 24;
-const CARD_SEP = 14;
+const CARD_SEP = 12;
 
 const keyExtractor = (item, index) =>
   item?.id != null ? String(item.id) : `featured-${index}`;
 
-function SectionTitle({ title }) {
-  return (
-    <View className="flex-row items-center gap-2.5">
-      <View
-        className="w-1 h-6 rounded-full"
-        style={{ backgroundColor: "#181819" }}
-      />
-      <Text
-        className="text-[22px] leading-7 tracking-[-0.5px] font-bold"
-        style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.heading }}
-      >
-        {title}
-      </Text>
-    </View>
-  );
+function Separator() {
+  return <View style={{ width: CARD_SEP }} />;
 }
 
-function FeaturedSectionInner({ places, onPressPlace, onPressViewAll, onSavePlace, savedPlaceIds }) {
+function FeaturedSectionInner({ places, onPressPlace, onSavePlace, savedPlaceIds }) {
   const { t } = useTranslation();
   const { width: SCREEN_W } = useWindowDimensions();
-  const CARD_W = Math.min(280, SCREEN_W - PAD * 2 - 16);
+  const CARD_W = getFeaturedCardWidth(SCREEN_W);
   const ITEM_LENGTH = CARD_W + CARD_SEP;
-  const getItemLayout = (_, index) => ({
-    length: ITEM_LENGTH,
-    offset: ITEM_LENGTH * index,
-    index,
-  });
 
   const [activeIndex, setActiveIndex] = useState(0);
-  const dotCount = useMemo(() => Math.min(places?.length || 0, 4), [places]);
+  const count = places?.length || 0;
+  const dotCount = useMemo(() => Math.min(count, 5), [count]);
+
+  const getItemLayout = useCallback(
+    (_, index) => ({ length: ITEM_LENGTH, offset: ITEM_LENGTH * index, index }),
+    [ITEM_LENGTH],
+  );
+
+  /** Snap tuyệt đối, bù phần padding đầu của contentContainer. */
+  const snapToOffsets = useMemo(
+    () => Array.from({ length: count }, (_, index) => index * ITEM_LENGTH),
+    [count, ITEM_LENGTH],
+  );
 
   const renderItem = useCallback(
-    ({ item }) => {
-      const handlePress = () => onPressPlace(item);
-      const handleSave = () => onSavePlace?.(item);
-      const isSaved = savedPlaceIds?.has?.(item?.id) || false;
-      return (
-        <FeaturedCard
-          place={item}
-          onPress={handlePress}
-          onSave={handleSave}
-          isSaved={isSaved}
-        />
-      );
-    },
+    ({ item }) => (
+      <FeaturedCard
+        place={item}
+        onPress={() => onPressPlace(item)}
+        onSave={onSavePlace}
+        isSaved={savedPlaceIds?.has?.(item?.id) || false}
+      />
+    ),
     [onPressPlace, onSavePlace, savedPlaceIds],
   );
 
-  if (!places?.length) return null;
+  const handleMomentumEnd = useCallback(
+    (event) => {
+      const x = event?.nativeEvent?.contentOffset?.x || 0;
+      setActiveIndex(Math.max(0, Math.round(x / ITEM_LENGTH)));
+    },
+    [ITEM_LENGTH],
+  );
+
+  if (!count) return null;
 
   return (
-    <View className="mt-6">
-      <View
-        style={{
-          paddingHorizontal: TAB_SCREEN_PADDING,
-          paddingBottom: 2,
-        }}
-        className="flex-row justify-between items-center mb-3.5"
-      >
-        <SectionTitle title={t("explore.sections.featured")} />
+    <View style={{ marginTop: 26 }}>
+      <View style={{ paddingHorizontal: TAB_SCREEN_PADDING, marginBottom: 14 }}>
+        <SectionHeading title={t("explore.sections.featured")} />
       </View>
 
       <FlatList
@@ -82,32 +69,38 @@ function FeaturedSectionInner({ places, onPressPlace, onPressViewAll, onSavePlac
         keyExtractor={keyExtractor}
         horizontal
         showsHorizontalScrollIndicator={false}
-        snapToInterval={ITEM_LENGTH}
+        snapToOffsets={snapToOffsets}
+        snapToAlignment="start"
         decelerationRate="fast"
         getItemLayout={getItemLayout}
-        contentContainerStyle={{ paddingHorizontal: Math.max(0, TAB_SCREEN_PADDING - 6) }}
-        ItemSeparatorComponent={Separator}
-        onMomentumScrollEnd={(event) => {
-          const x = event?.nativeEvent?.contentOffset?.x || 0;
-          const nextIndex = Math.max(0, Math.round(x / ITEM_LENGTH));
-          setActiveIndex(nextIndex);
+        contentContainerStyle={{
+          paddingHorizontal: TAB_SCREEN_PADDING,
+          paddingVertical: 4,
         }}
+        ItemSeparatorComponent={Separator}
+        onMomentumScrollEnd={handleMomentumEnd}
       />
 
       {dotCount > 1 ? (
         <View
-          style={{ paddingHorizontal: TAB_SCREEN_PADDING }}
-          className="mt-3 flex-row items-center gap-1.5"
+          style={{
+            paddingHorizontal: TAB_SCREEN_PADDING,
+            marginTop: 14,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 5,
+          }}
         >
           {Array.from({ length: dotCount }).map((_, index) => {
-            const active = index === activeIndex;
+            const active = index === Math.min(activeIndex, dotCount - 1);
             return (
               <View
-                key={`dot-${index}`}
-                className="h-1 rounded-full"
+                key={`featured-dot-${index}`}
                 style={{
-                  width: active ? 28 : 8,
-                  backgroundColor: active ? "#181819" : "rgba(24,24,25,0.14)",
+                  height: 3,
+                  width: active ? 26 : 7,
+                  borderRadius: 999,
+                  backgroundColor: active ? INK : "rgba(11,11,12,0.16)",
                 }}
               />
             );
@@ -116,10 +109,6 @@ function FeaturedSectionInner({ places, onPressPlace, onPressViewAll, onSavePlac
       ) : null}
     </View>
   );
-}
-
-function Separator() {
-  return <View className="w-3.5" />;
 }
 
 export const FeaturedSection = memo(FeaturedSectionInner);

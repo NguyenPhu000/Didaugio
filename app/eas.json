@@ -22,6 +22,9 @@
     "preview": {
       "distribution": "internal",
       "environment": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL_PROD": "https://api-staging.didaugio.vn/api"
+      },
       "android": {
         "buildType": "apk"
       }
@@ -29,6 +32,9 @@
     "production": {
       "autoIncrement": true,
       "environment": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL_PROD": "https://api.didaugio.vn/api"
+      },
       "android": {
         "buildType": "app-bundle"
       }

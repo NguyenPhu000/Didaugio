@@ -1,184 +1,249 @@
 import { memo, useCallback, useMemo } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
-import { Image } from "expo-image";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import { Pressable } from "@/components/primitives/Pressable";
+import Animated from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
-import {
-  resolvePlaceImageUri,
-  getOptimizedCloudinaryUrl,
-  PLACE_IMAGE_BLURHASH,
-} from "../../../lib/media-url";
+import { TOKENS } from "../../../constants/design-tokens";
+import { resolvePlaceImageUri } from "../../../lib/media-url";
 import { getPlaceLocation } from "../utils/exploreHelpers";
 import { getCategoryIconName } from "../../../constants/categoryIcons";
+import {
+  CREAM,
+  Eyebrow,
+  INK,
+  MetaChip,
+  POSTER_INSET,
+  POSTER_MEDIA_RADIUS,
+  POSTER_RADIUS,
+  PosterMedia,
+  PosterScrim,
+  STAR,
+  SectionHeading,
+  posterShadow,
+  usePressScale,
+} from "./cinematic";
 
-const CARD_W = 164;
-const CARD_GAP = 14;
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+/**
+ * Card poster: rộng hơn card cũ (164) và ảnh chiếm trọn khung thay vì 148px
+ * phía trên — diện tích ảnh tăng ~2.3 lần.
+ */
+const CARD_W = 212;
+const CARD_H = 282;
+const CARD_GAP = 12;
 const ITEM_LENGTH = CARD_W + CARD_GAP;
+const MEDIA_W = CARD_W - POSTER_INSET * 2;
 
 const keyExtractor = (item, index) =>
   item?.id != null ? String(item.id) : `cat-place-${index}`;
 
 function CategoryPlaceCard({ place, onPress }) {
-  const rawImageUri = resolvePlaceImageUri(place);
-  const imageUri = rawImageUri?.includes("res.cloudinary.com")
-    ? getOptimizedCloudinaryUrl(rawImageUri, 400)
-    : rawImageUri;
-
+  const imageUri = resolvePlaceImageUri(place);
   const location = getPlaceLocation(place);
   const rating = Number(place?.ratingAvg ?? place?.averageRating);
   const hasRating = Number.isFinite(rating) && rating > 0;
+  const categoryName = place?.category?.name;
+
+  const { onPressIn, onPressOut, cardStyle, mediaStyle } = usePressScale();
 
   return (
-    <Pressable
-      haptic="light"
+    <AnimatedPressable
       onPress={onPress}
-      className="w-[164px] h-[262px] bg-white rounded-[22px] border border-black/[0.06] p-2 shadow-sm elevation-2 justify-between active:opacity-90 active:scale-[0.97]"
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      style={[
+        cardStyle,
+        {
+          width: CARD_W,
+          height: CARD_H,
+          padding: POSTER_INSET,
+          borderRadius: POSTER_RADIUS,
+          borderCurve: "continuous",
+          backgroundColor: "#FFFFFF",
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: "rgba(11,11,12,0.08)",
+          ...posterShadow,
+        },
+      ]}
     >
-      {/* 1. Khối Hình Ảnh ở Trên */}
-      <View className="w-full h-[148px] rounded-[16px] overflow-hidden bg-[#F4F4F5] relative">
-        {imageUri ? (
-          <Image
-            source={{ uri: imageUri }}
-            contentFit="cover"
-            transition={280}
-            placeholder={{ blurhash: PLACE_IMAGE_BLURHASH }}
-            placeholderContentFit="cover"
-            cachePolicy="memory-disk"
-            style={StyleSheet.absoluteFillObject}
-          />
-        ) : (
-          <View className="flex-1 items-center justify-center bg-[#F4F4F5]">
-            <MaterialIconsRounded
-              name="travel-explore"
-              size={32}
-              color="#9CA3AF"
-            />
-          </View>
-        )}
+      {/* Lõi trong: ảnh full-bleed, bo cong đồng tâm với vỏ ngoài */}
+      <View
+        style={{
+          flex: 1,
+          borderRadius: POSTER_MEDIA_RADIUS,
+          borderCurve: "continuous",
+          overflow: "hidden",
+          backgroundColor: CREAM,
+        }}
+      >
+        <Animated.View style={[StyleSheet.absoluteFillObject, mediaStyle]}>
+          <PosterMedia uri={imageUri} width={MEDIA_W} />
+        </Animated.View>
 
-        {/* Rating Badge kiểu Glassmorphic góc trên phải */}
-        {hasRating && (
-          <View className="absolute top-2 right-2 flex-row items-center gap-1 px-2 py-1 rounded-full bg-white/92 shadow-sm elevation-1">
-            <MaterialIconsRounded name="star" size={12} color="#FBBF24" />
-            <Text className="text-[#181819] text-[11px] font-bold">
-              {rating.toFixed(1)}
+        <PosterScrim bottomHeight="66%" topHeight="30%" strength={0.88} />
+
+        {hasRating ? (
+          <View style={{ position: "absolute", top: 10, right: 10 }}>
+            <MetaChip icon="star" iconColor={STAR} label={rating.toFixed(1)} compact />
+          </View>
+        ) : null}
+
+        <View style={{ position: "absolute", left: 13, right: 13, bottom: 13, gap: 3 }}>
+          {categoryName ? <Eyebrow>{categoryName}</Eyebrow> : null}
+
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontSize: 16.5,
+              lineHeight: 21,
+              letterSpacing: -0.4,
+              fontFamily: TOKENS.font.heading,
+            }}
+            numberOfLines={2}
+          >
+            {place?.name}
+          </Text>
+
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 1 }}>
+            <MaterialIconsRounded
+              name="place"
+              size={12}
+              color="rgba(255,255,255,0.62)"
+            />
+            <Text
+              style={{
+                flex: 1,
+                color: "rgba(255,255,255,0.72)",
+                fontSize: 11.5,
+                fontFamily: TOKENS.font.medium,
+              }}
+              numberOfLines={1}
+            >
+              {location}
             </Text>
           </View>
-        )}
-      </View>
-
-      {/* 2. Khối Thông Tin ở Dưới — Cố định layout 1 dòng */}
-      <View className="mt-2.5 gap-1 px-0.5">
-        <Text
-          className="text-[14.5px] font-bold text-[#181819] tracking-[-0.3px]"
-          numberOfLines={1}
-          ellipsizeMode="tail"
-        >
-          {place?.name}
-        </Text>
-
-        {/* Địa chỉ khống chế 1 dòng tuyệt đối */}
-        <View className="flex-row items-center gap-1 h-[18px]">
-          <MaterialIconsRounded name="place" size={12} color="#6B7280" />
-          <Text
-            className="text-[12px] font-medium text-[#6B7280] flex-1"
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {location || "Cần Thơ"}
-          </Text>
-        </View>
-
-        {/* Nút màu đen High-End ở đáy card */}
-        <View className="mt-2 h-[34px] rounded-[12px] bg-[#181819] flex-row items-center justify-center gap-1">
-          <Text className="text-white text-[12px] font-semibold">Khám phá</Text>
-          <MaterialIconsRounded name="arrow-forward" size={13} color="#FFFFFF" />
         </View>
       </View>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
-function ViewMoreButton({ onPress }) {
+function ViewMoreCard({ onPress, label }) {
+  const { onPressIn, onPressOut, cardStyle } = usePressScale({ mediaTo: 1 });
+
   return (
-    <Pressable
-      haptic="light"
+    <AnimatedPressable
       onPress={onPress}
-      className="w-[164px] h-[262px] rounded-[22px] bg-[#F4F4F5] border border-black/[0.06] items-center justify-center active:opacity-85"
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      style={[
+        cardStyle,
+        {
+          width: CARD_W,
+          height: CARD_H,
+          borderRadius: POSTER_RADIUS,
+          borderCurve: "continuous",
+          backgroundColor: CREAM,
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 12,
+        },
+      ]}
     >
-      <View className="w-11 h-11 rounded-full items-center justify-center bg-[#181819] shadow-sm">
+      <View
+        style={{
+          width: 46,
+          height: 46,
+          borderRadius: 23,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: INK,
+        }}
+      >
         <MaterialIconsRounded name="arrow-forward" size={20} color="#FFFFFF" />
       </View>
-      <Text className="text-[#181819] text-[13px] font-bold mt-2">
-        Xem tất cả
+      <Text
+        style={{
+          color: INK,
+          fontSize: 13.5,
+          letterSpacing: -0.2,
+          fontFamily: TOKENS.font.semibold,
+        }}
+      >
+        {label}
       </Text>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
 function Separator() {
-  return <View className="w-[14px]" />;
+  return <View style={{ width: CARD_GAP }} />;
 }
 
 function CategoryPlacesSectionInner({
   categoryName,
-  categoryId,
   places,
   onPressPlace,
   onPressViewAll,
   icon,
 }) {
+  const { t } = useTranslation();
   const categoryIcon = getCategoryIconName({ name: categoryName, icon });
+  const viewAllLabel = t("common.viewAll");
+
+  const dataWithViewMore = useMemo(
+    () => [...(places || []), { id: "__view-more__" }],
+    [places],
+  );
+
+  /**
+   * Snap theo offset tuyệt đối: FlatList có paddingHorizontal nên
+   * snapToInterval một mình sẽ lệch đúng bằng phần padding đầu.
+   */
+  const snapToOffsets = useMemo(
+    () => dataWithViewMore.map((_, index) => index * ITEM_LENGTH),
+    [dataWithViewMore],
+  );
 
   const renderItem = useCallback(
     ({ item, index }) => {
       if (index === places.length) {
-        return <ViewMoreButton onPress={onPressViewAll} />;
+        return <ViewMoreCard onPress={onPressViewAll} label={viewAllLabel} />;
       }
-      return (
-        <CategoryPlaceCard place={item} onPress={() => onPressPlace(item)} />
-      );
+      return <CategoryPlaceCard place={item} onPress={() => onPressPlace(item)} />;
     },
-    [places, onPressPlace, onPressViewAll],
-  );
-
-  const dataWithViewMore = useMemo(
-    () => [...places, { id: "view-more-btn" }],
-    [places],
+    [places, onPressPlace, onPressViewAll, viewAllLabel],
   );
 
   if (!places?.length) return null;
 
   return (
-    <View className="mt-8">
-      {/* Section Header */}
-      <View className="flex-row items-center justify-between px-6 mb-4">
-        <View className="flex-row items-center gap-2.5 flex-1">
-          <View className="w-8 h-8 rounded-full items-center justify-center bg-[#ECE7DE]">
-            <MaterialCommunityIcons
-              name={categoryIcon}
-              size={16}
-              color="#181819"
-            />
-          </View>
-          <Text className="text-[20px] font-bold text-[#181819] tracking-[-0.5px]" numberOfLines={1}>
-            {categoryName}
-          </Text>
-        </View>
+    <View style={{ marginTop: 34 }}>
+      <View style={{ paddingHorizontal: TAB_SCREEN_PADDING, marginBottom: 14 }}>
+        <SectionHeading
+          title={categoryName}
+          icon={
+            <MaterialCommunityIcons name={categoryIcon} size={16} color={INK} />
+          }
+        />
       </View>
 
-      {/* Danh sách cuộn ngang */}
       <FlatList
         data={dataWithViewMore}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         horizontal
         showsHorizontalScrollIndicator={false}
-        snapToInterval={ITEM_LENGTH}
+        snapToOffsets={snapToOffsets}
+        snapToAlignment="start"
         decelerationRate="fast"
-        contentContainerStyle={{ paddingHorizontal: TAB_SCREEN_PADDING, paddingBottom: 8 }}
+        contentContainerStyle={{
+          paddingHorizontal: TAB_SCREEN_PADDING,
+          paddingVertical: 4,
+        }}
         ItemSeparatorComponent={Separator}
       />
     </View>
@@ -186,3 +251,4 @@ function CategoryPlacesSectionInner({
 }
 
 export const CategoryPlacesSection = memo(CategoryPlacesSectionInner);
+export { CARD_W as CATEGORY_CARD_W, CARD_H as CATEGORY_CARD_H };

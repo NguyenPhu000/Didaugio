@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { MapPin } from "lucide-react";
+
 import { useAuthStore } from "@/stores/authStore";
 import {
   SidebarProvider,
@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
   SidebarInset,
 } from "@/components/animate-ui/components/radix/sidebar";
-import AnimatedIcon from "@/components/ui/animated-icon";
+
 import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES, ROLE_NAMES } from "@/constants/constants";
 import { APP_META } from "@/constants/brand";
@@ -103,12 +103,8 @@ const AdminLayout = ({ children }) => {
                       : ADMIN_ROUTES.DASHBOARD
                   }
                 >
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                    <AnimatedIcon
-                      icon={MapPin}
-                      className="size-4"
-                      type="pulse"
-                    />
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden">
+                    <img src="/logo512.png" alt="iPoint Genie" className="size-8 object-contain" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                     <span className="font-semibold">{APP_META.NAME}</span>

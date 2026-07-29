@@ -24,9 +24,9 @@ const OtpInput = ({ value, onChange, disabled = false, error = false }) => {
           const active = normalizedValue.length === index;
           let stateClass = "border-slate-200";
           if (error) {
-            stateClass = "border-red-400";
+            stateClass = "border-rose-400";
           } else if (active || digit) {
-            stateClass = "border-blue-500 ring-2 ring-blue-100";
+            stateClass = "border-emerald-500 ring-2 ring-emerald-100";
           }
 
           return (
@@ -51,7 +51,7 @@ const OtpInput = ({ value, onChange, disabled = false, error = false }) => {
         autoComplete="one-time-code"
         maxLength={OTP_LENGTH}
         className="absolute inset-0 h-full w-full cursor-default opacity-0"
-        aria-label="Ma OTP"
+        aria-label="Mã OTP"
       />
     </div>
   );

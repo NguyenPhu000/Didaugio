@@ -178,3 +178,25 @@ export function useDuplicateVoucher() {
     }
   );
 }
+
+/**
+ * Public: lấy danh sách voucher khả dụng cho User khi mở Booking.
+ * @param {{ serviceId: number, businessId?: number, amount?: number }} params
+ */
+export function useApplicableVouchers(params = {}) {
+  return useApiQuery(
+    queryKeys.vouchers.applicable(params),
+    () => voucherService.getApplicableVouchers(params),
+    {
+      enabled: Boolean(params.serviceId),
+      staleTime: STALE_5_MIN,
+    }
+  );
+}
+
+/**
+ * Public: validate voucher code do User nhập tay.
+ */
+export function useValidateVoucherCode() {
+  return useApiMutation((payload) => voucherService.validateVoucherCode(payload));
+}

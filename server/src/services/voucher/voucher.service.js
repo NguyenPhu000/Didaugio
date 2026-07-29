@@ -3,6 +3,154 @@ import { PAGINATION, ROLES } from "../../config/constants.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
 
+const ACTIVE_BOOKING_STATUSES_FOR_VOUCHER = ["cancelled", "rejected", "expired"];
+
+const normalizeVoucherCode = (code) => String(code || "").trim().toUpperCase();
+
+const getApplicableServiceIds = (applicableServices) => {
+  if (!applicableServices) return [];
+  if (Array.isArray(applicableServices)) {
+    return applicableServices.map(Number).filter(Number.isFinite);
+  }
+  if (Array.isArray(applicableServices.serviceIds)) {
+    return applicableServices.serviceIds.map(Number).filter(Number.isFinite);
+  }
+  return [];
+};
+
+const getApplicablePlaceIds = (applicableServices) => {
+  if (!applicableServices || Array.isArray(applicableServices)) return [];
+  if (Array.isArray(applicableServices.placeIds)) {
+    return applicableServices.placeIds.map(Number).filter(Number.isFinite);
+  }
+  return [];
+};
+
+const voucherAppliesToContext = (voucher, { businessId, serviceId, placeId }) => {
+  if (voucher.businessId !== null && Number(voucher.businessId) !== Number(businessId)) {
+    return false;
+  }
+
+  const serviceIds = getApplicableServiceIds(voucher.applicableServices);
+  if (serviceIds.length > 0 && !serviceIds.includes(Number(serviceId))) {
+    return false;
+  }
+
+  const placeIds = getApplicablePlaceIds(voucher.applicableServices);
+  if (placeIds.length > 0 && !placeIds.includes(Number(placeId))) {
+    return false;
+  }
+
+  return true;
+};
+
+export const calculateVoucherDiscount = (voucher, originalPrice) => {
+  const amount = Math.max(0, Math.round(Number(originalPrice) || 0));
+  const discountType = String(voucher?.discountType || "").toLowerCase();
+  let discountAmount = 0;
+
+  if (discountType === "percent" || discountType === "percentage") {
+    discountAmount = Math.floor((amount * Number(voucher.discountValue || 0)) / 100);
+    if (voucher.maxDiscount && discountAmount > voucher.maxDiscount) {
+      discountAmount = voucher.maxDiscount;
+    }
+  } else {
+    discountAmount = Math.min(Number(voucher?.discountValue || 0), amount);
+  }
+
+  return Math.max(0, Math.min(discountAmount, amount));
+};
+
+const assertVoucherUsable = (voucher, context) => {
+  const { businessId, serviceId, placeId, originalPrice } = context;
+
+  if (!voucher) {
+    throw new ServiceError("MÃ£ voucher khÃ´ng há»£p lá» hoáº·c ÄÃ£ bá» vÃ´ hiá»u hÃ³a", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+
+  if (!voucherAppliesToContext(voucher, { businessId, serviceId, placeId })) {
+    throw new ServiceError("MÃ£ voucher khÃ´ng Ã¡p dá»¥ng cho dá»ch vá»¥ nÃ y", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+
+  const now = new Date();
+  if (voucher.startDate && now < voucher.startDate) {
+    throw new ServiceError("MÃ£ voucher chÆ°a cÃ³ hiá»u lá»±c", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+  if (voucher.endDate && now > voucher.endDate) {
+    throw new ServiceError("MÃ£ voucher ÄÃ£ háº¿t háº¡n", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+
+  if (voucher.usageLimit !== null && voucher.usageLimit > 0 && voucher.usageCount >= voucher.usageLimit) {
+    throw new ServiceError("MÃ£ voucher ÄÃ£ háº¿t lÆ°á»£t sá»­ dá»¥ng", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+
+  if (voucher.minOrderValue && originalPrice < voucher.minOrderValue) {
+    throw new ServiceError(
+      `GiÃ¡ trá» ÄÆ¡n hÃ ng tá»i thiá»u lÃ  ${voucher.minOrderValue.toLocaleString("vi-VN")}Ä`,
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+};
+
+const resolveVoucherContext = async (tx, { serviceId, businessId, originalPrice }) => {
+  const normalizedServiceId = Number(serviceId);
+  if (!Number.isInteger(normalizedServiceId) || normalizedServiceId <= 0) {
+    throw new ServiceError("Dá»ch vá»¥ khÃ´ng há»£p lá»", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+
+  const service = await tx.businessService.findUnique({
+    where: { id: normalizedServiceId },
+    select: {
+      id: true,
+      placeId: true,
+      place: { select: { id: true, businessId: true } },
+    },
+  });
+
+  if (!service) {
+    throw new ServiceError("Dá»ch vá»¥ khÃ´ng tá»n táº¡i", 404, ERROR_CODES.NOT_FOUND);
+  }
+
+  const resolvedBusinessId = Number(businessId || service.place?.businessId);
+  if (!Number.isInteger(resolvedBusinessId) || resolvedBusinessId <= 0) {
+    throw new ServiceError("Doanh nghiá»p khÃ´ng há»£p lá»", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+
+  const amount = Number(originalPrice);
+  if (!Number.isFinite(amount) || amount < 0) {
+    throw new ServiceError("GiÃ¡ trá» ÄÆ¡n hÃ ng khÃ´ng há»£p lá»", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+
+  return {
+    serviceId: normalizedServiceId,
+    businessId: resolvedBusinessId,
+    placeId: service.placeId || service.place?.id,
+    originalPrice: Math.round(amount),
+  };
+};
+
+const serializePublicVoucher = (voucher, originalPrice = null) => {
+  const discountAmount = originalPrice == null ? 0 : calculateVoucherDiscount(voucher, originalPrice);
+  return {
+    id: voucher.id,
+    code: voucher.code,
+    name: voucher.name,
+    description: voucher.description,
+    discountType: voucher.discountType,
+    discountValue: voucher.discountValue,
+    minOrderValue: voucher.minOrderValue,
+    maxDiscount: voucher.maxDiscount,
+    usageLimit: voucher.usageLimit,
+    usageCount: voucher.usageCount,
+    remaining: voucher.usageLimit ? Math.max(0, voucher.usageLimit - voucher.usageCount) : null,
+    startDate: voucher.startDate,
+    endDate: voucher.endDate,
+    discountAmount,
+    finalPrice: originalPrice == null ? null : Math.max(0, originalPrice - discountAmount),
+  };
+};
+
 /**
  * Validates a voucher for a given booking context and returns the discount amount.
  * Throws ServiceError if voucher is invalid.
@@ -12,6 +160,7 @@ import ServiceError from "../../utils/serviceError.js";
  */
 export async function validateAndApplyVoucher(tx, params) {
   const { voucherId, serviceId, businessId, userId, originalPrice } = params;
+  const context = await resolveVoucherContext(tx, { serviceId, businessId, originalPrice });
 
   const voucher = await tx.voucher.findFirst({
     where: {
@@ -20,62 +169,22 @@ export async function validateAndApplyVoucher(tx, params) {
     },
   });
 
-  if (!voucher) {
-    throw new ServiceError("Mã voucher không hợp lệ hoặc đã bị vô hiệu hóa", 400, ERROR_CODES.VALIDATION_ERROR);
-  }
-
-  if (voucher.businessId !== null && voucher.businessId !== businessId) {
-    throw new ServiceError("Mã voucher không áp dụng cho dịch vụ này", 400, ERROR_CODES.VALIDATION_ERROR);
-  }
-
-  const now = new Date();
-  if (voucher.startDate && now < voucher.startDate) {
-    throw new ServiceError("Mã voucher chưa có hiệu lực", 400, ERROR_CODES.VALIDATION_ERROR);
-  }
-  if (voucher.endDate && now > voucher.endDate) {
-    throw new ServiceError("Mã voucher đã hết hạn", 400, ERROR_CODES.VALIDATION_ERROR);
-  }
-
-  if (voucher.usageLimit !== null && voucher.usageLimit > 0 && voucher.usageCount >= voucher.usageLimit) {
-    throw new ServiceError("Mã voucher đã hết lượt sử dụng", 400, ERROR_CODES.VALIDATION_ERROR);
-  }
-
-  if (voucher.minOrderValue && originalPrice < voucher.minOrderValue) {
-    throw new ServiceError(
-      `Giá trị đơn hàng tối thiểu là ${voucher.minOrderValue.toLocaleString("vi-VN")}đ`,
-      400,
-      ERROR_CODES.VALIDATION_ERROR,
-    );
-  }
-
-  if (voucher.applicableServices && Array.isArray(voucher.applicableServices) && voucher.applicableServices.length > 0) {
-    if (!voucher.applicableServices.includes(serviceId)) {
-      throw new ServiceError("Mã voucher không áp dụng cho dịch vụ này", 400, ERROR_CODES.VALIDATION_ERROR);
-    }
-  }
+  assertVoucherUsable(voucher, context);
 
   const userUsageCount = await tx.booking.count({
     where: {
       voucherId: voucher.id,
       userId,
-      status: { notIn: ["cancelled", "rejected", "expired"] },
+      status: { notIn: ACTIVE_BOOKING_STATUSES_FOR_VOUCHER },
     },
   });
 
   const perUserLimit = voucher.perUserLimit ?? 1;
   if (userUsageCount >= perUserLimit) {
-    throw new ServiceError("Bạn đã sử dụng mã voucher này rồi", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError("B?n ?? s? d?ng m? voucher n?y r?i", 400, ERROR_CODES.VALIDATION_ERROR);
   }
 
-  let discountAmount = 0;
-  if (voucher.discountType === "PERCENT") {
-    discountAmount = Math.floor((originalPrice * voucher.discountValue) / 100);
-    if (voucher.maxDiscount && discountAmount > voucher.maxDiscount) {
-      discountAmount = voucher.maxDiscount;
-    }
-  } else {
-    discountAmount = Math.min(voucher.discountValue, originalPrice);
-  }
+  const discountAmount = calculateVoucherDiscount(voucher, context.originalPrice);
 
   return { voucherId: voucher.id, discountAmount, voucher };
 }
@@ -90,6 +199,61 @@ export async function incrementVoucherUsage(tx, voucherId) {
     where: { id: voucherId },
     data: { usageCount: { increment: 1 } },
   });
+}
+
+export async function getPublicVouchers(params = {}) {
+  const context = await resolveVoucherContext(prisma, {
+    serviceId: params.serviceId,
+    businessId: params.businessId,
+    originalPrice: params.amount ?? params.originalPrice ?? 0,
+  });
+  const now = new Date();
+
+  const vouchers = await prisma.voucher.findMany({
+    where: {
+      isActive: true,
+      OR: [{ businessId: context.businessId }, { businessId: null }],
+      startDate: { lte: now },
+      endDate: { gte: now },
+    },
+    orderBy: [{ discountValue: 'desc' }, { createdAt: 'desc' }],
+    take: Math.min(parseInt(params.limit, 10) || 20, 50),
+  });
+
+  return vouchers
+    .filter((voucher) => {
+      try {
+        assertVoucherUsable(voucher, context);
+        return true;
+      } catch {
+        return false;
+      }
+    })
+    .map((voucher) => serializePublicVoucher(voucher, context.originalPrice));
+}
+
+export async function validatePublicVoucher(params = {}) {
+  const code = normalizeVoucherCode(params.code);
+  if (!code) {
+    throw new ServiceError('Vui l?ng nh?p m? voucher', 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+
+  const context = await resolveVoucherContext(prisma, {
+    serviceId: params.serviceId,
+    businessId: params.businessId,
+    originalPrice: params.amount ?? params.originalPrice ?? 0,
+  });
+
+  const voucher = await prisma.voucher.findFirst({
+    where: {
+      code,
+      isActive: true,
+      OR: [{ businessId: context.businessId }, { businessId: null }],
+    },
+  });
+
+  assertVoucherUsable(voucher, context);
+  return serializePublicVoucher(voucher, context.originalPrice);
 }
 
 const defaultInclude = {
@@ -233,7 +397,7 @@ export const getById = async (id, options = {}) => {
   });
 
   if (!voucher) {
-    throw new ServiceError("Voucher không tồn tại", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError("Voucher khÃ´ng tá»n táº¡i", 404, ERROR_CODES.NOT_FOUND);
   }
 
   return serializeVoucher(voucher);
@@ -247,7 +411,7 @@ export const create = async (data, userId) => {
 
   if (!business) {
     throw new ServiceError(
-      "Bạn chưa đăng ký doanh nghiệp",
+      "Báº¡n chÆ°a ÄÄng kÃ½ doanh nghiá»p",
       403,
       ERROR_CODES.FORBIDDEN,
     );
@@ -257,7 +421,7 @@ export const create = async (data, userId) => {
     where: { code: data.code, businessId: business.id },
   });
   if (existing) {
-    throw new ServiceError("Mã voucher đã tồn tại", 400, ERROR_CODES.EXISTED);
+    throw new ServiceError("MÃ£ voucher ÄÃ£ tá»n táº¡i", 400, ERROR_CODES.EXISTED);
   }
 
   const mappedData = mapVoucherInputToPrisma(data, true);
@@ -299,7 +463,7 @@ export const remove = async (id) => {
 
   if (bookingCount > 0) {
     throw new ServiceError(
-      "Không thể xóa voucher đang được sử dụng",
+      "KhÃ´ng thá» xÃ³a voucher Äang ÄÆ°á»£c sá»­ dá»¥ng",
       400,
       ERROR_CODES.VALIDATION_ERROR,
     );
@@ -322,7 +486,7 @@ export const getUsageStats = async (id) => {
   });
 
   if (!voucher) {
-    throw new ServiceError("Voucher không tồn tại", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError("Voucher khÃ´ng tá»n táº¡i", 404, ERROR_CODES.NOT_FOUND);
   }
 
   const serialized = serializeVoucher(voucher);

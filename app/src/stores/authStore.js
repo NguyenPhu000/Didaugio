@@ -124,6 +124,8 @@ export const useAuthStore = create((set, get) => ({
       accessToken: null,
       refreshToken: null,
       isGuest: false,
+      // Reset hydration để hydrate() chạy lại nếu cần (vd login xong rồi logout rồi login user khác).
+      isHydrated: false,
       hydrationError: null,
     });
 

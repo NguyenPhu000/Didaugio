@@ -90,7 +90,7 @@ export default function PricingPage() {
         >
           {t("subscription.plans.yearly")}
           <Badge variant="secondary" className="ml-1.5 text-xs">
-            -20%
+            {t("subscription.plans.yearlyDiscount")}
           </Badge>
         </button>
       </div>

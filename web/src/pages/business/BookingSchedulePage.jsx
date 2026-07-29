@@ -304,7 +304,7 @@ function DayColumnGrid({ date, bookings, servicesMap, onViewBooking, t }) {
                 ))}
                 {slotBookings.length > 2 && (
                   <p className="text-[10px] text-gray-500 text-center">
-                    +{slotBookings.length - 2} {t("common.others", { defaultValue: "khác" })}
+                    +{slotBookings.length - 2} {t("common.others")}
                   </p>
                 )}
               </div>

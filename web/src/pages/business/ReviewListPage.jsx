@@ -298,7 +298,7 @@ const ReviewCard = memo(({
                 onClick={handleLowRatingReply}
               >
                 <AlertTriangle className="h-3.5 w-3.5" />
-                {t("business.schedule.processing")}
+                {t("business.reviews.replyLowRating")}
               </Button>
             )}
           </div>

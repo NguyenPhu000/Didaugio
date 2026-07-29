@@ -735,17 +735,17 @@ export const sendContractVerificationEmail = async ({ to, code, name }) => {
     <body>
       <div class="container">
         <div class="header">
-          <h2 style="margin: 0;">Đi Đâu Giờ?</h2>
+          <h2 style="margin: 0;">iPoint Genie</h2>
           <p style="margin: 4px 0 0 0; font-size: 12px; color: #94a3b8; text-transform: uppercase;">Xác thực hợp đồng điện tử</p>
         </div>
         <div class="content">
           <p>Xin chào <strong>${escapeHtml(name)}</strong>,</p>
-          <p>Bạn đang thực hiện ký kết hợp đồng dịch vụ điện tử trên hệ thống Đi Đâu Giờ. Dưới đây là mã OTP để xác nhận và đóng dấu chữ ký điện tử của bạn:</p>
+          <p>Bạn đang thực hiện ký kết hợp đồng dịch vụ điện tử trên hệ thống iPoint Genie. Dưới đây là mã OTP để xác nhận và đóng dấu chữ ký điện tử của bạn:</p>
           <div class="otp-box">${code}</div>
           <p style="font-size: 13px; color: #64748b;">Mã OTP này có hiệu lực trong vòng 5 phút. Vui lòng không cung cấp mã xác thực này cho bất kỳ ai khác.</p>
         </div>
         <div class="footer">
-          Đây là email tự động từ hệ thống Đi Đâu Giờ. Vui lòng không phản hồi email này.
+          Đây là email tự động từ hệ thống iPoint Genie. Vui lòng không phản hồi email này.
         </div>
       </div>
     </body>
@@ -756,7 +756,7 @@ export const sendContractVerificationEmail = async ({ to, code, name }) => {
     await transporter.sendMail({
       from: EMAIL_FROM,
       to,
-      subject: "[Đi Đâu Giờ] Mã OTP xác nhận ký hợp đồng dịch vụ điện tử",
+      subject: "[iPoint Genie] Mã OTP xác nhận ký hợp đồng dịch vụ điện tử",
       html,
     });
     console.log(`[Mailer Success] Email OTP đã gửi thành công tới ${to}`);

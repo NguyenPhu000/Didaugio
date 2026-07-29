@@ -143,16 +143,16 @@ function BookingListPageContent() {
 
       exportToCsv({
         columns: [
-          { key: "id", label: "ID" },
-          { key: (row) => row.guestName || row.user?.fullName || "", label: "Guest Name" },
-          { key: (row) => row.guestPhone || row.user?.phone || "", label: "Phone" },
-          { key: (row) => row.service?.name || "", label: "Service" },
-          { key: (row) => row.status, label: "Status" },
-          { key: (row) => row.finalPrice || 0, label: "Price" },
-          { key: (row) => formatCsvDate(row.createdAt), label: "Created At" },
+          { key: "id", label: t("business.bookings.export.headers.id") },
+          { key: (row) => row.guestName || row.user?.fullName || "", label: t("business.bookings.export.headers.guestName") },
+          { key: (row) => row.guestPhone || row.user?.phone || "", label: t("business.bookings.export.headers.phone") },
+          { key: (row) => row.service?.name || "", label: t("business.bookings.export.headers.service") },
+          { key: (row) => row.status, label: t("business.bookings.export.headers.status") },
+          { key: (row) => row.finalPrice || 0, label: t("business.bookings.export.headers.price") },
+          { key: (row) => formatCsvDate(row.createdAt), label: t("business.bookings.export.headers.createdAt") },
         ],
         data: allData,
-        filename: slugifyFilename("danh_sach_dat_cho"),
+        filename: slugifyFilename(t("business.bookings.export.filename")),
       });
       toast.success(t("common.savedSuccessfully"));
     } catch {

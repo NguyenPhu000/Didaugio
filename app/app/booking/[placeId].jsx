@@ -27,6 +27,11 @@ import {
 import { StepIndicator } from "../../src/modules/booking/components/StepIndicator";
 import { ServiceCard } from "../../src/modules/booking/components/ServiceCard";
 import { ResourcePicker } from "../../src/modules/booking/components/ResourcePicker";
+import { VoucherApplyField } from "../../src/modules/booking/components/VoucherApplyField";
+import {
+  useApplicableVouchers,
+  useValidateVoucherCode,
+} from "../../src/modules/booking/hooks/useVoucherQueries";
 import {
   buildBookingPayload,
   getActiveResources,
@@ -209,6 +214,12 @@ export default function BookingScreen() {
   const [guestPhone, setGuestPhone] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [requestNote, setRequestNote] = useState("");
+  const [voucher, setVoucher] = useState({
+    voucherId: null,
+    code: "",
+    discountAmount: 0,
+    finalPrice: null,
+  });
   const didPrefillContactRef = useRef(false);
 
   const { data: place } = usePlaceDetail(placeId);
@@ -217,6 +228,7 @@ export default function BookingScreen() {
   const { data: trips = [] } = useTrips(isLoggedIn);
   const bookingMutation = useCreateBooking();
   const createTripMutation = useCreateTrip();
+  const validateVoucherMutation = useValidateVoucherCode();
 
   const { data: availabilityData } = useServiceAvailability(
     selectedService?.id,
@@ -339,6 +351,58 @@ export default function BookingScreen() {
   const unitPrice =
     selectedService?.salePrice ?? selectedService?.price ?? null;
   const totalPrice = unitPrice !== null ? unitPrice * quantity : null;
+
+  // Khi đổi service → reset voucher (voucher cũ có thể không còn áp dụng cho service mới).
+  useEffect(() => {
+    if (!selectedService?.id) return;
+    setVoucher((prev) =>
+      prev?.voucherId ? { voucherId: null, code: "", discountAmount: 0, finalPrice: null } : prev,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedService?.id]);
+
+  // Khi quantity thay đổi → re-validate voucher đang áp dụng để cập nhật discountAmount/finalPrice.
+  // Lưu serviceId trong ref để effect không phụ thuộc cả object service (gây loop).
+  const appliedServiceIdRef = useRef(null);
+  useEffect(() => {
+    if (!voucher?.voucherId || totalPrice == null || !voucher.code) return;
+    const serviceId = Number(selectedService?.id);
+    if (!Number.isInteger(serviceId) || serviceId <= 0) return;
+    if (appliedServiceIdRef.current !== serviceId) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await validateVoucherMutation.mutateAsync({
+          code: voucher.code,
+          serviceId,
+          originalPrice: Number(totalPrice) || 0,
+        });
+        if (cancelled) return;
+        const data = res?.data || res;
+        setVoucher({
+          voucherId: data?.id || data?.voucherId || voucher.voucherId,
+          code: data?.code || voucher.code,
+          discountAmount: Number(data?.discountAmount) || 0,
+          finalPrice:
+            data?.finalPrice != null
+              ? Number(data.finalPrice)
+              : Math.max(0, (Number(totalPrice) || 0) - (Number(data?.discountAmount) || 0)),
+        });
+      } catch {
+        // Lỗi → clear để user apply lại bằng tay
+        setVoucher({ voucherId: null, code: "", discountAmount: 0, finalPrice: null });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quantity, selectedService?.id]);
+
+  useEffect(() => {
+    appliedServiceIdRef.current = selectedService?.id || null;
+  }, [selectedService?.id]);
   const isSelectedTimeAvailable = isSlotAvailable(selectedDate, selectedTime);
   const slotWarningRef = useRef("");
 
@@ -579,6 +643,7 @@ export default function BookingScreen() {
         guestPhone: normalizedGuestPhone,
         guestEmail: normalizedGuestEmail || undefined,
         note: normalizedRequestNote || null,
+        voucherId: voucher?.voucherId || undefined,
       }));
 
       const linkedTrip = bookingRes?.data?.linkedTrip || null;
@@ -1384,12 +1449,28 @@ export default function BookingScreen() {
                   {t("booking.timeSlotsCount", { count: visibleTimeSlots.length })}
                 </Text>
 
-                {!isSelectedTimeAvailable ? (
-                  <Text style={{ color: "#F59E0B", fontSize: 12 }}>
-                    {t("booking.slotUnavailableWarning")}
-                  </Text>
-                ) : null}
+              {!isSelectedTimeAvailable ? (
+                <Text style={{ color: "#F59E0B", fontSize: 12 }}>
+                  {t("booking.slotUnavailableWarning")}
+                </Text>
+              ) : null}
               </View>
+
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: BOOKING_THEME.glassBorder,
+                }}
+              />
+
+              <VoucherApplyField
+                serviceId={selectedService?.id}
+                businessId={place?.businessId ?? selectedService?.place?.businessId}
+                amount={totalPrice ?? 0}
+                value={voucher}
+                onChange={setVoucher}
+                theme={BOOKING_THEME}
+              />
 
               <View
                 style={{
@@ -1571,14 +1652,74 @@ export default function BookingScreen() {
                     </Text>
                     <Text
                       style={{
-                        color: BOOKING_THEME.neon,
-                        fontSize: 16,
-                        fontWeight: "800",
+                        color:
+                          voucher?.voucherId
+                            ? BOOKING_THEME.textMuted
+                            : BOOKING_THEME.neon,
+                        fontSize: voucher?.voucherId ? 13 : 16,
+                        fontWeight: voucher?.voucherId ? "600" : "800",
+                        textDecorationLine: voucher?.voucherId ? "line-through" : "none",
                       }}
                     >
                       {formatPrice(totalPrice, t("booking.pricing.contact"))}
                     </Text>
                   </View>
+
+                  {voucher?.voucherId && voucher.discountAmount > 0 ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: BOOKING_THEME.textSecondary,
+                          fontSize: 13,
+                        }}
+                      >
+                        {t("booking.voucher.discountApplied", {
+                          code: voucher.code,
+                        })}
+                      </Text>
+                      <Text
+                        style={{
+                          color: BOOKING_THEME.danger || "#EF4444",
+                          fontSize: 13,
+                          fontWeight: "700",
+                        }}
+                      >
+                        -{formatPrice(voucher.discountAmount, t("booking.pricing.contact"))}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {voucher?.voucherId && voucher.finalPrice != null ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: BOOKING_THEME.textSecondary,
+                          fontSize: 13,
+                        }}
+                      >
+                        {t("booking.pricing.finalTotal")}
+                      </Text>
+                      <Text
+                        style={{
+                          color: BOOKING_THEME.neon,
+                          fontSize: 16,
+                          fontWeight: "800",
+                        }}
+                      >
+                        {formatPrice(voucher.finalPrice, t("booking.pricing.contact"))}
+                      </Text>
+                    </View>
+                  ) : null}
 
                   {depositInfo ? (
                     <>
@@ -1834,8 +1975,20 @@ export default function BookingScreen() {
                     paddingVertical: 10,
                     borderWidth: 1,
                     borderColor: BOOKING_THEME.glassBorderStrong,
+                    gap: 4,
                   }}
                 >
+                  {voucher?.voucherId && voucher.discountAmount > 0 ? (
+                    <Text
+                      style={{
+                        color: BOOKING_THEME.textSecondary,
+                        fontSize: 12,
+                        textDecorationLine: "line-through",
+                      }}
+                    >
+                      {formatPrice(totalPrice, t("booking.pricing.contact"))}
+                    </Text>
+                  ) : null}
                   <Text
                     style={{
                       color: BOOKING_THEME.neon,
@@ -1843,7 +1996,10 @@ export default function BookingScreen() {
                       fontWeight: "800",
                     }}
                   >
-                    {formatPrice(totalPrice, t("booking.pricing.contact"))}
+                    {formatPrice(
+                      voucher?.finalPrice != null ? voucher.finalPrice : totalPrice,
+                      t("booking.pricing.contact"),
+                    )}
                   </Text>
                 </View>
               ) : null}

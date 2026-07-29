@@ -92,12 +92,9 @@ export const createEvent = async (userId, data) => {
       finalThumbnail = uploadResult.secureUrl;
       finalThumbnailPublicId = uploadResult.publicId;
     } catch (err) {
-      console.error("Lỗi upload thumbnail lên Cloudinary:", err);
-      throw new ServiceError(
-        ERROR_CODES.SERVER_ERROR,
-        "Lỗi upload ảnh lên Cloudinary",
-        500
-      );
+      console.warn("Lỗi upload thumbnail lên Cloudinary (sử dụng fallback base64):", err.message);
+      finalThumbnail = thumbnail;
+      finalThumbnailPublicId = null;
     }
   }
 
@@ -170,12 +167,9 @@ export const updateEvent = async (eventId, data) => {
         finalThumbnail = uploadResult.secureUrl;
         finalThumbnailPublicId = uploadResult.publicId;
       } catch (err) {
-        console.error("Lỗi upload thumbnail lên Cloudinary:", err);
-        throw new ServiceError(
-          ERROR_CODES.SERVER_ERROR,
-          "Lỗi upload ảnh lên Cloudinary",
-          500
-        );
+        console.warn("Lỗi upload thumbnail lên Cloudinary khi update (sử dụng fallback base64):", err.message);
+        finalThumbnail = thumbnail;
+        finalThumbnailPublicId = null;
       }
     }
 
