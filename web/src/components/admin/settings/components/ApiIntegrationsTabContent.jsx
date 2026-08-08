@@ -45,18 +45,20 @@ const ApiIntegrationsTabContent = ({ value, onChange }) => {
       >
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <Label className="text-sm font-semibold text-zinc-800">
               API Key
             </Label>
             <div className="flex gap-2">
-              <div className="flex-1 font-mono text-xs border border-black px-3 py-2 bg-gray-50 select-all">
+              <div className="flex min-h-10 flex-1 items-center rounded-xl border border-black/30 bg-zinc-50 px-3 text-sm text-zinc-700 select-all">
                 {maskedApiKey}
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleCopy}
-                className="rounded-none border-black px-3"
+                aria-label="Copy API key"
+                title="Copy API key"
+                className="rounded-xl border-black/30 px-3"
               >
                 {copied ? (
                   <Check className="h-3.5 w-3.5 text-green-600" />
@@ -68,15 +70,17 @@ const ApiIntegrationsTabContent = ({ value, onChange }) => {
           </div>
 
           <div className="space-y-2">
-            <Label className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <Label className="text-sm font-semibold text-zinc-800">
               Webhook URL
             </Label>
             <Input
-              className="rounded-none border-black font-mono text-xs"
+              className="h-10 rounded-xl border-black/30 text-sm"
               value={value.webhookUrl || ""}
               onChange={(e) => onChange("webhookUrl", e.target.value)}
-              placeholder="https://your-webhook-endpoint.com/hooks"
             />
+            <p className="text-xs leading-relaxed text-zinc-500">
+              Endpoint nhận sự kiện hệ thống từ server.
+            </p>
           </div>
         </div>
       </SettingsSection>
@@ -94,16 +98,16 @@ const ApiIntegrationsTabContent = ({ value, onChange }) => {
             return (
               <div
                 key={integration.key}
-                className="flex items-center justify-between border border-gray-200 px-4 py-3 hover:border-black transition-colors"
+                className="flex items-center justify-between gap-4 rounded-xl border border-zinc-200 px-4 py-3 transition-colors hover:border-black"
               >
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-xs font-bold uppercase tracking-wide">
+                  <span className="text-sm font-medium text-zinc-900">
                     {integration.name}
                   </span>
                   <Badge
                     variant="outline"
                     className={cn(
-                      "rounded-none font-mono text-[9px] uppercase",
+                      "rounded-full px-2 py-0.5 text-xs uppercase",
                       status.configured
                         ? "border-green-300 text-green-600"
                         : "border-gray-300 text-gray-500"
@@ -116,7 +120,9 @@ const ApiIntegrationsTabContent = ({ value, onChange }) => {
                   href={integration.docsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-black transition-colors"
+                  aria-label={`Open ${integration.name} documentation`}
+                  title={`Open ${integration.name} documentation`}
+                  className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-zinc-100 hover:text-black"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -12,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { showAppAlertLegacy } from "../../../src/utils/appAlert";
 import safeAsyncStorage from "../../../src/utils/safeAsyncStorage";
 import {
   BOOKING_APPLE_THEME as THEME,
@@ -139,9 +139,9 @@ export default function BookingDetailScreen() {
 
     try {
       await savePlaceMutation.mutateAsync({ placeId });
-      Alert.alert(t("bookingDetail.alerts.saved.title"), t("bookingDetail.alerts.saved.message"));
+      showAppAlertLegacy(t("bookingDetail.alerts.saved.title"), t("bookingDetail.alerts.saved.message"));
     } catch (error) {
-      Alert.alert(
+      showAppAlertLegacy(
         t("bookingDetail.alerts.saveFailed.title"),
         error?.message || t("bookingDetail.alerts.saveFailed.message"),
       );
@@ -151,7 +151,7 @@ export default function BookingDetailScreen() {
   const handleLinkBookingToTrip = async (tripId) => {
     const normalizedTripId = Number(tripId);
     if (!Number.isInteger(normalizedTripId) || normalizedTripId <= 0) {
-      Alert.alert(t("bookingDetail.alerts.selectTrip.title"), t("bookingDetail.alerts.selectTrip.message"));
+      showAppAlertLegacy(t("bookingDetail.alerts.selectTrip.title"), t("bookingDetail.alerts.selectTrip.message"));
       return;
     }
 
@@ -161,9 +161,9 @@ export default function BookingDetailScreen() {
         tripId: normalizedTripId,
       });
       await refetch();
-      Alert.alert(t("bookingDetail.alerts.linkSuccess.title"), t("bookingDetail.alerts.linkSuccess.message"));
+      showAppAlertLegacy(t("bookingDetail.alerts.linkSuccess.title"), t("bookingDetail.alerts.linkSuccess.message"));
     } catch (error) {
-      Alert.alert(
+      showAppAlertLegacy(
         t("bookingDetail.alerts.linkFailed.title"),
         error?.message || t("bookingDetail.alerts.linkFailed.message"),
       );
@@ -197,7 +197,7 @@ export default function BookingDetailScreen() {
 
       await handleLinkBookingToTrip(tripId);
     } catch (error) {
-      Alert.alert(
+      showAppAlertLegacy(
         t("bookingDetail.errors.tripCreateTitle"),
         error?.message || t("bookingDetail.errors.generic"),
       );
@@ -220,12 +220,12 @@ export default function BookingDetailScreen() {
       await cancelBookingMutation.mutateAsync({ bookingId, cancelReason });
       setShowRefundPolicyModal(false);
       await refetch();
-      Alert.alert(
+      showAppAlertLegacy(
         t("bookingDetail.cancel.alertSuccessTitle"),
         t("bookingDetail.cancel.alertSuccessMessage"),
       );
     } catch (error) {
-      Alert.alert(
+      showAppAlertLegacy(
         t("bookingDetail.cancel.alertErrorTitle"),
         error?.message || t("bookingDetail.cancel.alertErrorMessage"),
       );

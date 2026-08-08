@@ -3,12 +3,12 @@ import { StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
+import { useReducedMotion } from "react-native-reanimated";
 import { MaterialIconsRounded } from "../../../components/primitives/MaterialIconsRounded";
 import { Box, Text, Pressable } from "../../../components/primitives";
 import { cn } from "../../../lib/cn";
 import {
   buildSummary,
-  getHeroTrip,
   getHeroTrips,
   getDateRangeLabel,
   getTimelineLabel,
@@ -33,17 +33,19 @@ export function TripsDashboard({
   const heroTrips = useMemo(() => getHeroTrips(trips), [trips]);
   const summary = useMemo(() => buildSummary(trips), [trips]);
   const filters = getTripFilters();
+  const reduceMotion = useReducedMotion();
 
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isHeroInteracting, setIsHeroInteracting] = useState(false);
 
-  // Auto-advance slide every 10 seconds (10,000 ms)
+  // Auto-advance only when motion is allowed and the user is not touching the hero.
   useEffect(() => {
-    if (heroTrips.length <= 1) return;
+    if (heroTrips.length <= 1 || reduceMotion || isHeroInteracting) return;
     const timer = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % heroTrips.length);
     }, 10000);
     return () => clearInterval(timer);
-  }, [heroTrips.length]);
+  }, [heroTrips.length, isHeroInteracting, reduceMotion]);
 
   // Keep activeIndex within bounds if trips change
   const safeIndex = activeIndex >= heroTrips.length ? 0 : activeIndex;
@@ -98,6 +100,8 @@ export function TripsDashboard({
         <Box className="-mx-2 p-1.5 rounded-[32px] bg-white/10 border border-white/20 mb-6 shadow-2xl">
           <Pressable
             onPress={() => onOpenHero(currentHeroTrip.id)}
+            onPressIn={() => setIsHeroInteracting(true)}
+            onPressOut={() => setIsHeroInteracting(false)}
             className="h-[310px] rounded-[26px] overflow-hidden bg-[#08090C] border border-white/20 active:opacity-95"
             style={SHADOW.hero}
           >

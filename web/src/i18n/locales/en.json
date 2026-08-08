@@ -77,6 +77,7 @@
     "statusApproved": "Approved",
     "statusRejected": "Rejected",
     "statusCancelled": "Cancelled",
+    "statusUnknown": "Unknown",
     "draft": "Draft",
     "pendingApproval": "Pending",
     "others": "others",
@@ -679,6 +680,8 @@
     "subtitle": "SYSTEM // CONFIGURATION",
     "save": "SAVE SETTINGS",
     "saving": "SAVING...",
+    "undo": "Undo",
+    "unsaved": "Unsaved changes",
     "general": {
       "title": "1) General Settings",
       "description": "System name, logo/favicon, language, timezone, domain and maintenance mode",
@@ -2004,9 +2007,26 @@
       "inviteRevokeError": "Revoke invitation error",
       "linkCopied": "Invite link copied",
       "subtitle": "Manage staff accounts and permissions",
+      "title": "Staff Management",
       "inviteStaff": "Invite Staff",
+      "inviteSubtitle": "Send an invitation to a new staff member to join your management system.",
       "totalStaff": "Total Staff",
-      "activeStaff": "Active",
+      "activeStaff": "Active Staff",
+      "locked": "Locked",
+      "active": "Active",
+      "lock": "Lock Account",
+      "unlock": "Unlock Account",
+      "searchPlaceholder": "Search by staff name, email...",
+      "noStaff": "No staff members in the list",
+      "selectRolePlaceholder": "Select a role for the staff member",
+      "defaultRole": "No role assigned",
+      "note": "Note",
+      "notePlaceholder": "Add an optional note with the invitation...",
+      "inviteFailed": "Failed to send staff invitation",
+      "inviteLinkCreated": "Invitation link created successfully! Copy the link below to share with staff:",
+      "loadFailed": "Failed to load staff list",
+      "statusSuccess": "Updated staff status successfully",
+      "statusFailed": "Failed to update staff status",
       "pendingInvitations": "Pending Invitations",
       "staffTab": "Staff",
       "invitationsTab": "Invitations",
@@ -2335,7 +2355,7 @@
         "default": "Default",
         "topServices": "Top Services",
         "noServicesInPeriod": "No services in this period",
-        "serviceStats": "{count} bookings · {revenue} revenue"
+        "serviceStats": "{{count}} bookings · {{revenue}} revenue"
       }
     },
     "bookings": {
@@ -2871,6 +2891,12 @@
         "blockedDates": "Blocked Dates"
       },
       "editing": "Editing:",
+      "actions": {
+        "save": "Save changes",
+        "saving": "Saving...",
+        "undo": "Undo",
+        "unsaved": "You have unsaved changes"
+      },
       "bookingRules": {
         "autoProcessing": "Auto Processing",
         "autoProcessingDesc": "Configure automatic booking approval and processing",
@@ -2901,12 +2927,19 @@
         "bookingSection": "BOOKINGS",
         "reviewSection": "REVIEWS & PAYMENTS",
         "newBookingEmail": "Email for new bookings",
+        "newBookingEmailDescription": "Get an email when a customer creates a booking.",
         "newBookingPush": "Push for new bookings",
+        "newBookingPushDescription": "Get a quick alert in your browser or device.",
         "cancellationEmail": "Email for booking cancellations",
+        "cancellationEmailDescription": "Know when a booking is cancelled or changed.",
         "cancellationPush": "Push for booking cancellations",
+        "cancellationPushDescription": "Track booking changes without opening email.",
         "newReviewEmail": "Email for new reviews",
+        "newReviewEmailDescription": "Get an email when a customer leaves a review.",
         "newReviewPush": "Push for new reviews",
+        "newReviewPushDescription": "See new feedback directly in the notification stream.",
         "payoutEmail": "Email for payouts",
+        "payoutEmailDescription": "Get updates about payout requests and status.",
         "cardTitle": "3) BUSINESS NOTIFICATIONS",
         "cardDescription": "Configure business notifications"
       },
@@ -3362,8 +3395,10 @@
     },
     "status": {
       "active": "Active",
+      "trialing": "Trialing",
       "grace": "Grace Period",
       "past_due": "Past Due",
+      "paused": "Paused",
       "canceled": "Canceled"
     },
     "plans": {
@@ -3375,13 +3410,17 @@
       "popular": "Most Popular",
       "current": "Current Plan",
       "select": "Select Plan",
+      "changeCycle": "Switch Billing Cycle",
       "unavailable": "Not available for this cycle",
       "compareFeatures": "Compare Features",
       "feature": "Feature"
     },
     "invoice": {
       "title": "Invoice History",
+      "subtitle": "View and pay subscription invoices",
       "empty": "No invoices yet",
+      "payWithWallet": "Pay with wallet",
+      "paying": "Paying...",
       "status": {
         "pending": "Pending",
         "paid": "Paid",
@@ -3440,12 +3479,88 @@
       "upgradeBtn": "Upgrade Plan",
       "andAbove": "or higher"
     },
+    "toast": {
+      "upgradeScheduled": "Plan upgrade submitted",
+      "downgradeScheduled": "Downgrade scheduled at the end of the billing period",
+      "downgradeCanceled": "Scheduled downgrade canceled",
+      "subscriptionCanceled": "Subscription canceled",
+      "invoicePaidFromWallet": "Invoice paid from revenue wallet",
+      "adminPlanCreated": "Plan created",
+      "adminPlanUpdated": "Plan updated",
+      "adminSubStatusUpdated": "Subscription status updated"
+    },
     "admin": {
       "title": "Subscription Management",
+      "subtitle": "Monitor subscriptions, MRR and churn across all businesses",
       "mrr": "MRR",
       "activeSubs": "Active Subscriptions",
       "churnRate": "Churn Rate",
-      "revenue": "Revenue"
+      "revenue": "Revenue",
+      "table": {
+        "business": "Business",
+        "plan": "Plan",
+        "status": "Status",
+        "cycle": "Billing cycle",
+        "amount": "Revenue",
+        "expiresAt": "Expires on"
+      },
+      "actions": {
+        "pause": "Pause subscription",
+        "resume": "Resume subscription",
+        "cancel": "Cancel subscription"
+      },
+      "cancelDialog": {
+        "title": "Cancel subscription",
+        "description": "Enter the cancellation reason. The notification will be sent to the business.",
+        "reasonPlaceholder": "Enter cancellation reason...",
+        "submitting": "Canceling...",
+        "confirm": "Confirm cancellation"
+      },
+      "filters": {
+        "planPlaceholder": "Plan",
+        "statusPlaceholder": "Status"
+      },
+      "pagination": "Page {{page}} / {{totalPages}} ({{total}})",
+      "plansTitle": "Plan Management",
+      "plansSubtitle": "Edit details, limits and status of subscription plans",
+      "card": {
+        "hidden": "Hidden",
+        "perMonth": "/ month",
+        "perYear": "/ year",
+        "placesLabel": "places",
+        "bookingsLabel": "bookings",
+        "staffLabel": "staff",
+        "featuresLabel": "Features",
+        "subscribers": "{{count}} subscribers"
+      },
+      "form": {
+        "title": "Edit plan {{name}}",
+        "description": "Update plan details and limits",
+        "nameLabel": "Plan name *",
+        "namePlaceholder": "Plus",
+        "slugLabel": "Slug",
+        "descriptionLabel": "Description",
+        "descriptionPlaceholder": "Short description of the plan",
+        "pricingLabel": "Pricing",
+        "monthlyLabel": "Price / month (VND)",
+        "yearlyLabel": "Price / year (VND)",
+        "yearlySavings": "Save {{percent}}% when paying yearly",
+        "limitsLabel": "Usage limits",
+        "placesFieldLabel": "Max places",
+        "bookingsFieldLabel": "Bookings / month",
+        "staffFieldLabel": "Max staff",
+        "unlimitedHint": "-1 = unlimited",
+        "sortOrderLabel": "Display order",
+        "featuresLabel": "Features (one per line)",
+        "featuresPlaceholder": "Manage 5 places\nPriority support\nAdvanced reports",
+        "submitting": "Saving..."
+      },
+      "validation": {
+        "nameRequired": "Plan name is required",
+        "slugRequired": "Slug is required",
+        "priceNonNegative": "Price must be >= 0",
+        "minOneUnlimited": "-1 = unlimited"
+      }
     }
   },
   "apiError": {

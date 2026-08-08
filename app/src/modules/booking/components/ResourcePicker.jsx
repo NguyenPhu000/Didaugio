@@ -19,6 +19,9 @@ export function ResourcePicker({ resources = [], selectedResourceId, onSelect, t
             <Pressable
               key={resource.id}
               onPress={() => onSelect(resource.id)}
+              accessibilityRole="button"
+              accessibilityLabel={resource.name}
+              accessibilityState={{ selected }}
               style={{
                 borderRadius: 12,
                 borderWidth: 1,

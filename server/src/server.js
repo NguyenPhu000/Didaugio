@@ -176,7 +176,15 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    exposedHeaders: ["Content-Disposition", "Content-Type"],
+    exposedHeaders: [
+      "Content-Disposition",
+      "Content-Type",
+      "X-Request-Id",
+      "RateLimit-Limit",
+      "RateLimit-Remaining",
+      "RateLimit-Reset",
+      "Retry-After",
+    ],
   }),
 );
 

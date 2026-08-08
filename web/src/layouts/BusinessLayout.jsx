@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { BriefcaseBusiness } from "lucide-react";
+import { BriefcaseBusiness, CalendarCheck } from "lucide-react";
 import {
   SidebarProvider,
   Sidebar,
@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui";
 import { APP_META } from "@/constants/brand";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES, ROLE_NAMES } from "@/constants/constants";
+import { PERMISSIONS } from "@/constants/permissions";
 import { useAuthStore } from "@/stores/authStore";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { resolveRoleId } from "@/utils/authRouting";
@@ -38,11 +39,18 @@ const BusinessLayout = ({ children }) => {
   const getInitials = (name) => (name ? name.charAt(0).toUpperCase() : "U");
 
   const businessMainMenu = [
-    {
-      title: t("nav.dashboard"),
-      icon: BriefcaseBusiness,
-      url: BUSINESS_ROUTES.DASHBOARD,
-    },
+    currentRoleId === ROLES.STAFF
+      ? {
+          title: t("nav.business.bookings"),
+          icon: CalendarCheck,
+          url: BUSINESS_ROUTES.BOOKINGS,
+          permission: PERMISSIONS.BOOKINGS.VIEW,
+        }
+      : {
+          title: t("nav.dashboard"),
+          icon: BriefcaseBusiness,
+          url: BUSINESS_ROUTES.DASHBOARD,
+        },
   ];
 
   useEffect(() => {
@@ -55,21 +63,25 @@ const BusinessLayout = ({ children }) => {
         collapsible="icon"
         className="bg-sidebar border-r"
       >
-        <SidebarHeader className="bg-sidebar px-4 py-4">
+        <SidebarHeader className="bg-sidebar px-3 py-4 border-b border-sidebar-border/30">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
                 size="lg"
                 asChild
-                className="hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:!p-2"
+                className="hover:bg-white/[0.04] transition-colors rounded-xl data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:!p-1.5"
               >
-                <Link to={BUSINESS_ROUTES.DASHBOARD}>
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden">
-                    <img src="/logo512.png" alt="iPoint Genie" className="size-8 object-contain" />
+                <Link to={businessMainMenu[0].url} className="flex items-center gap-[12px]">
+                  {/* Khung Logo Tối Giản & Sắc Sảo */}
+                  <div className="flex size-10 items-center justify-center rounded-[14px] bg-white/[0.04] border border-white/[0.08] shrink-0 overflow-hidden">
+                    <img src="/logo512.png" alt="iPoint Genie" className="size-7 object-contain" />
                   </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                    <span className="font-semibold">{APP_META.NAME}</span>
-                    <span className="text-xs text-muted-foreground uppercase">
+                  {/* Cụm Chữ Thương Hiệu Premium */}
+                  <div className="grid flex-1 text-left group-data-[collapsible=icon]:hidden">
+                    <span className="text-[18px] font-semibold text-white leading-tight">
+                      {APP_META.NAME}
+                    </span>
+                    <span className="text-[11px] font-medium uppercase tracking-[1px] text-[#BDE0FE] leading-tight mt-0.5">
                       {t("common.businessPortal")}
                     </span>
                   </div>

@@ -4,45 +4,45 @@ import SettingsSection from "@/components/settings/SettingsSection";
 const FLAG_METADATA = {
   aiAssistant: {
     name: "Trợ lý AI",
-    description: "Tích hợp AI để gợi ý địa điểm và trả lời câu hỏi",
+    description: "Gợi ý địa điểm và trả lời câu hỏi bằng AI.",
     critical: false,
   },
   mapModule: {
-    name: "Module Bản đồ",
-    description: "Bản đồ tương tác với MapLibre GL",
+    name: "Module bản đồ",
+    description: "Bật bản đồ tương tác dùng MapLibre GL.",
     critical: false,
   },
   voucherSystem: {
     name: "Hệ thống Voucher",
-    description: "Quản lý mã giảm giá và khuyến mãi",
+    description: "Quản lý mã giảm giá và khuyến mãi.",
     critical: false,
   },
   payoutSystem: {
-    name: "Hệ thống Rút tiền",
-    description: "Quản lý rút tiền cho doanh nghiệp",
+    name: "Hệ thống rút tiền",
+    description: "Quản lý rút tiền cho doanh nghiệp.",
     critical: false,
   },
   reviewModeration: {
-    name: "Kiểm duyệt Đánh giá",
-    description: "Tự động kiểm duyệt đánh giá người dùng",
+    name: "Kiểm duyệt đánh giá",
+    description: "Tự động kiểm duyệt đánh giá người dùng.",
     critical: false,
   },
   pushNotifications: {
-    name: "Thông báo Đẩy",
-    description: "Gửi thông báo đẩy đến người dùng",
+    name: "Thông báo đẩy",
+    description: "Gửi thông báo đẩy đến người dùng.",
     critical: false,
   },
   maintenanceMode: {
-    name: "Chế độ Bảo trì",
-    description: "Tạm ngưng hệ thống để bảo trì",
+    name: "Chế độ bảo trì",
+    description: "Tạm ngưng hệ thống để bảo trì.",
     critical: true,
   },
 };
 
 const FeatureFlagsTabContent = ({ flags, onToggle, loading }) => (
   <SettingsSection
-    title="Feature Flags"
-    description="Bật/tắt các tính năng và module của hệ thống"
+    title="Feature flags"
+    description="Các công tắc ở đây được lưu ngay khi bật hoặc tắt, không chờ nút Lưu cài đặt."
   >
     <div className="space-y-2">
       {Object.entries(FLAG_METADATA).map(([key, meta]) => {

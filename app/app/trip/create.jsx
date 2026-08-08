@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -17,6 +16,7 @@ import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRound
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useNavigation } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { showAppAlertLegacy } from "../../src/utils/appAlert";
 import * as Haptics from "expo-haptics";
 import Animated, {
   FadeInDown,
@@ -136,7 +136,7 @@ export default function CreateTripScreen() {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
+        showAppAlertLegacy(
           t("editTrip.noPhotoAccess"),
           t("editTrip.noPhotoAccessDesc"),
         );
@@ -160,7 +160,7 @@ export default function CreateTripScreen() {
       setThumbnailPreview(compressed.dataUrl);
       setPendingThumbnail(compressed.dataUrl);
     } catch (error) {
-      Alert.alert(
+      showAppAlertLegacy(
         t("editTrip.error"),
         error?.message || t("editTrip.imageError"),
       );
@@ -190,7 +190,7 @@ export default function CreateTripScreen() {
 
       e.preventDefault();
 
-      Alert.alert(
+      showAppAlertLegacy(
         t("trip.create.cancelAlert"),
         t("trip.create.cancelMessage"),
         [

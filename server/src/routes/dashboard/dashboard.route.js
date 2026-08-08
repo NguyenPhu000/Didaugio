@@ -1,11 +1,12 @@
 import express from "express";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import dashboardController from "../../controllers/dashboard/dashboard.controller.js";
 
 const router = express.Router();
 
-router.use(authenticate);
+router.use(authenticate, requireBackOfficeRole);
 
 router.get("/stats", hasPermission("system.view_analytics"), dashboardController.getStats);
 router.get("/timeline", hasPermission("system.view_analytics"), dashboardController.getTimeline);

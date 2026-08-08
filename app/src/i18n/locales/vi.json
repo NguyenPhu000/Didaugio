@@ -3,6 +3,7 @@
     "save": "Lưu",
     "cancel": "Hủy",
     "close": "Đóng",
+    "offline": "Không có kết nối mạng",
     "confirm": "Xác nhận",
     "delete": "Xóa",
     "edit": "Chỉnh sửa",
@@ -33,6 +34,7 @@
     "optional": "Tùy chọn",
     "free": "Miễn phí",
     "appName": "iPoint Genie",
+    "appTagline": "Trợ lý hành trình thông minh",
     "offline": "Bạn đang offline — Hiển thị dữ liệu đã lưu",
     "days": "ngày",
     "people": "người",
@@ -175,6 +177,11 @@
       "noPlacesDesc": "Hãy quay lại sau hoặc thử đổi danh mục khác.",
       "noResultsDesc": "Thử danh mục khác hoặc tìm kiếm theo tên."
     },
+    "error": {
+      "title": "Không tải được địa điểm",
+      "description": "Kiểm tra kết nối rồi thử lại.",
+      "retry": "Thử lại"
+    },
     "search": {
       "placeholder": "Tìm địa điểm, quán ăn, điểm vui chơi...",
       "close": "Đóng",
@@ -234,7 +241,10 @@
       "budget": "Tiết kiệm",
       "luxury": "Cao cấp",
       "days": "{{count}} ngày",
-      "from": "Từ {{price}}"
+      "from": "Từ {{price}}",
+      "badge": "LỊCH TRÌNH MẪU • {{location}}",
+      "defaultTitle": "Hành trình trải nghiệm Cần Thơ",
+      "defaultRoute": "Khám phá vẻ đẹp Cần Thơ theo nhịp riêng"
     },
     "headerBrand": "iPoint Genie",
     "headerGreeting": "Xin chào, {{name}}",
@@ -548,7 +558,8 @@
       "usageDate": "Ngày sử dụng",
       "selectTime": "Chọn giờ sử dụng",
       "selected": "Đã chọn",
-      "notSelected": "Chưa chọn"
+      "notSelected": "Chưa chọn",
+      "today": "Hôm nay"
     },
     "timeGroups": {
       "morning": "Sáng",
@@ -728,6 +739,8 @@
       "topRating": "Đánh giá nổi bật",
       "new": "Mới",
       "about": "Giới thiệu",
+      "listenGuide": "Nghe hướng dẫn bằng giọng nói",
+      "stopGuide": "Dừng hướng dẫn bằng giọng nói",
       "practicalInfo": "Thông tin địa điểm",
       "tagLabel": "Tag",
       "contactSection": "Liên hệ",
@@ -1262,6 +1275,7 @@
     "createTripAccessibility": "Tạo chuyến đi mới",
     "upcoming": "Sắp tới",
     "newTrip": "Chuyến đi mới",
+    "completedStamp": "ĐÃ HOÀN THÀNH",
     "destinations": "{{count}} điểm đến",
     "createFirst": "Tạo chuyến đi đầu tiên",
     "startExploring": "Bắt đầu hành trình khám phá thế giới của bạn",
@@ -1755,7 +1769,10 @@
     "paused": "Tạm nghỉ",
     "locationPermissionTitle": "Yêu cầu quyền vị trí",
     "locationPermissionMessage": "Vui lòng cấp quyền vị trí trong Cài đặt để ứng dụng có thể dẫn đường thời gian thực.",
+    "locationPermissionCardTitle": "Bật vị trí để dẫn đường",
+    "locationPermissionCardMessage": "iPoint Genie cần quyền vị trí để cập nhật vị trí của bạn và hướng dẫn theo thời gian thực.",
     "locationPermissionCancel": "Hủy",
+    "locationPermissionLater": "Để sau",
     "locationPermissionOpenSettings": "Mở Cài đặt"
   },
   "travelMode": {

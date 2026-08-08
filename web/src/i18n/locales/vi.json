@@ -78,6 +78,7 @@
     "statusApproved": "Đã duyệt",
     "statusRejected": "Từ chối",
     "statusCancelled": "Đã hủy",
+    "statusUnknown": "Không xác định",
     "draft": "Nháp",
     "pendingApproval": "Chờ duyệt",
     "others": "khác",
@@ -677,6 +678,8 @@
     "subtitle": "HỆ THỐNG // CẤU HÌNH",
     "save": "LƯU CÀI ĐẶT",
     "saving": "ĐANG LƯU...",
+    "undo": "Hoàn tác",
+    "unsaved": "Có thay đổi chưa lưu",
     "general": {
       "title": "1) Cài Đặt Chung",
       "description": "Tên hệ thống, logo/favicon, ngôn ngữ, múi giờ, domain và maintenance mode",
@@ -2009,9 +2012,26 @@
       "inviteRevokeError": "Lỗi thu hồi lời mời",
       "linkCopied": "Đã sao chép link mời",
       "subtitle": "Quản lý tài khoản và phân quyền nhân viên",
+      "title": "Quản lý nhân viên",
       "inviteStaff": "Mời nhân viên",
+      "inviteSubtitle": "Gửi lời mời nhân viên mới tham gia vào hệ thống quản lý của bạn.",
       "totalStaff": "Tổng nhân viên",
       "activeStaff": "Đang hoạt động",
+      "locked": "Tạm khóa",
+      "active": "Đang hoạt động",
+      "lock": "Khóa tài khoản",
+      "unlock": "Mở khóa tài khoản",
+      "searchPlaceholder": "Tìm theo tên, email nhân viên...",
+      "noStaff": "Chưa có nhân viên nào trong danh sách",
+      "selectRolePlaceholder": "Chọn vai trò cho nhân viên",
+      "defaultRole": "Chưa phân vai trò",
+      "note": "Ghi chú",
+      "notePlaceholder": "Thêm ghi chú kèm theo lời mời...",
+      "inviteFailed": "Lỗi khi gửi lời mời nhân viên",
+      "inviteLinkCreated": "Lời mời đã được tạo thành công! Sao chép liên kết dưới đây để gửi cho nhân viên:",
+      "loadFailed": "Không thể tải danh sách nhân viên",
+      "statusSuccess": "Đã cập nhật trạng thái nhân viên",
+      "statusFailed": "Lỗi khi cập nhật trạng thái nhân viên",
       "pendingInvitations": "Lời mời chờ",
       "staffTab": "Nhân viên",
       "invitationsTab": "Lời mời",
@@ -2352,7 +2372,7 @@
         "default": "Mặc định",
         "topServices": "Dịch vụ hàng đầu",
         "noServicesInPeriod": "Không có dịch vụ trong giai đoạn này",
-        "serviceStats": "{count} đặt chỗ · {revenue} doanh thu"
+        "serviceStats": "{{count}} đặt chỗ · {{revenue}} doanh thu"
       }
     },
     "bookings": {
@@ -2894,6 +2914,12 @@
         "blockedDates": "Ngày chặn"
       },
       "editing": "Đang chỉnh sửa:",
+      "actions": {
+        "save": "Lưu thay đổi",
+        "saving": "Đang lưu...",
+        "undo": "Hoàn tác",
+        "unsaved": "Có thay đổi chưa lưu"
+      },
       "bookingRules": {
         "autoProcessing": "Tự động xử lý",
         "autoProcessingDesc": "Cấu hình duyệt và xử lý đặt chỗ tự động",
@@ -2924,12 +2950,19 @@
         "bookingSection": "ĐẶT CHỖ",
         "reviewSection": "ĐÁNH GIÁ & THANH TOÁN",
         "newBookingEmail": "Email khi có đặt chỗ mới",
+        "newBookingEmailDescription": "Nhận email ngay khi có khách tạo đặt chỗ.",
         "newBookingPush": "Push khi có đặt chỗ mới",
+        "newBookingPushDescription": "Nhận thông báo nhanh trên trình duyệt hoặc thiết bị.",
         "cancellationEmail": "Email khi đặt chỗ bị hủy",
+        "cancellationEmailDescription": "Biết ngay khi một đặt chỗ bị hủy hoặc thay đổi.",
         "cancellationPush": "Push khi đặt chỗ bị hủy",
+        "cancellationPushDescription": "Theo dõi thay đổi đặt chỗ mà không cần mở email.",
         "newReviewEmail": "Email khi có đánh giá mới",
+        "newReviewEmailDescription": "Nhận email khi khách để lại đánh giá mới.",
         "newReviewPush": "Push khi có đánh giá mới",
+        "newReviewPushDescription": "Xem phản hồi mới ngay trong luồng thông báo.",
         "payoutEmail": "Email khi có rút tiền",
+        "payoutEmailDescription": "Nhận thông báo về các yêu cầu và trạng thái rút tiền.",
         "cardTitle": "3) THÔNG BÁO DOANH NGHIỆP",
         "cardDescription": "Cấu hình thông báo cho doanh nghiệp"
       },
@@ -3386,8 +3419,10 @@
     },
     "status": {
       "active": "Đang hoạt động",
+      "trialing": "Dùng thử",
       "grace": "Gia hạn",
       "past_due": "Quá hạn",
+      "paused": "Tạm ngưng",
       "canceled": "Đã hủy"
     },
     "plans": {
@@ -3399,13 +3434,17 @@
       "popular": "Phổ biến nhất",
       "current": "Gói hiện tại",
       "select": "Chọn gói",
+      "changeCycle": "Đổi chu kỳ thanh toán",
       "unavailable": "Không khả dụng cho chu kỳ này",
       "compareFeatures": "So sánh tính năng",
       "feature": "Tính năng"
     },
     "invoice": {
       "title": "Lịch sử hóa đơn",
+      "subtitle": "Xem và thanh toán các hóa đơn gói dịch vụ",
       "empty": "Chưa có hóa đơn nào",
+      "payWithWallet": "Thanh toán bằng ví",
+      "paying": "Đang thanh toán...",
       "status": {
         "pending": "Chờ thanh toán",
         "paid": "Đã thanh toán",
@@ -3464,12 +3503,88 @@
       "upgradeBtn": "Nâng cấp gói",
       "andAbove": "trở lên"
     },
+    "toast": {
+      "upgradeScheduled": "Đã gửi yêu cầu nâng cấp gói",
+      "downgradeScheduled": "Đã lên lịch hạ gói cuối chu kỳ",
+      "downgradeCanceled": "Đã hủy lịch hạ gói",
+      "subscriptionCanceled": "Đã hủy gói dịch vụ",
+      "invoicePaidFromWallet": "Thanh toán hóa đơn từ ví doanh thu thành công",
+      "adminPlanCreated": "Tạo gói thành công",
+      "adminPlanUpdated": "Cập nhật gói thành công",
+      "adminSubStatusUpdated": "Cập nhật trạng thái thành công"
+    },
     "admin": {
       "title": "Quản lý Subscription",
+      "subtitle": "Theo dõi subscription, MRR và churn của tất cả doanh nghiệp",
       "mrr": "MRR",
       "activeSubs": "Subscription đang hoạt động",
       "churnRate": "Tỷ lệ churn",
-      "revenue": "Doanh thu"
+      "revenue": "Doanh thu",
+      "table": {
+        "business": "Doanh nghiệp",
+        "plan": "Gói",
+        "status": "Trạng thái",
+        "cycle": "Chu kỳ",
+        "amount": "Doanh thu",
+        "expiresAt": "Ngày hết hạn"
+      },
+      "actions": {
+        "pause": "Tạm ngưng subscription",
+        "resume": "Kích hoạt lại subscription",
+        "cancel": "Hủy subscription"
+      },
+      "cancelDialog": {
+        "title": "Hủy subscription",
+        "description": "Vui lòng nhập lý do hủy subscription. Thông báo sẽ được gửi đến doanh nghiệp.",
+        "reasonPlaceholder": "Nhập lý do hủy...",
+        "submitting": "Đang hủy...",
+        "confirm": "Xác nhận hủy"
+      },
+      "filters": {
+        "planPlaceholder": "Gói",
+        "statusPlaceholder": "Trạng thái"
+      },
+      "pagination": "Trang {{page}} / {{totalPages}} ({{total}})",
+      "plansTitle": "Quản lý gói dịch vụ",
+      "plansSubtitle": "Chỉnh sửa thông tin, giới hạn và trạng thái các gói subscription",
+      "card": {
+        "hidden": "Tạm ẩn",
+        "perMonth": "/ tháng",
+        "perYear": "/ năm",
+        "placesLabel": "địa điểm",
+        "bookingsLabel": "booking",
+        "staffLabel": "NV",
+        "featuresLabel": "Tính năng",
+        "subscribers": "{{count}} subscriber"
+      },
+      "form": {
+        "title": "Chỉnh sửa gói {{name}}",
+        "description": "Cập nhật thông tin và giới hạn gói dịch vụ",
+        "nameLabel": "Tên gói *",
+        "namePlaceholder": "Plus",
+        "slugLabel": "Slug",
+        "descriptionLabel": "Mô tả",
+        "descriptionPlaceholder": "Mô tả ngắn về gói dịch vụ",
+        "pricingLabel": "Giá dịch vụ",
+        "monthlyLabel": "Giá / tháng (VND)",
+        "yearlyLabel": "Giá / năm (VND)",
+        "yearlySavings": "Tiết kiệm {{percent}}% khi thanh toán theo năm",
+        "limitsLabel": "Giới hạn sử dụng",
+        "placesFieldLabel": "Địa điểm tối đa",
+        "bookingsFieldLabel": "Booking / tháng",
+        "staffFieldLabel": "Nhân viên tối đa",
+        "unlimitedHint": "-1 = không giới hạn",
+        "sortOrderLabel": "Thứ tự hiển thị",
+        "featuresLabel": "Tính năng (mỗi dòng một tính năng)",
+        "featuresPlaceholder": "Quản lý 5 địa điểm\nHỗ trợ ưu tiên\nBáo cáo nâng cao",
+        "submitting": "Đang lưu..."
+      },
+      "validation": {
+        "nameRequired": "Tên gói là bắt buộc",
+        "slugRequired": "Slug là bắt buộc",
+        "priceNonNegative": "Giá phải >= 0",
+        "minOneUnlimited": "-1 = không giới hạn"
+      }
     }
   },
   "apiError": {

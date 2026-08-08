@@ -3,7 +3,6 @@ import {
   StatusBar,
   View,
   useWindowDimensions,
-  Alert,
   Linking,
 } from "react-native";
 import { useTranslation } from "react-i18next";
@@ -20,6 +19,7 @@ import { useMapTripExperience } from "./hooks/useMapTripExperience";
 import { MapScreenCanvas } from "./components/MapScreenCanvas";
 import { MapScreenOverlays } from "./components/MapScreenOverlays";
 import { MapScreenTripOverlays } from "./components/MapScreenTripOverlays";
+import { LocationPermissionState } from "./components/LocationPermissionState";
 import {
   useActiveTrip,
   ARRIVAL_RADIUS_M,
@@ -51,6 +51,7 @@ import {
   speakNavigationInstruction,
   stopSpeech,
 } from "./utils/voiceGuidance";
+import { showAppAlert } from "../../utils/appAlert";
 
 const MAP_UI_THEME = {
   background: TOKENS.color.neutral[900],
@@ -126,6 +127,7 @@ export default function MapScreen() {
   const [completeIsTripEnd, setCompleteIsTripEnd] = useState(false);
   const [completeDayNumber, setCompleteDayNumber] = useState(1);
   const [isVoiceMuted, setIsVoiceMuted] = useState(true);
+  const [locationPermissionVisible, setLocationPermissionVisible] = useState(false);
 
   const [isMomentUploading, setIsMomentUploading] = useState(false);
 
@@ -174,16 +176,14 @@ export default function MapScreen() {
     return "motorcycle";
   }, []);
 
-  const showLocationPermissionAlert = useCallback(() => {
-    Alert.alert(
-      t("mapScreen.locationPermissionTitle"),
-      t("mapScreen.locationPermissionMessage"),
-      [
-        { text: t("mapScreen.locationPermissionCancel"), style: "cancel" },
-        { text: t("mapScreen.locationPermissionOpenSettings"), onPress: () => Linking.openSettings() },
-      ],
-    );
-  }, [t]);
+  const showLocationPermissionState = useCallback(() => {
+    setLocationPermissionVisible(true);
+  }, []);
+
+  const handleOpenLocationSettings = useCallback(() => {
+    setLocationPermissionVisible(false);
+    void Linking.openSettings().catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -296,7 +296,7 @@ export default function MapScreen() {
     mapRef,
     nearbyTriggered,
     resolveTravelMode: mapTransportToMode,
-    showLocationPermissionAlert,
+    showLocationPermissionState,
     viewportHeight,
   });
   const {
@@ -493,10 +493,11 @@ export default function MapScreen() {
   }, [exitActiveTrip]);
 
   const handleRequestStopActiveTrip = useCallback(() => {
-    Alert.alert(
-      t("mapScreen.stopJourneyTitle"),
-      t("mapScreen.stopJourneyMessage"),
-      [
+    showAppAlert({
+      title: t("mapScreen.stopJourneyTitle"),
+      message: t("mapScreen.stopJourneyMessage"),
+      type: "confirm",
+      buttons: [
         { text: t("common.cancel"), style: "cancel" },
         {
           text: t("mapScreen.stopJourney"),
@@ -506,7 +507,7 @@ export default function MapScreen() {
           },
         },
       ],
-    );
+    });
   }, [handleExitActiveTrip, t]);
 
   const handlePauseActiveTrip = useCallback(async () => {
@@ -601,10 +602,12 @@ export default function MapScreen() {
       followCameraRef.current = true;
       const location = await locateActiveTripNow();
       focusMapForLocation(location ?? null);
+      if (!location) setLocationPermissionVisible(true);
       return location;
     }
     const location = await locateNow();
     focusMapForLocation(location ?? null);
+    if (!location) setLocationPermissionVisible(true);
     return location;
   }, [focusMapForLocation, locateNow, isActiveTripMode, locateActiveTripNow]);
 
@@ -672,6 +675,83 @@ export default function MapScreen() {
     setStartNavConfirmVisible,
   });
 
+  const mapState = {
+    activeArrivalVisible,
+    activeDistanceToTarget,
+    activeEventId,
+    activeFilterGroupMeta,
+    activeNextDestination,
+    activePlace,
+    activeTrip,
+    activeTripLocation,
+    activeTripSpeedKmh,
+    activeTargetPoint,
+    completeDayNumber,
+    completeIsTripEnd,
+    createMomentMutation,
+    error,
+    filterGroups: FILTER_GROUP_OPTIONS,
+    filterPickerOptions,
+    filterPickerVisible,
+    filterState,
+    floatingTabClearance: FLOATING_TAB_CLEARANCE,
+    hasActiveFilters,
+    hasMeasuredTopControls,
+    insets,
+    isActiveTripMode,
+    isCompactPreviewCard,
+    isMomentUploading,
+    isPlacesLoading,
+    isRouteFetching,
+    isScreenDimmed,
+    isTripPreviewMode,
+    layerModalVisible,
+    mapFabTopOffset,
+    mapStatusTopOffset,
+    mapStyle,
+    mapStyles: MAP_STYLES,
+    mapText: MAP_TEXT,
+    previewTravelLoading,
+    routeDistanceLabel,
+    routeEnabled,
+    routeEtaLabel,
+    routeStatus,
+    screenDimOverlayOpacity: SCREEN_DIM_OVERLAY_OPACITY,
+    searchState,
+    shouldShowMapStatus,
+    shouldShowPreviewTravelInfo,
+    startNavConfirmVisible,
+    t,
+    tripCompleteVisible,
+    visiblePlaces,
+  };
+  const mapHandlers = {
+    filterHandlers,
+    followCameraRef,
+    handleCloseFilterPicker,
+    handleClosePreview,
+    handleConfirmTripComplete: handlePrimaryTripComplete,
+    handleConfirmActiveArrival,
+    handleDismissActiveArrival,
+    handleExitActiveTrip,
+    handleLocate,
+    handleOpenPlaceDetail,
+    handleResetFilters,
+    handleSelectFilterOption,
+    handleStartRouteFromPreview,
+    handleTopControlsLayout,
+    locateActiveTripNow,
+    refetch,
+    refetchRoute,
+    searchHandlers,
+    setIsMomentUploading,
+    setLayerModalVisible,
+    setMapStyle,
+    setSearchText,
+    setStartNavConfirmVisible,
+    setTripCompleteVisible,
+  };
+
   return (
     <View
       className="flex-1"
@@ -715,6 +795,13 @@ export default function MapScreen() {
         visiblePlaces={visiblePlaces}
       />
 
+      <LocationPermissionState
+        visible={locationPermissionVisible}
+        onDismiss={() => setLocationPermissionVisible(false)}
+        onOpenSettings={handleOpenLocationSettings}
+        t={t}
+      />
+
       <MapScreenTripOverlays
         activeDistanceToNextTurnLabel={activeDistanceToNextTurnLabel}
         activeDistanceToTarget={activeDistanceToTarget}
@@ -753,78 +840,8 @@ export default function MapScreen() {
         updatePreviewTripMutation={updatePreviewTripMutation}
       />
       <MapScreenOverlays
-        activeArrivalVisible={activeArrivalVisible}
-        activeDistanceToTarget={activeDistanceToTarget}
-        activeEventId={activeEventId}
-        activeFilterGroupMeta={activeFilterGroupMeta}
-        activeNextDestination={activeNextDestination}
-        activePlace={activePlace}
-        activeTrip={activeTrip}
-        activeTripLocation={activeTripLocation}
-        activeTripSpeedKmh={activeTripSpeedKmh}
-        activeTargetPoint={activeTargetPoint}
-        completeDayNumber={completeDayNumber}
-        completeIsTripEnd={completeIsTripEnd}
-        createMomentMutation={createMomentMutation}
-        error={error}
-        filterGroups={FILTER_GROUP_OPTIONS}
-        filterHandlers={filterHandlers}
-        filterPickerOptions={filterPickerOptions}
-        filterPickerVisible={filterPickerVisible}
-        filterState={filterState}
-        floatingTabClearance={FLOATING_TAB_CLEARANCE}
-        followCameraRef={followCameraRef}
-        handleCloseFilterPicker={handleCloseFilterPicker}
-        handleClosePreview={handleClosePreview}
-        handleConfirmTripComplete={handlePrimaryTripComplete}
-        handleConfirmActiveArrival={handleConfirmActiveArrival}
-        handleDismissActiveArrival={handleDismissActiveArrival}
-        handleExitActiveTrip={handleExitActiveTrip}
-        handleLocate={handleLocate}
-        handleOpenPlaceDetail={handleOpenPlaceDetail}
-        handleResetFilters={handleResetFilters}
-        handleSelectFilterOption={handleSelectFilterOption}
-        handleStartRouteFromPreview={handleStartRouteFromPreview}
-        handleTopControlsLayout={handleTopControlsLayout}
-        hasActiveFilters={hasActiveFilters}
-        hasMeasuredTopControls={hasMeasuredTopControls}
-        insets={insets}
-        isActiveTripMode={isActiveTripMode}
-        isCompactPreviewCard={isCompactPreviewCard}
-        isMomentUploading={isMomentUploading}
-        isPlacesLoading={isPlacesLoading}
-        isRouteFetching={isRouteFetching}
-        isScreenDimmed={isScreenDimmed}
-        isTripPreviewMode={isTripPreviewMode}
-        layerModalVisible={layerModalVisible}
-        locateActiveTripNow={locateActiveTripNow}
-        mapFabTopOffset={mapFabTopOffset}
-        mapStatusTopOffset={mapStatusTopOffset}
-        mapStyle={mapStyle}
-        mapStyles={MAP_STYLES}
-        mapText={MAP_TEXT}
-        previewTravelLoading={previewTravelLoading}
-        refetch={refetch}
-        refetchRoute={refetchRoute}
-        routeDistanceLabel={routeDistanceLabel}
-        routeEnabled={routeEnabled}
-        routeEtaLabel={routeEtaLabel}
-        routeStatus={routeStatus}
-        screenDimOverlayOpacity={SCREEN_DIM_OVERLAY_OPACITY}
-        searchHandlers={searchHandlers}
-        searchState={searchState}
-        setIsMomentUploading={setIsMomentUploading}
-        setLayerModalVisible={setLayerModalVisible}
-        setMapStyle={setMapStyle}
-        setSearchText={setSearchText}
-        setStartNavConfirmVisible={setStartNavConfirmVisible}
-        setTripCompleteVisible={setTripCompleteVisible}
-        shouldShowMapStatus={shouldShowMapStatus}
-        shouldShowPreviewTravelInfo={shouldShowPreviewTravelInfo}
-        startNavConfirmVisible={startNavConfirmVisible}
-        t={t}
-        tripCompleteVisible={tripCompleteVisible}
-        visiblePlaces={visiblePlaces}
+        mapState={mapState}
+        mapHandlers={mapHandlers}
       />
     </View>
   );

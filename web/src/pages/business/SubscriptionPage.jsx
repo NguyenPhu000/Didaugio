@@ -63,7 +63,8 @@ const STATUS_LABELS = {
   grace: "subscription.status.grace",
   past_due: "subscription.status.past_due",
   canceled: "subscription.status.canceled",
-  trialing: "subscription.status.active",
+  trialing: "subscription.status.trialing",
+  expired: "common.statusExpired",
 };
 
 const INVOICE_STATUS_STYLES = {
@@ -326,7 +327,7 @@ export default function SubscriptionPage() {
                   <div>
                     <p className="text-muted-foreground">{t("common.status")}</p>
                     <p className="font-medium capitalize">
-                      {t(STATUS_LABELS[sub.status] || "common.statusActive")}
+                      {t(STATUS_LABELS[sub.status] || "common.statusUnknown")}
                     </p>
                   </div>
                   <div>
@@ -335,8 +336,12 @@ export default function SubscriptionPage() {
                   </div>
                   <div>
                     <p className="text-muted-foreground">{t("subscription.billingCycle")}</p>
-                    <p className="font-medium capitalize">
-                      {sub.billingCycle || "monthly"}
+                    <p className="font-medium">
+                      {t(
+                        sub.billingCycle === "yearly"
+                          ? "subscription.plans.yearly"
+                          : "subscription.plans.monthly",
+                      )}
                     </p>
                   </div>
                   <div>

@@ -1,5 +1,6 @@
 export const SPLASH_TIMING = Object.freeze({
   BOOTSTRAP_DEADLINE_MS: 1200,
+  MIN_SHOW_MS: 1800,
   BRAND_IN_MS: 2000,
   BRAND_OUT_MS: 6500,
   PROGRESS_END_MS: 7600,
@@ -27,6 +28,8 @@ export function getSplashPhase(elapsedMs) {
   };
 }
 
+
+
 export function createFinishOnce(onFinish) {
   let finished = false;
 
@@ -48,8 +51,10 @@ export function createSplashLifecycle({
   let phase = "prepared";
   let startedAt = 0;
   let playbackFailed = false;
+  let readyPending = false;
   let errorTimer = null;
   let failSafeTimer = null;
+  let readyTimer = null;
 
   const clearTimer = (timerId) => {
     if (timerId !== null) cancel(timerId);
@@ -58,8 +63,10 @@ export function createSplashLifecycle({
   const clearTimers = () => {
     clearTimer(errorTimer);
     clearTimer(failSafeTimer);
+    clearTimer(readyTimer);
     errorTimer = null;
     failSafeTimer = null;
+    readyTimer = null;
   };
 
   const requestExit = (reason) => {
@@ -80,6 +87,19 @@ export function createSplashLifecycle({
     }, remaining);
   };
 
+  const scheduleReadyExit = () => {
+    if (phase !== "active" || readyTimer !== null) return false;
+    const elapsed = Math.max(0, now() - startedAt);
+    if (elapsed >= SPLASH_TIMING.MIN_SHOW_MS) {
+      return requestExit("ready");
+    }
+    readyTimer = schedule(() => {
+      readyTimer = null;
+      requestExit("ready");
+    }, SPLASH_TIMING.MIN_SHOW_MS - elapsed);
+    return true;
+  };
+
   return {
     prepare() {
       if (phase !== "finished") return false;
@@ -87,6 +107,7 @@ export function createSplashLifecycle({
       phase = "prepared";
       startedAt = 0;
       playbackFailed = false;
+      readyPending = false;
       return true;
     },
 
@@ -99,7 +120,20 @@ export function createSplashLifecycle({
         requestExit("timeout");
       }, SPLASH_TIMING.FAIL_SAFE_MS);
       if (playbackFailed) scheduleErrorExit();
+      // Bootstrap can finish before this effect runs; replay the buffered signal.
+      if (readyPending) {
+        readyPending = false;
+        scheduleReadyExit();
+      }
       return !playbackFailed;
+    },
+
+    signalReady() {
+      if (phase === "prepared") {
+        readyPending = true;
+        return true;
+      }
+      return scheduleReadyExit();
     },
 
     playbackError() {

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { View, Text, Pressable } from "react-native";
+import { useTranslation } from "react-i18next";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -13,6 +14,7 @@ import { TOKENS } from "../../constants/design-tokens";
 
 function ToastItem({ toast, onDismiss }) {
   const { id, message, type = "info" } = toast;
+  const { t } = useTranslation();
   
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(20);
@@ -98,7 +100,12 @@ function ToastItem({ toast, onDismiss }) {
 
   return (
     <Animated.View style={[animatedStyle, { marginBottom: 8 }]}>
-      <Pressable onPress={handleDismiss}>
+      <Pressable
+        onPress={handleDismiss}
+        accessibilityRole="button"
+        accessibilityLabel={`${message}. ${t("common.close")}`}
+        accessibilityHint={t("common.close")}
+      >
         <View
           className="flex-row items-center gap-3 rounded-[20px] border px-4 py-3"
           style={{

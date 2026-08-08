@@ -211,7 +211,7 @@ export async function getCashflow({ businessId, ...params } = {}) {
   const dateRange = resolveDateRange(params);
   const type = params.type && params.type !== "all" ? params.type : null;
   const gateway = params.gateway && params.gateway !== "all"
-    ? params.gateway.toUpperCase()
+    ? params.gateway.toLowerCase()
     : null;
 
   const businessScope = getBusinessWhere(businessId);
@@ -234,12 +234,12 @@ export async function getCashflow({ businessId, ...params } = {}) {
       include: {
         booking: {
           include: {
-            business: { select: { id: true, businessName: true } },
+            business: { select: { id: true, name: true } },
             service: {
               include: {
                 place: {
                   include: {
-                    business: { select: { id: true, businessName: true } },
+                    business: { select: { id: true, name: true } },
                   },
                 },
               },
@@ -253,7 +253,7 @@ export async function getCashflow({ businessId, ...params } = {}) {
     prisma.payout.findMany({
       where: payoutScope,
       include: {
-        business: { select: { id: true, businessName: true } },
+        business: { select: { id: true, name: true } },
       },
       orderBy: { updatedAt: "desc" },
       take: 500,
@@ -270,12 +270,12 @@ export async function getCashflow({ businessId, ...params } = {}) {
       include: {
         booking: {
           include: {
-            business: { select: { id: true, businessName: true } },
+            business: { select: { id: true, name: true } },
             service: {
               include: {
                 place: {
                   include: {
-                    business: { select: { id: true, businessName: true } },
+                    business: { select: { id: true, name: true } },
                   },
                 },
               },

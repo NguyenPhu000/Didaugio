@@ -34,7 +34,7 @@ export function useMapActiveTripNavigation({
   mapRef,
   nearbyTriggered,
   resolveTravelMode,
-  showLocationPermissionAlert,
+  showLocationPermissionState,
   viewportHeight,
 }) {
   const navigationTickHandlerRef = useRef(null);
@@ -81,24 +81,24 @@ export function useMapActiveTripNavigation({
         const fg = await Location.requestForegroundPermissionsAsync();
         if (cancelled) return;
         if (fg.status !== "granted") {
-          showLocationPermissionAlert();
+          showLocationPermissionState();
           return;
         }
 
         const bg = await Location.requestBackgroundPermissionsAsync();
         if (!cancelled && bg.status !== "granted") {
-          showLocationPermissionAlert();
+          showLocationPermissionState();
         }
       } catch {
         if (!cancelled) {
-          showLocationPermissionAlert();
+          showLocationPermissionState();
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [isActiveTripMode, showLocationPermissionAlert]);
+  }, [isActiveTripMode, showLocationPermissionState]);
 
   const [activeEventId, setActiveEventId] = useState(null);
   const { data: eventData } = useEventDetail(activeEventId, !!activeEventId, {

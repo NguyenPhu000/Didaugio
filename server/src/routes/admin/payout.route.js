@@ -4,10 +4,11 @@ import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import { auditLog } from "../../middlewares/auditLogMiddleware.js";
 import * as payoutController from "../../controllers/business/payout.controller.js";
 import { getPlatformCommissionSummary } from "../../services/booking/bookingTransaction.service.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 
 const router = Router();
 
-router.use(authenticate);
+router.use(authenticate, requireBackOfficeRole);
 
 // GET /api/admin/payouts - List all payout requests
 router.get(

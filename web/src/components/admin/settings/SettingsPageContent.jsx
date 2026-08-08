@@ -7,24 +7,19 @@ import {
   Shield,
   ToggleLeft,
   Globe,
-  Server,
   Activity,
-  Map,
-  Mail,
-  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import SettingsAutoSave from "@/components/settings/SettingsAutoSave";
 import SettingsSection from "@/components/settings/SettingsSection";
-import FeatureFlagToggle from "@/components/settings/FeatureFlagToggle";
+import SettingsSaveBar from "@/components/settings/SettingsSaveBar";
+import {
+  useBeforeUnloadWarning,
+  useSettingsSaveState,
+} from "@/components/settings/useSettingsSaveState";
 import {
   useSettings,
   useUpdateSettings,
-  useFeatureFlags,
   useUpdateFeatureFlag,
-  useSystemLogs,
   useSystemHealth,
 } from "@/hooks/queries/useSettingsQueries";
 import GeneralTabContent from "./components/GeneralTabContent";
@@ -109,22 +104,32 @@ const mergeRemoteSettings = (prev, data) => {
   };
 };
 
+const withoutFeatureFlags = (settings) => {
+  const { featureFlags: _featureFlags, ...saveableSettings } = settings;
+  return saveableSettings;
+};
+
 const SettingsPageContent = () => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("general");
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [isSaving, setIsSaving] = useState(false);
+  const { isDirty, markSaved, getBaseline } = useSettingsSaveState(
+    withoutFeatureFlags(settings)
+  );
+  useBeforeUnloadWarning(isDirty);
 
-  const { data: remoteSettings, isLoading } = useSettings();
+  const { data: remoteSettings } = useSettings();
 
   useEffect(() => {
     if (remoteSettings?.data) {
-      setSettings((prev) => mergeRemoteSettings(prev, remoteSettings.data));
+      const merged = mergeRemoteSettings(DEFAULT_SETTINGS, remoteSettings.data);
+      setSettings(merged);
+      markSaved(withoutFeatureFlags(merged));
     }
-  }, [remoteSettings]);
+  }, [markSaved, remoteSettings]);
   const updateSettingsMutation = useUpdateSettings();
-  const { data: featureFlagsData } = useFeatureFlags();
   const updateFeatureFlagMutation = useUpdateFeatureFlag();
-  const { data: logsData } = useSystemLogs();
   const { data: healthData } = useSystemHealth();
 
   const updateSectionField = useCallback((section, key, value) => {
@@ -137,7 +142,7 @@ const SettingsPageContent = () => {
     }));
   }, []);
 
-  const handleSave = useCallback(
+  const handleSettingsMutation = useCallback(
     async (currentSettings) => {
       try {
         await updateSettingsMutation.mutateAsync(currentSettings);
@@ -151,6 +156,26 @@ const SettingsPageContent = () => {
     },
     [updateSettingsMutation]
   );
+
+  const handleSave = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      await handleSettingsMutation(settings);
+      markSaved(withoutFeatureFlags(settings));
+    } catch {
+      // The mutation handler already surfaced the API error toast.
+    } finally {
+      setIsSaving(false);
+    }
+  }, [handleSettingsMutation, markSaved, settings]);
+
+  const handleUndo = useCallback(() => {
+    const baseline = getBaseline();
+    setSettings((current) => ({
+      ...baseline,
+      featureFlags: current.featureFlags,
+    }));
+  }, [getBaseline]);
 
   const handleFeatureFlagToggle = useCallback(
     (key, enabled) => {
@@ -232,8 +257,7 @@ const SettingsPageContent = () => {
   ]);
 
   return (
-    <SettingsAutoSave data={settings} onSave={handleSave}>
-      <div className="min-h-screen p-8 bg-[#F4F4F4] relative font-sans">
+      <div className={cn("min-h-screen p-4 sm:p-6 lg:p-8 bg-[#F4F4F4] relative font-sans", isDirty && "pb-28")}>
         <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none" />
 
         <div className="relative z-10 max-w-[1550px] mx-auto">
@@ -246,7 +270,7 @@ const SettingsPageContent = () => {
                   <span className="tim-system bg-black text-white px-2 py-1">
                     HỆ THỐNG // CẤU HÌNH
                   </span>
-                  <p className="tim-meta">
+                  <p className="tim-meta hidden sm:block">
                     Chung, thông báo, bảo mật, tính năng, tích hợp, nhật ký
                   </p>
                 </div>
@@ -263,10 +287,11 @@ const SettingsPageContent = () => {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
+                      aria-current={activeTab === tab.id ? "page" : undefined}
                       className={cn(
-                        "flex items-center gap-3 px-4 py-3 text-left font-mono text-xs uppercase tracking-wider transition-all border shrink-0 w-auto md:w-full",
+                        "flex items-center gap-3 whitespace-nowrap rounded-xl px-4 py-3 text-left font-mono text-sm uppercase tracking-wide transition-all border shrink-0 w-auto md:w-full",
                         activeTab === tab.id
-                          ? "bg-black text-white border-black"
+                          ? "bg-black text-white border-black shadow-sm"
                           : "bg-white text-black border-gray-200 hover:border-black hover:bg-gray-50"
                       )}
                     >
@@ -279,14 +304,27 @@ const SettingsPageContent = () => {
             </div>
 
             <div className="flex-1 min-w-0">
-              <div className="border border-black bg-white p-6">
+              <div className="rounded-2xl border border-black/80 bg-white p-4 shadow-[4px_4px_0_rgba(0,0,0,0.12)] sm:p-6">
                 {tabContent}
               </div>
             </div>
           </div>
         </div>
+
+        <SettingsSaveBar
+          variant="admin"
+          isDirty={isDirty}
+          isSaving={isSaving}
+          onSave={handleSave}
+          onUndo={handleUndo}
+          labels={{
+            save: t("settings.save"),
+            saving: t("settings.saving"),
+            undo: t("settings.undo"),
+            unsaved: t("settings.unsaved"),
+          }}
+        />
       </div>
-    </SettingsAutoSave>
   );
 };
 

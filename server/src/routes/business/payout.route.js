@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { requireActiveBusiness } from "../../middlewares/requireActiveBusiness.js";
+import { requireBusinessOwner } from "../../middlewares/requireBusinessOwner.js";
 import { validateBody, validateParams } from "../../middlewares/validateSchema.js";
 import { createPayoutSchema, payoutIdParamSchema } from "../../models/schemas/business/payout.schema.js";
 import * as payoutController from "../../controllers/business/payout.controller.js";
@@ -8,6 +9,7 @@ import * as payoutController from "../../controllers/business/payout.controller.
 const router = Router();
 
 router.use(authenticate);
+router.use(requireBusinessOwner);
 
 const activeBiz = requireActiveBusiness({ requireContractSigned: true });
 

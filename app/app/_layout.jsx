@@ -1,13 +1,14 @@
 import "../global.css";
 import i18n, { resolveLanguage } from "../src/i18n";
 import { useEffect, useRef, useState } from "react";
-import { View, Alert, AppState } from "react-native";
+import { View, AppState } from "react-native";
 import safeAsyncStorage from "../src/utils/safeAsyncStorage";
 import { Stack, useRouter, useSegments, usePathname } from "expo-router";
 import { PENDING_PAYMENT_BOOKING_KEY } from "../src/modules/booking/hooks/usePayment";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useColorScheme } from "nativewind";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
@@ -33,9 +34,9 @@ import { ToastContainer } from "../src/components/composed/ToastContainer";
 import { useAuthStore } from "../src/stores/authStore";
 import { useUIStore } from "../src/stores/uiStore";
 import { useOfflineSync } from "../src/modules/trips/hooks/useTripsOffline";
-import { useAlertStore } from "../src/stores/alertStore";
 import { GlobalAlert } from "../src/components/composed/GlobalAlert";
 import { isMobileUserRole } from "../src/modules/auth/utils/authRoleAccess";
+import { logger } from "../src/lib/logger";
 import CinematicSplash from "../src/components/splash/CinematicSplash";
 import { SPLASH_TIMING } from "../src/components/splash/cinematicSplashTiming";
 
@@ -71,8 +72,8 @@ function PaymentRecoveryListener() {
             `/payment/result?status=pending_verify&bookingId=${pendingBookingId}`
           );
         }
-      } catch {
-        // silent
+      } catch (error) {
+        logger.warn("[PaymentRecovery] Failed to restore pending payment:", error);
       } finally {
         isProcessingRef.current = false;
       }
@@ -82,9 +83,24 @@ function PaymentRecoveryListener() {
 
   return null;
 }
-
 function OfflineSyncManager() {
   useOfflineSync();
+  return null;
+}
+
+function ThemeSyncManager() {
+  const { setColorScheme } = useColorScheme();
+  const themePreference = useUIStore((state) => state.themePreference || "auto");
+  const appliedPreferenceRef = useRef(null);
+
+  useEffect(() => {
+    if (!['auto', 'light', 'dark'].includes(themePreference)) return;
+    if (appliedPreferenceRef.current === themePreference) return;
+
+    appliedPreferenceRef.current = themePreference;
+    setColorScheme(themePreference === "auto" ? "system" : themePreference);
+  }, [setColorScheme, themePreference]);
+
   return null;
 }
 
@@ -93,7 +109,7 @@ export default function RootLayout() {
   const segments = useSegments();
   const pathname = usePathname();
   
-  // Trạng thái Hydration từ cả 2 store
+  // Tráº¡ng thÃ¡i Hydration tá»« cáº£ 2 store
   const isAuthHydrated = useAuthStore((s) => s.isHydrated);
   const isUiHydrated = useUIStore((s) => s.isHydrated);
   const userLanguage = useUIStore((s) => s.language);
@@ -119,7 +135,7 @@ export default function RootLayout() {
   const [nativeSplashHidden, setNativeSplashHidden] = useState(false);
   const [splashFinished, setSplashFinished] = useState(false);
 
-  // Giới hạn phần chờ hydration trước video để tránh "màn chờ trước màn chờ".
+  // Giá»›i háº¡n pháº§n chá» hydration trÆ°á»›c video Ä‘á»ƒ trÃ¡nh "mÃ n chá» trÆ°á»›c mÃ n chá»".
   useEffect(() => {
     const timer = setTimeout(() => {
       setBootstrapDeadlineReached(true);
@@ -127,7 +143,7 @@ export default function RootLayout() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Ép i18n nhận diện ngôn ngữ ngay khi uiStore vừa đọc xong từ AsyncStorage
+  // Ã‰p i18n nháº­n diá»‡n ngÃ´n ngá»¯ ngay khi uiStore vá»«a Ä‘á»c xong tá»« AsyncStorage
   useEffect(() => {
     if (isUiHydrated && userLanguage) {
       const resolved = resolveLanguage(userLanguage);
@@ -137,7 +153,7 @@ export default function RootLayout() {
     }
   }, [isUiHydrated, userLanguage]);
 
-  // Luồng tính toán trạng thái Sẵn Sàng cuối cùng
+  // Luá»“ng tÃ­nh toÃ¡n tráº¡ng thÃ¡i Sáºµn SÃ ng cuá»‘i cÃ¹ng
   const isStoreReady = isAuthHydrated && isUiHydrated;
   const isFontReady = fontsLoaded || fontError;
   const isReady =
@@ -157,102 +173,6 @@ export default function RootLayout() {
       active = false;
     };
   }, [isReady, nativeSplashHidden]);
-
-  useEffect(() => {
-    const originalAlert = Alert.alert;
-
-    Alert.alert = (title, message, buttons, options) => {
-      let type = "info";
-      const combinedText = `${title || ""} ${message || ""}`.toLowerCase();
-
-      // Detect error type (Vietnamese + English)
-      if (
-        combinedText.includes("lỗi") ||
-        combinedText.includes("thất bại") ||
-        combinedText.includes("không thể") ||
-        combinedText.includes("error") ||
-        combinedText.includes("failed") ||
-        combinedText.includes("thiếu") ||
-        combinedText.includes("bắt buộc") ||
-        combinedText.includes("chưa nhập") ||
-        combinedText.includes("could not") ||
-        combinedText.includes("cannot") ||
-        combinedText.includes("required") ||
-        combinedText.includes("missing")
-      ) {
-        type = "error";
-      } else if (
-        // Detect success type
-        combinedText.includes("thành công") ||
-        combinedText.includes("đã lưu") ||
-        combinedText.includes("đã xóa") ||
-        combinedText.includes("success") ||
-        combinedText.includes("saved") ||
-        combinedText.includes("hoàn tất") ||
-        combinedText.includes("deleted") ||
-        combinedText.includes("completed")
-      ) {
-        type = "success";
-      } else if (
-        // Detect warning type
-        combinedText.includes("cảnh báo") ||
-        combinedText.includes("warning") ||
-        combinedText.includes("chú ý") ||
-        combinedText.includes("lưu ý")
-      ) {
-        type = "warning";
-      } else if (
-        // Detect confirm type
-        combinedText.includes("chắc chắn") ||
-        combinedText.includes("xác nhận") ||
-        combinedText.includes("bạn có muốn") ||
-        combinedText.includes("bạn có chắc") ||
-        combinedText.includes("chắc chắn muốn") ||
-        combinedText.includes("are you sure") ||
-        combinedText.includes("confirm") ||
-        (buttons && buttons.length > 1)
-      ) {
-        type = "confirm";
-      }
-
-      let mappedButtons = [];
-      if (buttons && buttons.length > 0) {
-        mappedButtons = buttons.map((btn) => ({
-          text: btn.text,
-          onPress: () => {
-            useAlertStore.getState().hideAlert();
-            btn.onPress?.();
-          },
-          style:
-            btn.style === "cancel"
-              ? "cancel"
-              : btn.style === "destructive"
-              ? "destructive"
-              : "default",
-        }));
-      } else {
-        mappedButtons = [
-          {
-            text: i18n.t("common.close"),
-            onPress: () => useAlertStore.getState().hideAlert(),
-            style: "default",
-          },
-        ];
-      }
-
-      useAlertStore.getState().showAlert({
-        title,
-        message,
-        type,
-        buttons: mappedButtons,
-        options,
-      });
-    };
-
-    return () => {
-      Alert.alert = originalAlert;
-    };
-  }, []);
 
   useEffect(() => {
     if (!isStoreReady && !bootstrapDeadlineReached) return;
@@ -306,6 +226,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <KeyboardProvider>
           <AppProvider>
+            <ThemeSyncManager />
             <I18nInitializer>
               {isReady && (
                 <>
@@ -369,6 +290,7 @@ export default function RootLayout() {
               {!splashFinished ? (
                 <CinematicSplash
                   active={nativeSplashHidden}
+                  ready={isReady}
                   onFinish={() => setSplashFinished(true)}
                 />
               ) : null}

@@ -47,6 +47,12 @@ import { settleCompletedLedger } from "./financialCore.service.js";
 import { createPaymentTransition } from "../payment/paymentTransition.service.js";
 import { createRefundTransition } from "../payment/refundTransition.service.js";
 import { createCancelledRefundIntentInTransaction, finalizeCancelledRefund } from "./canonicalBookingRefund.service.js";
+import {
+  evaluateBusinessBookingPolicy,
+  getBusinessBookingPolicyMessage,
+  getNoShowRefundPercent,
+  getUserCancellationRefundPercent,
+} from "../business/businessSettings.policy.js";
 
 let expirePendingBookingsEnumWarned = false;
 const paymentTransition = createPaymentTransition();
@@ -77,6 +83,7 @@ const defaultInclude = {
           id: true,
           businessName: true,
           status: true,
+          settings: true,
           commissionRate: true,
         },
       },
@@ -883,6 +890,51 @@ export const getStats = async (userId, roleId) => {
   };
 };
 
+async function autoApproveCreatedBooking(bookingId) {
+  return prisma.$transaction(async (tx) => {
+    await lockBookingRow(tx, bookingId);
+    const current = await tx.booking.findUnique({
+      where: { id: Number(bookingId) },
+      include: defaultInclude,
+    });
+    if (
+      !current ||
+      current.status !== BOOKING_STATUS.PENDING ||
+      current.service?.business?.settings?.bookingRules?.autoApprove !== true
+    ) {
+      return current;
+    }
+
+    const bookingAt = current.bookingAt
+      ? new Date(current.bookingAt)
+      : combineUseDateAndTime(current.useDate, current.useTime);
+    const availability = await checkAvailability(tx, {
+      serviceId: current.serviceId,
+      bookingAt,
+      quantity: current.quantity,
+      resourceId: current.resourceId,
+      excludeBookingId: current.id,
+    });
+    if (!availability.ok) return current;
+
+    const updated = await tx.booking.update({
+      where: { id: current.id },
+      data: {
+        status: BOOKING_STATUS.CONFIRMED,
+        confirmedAt: new Date(),
+      },
+      include: defaultInclude,
+    });
+    await appendBookingActionLog(tx, {
+      bookingId: updated.id,
+      action: BOOKING_ACTION.AUTO_APPROVE,
+      actorUserId: null,
+      metadata: { source: "business_settings" },
+    });
+    return updated;
+  });
+}
+
 /**
  * User-facing booking creation.
  * NOTE: Deposit persistence is transitional via service terms metadata until Prisma migration phase.
@@ -967,7 +1019,7 @@ export const create = async (payload = {}, userId) => {
           },
         },
         business: {
-          select: { id: true, ownerId: true, status: true },
+          select: { id: true, ownerId: true, status: true, settings: true },
         },
       },
     }),
@@ -1021,6 +1073,19 @@ export const create = async (payload = {}, userId) => {
   if (bookingAt.getTime() < now.getTime() - graceMs) {
     throw new ServiceError(
       "Thời gian đặt chỗ phải ở tương lai",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+
+  const bookingPolicy = evaluateBusinessBookingPolicy({
+    settings: service.business?.settings,
+    bookingAt,
+    now,
+  });
+  if (!bookingPolicy.ok) {
+    throw new ServiceError(
+      getBusinessBookingPolicyMessage(bookingPolicy.reason),
       400,
       ERROR_CODES.VALIDATION_ERROR,
     );
@@ -1184,7 +1249,11 @@ export const create = async (payload = {}, userId) => {
     throw error;
   }
 
-  const booking = bookingResult.booking;
+  const shouldAutoApprove =
+    service.business?.settings?.bookingRules?.autoApprove === true;
+  const booking = bookingResult.replayed || !shouldAutoApprove
+    ? bookingResult.booking
+    : (await autoApproveCreatedBooking(bookingResult.booking.id)) || bookingResult.booking;
   const linkedTrip = bookingResult.linkedTrip;
 
   if (bookingResult.replayed) return serializeBookingUser(booking);
@@ -1193,9 +1262,20 @@ export const create = async (payload = {}, userId) => {
     bookingId: booking.id,
     bookingCode: booking.bookingCode,
     userId: booking.userId,
+    businessId: service.business?.id,
     businessOwnerId: service.business?.ownerId,
     requireDeposit: depositPolicy.requireDeposit,
+    status: booking.status,
   });
+
+  if (booking.status === BOOKING_STATUS.CONFIRMED) {
+    eventEmitter.emit(EVENTS.BOOKING.CONFIRMED, {
+      bookingId: booking.id,
+      bookingCode: booking.bookingCode,
+      confirmedBy: null,
+      userId: booking.userId,
+    });
+  }
 
   const result = serializeBookingUser(booking);
   if (linkedTrip) {
@@ -1212,7 +1292,12 @@ export const confirm = async (bookingId, userId, businessNote = undefined) => {
     await lockBookingRow(tx, bookingId);
     const existing = await tx.booking.findUnique({
       where: { id: parseInt(bookingId) },
-      include: { service: true, user: true },
+      include: {
+        service: {
+          include: { business: { select: { settings: true } } },
+        },
+        user: true,
+      },
     });
 
     if (!existing) {
@@ -1228,13 +1313,24 @@ export const confirm = async (bookingId, userId, businessNote = undefined) => {
       "Chỉ có thể xác nhận booking đang chờ",
     );
 
-    // Skip availability check for already-paid bookings (slot already taken at payment time)
     const isPaidPending = existing.status === BOOKING_STATUS.PAID_PENDING_CONFIRM;
-    if (!isPaidPending) {
-      const at = existing.bookingAt
-        ? new Date(existing.bookingAt)
-        : combineUseDateAndTime(existing.useDate, existing.useTime);
+    const at = existing.bookingAt
+      ? new Date(existing.bookingAt)
+      : combineUseDateAndTime(existing.useDate, existing.useTime);
+    const bookingPolicy = evaluateBusinessBookingPolicy({
+      settings: existing.service?.business?.settings,
+      bookingAt: at,
+    });
+    if (!bookingPolicy.ok) {
+      throw new ServiceError(
+        getBusinessBookingPolicyMessage(bookingPolicy.reason),
+        400,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
+    }
 
+    // Skip availability check for already-paid bookings (slot already taken at payment time)
+    if (!isPaidPending) {
       const avail = await checkAvailability(tx, {
         serviceId: existing.serviceId,
         bookingAt: at,
@@ -1325,7 +1421,9 @@ export const cancel = async (bookingId, cancelReason, userId, actorType = "user"
     });
 
     const refundIntent = await createRefundIntent(tx, existing, {
-      actorUserId: userId, reason: cancelReason, idempotencyKey: `booking-cancel:${existing.id}`,
+      actorUserId: userId,
+      reason: cancelReason,
+      idempotencyKey: `booking-cancel:${existing.id}`,
     });
 
     // Decrement voucher usage count if this booking used a voucher
@@ -1361,6 +1459,7 @@ export const cancel = async (bookingId, cancelReason, userId, actorType = "user"
     cancelledBy: userId,
     cancelReason,
     userId: cancelledBooking.userId,
+    businessId: cancelledBooking.businessId,
   });
 
   return serializeBookingUser(cancelledBooking);
@@ -1445,8 +1544,16 @@ export const cancelMyBooking = async (bookingId, userId, cancelReason, overrides
       },
     });
 
+    const refundPercent = getUserCancellationRefundPercent(
+      existing.service?.business?.settings?.bookingRules,
+      existing.bookingAt,
+      cancelledAt,
+    );
     const refundIntent = await createRefundIntent(tx, existing, {
-      actorUserId: normalizedUserId, reason: cancelReason, idempotencyKey: `booking-cancel:${existing.id}`,
+      actorUserId: normalizedUserId,
+      reason: cancelReason,
+      idempotencyKey: `booking-cancel:${existing.id}`,
+      refundPercent,
     });
 
     if (existing.voucherId) {
@@ -1470,6 +1577,7 @@ export const cancelMyBooking = async (bookingId, userId, cancelReason, overrides
         cancelReason,
         source: "profile_user_cancel",
         paymentStatus: existing.payment?.status || null,
+        refundPercent,
       },
     });
 
@@ -1485,6 +1593,7 @@ export const cancelMyBooking = async (bookingId, userId, cancelReason, overrides
     cancelledBy: normalizedUserId,
     cancelReason,
     userId: cancelledBooking.userId,
+    businessId: cancelledBooking.businessId,
   });
 
   return serializeBookingUser(cancelledBooking);
@@ -1583,7 +1692,13 @@ export const markNoShow = async (bookingId, userId) => {
     await lockBookingRow(tx, bookingId);
     const existing = await tx.booking.findUnique({
       where: { id: parseInt(bookingId) },
-      select: { status: true },
+      select: {
+        id: true,
+        status: true,
+        bookingAt: true,
+        userId: true,
+        service: { select: { business: { select: { settings: true } } } },
+      },
     });
     if (!existing) {
       throw new ServiceError(
@@ -1598,11 +1713,27 @@ export const markNoShow = async (bookingId, userId) => {
       `Chỉ có thể đánh dấu không đến với booking đã xác nhận (hiện tại: ${existing.status})`,
     );
 
+    const noShowPolicy = existing.service?.business?.settings?.bookingRules?.noShowPolicy;
+    const refundPercent = getNoShowRefundPercent(noShowPolicy);
+    const refundIntent = await createCancelledRefundIntentInTransaction(tx, existing, {
+      actorUserId: userId,
+      reason: "no_show",
+      idempotencyKey: `booking-no-show:${existing.id}`,
+      refundPercent,
+    });
+
     const updated = await tx.booking.update({
       where: { id: parseInt(bookingId) },
       data: { status: BOOKING_STATUS.NO_SHOW },
       include: defaultInclude,
     });
+
+    if (noShowPolicy === "ban_user") {
+      await tx.user.update({
+        where: { id: existing.userId },
+        data: { status: "banned" },
+      });
+    }
 
     await appendBookingActionLog(tx, {
       bookingId: updated.id,
@@ -1610,17 +1741,21 @@ export const markNoShow = async (bookingId, userId) => {
       actorUserId: userId,
     });
 
-    return updated;
+    return { booking: updated, refundIntent: refundIntent?.attempt || null, refundPercent };
   });
+
+  await finalizeCancelledRefund(booking.refundIntent);
 
   eventEmitter.emit(EVENTS.BOOKING.NO_SHOW, {
-    bookingId: booking.id,
-    bookingCode: booking.bookingCode,
+    bookingId: booking.booking.id,
+    bookingCode: booking.booking.bookingCode,
     markedBy: userId,
-    userId: booking.userId,
+    userId: booking.booking.userId,
+    businessId: booking.booking.businessId,
+    refundPercent: booking.refundPercent,
   });
 
-  return serializeBookingUser(booking);
+  return serializeBookingUser(booking.booking);
 };
 
 export const bulkConfirm = async (bookingIds, userId) => {

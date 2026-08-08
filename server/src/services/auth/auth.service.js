@@ -26,6 +26,7 @@ import ServiceError from "../../utils/serviceError.js";
 import { generateUniqueUsername } from "../../utils/username.js";
 import { OAuth2Client } from "google-auth-library";
 import { invalidateUserCache } from "../../utils/permissionCache.js";
+import { getStaffOperationPermissions } from "../../utils/staffPermissions.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -67,6 +68,10 @@ const getGoogleAllowedAudiences = () => {
 const MAX_FAILED_ATTEMPTS = Number(process.env.AUTH_MAX_FAILED_ATTEMPTS) || 5;
 const LOCKOUT_DURATION_MINUTES = Number(process.env.AUTH_LOCKOUT_DURATION_MINUTES) || 15;
 const LOCKOUT_DURATION = LOCKOUT_DURATION_MINUTES * 60 * 1000;
+const PUBLIC_REGISTRATION_ROLE_IDS = new Set([
+  ROLES.USER,
+  ROLES.BUSINESS,
+]);
 const RESEND_VERIFICATION_GENERIC_MESSAGE =
   "Nếu email tồn tại và chưa xác thực, hệ thống đã gửi lại email xác thực.";
 
@@ -93,6 +98,20 @@ const getUserPermissionNames = async (userId, roleId) => {
 
   if (roleId === ROLES.SUPER_ADMIN) {
     return ["*"];
+  }
+
+  if (roleId === ROLES.STAFF) {
+    const staff = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        businessId: true,
+        businessRole: { select: { permissions: true } },
+      },
+    });
+
+    return staff?.businessId
+      ? Array.from(getStaffOperationPermissions(staff.businessRole?.permissions))
+      : [];
   }
 
   const [rolePermissions, customPermissions] = await Promise.all([
@@ -124,14 +143,13 @@ const getUserPermissionNames = async (userId, roleId) => {
 
 export const register = async (data) => {
   const validated = registerSchema.parse(data);
+  const registrationRoleId = Number(validated.roleId || ROLES.USER);
 
-  // 🚫 BLOCK: GUEST role (id=6) cannot register via web
-  // GUEST is reserved for unauthenticated mobile sessions only
-  if (validated.roleId && validated.roleId === ROLES.GUEST) {
+  if (!PUBLIC_REGISTRATION_ROLE_IDS.has(registrationRoleId)) {
     throw new ServiceError(
-      "GUEST role registration is not allowed via web. Mobile app only.",
+      "Public registration cannot create this role.",
       400,
-      "GUEST_REGISTRATION_NOT_ALLOWED",
+      "PUBLIC_ROLE_REGISTRATION_NOT_ALLOWED",
     );
   }
 
@@ -164,7 +182,7 @@ export const register = async (data) => {
       email: validated.email,
       username: validated.username,
       password: hashedPassword,
-      roleId: validated.roleId || 5, // Default: USER (mobile). Web sends roleId=3 explicitly.
+      roleId: registrationRoleId,
       status: USER_STATUS.ACTIVE, // Assuming active by default for now
       emailVerified: false,
       profile: {

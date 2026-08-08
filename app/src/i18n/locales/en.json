@@ -3,6 +3,7 @@
     "save": "Save",
     "cancel": "Cancel",
     "close": "Close",
+    "offline": "No internet connection",
     "confirm": "Confirm",
     "delete": "Delete",
     "edit": "Edit",
@@ -33,6 +34,7 @@
     "optional": "Optional",
     "free": "Free",
     "appName": "iPoint Genie",
+    "appTagline": "Your smart travel companion",
     "offline": "You are offline — Showing saved data",
     "days": "days",
     "people": "people",
@@ -175,6 +177,11 @@
       "noPlacesDesc": "Come back later or try a different category.",
       "noResultsDesc": "Try a different category or search by name."
     },
+    "error": {
+      "title": "Could not load places",
+      "description": "Check your connection and try again.",
+      "retry": "Try again"
+    },
     "search": {
       "placeholder": "Search places, restaurants, fun spots...",
       "close": "Close",
@@ -234,7 +241,10 @@
       "budget": "Budget",
       "luxury": "Luxury",
       "days": "{{count}} days",
-      "from": "From {{price}}"
+      "from": "From {{price}}",
+      "badge": "SAMPLE ITINERARY • {{location}}",
+      "defaultTitle": "Can Tho experience trip",
+      "defaultRoute": "Explore Can Tho at your own pace"
     },
     "headerBrand": "iPoint Genie",
     "headerGreeting": "Hello, {{name}}",
@@ -548,7 +558,8 @@
       "usageDate": "Usage date",
       "selectTime": "Select time",
       "selected": "Selected",
-      "notSelected": "Not selected"
+      "notSelected": "Not selected",
+      "today": "Today"
     },
     "timeGroups": {
       "morning": "Morning",
@@ -728,6 +739,8 @@
       "topRating": "Top rating",
       "new": "New",
       "about": "About",
+      "listenGuide": "Listen to the spoken guide",
+      "stopGuide": "Stop the spoken guide",
       "practicalInfo": "Practical information",
       "tagLabel": "Tag",
       "contactSection": "Contact",
@@ -1262,6 +1275,7 @@
     "createTripAccessibility": "Create new trip",
     "upcoming": "Upcoming",
     "newTrip": "New trip",
+    "completedStamp": "COMPLETED",
     "destinations": "{{count}} destinations",
     "createFirst": "Create your first trip",
     "startExploring": "Start your journey exploring the world",
@@ -1755,7 +1769,10 @@
     "paused": "Paused",
     "locationPermissionTitle": "Location access required",
     "locationPermissionMessage": "Please grant location permission in Settings so the app can provide real-time navigation.",
+    "locationPermissionCardTitle": "Turn on location for navigation",
+    "locationPermissionCardMessage": "iPoint Genie needs your location to keep the map updated and guide you in real time.",
     "locationPermissionCancel": "Cancel",
+    "locationPermissionLater": "Not now",
     "locationPermissionOpenSettings": "Open Settings"
   },
   "travelMode": {

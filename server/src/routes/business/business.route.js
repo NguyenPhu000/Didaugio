@@ -32,6 +32,8 @@ import {
 } from "../../middlewares/validateSchema.js";
 import { businessDocUpload } from "../../middlewares/uploadMiddleware.js";
 import { requireActiveBusiness } from "../../middlewares/requireActiveBusiness.js";
+import { requireBusinessOwner } from "../../middlewares/requireBusinessOwner.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import { sanitizeBody } from "../../middlewares/sanitizeMiddleware.js";
 import {
   registerBusinessSchema,
@@ -63,8 +65,8 @@ router.use((req, res, next) => {
 });
 
 // ========== Profile (Business Owner) ==========
-router.get("/profile", getProfile);
-router.post("/profile/decrypt", decryptProfile);
+router.get("/profile", requireBusinessOwner, getProfile);
+router.post("/profile/decrypt", requireBusinessOwner, decryptProfile);
 
 router.post(
   "/register",
@@ -82,6 +84,7 @@ router.post(
 
 router.put(
   "/profile",
+  requireBusinessOwner,
   businessDocUpload,
   sanitizeBody(["businessName", "fullName", "address", "taxCode"]),
   validateBody(updateBusinessSchema),
@@ -94,18 +97,25 @@ router.put(
 );
 
 // ========== Dashboard (Business Owner) ==========
-router.get("/dashboard", requireActiveBusiness(), getDashboard);
+router.get("/dashboard", requireBusinessOwner, requireActiveBusiness(), getDashboard);
 
 // ========== My Places (Business Owner - for service creation) ==========
-router.get("/places", requireActiveBusiness(), getMyPlaces);
+router.get(
+  "/places",
+  requireActiveBusiness(),
+  hasPermission("bookings.view"),
+  getMyPlaces,
+);
 
 router.post(
   "/profile/contract-otp",
+  requireBusinessOwner,
   sendContractOtp
 );
 
 router.put(
   "/profile/contract-sign",
+  requireBusinessOwner,
   validateBody(signBusinessContractSchema),
   auditLog({
     action: "SIGN_CONTRACT",
@@ -121,15 +131,17 @@ router.get("/:id/contract", authenticate, downloadContract);
 // ========== Admin (business.view, business.approve) ==========
 router.get(
   "/",
+  requireBackOfficeRole,
   hasPermission("business.view"),
   validateQuery(getBusinessesQuerySchema),
   getAll,
 );
 
-router.get("/:id", hasPermission("business.view"), getById);
+router.get("/:id", requireBackOfficeRole, hasPermission("business.view"), getById);
 
 router.put(
   "/:id/approve",
+  requireBackOfficeRole,
   hasPermission("business.approve"),
   validateBody(approveBusinessSchema),
   auditLog({
@@ -142,6 +154,7 @@ router.put(
 
 router.put(
   "/:id/reject",
+  requireBackOfficeRole,
   hasPermission("business.approve"),
   sanitizeBody(["rejectionReason"]),
   validateBody(rejectBusinessSchema),
@@ -158,6 +171,7 @@ router.put(
 
 router.put(
   "/:id/suspend",
+  requireBackOfficeRole,
   hasPermission("business.approve"),
   sanitizeBody(["suspensionReason"]),
   validateBody(suspendBusinessSchema),
@@ -174,6 +188,7 @@ router.put(
 
 router.put(
   "/:id/reactivate",
+  requireBackOfficeRole,
   hasPermission("business.approve"),
   auditLog({
     action: "REACTIVATE",
@@ -185,6 +200,7 @@ router.put(
 
 router.put(
   "/:id/terminate",
+  requireBackOfficeRole,
   hasPermission("business.approve"),
   sanitizeBody(["terminationReason"]),
   validateBody(terminateBusinessSchema),

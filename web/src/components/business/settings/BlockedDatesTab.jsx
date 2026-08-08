@@ -3,15 +3,17 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Trash2, Plus, Lock, Loader2 } from "lucide-react";
 import {
-  Button,
   Input,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  Label,
 } from "@/components/ui";
-import SettingsSection from "@/components/settings/SettingsSection";
+import { cn } from "@/lib/utils";
+import { BusinessSectionCard } from "@/components/business/ui/BusinessSectionCard";
+import { BUSINESS_TOKENS } from "@/components/business/tokens/businessTokens";
 import { formatDate } from "@/components/business/dashboardWidgetHelpers";
 import { blockedDateApi } from "@/apis/blockedDateApi";
 
@@ -74,58 +76,60 @@ const BlockedDatesTab = () => {
   };
 
   return (
-    <SettingsSection
+    <BusinessSectionCard
       title={t("business.settings.blockedDates.title")}
       description={t("business.settings.blockedDates.description")}
-    >
-      <div className="flex justify-end">
-        <Button
+      action={
+        <button
+          type="button"
           onClick={() => setDialogOpen(true)}
-          className="rounded-none border-2 border-black bg-[#F3E600] text-black hover:bg-black hover:text-[#F3E600] h-8 px-3 uppercase font-bold text-[10px]"
+          className={cn(BUSINESS_TOKENS.buttonPrimary, "inline-flex items-center gap-2")}
         >
-          <Plus className="h-3 w-3 mr-1" />
+          <Plus className="h-4 w-4" />
           {t("business.settings.blockedDates.addDate")}
-        </Button>
-      </div>
-
+        </button>
+      }
+    >
       {loading ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+        <div className="flex items-center justify-center py-10">
+          <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
         </div>
       ) : blockedDates.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-gray-200">
-          <Lock className="h-8 w-8 text-gray-300 mb-2" />
-          <p className="font-mono text-[10px] text-gray-400 uppercase">
+        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-200 py-10 dark:border-zinc-800">
+          <Lock className="h-8 w-8 text-zinc-300 dark:text-zinc-600" />
+          <p className="text-sm text-zinc-400 dark:text-zinc-500">
             {t("business.settings.blockedDates.noBlockedDates")}
           </p>
         </div>
       ) : (
-        <div className="space-y-2 max-h-[400px] overflow-y-auto">
+        <div className="max-h-[400px] space-y-2 overflow-y-auto">
           {blockedDates.map((bd) => (
             <div
               key={bd.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border border-red-200 bg-red-50 px-3 py-2"
+              className="flex flex-col justify-between gap-2 rounded-lg border border-rose-200/70 bg-rose-50/50 px-3 py-2.5 sm:flex-row sm:items-center dark:border-rose-900/50 dark:bg-rose-950/20"
             >
               <div className="min-w-0">
-                <span className="font-mono text-xs font-bold text-red-700">
+                <span className="text-sm font-semibold text-rose-700 dark:text-rose-400">
                   {formatDate(bd.date)}
                 </span>
                 {bd.reason && (
-                  <span className="font-mono text-[10px] text-gray-500 ml-0 sm:ml-2 block sm:inline">
+                  <span className="ml-0 block text-xs text-zinc-500 sm:ml-2 sm:inline dark:text-zinc-400">
                     — {bd.reason}
                   </span>
                 )}
                 {bd.service && (
-                  <span className="font-mono text-[10px] text-gray-400 ml-0 sm:ml-2 block sm:inline">
+                  <span className="ml-0 block text-xs text-zinc-400 sm:ml-2 sm:inline">
                     ({bd.service.name})
                   </span>
                 )}
               </div>
               <button
+                type="button"
                 onClick={() => handleRemove(bd.id)}
-                className="text-red-500 hover:text-red-700 p-1 self-end sm:self-center min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label={t("business.settings.blockedDates.unblockSuccess")}
+                className="flex h-9 w-9 items-center justify-center self-end rounded-lg text-rose-500 transition-colors hover:bg-rose-100 hover:text-rose-700 sm:self-center dark:hover:bg-rose-950/40"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-4 w-4" />
               </button>
             </div>
           ))}
@@ -133,58 +137,57 @@ const BlockedDatesTab = () => {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] max-w-[calc(100%-2rem)]">
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle className="font-black uppercase text-sm">
+            <DialogTitle className="text-base font-semibold">
               {t("business.settings.blockedDates.dialogTitle")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-1">
-              <label className="font-mono text-[11px] uppercase">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 {t("business.settings.blockedDates.dateLabel")}
-              </label>
+              </Label>
               <Input
                 type="date"
                 value={newDate}
                 onChange={(e) => setNewDate(e.target.value)}
-                className="rounded-none border-black"
+                className={BUSINESS_TOKENS.inputBusiness}
               />
             </div>
-            <div className="space-y-1">
-              <label className="font-mono text-[11px] uppercase">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 {t("business.settings.blockedDates.reasonLabel")}
-              </label>
+              </Label>
               <Input
                 value={newReason}
                 onChange={(e) => setNewReason(e.target.value)}
                 placeholder={t("business.settings.blockedDates.reasonPlaceholder")}
-                className="rounded-none border-black"
+                className={BUSINESS_TOKENS.inputBusiness}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
+            <button
+              type="button"
               onClick={() => setDialogOpen(false)}
-              className="rounded-none border-black uppercase font-bold text-xs"
+              className={BUSINESS_TOKENS.buttonSecondary}
             >
               {t("business.settings.blockedDates.cancel")}
-            </Button>
-            <Button
+            </button>
+            <button
+              type="button"
               onClick={handleAdd}
               disabled={submitting}
-              className="rounded-none border-2 border-black bg-[#F3E600] text-black hover:bg-black hover:text-[#F3E600] uppercase font-bold text-xs"
+              className={cn(BUSINESS_TOKENS.buttonPrimary, "inline-flex items-center gap-2 disabled:opacity-50")}
             >
-              {submitting ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-              ) : null}
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {t("business.settings.blockedDates.blockDate")}
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </SettingsSection>
+    </BusinessSectionCard>
   );
 };
 

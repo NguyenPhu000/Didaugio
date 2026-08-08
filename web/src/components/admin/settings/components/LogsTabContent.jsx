@@ -38,14 +38,14 @@ const LogsTabContent = ({ logs }) => {
         description="Giám sát tình trạng hoạt động"
       >
         <div className="grid grid-cols-3 gap-4">
-          <div className="border border-black p-4 space-y-1">
+          <div className="rounded-xl border border-black/30 bg-white p-4 space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Server className="h-4 w-4" />
-              <span className="font-mono text-[10px] uppercase">Uptime</span>
+              <span className="text-xs font-semibold uppercase">Uptime</span>
             </div>
             <p className="font-mono text-2xl font-bold">{uptime}</p>
           </div>
-          <div className="border border-black p-4 space-y-1">
+          <div className="rounded-xl border border-black/30 bg-white p-4 space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground">
               <AlertTriangle className="h-4 w-4" />
               <span className="font-mono text-[10px] uppercase">Lỗi</span>
@@ -59,17 +59,17 @@ const LogsTabContent = ({ logs }) => {
               {errorCount}
             </p>
           </div>
-          <div className="border border-black p-4 space-y-1">
+          <div className="rounded-xl border border-black/30 bg-white p-4 space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Activity className="h-4 w-4" />
-              <span className="font-mono text-[10px] uppercase">
+              <span className="text-xs font-semibold uppercase">
                 Trạng thái
               </span>
             </div>
             <Badge
               variant="outline"
               className={cn(
-                "rounded-none font-mono text-xs uppercase",
+                "rounded-full px-2 py-0.5 text-xs uppercase",
                 health.status === "healthy"
                   ? "border-green-300 text-green-600 bg-green-50"
                   : "border-yellow-300 text-yellow-600 bg-yellow-50"
@@ -93,7 +93,7 @@ const LogsTabContent = ({ logs }) => {
               refetchLogs();
               refetchHealth();
             }}
-            className="rounded-none border-black font-mono text-[10px] uppercase"
+            className="rounded-xl border-black/30 text-sm"
           >
             <RefreshCw className="h-3 w-3 mr-1" />
             Làm mới
@@ -111,26 +111,26 @@ const LogsTabContent = ({ logs }) => {
             recentLogs.map((log, index) => (
               <div
                 key={log.id || index}
-                className="border border-gray-100 px-3 py-2 hover:border-gray-300 transition-colors"
+                className="rounded-xl border border-zinc-200 px-3 py-3 transition-colors hover:border-zinc-400"
               >
                 <div className="flex items-center gap-2">
                   <Badge
                     variant="outline"
                     className={cn(
-                      "rounded-none font-mono text-[9px] uppercase",
+                      "rounded-full px-2 py-0.5 text-xs uppercase",
                       LOG_LEVEL_COLORS[log.level] || LOG_LEVEL_COLORS.info
                     )}
                   >
                     {log.level?.toUpperCase() || "INFO"}
                   </Badge>
-                  <span className="font-mono text-[11px] text-muted-foreground flex items-center gap-1">
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
                     {log.timestamp
                       ? new Date(log.timestamp).toLocaleString("vi-VN")
                       : "N/A"}
                   </span>
                 </div>
-                <p className="font-mono text-xs mt-1 text-gray-700">
+                <p className="mt-1 text-sm leading-relaxed text-gray-700">
                   {log.message || "No message"}
                 </p>
               </div>

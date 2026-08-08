@@ -9,6 +9,11 @@ import {
 } from "../../utils/bookingTimeSlot.js";
 import ServiceError from "../../utils/serviceError.js";
 import {
+  evaluateBusinessBookingPolicy,
+  getOperatingHoursForDate,
+  isWithinOperatingHours,
+} from "../business/businessSettings.policy.js";
+import {
   allowsCapacityOverbooking,
   buildBlockingBookingWhere,
   normalizeRequestedResourceId,
@@ -124,6 +129,7 @@ export async function checkAvailability(tx, payload) {
       durationMinutes: true,
       bufferMinutes: true,
       allowOverbooking: true,
+      business: { select: { settings: true } },
     },
   });
   if (!svc) {
@@ -251,7 +257,7 @@ export async function checkAvailability(tx, payload) {
   });
 
   const used = agg._sum.quantity || 0;
-  const overbookingAllowed = allowsCapacityOverbooking(svc);
+  const overbookingAllowed = allowsCapacityOverbooking(svc, svc.business?.settings);
   return {
     ok: overbookingAllowed || used + quantity <= cap,
     used,
@@ -321,6 +327,7 @@ export async function getAvailableSlots(serviceId, dateStr) {
       allowOverbooking: true,
       businessId: true,
       placeId: true,
+      business: { select: { settings: true } },
     },
   });
 
@@ -331,6 +338,11 @@ export async function getAvailableSlots(serviceId, dateStr) {
   const bookingModel = resolveBookingModel(service);
   const slotDurationMinutes = resolveOccupiedDurationMinutes(service);
   const bufferMinutes = resolveBufferMinutes(service);
+  const businessSettings = service.business?.settings;
+  const dayHours = getOperatingHoursForDate(
+    businessSettings,
+    combineUseDateAndTime(dateStr, "12:00"),
+  );
 
   // Check if date is blocked
   const bookingDate = toUseDateOnly(dateStr);
@@ -422,7 +434,7 @@ export async function getAvailableSlots(serviceId, dateStr) {
     return {
       date: dateStr,
       serviceId: normalizedServiceId,
-      available: resourcesWithSlots.length > 0,
+      available: dayHours.closed !== true && resourcesWithSlots.length > 0,
       bookingModel: "resource",
       slotDurationMinutes,
       bufferMinutes,
@@ -444,17 +456,21 @@ export async function getAvailableSlots(serviceId, dateStr) {
   });
 
   const SLOT_INTERVAL_MINUTES = 30;
-  const overbookingAllowed = allowsCapacityOverbooking(service);
+  const overbookingAllowed = allowsCapacityOverbooking(service, businessSettings);
   const slots = [];
   const now = new Date();
   const isToday = dateStr === toUseDateOnly(now).toISOString().slice(0, 10);
 
-  for (let hour = 6; hour <= 21; hour++) {
+  for (let hour = 0; hour <= 23; hour++) {
     for (let minute = 0; minute < 60; minute += SLOT_INTERVAL_MINUTES) {
       const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
       const slotStart = combineUseDateAndTime(dateStr, time);
 
       if (isToday && slotStart <= now) continue;
+      if (!isWithinOperatingHours(businessSettings, slotStart)) continue;
+      if (!evaluateBusinessBookingPolicy({ settings: businessSettings, bookingAt: slotStart, now }).ok) {
+        continue;
+      }
 
       const usedQty = activeBookings
         .filter((booking) => booking.bookingAt && startOfMinuteUtc(booking.bookingAt).getTime() === slotStart.getTime())

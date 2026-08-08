@@ -1,10 +1,11 @@
 import { logger } from "../../../lib/logger";
 import React from "react";
-import { ActivityIndicator, Alert, Pressable, View } from "react-native";
+import { ActivityIndicator, Pressable, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { MaterialIconsRounded } from "../../../components/primitives/MaterialIconsRounded";
 import safeAsyncStorage from "../../../utils/safeAsyncStorage";
+import { showAppAlert } from "../../../utils/appAlert";
 
 export const CheckInButton = ({
   activeEventId,
@@ -24,7 +25,12 @@ export const CheckInButton = ({
 
     const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
     if (cameraStatus.status !== "granted") {
-      Alert.alert(t("mapScreen.accessRequired"), t("mapScreen.cameraRequired"));
+      showAppAlert({
+        title: t("mapScreen.accessRequired"),
+        message: t("mapScreen.cameraRequired"),
+        type: "warning",
+        buttons: [{ text: t("common.close") }],
+      });
       return;
     }
 
@@ -69,16 +75,31 @@ export const CheckInButton = ({
           const key = `didaugio:event:${activeEventId}:checkedin:${activeNextDestination.placeId}`;
           await safeAsyncStorage.setItem(key, "true");
 
-          Alert.alert(t("mapScreen.checkinSuccess"), t("mapScreen.checkinSuccessDesc"));
+          showAppAlert({
+            title: t("mapScreen.checkinSuccess"),
+            message: t("mapScreen.checkinSuccessDesc"),
+            type: "success",
+            buttons: [{ text: t("common.close") }],
+          });
         } catch (err) {
-          Alert.alert(t("mapScreen.checkinFailed"), err?.message || t("mapScreen.checkinFailedDesc"));
+          showAppAlert({
+            title: t("mapScreen.checkinFailed"),
+            message: err?.message || t("mapScreen.checkinFailedDesc"),
+            type: "error",
+            buttons: [{ text: t("common.close") }],
+          });
         } finally {
           setIsMomentUploading(false);
         }
       };
     } catch (err) {
       logger.error(err);
-      Alert.alert(t("mapScreen.imageError"), t("mapScreen.imageErrorDesc"));
+      showAppAlert({
+        title: t("mapScreen.imageError"),
+        message: t("mapScreen.imageErrorDesc"),
+        type: "error",
+        buttons: [{ text: t("common.close") }],
+      });
       setIsMomentUploading(false);
     }
   };

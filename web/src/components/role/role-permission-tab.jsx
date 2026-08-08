@@ -88,6 +88,7 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
   }, [fetchData]);
 
   const handleTogglePermission = (permissionId) => {
+    if (readOnly) return;
     setSelectedPermissions((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(permissionId)) {
@@ -100,6 +101,7 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
   };
 
   const handleSelectAll = () => {
+    if (readOnly) return;
     const allIds = new Set();
     Object.values(filteredPermissions).forEach((perms) => {
       perms.forEach((p) => allIds.add(p.id));
@@ -108,10 +110,12 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
   };
 
   const handleDeselectAll = () => {
+    if (readOnly) return;
     setSelectedPermissions(new Set());
   };
 
   const handleToggleModule = (module) => {
+    if (readOnly) return;
     const modulePermissions = filteredPermissions[module] || [];
     const moduleIds = modulePermissions.map((p) => p.id);
     const allSelected = moduleIds.every((id) => selectedPermissions.has(id));
@@ -128,6 +132,7 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
   };
 
   const handleSave = async () => {
+    if (readOnly) return;
     try {
       setSaving(true);
       const permissionIds = Array.from(selectedPermissions);

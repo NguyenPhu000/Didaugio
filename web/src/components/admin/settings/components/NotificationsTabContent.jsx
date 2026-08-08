@@ -1,64 +1,88 @@
+import { useTranslation } from "react-i18next";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui";
 import SettingsSection from "@/components/settings/SettingsSection";
 import { cn } from "@/lib/utils";
 
-const NOTIFICATION_TOGGLES = [
+const NOTIFICATION_GROUPS = [
   {
-    section: "EMAIL",
+    key: "email",
+    label: "EMAIL",
     items: [
-      { key: "emailNewBooking", label: "Đặt chỗ mới" },
-      { key: "emailCancellation", label: "Hủy đặt chỗ" },
-      { key: "emailNewReview", label: "Đánh giá mới" },
-      { key: "emailPayout", label: "Rút tiền" },
+      ["emailNewBooking", "Đặt chỗ mới", "Gửi email khi hệ thống nhận đặt chỗ."],
+      ["emailCancellation", "Hủy đặt chỗ", "Thông báo khi khách hoặc nhân viên hủy đặt chỗ."],
+      ["emailNewReview", "Đánh giá mới", "Nhắc quản trị viên khi có phản hồi mới."],
+      ["emailPayout", "Rút tiền", "Cập nhật các yêu cầu và trạng thái rút tiền."],
     ],
   },
   {
-    section: "PUSH",
+    key: "push",
+    label: "PUSH",
     items: [
-      { key: "pushEnabled", label: "Bật thông báo đẩy" },
-      { key: "pushNewBooking", label: "Đặt chỗ mới" },
-      { key: "pushNewReview", label: "Đánh giá mới" },
+      ["pushEnabled", "Bật thông báo đẩy", "Bật kênh thông báo nhanh trên thiết bị."],
+      ["pushNewBooking", "Đặt chỗ mới", "Hiển thị thông báo ngay khi có đặt chỗ."],
+      ["pushNewReview", "Đánh giá mới", "Hiển thị phản hồi mới trong trung tâm thông báo."],
     ],
   },
   {
-    section: "SMS",
+    key: "sms",
+    label: "SMS",
     items: [
-      { key: "smsEnabled", label: "Bật SMS" },
-      { key: "smsNewBooking", label: "Đặt chỗ mới" },
+      ["smsEnabled", "Bật SMS", "Dùng SMS cho các sự kiện cần phản hồi nhanh."],
+      ["smsNewBooking", "Đặt chỗ mới", "Gửi SMS khi có đặt chỗ mới."],
     ],
   },
 ];
 
-const NotificationsTabContent = ({ value, onChange }) => (
-  <SettingsSection
-    title="Cài đặt thông báo"
-    description="Cấu hình email, push và SMS cho từng loại sự kiện"
-  >
-    {NOTIFICATION_TOGGLES.map((group) => (
-      <div key={group.section} className="space-y-2">
-        <Label className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          {group.section}
-        </Label>
-        <div className="space-y-1">
-          {group.items.map((item) => (
-            <div
-              key={item.key}
-              className="flex items-center justify-between border border-gray-200 px-4 py-3 hover:border-black transition-colors"
-            >
-              <span className="font-mono text-xs uppercase tracking-wide">
-                {item.label}
-              </span>
-              <Switch
-                checked={!!value[item.key]}
-                onCheckedChange={(checked) => onChange(item.key, checked)}
-              />
+const NotificationsTabContent = ({ value, onChange }) => {
+  const { t } = useTranslation();
+
+  return (
+    <SettingsSection
+      title={t("settings.adminNotifications.title", {
+        defaultValue: "Cài đặt thông báo",
+      })}
+      description={t("settings.adminNotifications.description", {
+        defaultValue: "Chọn kênh nhận thông báo cho từng loại sự kiện.",
+      })}
+    >
+      <div className="space-y-6">
+        {NOTIFICATION_GROUPS.map((group) => (
+          <div key={group.key} className="space-y-2">
+            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-zinc-500">
+              {group.label}
+            </p>
+            <div className="space-y-2">
+              {group.items.map(([key, label, description]) => {
+                const enabled = !!value[key];
+                return (
+                  <div
+                    key={key}
+                    className={cn(
+                      "flex items-center justify-between gap-4 rounded-xl border px-4 py-3 transition-colors",
+                      enabled
+                        ? "border-emerald-200 bg-emerald-50/70"
+                        : "border-zinc-200 bg-white hover:border-zinc-400"
+                    )}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-zinc-900">{label}</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-zinc-500">
+                        {description}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={enabled}
+                      onCheckedChange={(checked) => onChange(key, checked)}
+                    />
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
-    ))}
-  </SettingsSection>
-);
+    </SettingsSection>
+  );
+};
 
 export default NotificationsTabContent;

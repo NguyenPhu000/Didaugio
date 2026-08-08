@@ -1,5 +1,6 @@
 import { View, Text } from "react-native";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -12,6 +13,7 @@ import { TOKENS } from "../../constants/design-tokens";
 
 export function OfflineToast() {
   const { isOffline } = useOffline();
+  const { t } = useTranslation();
   const translateY = useSharedValue(-80);
   const opacity = useSharedValue(0);
   const insets = useSafeAreaInsets();
@@ -32,6 +34,8 @@ export function OfflineToast() {
 
   return (
     <Animated.View
+      accessible
+      accessibilityRole="alert"
       style={[
         animatedStyle,
         {
@@ -58,7 +62,7 @@ export function OfflineToast() {
           <MaterialIconsRounded name="wifi-off" size={18} color="#fff" />
         </View>
         <Text className="text-white text-[13px] font-semibold flex-1">
-          Không có kết nối mạng
+          {t("common.offline")}
         </Text>
       </View>
     </Animated.View>

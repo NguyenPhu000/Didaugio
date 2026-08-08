@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   BackHandler,
   Image,
   Platform,
@@ -12,6 +11,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { showAppAlertLegacy } from "../../src/utils/appAlert";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { getMyBookingDetailApi } from "@/modules/booking/api/bookingApi";
 import { formatPriceLocale, formatLongDate } from "../../src/utils/dateFormat";
@@ -306,13 +306,13 @@ export default function PaymentResultScreen() {
         setCurrentStatus("failed");
         setBooking(data);
       } else {
-        Alert.alert(
+        showAppAlertLegacy(
           "Đang xác nhận",
           "Hệ thống vẫn đang xử lý giao dịch. Vui lòng thử lại sau ít phút."
         );
       }
     } catch {
-      Alert.alert("Lỗi", "Không thể kiểm tra trạng thái. Vui lòng thử lại.");
+      showAppAlertLegacy("Lỗi", "Không thể kiểm tra trạng thái. Vui lòng thử lại.");
     } finally {
       setIsChecking(false);
     }

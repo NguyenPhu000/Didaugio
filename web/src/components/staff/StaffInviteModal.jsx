@@ -44,7 +44,7 @@ export function StaffInviteModal({ open, onClose, roles = [], onInvite }) {
     try {
       const res = await onInvite({
         email: formData.email,
-        businessRoleId: formData.roleId ? Number(formData.roleId) : null,
+        roleId: formData.roleId ? Number(formData.roleId) : null,
         note: formData.note || null,
       });
       if (res?.inviteLink) {

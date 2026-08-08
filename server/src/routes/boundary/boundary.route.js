@@ -2,6 +2,7 @@ import express from "express";
 import * as boundaryController from "../../controllers/boundary/boundary.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import {
   validateBody,
   validateParams,
@@ -33,6 +34,7 @@ router.get(
 router.post(
   "/cache/invalidate",
   authenticate,
+  requireBackOfficeRole,
   hasPermission("system.edit_config"),
   validateBody(invalidateBoundaryCacheSchema),
   boundaryController.invalidateCache,

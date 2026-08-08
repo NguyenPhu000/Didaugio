@@ -214,13 +214,6 @@ export const authorize = (allowedRoles) => {
   };
 };
 
-/** Admin CMS: SUPER_ADMIN, ADMIN, STAFF */
-export const isAdminOrStaff = authorize([
-  ROLES.SUPER_ADMIN,
-  ROLES.ADMIN,
-  ROLES.STAFF,
-]);
-
 /**
  * SSE-specific auth: accepts token from query param.
  * Only use this for Server-Sent Events endpoints where
@@ -287,4 +280,4 @@ export const authenticateSSE = async (req, res, next) => {
   }
 };
 
-export default { authenticate, authenticateOptional, authenticateSSE, authorize, isAdminOrStaff };
+export default { authenticate, authenticateOptional, authenticateSSE, authorize };

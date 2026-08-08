@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Receipt, WalletCards } from "lucide-react";
+import { Loader2, Receipt, WalletCards, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { formatVND, formatDateTime } from "@/components/business/dashboardWidgetHelpers";
+import FinancialSubNav from "@/components/business/FinancialSubNav";
 import {
   usePayInvoiceFromWallet,
   useSubscriptionInvoices,
@@ -45,18 +47,30 @@ export default function InvoiceHistoryPage() {
   const { t } = useTranslation();
   const [filters, setFilters] = useState({
     status: "all",
+    search: "",
     page: 1,
     limit: 20,
   });
 
   const { data, isLoading, refetch } = useSubscriptionInvoices(filters);
   const payFromWallet = usePayInvoiceFromWallet();
-  const invoices = data?.data?.data || data?.data || [];
+  const rawInvoices = data?.data?.data || data?.data || [];
   const pagination = data?.data?.pagination || {
     page: 1,
     totalPages: 1,
     total: 0,
   };
+
+  // Client-side search fallback if server search isn't performed
+  const invoices = rawInvoices.filter((inv) => {
+    if (!filters.search.trim()) return true;
+    const query = filters.search.toLowerCase();
+    return (
+      inv.invoiceNumber?.toLowerCase().includes(query) ||
+      inv.transactionRef?.toLowerCase().includes(query) ||
+      inv.notes?.toLowerCase().includes(query)
+    );
+  });
 
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8">
@@ -66,14 +80,27 @@ export default function InvoiceHistoryPage() {
             {t("subscription.invoice.title")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {t("subscription.invoice.title")}
+            {t("subscription.invoice.subtitle")}
           </p>
         </div>
       </div>
 
+      <FinancialSubNav activeTab="invoices" />
+
       <Card>
         <CardContent className="space-y-4 p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={filters.search}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, search: e.target.value, page: 1 }))
+                }
+                placeholder="Tìm theo số hóa đơn, mã đối soát..."
+                className="pl-9"
+              />
+            </div>
             <Select
               value={filters.status}
               onValueChange={(value) =>
@@ -91,6 +118,17 @@ export default function InvoiceHistoryPage() {
                 <SelectItem value="canceled">{t(STATUS_LABELS.canceled)}</SelectItem>
               </SelectContent>
             </Select>
+            {(filters.status !== "all" || filters.search) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFilters({ status: "all", search: "", page: 1, limit: 20 })}
+                className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5 mr-1" />
+                Xóa lọc
+              </Button>
+            )}
           </div>
 
           {isLoading ? (
@@ -156,7 +194,9 @@ export default function InvoiceHistoryPage() {
                           ) : (
                             <WalletCards className="mr-1.5 h-3.5 w-3.5" />
                           )}
-                          Thanh toán bằng ví
+                          {payFromWallet.isPending
+                            ? t("subscription.invoice.paying")
+                            : t("subscription.invoice.payWithWallet")}
                         </Button>
                       ) : null}
                     </TableCell>

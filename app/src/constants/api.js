@@ -42,6 +42,9 @@ const getRuntimeHost = () => {
 
   if (!debuggerHost) return null;
   const host = debuggerHost.split(":")[0];
+  if (!host || host.includes(".exp.direct") || host.includes(".ngrok") || host.includes("tunnel")) {
+    return null;
+  }
   return host || null;
 };
 
@@ -64,7 +67,6 @@ const getDevApiUrl = () => {
 // Production build BẮT BUỘC phải có EXPO_PUBLIC_API_URL_PROD —
 // nếu rỗng, in cảnh báo 1 lần trong console để dễ debug.
 if (!__DEV__ && !PROD_ENV_API_URL && !DEV_ENV_API_URL) {
-  // eslint-disable-next-line no-console
   console.warn(
     "[api] Không tìm thấy EXPO_PUBLIC_API_URL_PROD hoặc EXPO_PUBLIC_API_URL — " +
       "mọi request sẽ thất bại. Cập nhật eas.json env block cho profile build.",
@@ -74,7 +76,7 @@ if (!__DEV__ && !PROD_ENV_API_URL && !DEV_ENV_API_URL) {
 export const API_BASE_URL = __DEV__
   ? getDevApiUrl()
   : PROD_ENV_API_URL || DEV_ENV_API_URL;
-export const REQUEST_TIMEOUT = 15000;
+export const REQUEST_TIMEOUT = 10000;
 
 /** AI + routing có thể > 15s; override qua EXPO_PUBLIC_AI_REQUEST_TIMEOUT (ms) */
 const parsedAiTimeout = Number(

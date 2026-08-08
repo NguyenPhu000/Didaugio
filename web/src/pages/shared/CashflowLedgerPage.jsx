@@ -28,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import FinancialSubNav from "@/components/business/FinancialSubNav";
 import { cn } from "@/lib/utils";
 import { exportToCsv, slugifyFilename } from "@/utils/csvExport";
 
@@ -125,11 +126,16 @@ export default function CashflowLedgerPage({
     useRows(filters);
 
   const summary = summaryRes?.data?.data || summaryRes?.data || {};
-  const rows = rowsRes?.data?.data || [];
-  const pagination = rowsRes?.data?.pagination || {
+  const rawRowsData = rowsRes?.data?.data || rowsRes?.data || {};
+  const rows = Array.isArray(rawRowsData)
+    ? rawRowsData
+    : Array.isArray(rawRowsData?.rows)
+      ? rawRowsData.rows
+      : [];
+  const pagination = rawRowsData?.pagination || {
     page: 1,
     totalPages: 1,
-    total: 0,
+    total: rows.length,
   };
 
   const statCards = useMemo(
@@ -259,7 +265,7 @@ export default function CashflowLedgerPage({
                 </TableCell>
                 <TableCell>
                   <div className="text-sm font-medium">
-                    {row.business?.businessName || "-"}
+                    {row.business?.name || row.business?.businessName || "-"}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {row.booking?.bookingCode
@@ -311,6 +317,8 @@ export default function CashflowLedgerPage({
           </Button>
         </div>
       </div>
+
+      <FinancialSubNav activeTab="cashflow" />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {summaryLoading

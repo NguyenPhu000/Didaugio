@@ -23,7 +23,7 @@ const ROLE_NAME_TO_ID = {
   guest: ROLES.GUEST,
 };
 
-const ADMIN_ROLE_IDS = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF];
+const ADMIN_ROLE_IDS = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
 
 const resolveRoleId = (decoded = {}) => {
   if (decoded.roleId) return decoded.roleId;
@@ -92,7 +92,13 @@ export const initSocketIO = (httpServer, allowedOrigins = []) => {
       // Kiểm tra user có bị ban/inactive không
       const user = await prisma.user.findUnique({
         where: { id: Number(userId) },
-        select: { id: true, status: true, deletedAt: true },
+        select: {
+          id: true,
+          status: true,
+          deletedAt: true,
+          roleId: true,
+          businessId: true,
+        },
       });
 
       if (!user || user.deletedAt) {
@@ -116,7 +122,8 @@ export const initSocketIO = (httpServer, allowedOrigins = []) => {
       }
 
       socket.userId = userId;
-      socket.roleId = resolveRoleId(decoded);
+      socket.roleId = user.roleId;
+      socket.businessId = user.roleId === ROLES.STAFF ? user.businessId : null;
       next();
     } catch (err) {
       return next(new Error("Invalid token"));
@@ -138,13 +145,15 @@ export const initSocketIO = (httpServer, allowedOrigins = []) => {
       socket.join("role:admin");
     }
 
-    let businessId = null;
+    let businessId = socket.businessId || null;
     try {
-      const business = await prisma.business.findUnique({
-        where: { ownerId: Number(userId) },
-        select: { id: true },
-      });
-      businessId = business?.id || null;
+      if (!businessId && roleId === ROLES.BUSINESS) {
+        const business = await prisma.business.findUnique({
+          where: { ownerId: Number(userId) },
+          select: { id: true },
+        });
+        businessId = business?.id || null;
+      }
       if (businessId) {
         socket.join(`business:${businessId}`);
       }

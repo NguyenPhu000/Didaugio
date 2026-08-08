@@ -2,6 +2,7 @@ import express from "express";
 import * as controller from "../../controllers/review/adminReview.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import { auditLog } from "../../middlewares/auditLogMiddleware.js";
 import {
   validateBody,
@@ -18,7 +19,7 @@ import {
 
 const router = express.Router();
 
-router.use(authenticate);
+router.use(authenticate, requireBackOfficeRole);
 
 // Review moderation permission: reviews.moderate (new) or reviews.hide (backward compat)
 const moderationAccess = ["reviews.moderate", "reviews.hide"];

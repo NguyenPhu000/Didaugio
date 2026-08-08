@@ -1,7 +1,7 @@
 import express from "express";
 import * as tagGroupController from "../../controllers/tag/tagGroup.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
-import { blockGuestFromAdmin } from "../../middlewares/blockGuestFromAdmin.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import { requirePermission } from "../../middlewares/permissionMiddleware.js";
 import { validateBody, validateParams } from "../../middlewares/validateSchema.js";
 import {
@@ -17,7 +17,7 @@ router.get("/", tagGroupController.getTagGroups);
 router.post(
   "/",
   authenticate,
-  blockGuestFromAdmin,
+  requireBackOfficeRole,
   requirePermission("categories.manage_tags"),
   validateBody(createTagGroupSchema),
   tagGroupController.createTagGroup,
@@ -26,7 +26,7 @@ router.post(
 router.patch(
   "/:id",
   authenticate,
-  blockGuestFromAdmin,
+  requireBackOfficeRole,
   requirePermission("categories.manage_tags"),
   validateParams(tagGroupIdParamSchema),
   validateBody(updateTagGroupSchema),
@@ -36,7 +36,7 @@ router.patch(
 router.delete(
   "/:id",
   authenticate,
-  blockGuestFromAdmin,
+  requireBackOfficeRole,
   requirePermission("categories.manage_tags"),
   validateParams(tagGroupIdParamSchema),
   tagGroupController.deleteTagGroup,

@@ -28,6 +28,10 @@ import {
   BOOKING_TRANSITION,
 } from "./bookingStateMachine.js";
 import { createCancelledRefundIntentInTransaction, finalizeCancelledRefund } from "./canonicalBookingRefund.service.js";
+import {
+  evaluateBusinessBookingPolicy,
+  getBusinessBookingPolicyMessage,
+} from "../business/businessSettings.policy.js";
 
 const scheduleInclude = {
   service: {
@@ -105,6 +109,16 @@ function matchRuleConditions(conditions, booking) {
     return false;
   }
   return true;
+}
+
+function assertBusinessBookingPolicy(settings, bookingAt) {
+  const result = evaluateBusinessBookingPolicy({ settings, bookingAt });
+  if (result.ok) return;
+  throw new ServiceError(
+    getBusinessBookingPolicyMessage(result.reason),
+    400,
+    ERROR_CODES.VALIDATION_ERROR,
+  );
 }
 
 /**
@@ -237,7 +251,11 @@ export async function rescheduleBooking(
     await lockBookingRow(tx, bookingId);
     const existing = await tx.booking.findUnique({
       where: { id: parseInt(bookingId, 10) },
-      include: { service: true },
+      include: {
+        service: {
+          include: { business: { select: { settings: true } } },
+        },
+      },
     });
     if (!existing) {
       throw new ServiceError(
@@ -252,6 +270,7 @@ export async function rescheduleBooking(
       "Chỉ có thể đổi lịch booking đang chờ hoặc đã xác nhận",
     );
 
+    assertBusinessBookingPolicy(existing.service?.business?.settings, newAt);
     const avail = await checkAvailability(tx, {
       serviceId: existing.serviceId,
       bookingAt: newAt,
@@ -356,7 +375,11 @@ export async function quickApproveBooking(bookingId, actorUserId) {
     await lockBookingRow(tx, bookingId);
     const existing = await tx.booking.findUnique({
       where: { id: parseInt(bookingId, 10) },
-      include: { service: true },
+      include: {
+        service: {
+          include: { business: { select: { settings: true } } },
+        },
+      },
     });
     if (!existing) {
       throw new ServiceError(
@@ -372,6 +395,7 @@ export async function quickApproveBooking(bookingId, actorUserId) {
     );
 
     const at = resolveBookingAt(existing);
+    assertBusinessBookingPolicy(existing.service?.business?.settings, at);
     const avail = await checkAvailability(tx, {
       serviceId: existing.serviceId,
       bookingAt: at,
@@ -494,7 +518,11 @@ export async function autoApproveIfMatchRules(bookingId) {
     await lockBookingRow(tx, bookingId);
     const booking = await tx.booking.findUnique({
       where: { id: parseInt(bookingId, 10) },
-      include: { service: true },
+      include: {
+        service: {
+          include: { business: { select: { settings: true } } },
+        },
+      },
     });
     if (!booking) {
       throw new ServiceError(
@@ -506,6 +534,7 @@ export async function autoApproveIfMatchRules(bookingId) {
     if (booking.status !== BOOKING_STATUS.PENDING) {
       return { applied: false, reason: "NOT_PENDING" };
     }
+    assertBusinessBookingPolicy(booking.service?.business?.settings, resolveBookingAt(booking));
 
     const rules = await tx.autoApproveRule.findMany({
       where: {

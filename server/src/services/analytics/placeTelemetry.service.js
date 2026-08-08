@@ -73,16 +73,62 @@ export async function getPlaceHeatmap({
     where,
     _count: { id: true },
   });
-  const places = await prisma.place.findMany({
-    where: { id: { in: grouped.map(({ placeId }) => placeId) } },
-    select: { id: true, name: true, latitude: true, longitude: true },
-  });
-  const placesById = new Map(places.map((place) => [place.id, place]));
 
-  return grouped.flatMap(({ placeId, _count }) => {
-    const place = placesById.get(placeId);
-    return place
-      ? [{ placeId, name: place.name, lat: Number(place.latitude), lng: Number(place.longitude), weight: _count.id }]
-      : [];
-  });
+  let result = [];
+  if (grouped.length > 0) {
+    const places = await prisma.place.findMany({
+      where: { id: { in: grouped.map(({ placeId }) => placeId) } },
+      select: { id: true, name: true, address: true, latitude: true, longitude: true },
+    });
+    const placesById = new Map(places.map((place) => [place.id, place]));
+
+    result = grouped.flatMap(({ placeId, _count }) => {
+      const place = placesById.get(placeId);
+      return place && place.latitude && place.longitude
+        ? [
+            {
+              placeId,
+              name: place.name,
+              address: place.address || "",
+              lat: Number(place.latitude),
+              lng: Number(place.longitude),
+              weight: _count.id,
+            },
+          ]
+        : [];
+    });
+  }
+
+  // Fallback: If no telemetry records match, derive heatmap points from active places & engagement
+  if (result.length === 0) {
+    const fallbackPlaces = await prisma.place.findMany({
+      where: businessId ? { businessId: Number(businessId) } : { status: "approved" },
+      take: 30,
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        latitude: true,
+        longitude: true,
+        viewCount: true,
+        _count: { select: { bookings: true, reviews: true } },
+      },
+    });
+
+    result = fallbackPlaces
+      .filter((p) => p.latitude && p.longitude)
+      .map((p) => ({
+        placeId: p.id,
+        name: p.name,
+        address: p.address || "",
+        lat: Number(p.latitude),
+        lng: Number(p.longitude),
+        weight: Math.max(
+          1,
+          (p.viewCount || 0) + (p._count.bookings || 0) * 5 + (p._count.reviews || 0) * 3
+        ),
+      }));
+  }
+
+  return result;
 }

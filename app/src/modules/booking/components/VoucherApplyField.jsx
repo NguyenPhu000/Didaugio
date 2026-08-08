@@ -144,6 +144,8 @@ export function VoucherApplyField({
             hitSlop={8}
             onPress={handleClear}
             style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+            accessibilityRole="button"
+            accessibilityLabel={t("booking.voucher.remove")}
           >
             <MaterialIconsRounded
               name="close"
@@ -199,10 +201,16 @@ export function VoucherApplyField({
             paddingHorizontal: 14,
             paddingVertical: 8,
             borderRadius: 10,
-            backgroundColor:
-              applied || !code.trim() || validateMutation.isPending
-                ? theme.surfaceMuted
-                : theme.neon,
+              backgroundColor:
+                applied || !code.trim() || validateMutation.isPending
+                  ? theme.surfaceMuted
+                  : theme.neon,
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={t("booking.voucher.apply")}
+          accessibilityState={{
+            disabled: applied || !code.trim() || validateMutation.isPending,
+            busy: validateMutation.isPending,
           }}
         >
           {validateMutation.isPending ? (
@@ -272,6 +280,9 @@ export function VoucherApplyField({
               borderColor: theme.glassBorder,
               backgroundColor: theme.glass,
             }}
+            accessibilityRole="button"
+            accessibilityLabel={showPicker ? t("booking.voucher.hideList") : t("booking.voucher.showList", { count: vouchers.length })}
+            accessibilityState={{ expanded: showPicker }}
           >
             <MaterialIconsRounded
               name="confirmation-number"
@@ -310,6 +321,9 @@ export function VoucherApplyField({
                         backgroundColor: theme.glass,
                         gap: 6,
                       }}
+                      accessibilityRole="button"
+                      accessibilityLabel={voucher.code}
+                      accessibilityState={{ selected: value?.voucherId === voucher.id }}
                     >
                       <View
                         style={{

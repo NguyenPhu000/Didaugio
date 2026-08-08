@@ -158,7 +158,10 @@ export const updateProfile = async (req, res, next) => {
 
 export const getMyPlaces = async (req, res, next) => {
   try {
-    const places = await businessProfileService.getMyPlaces(req.user.userId);
+    const places = await businessProfileService.getMyPlaces(
+      req.user.userId,
+      req.activeBusiness?.id,
+    );
     res.json({ success: true, data: places });
   } catch (error) {
     next(error);

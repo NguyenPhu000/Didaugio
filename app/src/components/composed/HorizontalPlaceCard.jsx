@@ -4,7 +4,12 @@ import { Image } from "expo-image";
 import { Star, MapPin } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import { resolvePlaceImageUri, getCategoryIcon, PLACE_IMAGE_BLURHASH } from "../../lib/media-url";
+import {
+  getCategoryIcon,
+  getOptimizedCloudinaryUrl,
+  PLACE_IMAGE_BLURHASH,
+  resolvePlaceImageUri,
+} from "../../lib/media-url";
 import { CATEGORY_COLORS, TOKENS } from "../../constants/design-tokens";
 
 function formatPlacePrice(place, t) {
@@ -38,7 +43,7 @@ function HorizontalPlaceCardInner({ place, onPressDetail }) {
 
   if (!place) return null;
 
-  const rawImg = resolvePlaceImageUri(place);
+  const rawImg = getOptimizedCloudinaryUrl(resolvePlaceImageUri(place), 400);
   const previewImg = imgError ? null : rawImg;
   const rating = Number(place?.ratingAvg ?? place?.averageRating ?? 0);
 
@@ -72,6 +77,7 @@ function HorizontalPlaceCardInner({ place, onPressDetail }) {
             placeholder={{ blurhash: PLACE_IMAGE_BLURHASH }}
             placeholderContentFit="cover"
             cachePolicy="memory-disk"
+            recyclingKey={`hpc-${place.id}`}
             onError={handleImageError}
           />
         ) : (
@@ -106,7 +112,7 @@ function HorizontalPlaceCardInner({ place, onPressDetail }) {
         </Text>
 
         <View style={styles.locationRow}>
-          <MapPin size={11} color="#64748B" />
+          <MapPin size={11} color={TOKENS.color.semantic.slate[500]} />
           <Text style={styles.locationText} numberOfLines={1} ellipsizeMode="tail">
             {locationLabel}
           </Text>
@@ -119,10 +125,18 @@ function HorizontalPlaceCardInner({ place, onPressDetail }) {
           </Text>
           
           <View style={styles.ratingRow}>
-            <Star size={12} color="#F59E0B" fill="#F59E0B" />
-            <Text style={styles.ratingText}>
-              {rating > 0 ? rating.toFixed(1) : "4.8"}
-            </Text>
+            {rating > 0 ? (
+              <>
+                <Star
+                  size={12}
+                  color={TOKENS.color.semantic.star}
+                  fill={TOKENS.color.semantic.star}
+                />
+                <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
+              </>
+            ) : (
+              <Text style={styles.ratingText}>{t("place.detail.new")}</Text>
+            )}
           </View>
         </View>
       </View>
@@ -137,17 +151,17 @@ const styles = StyleSheet.create({
     width: 236,
     height: 205,
     borderRadius: 20,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: TOKENS.color.surface.light,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: TOKENS.color.semantic.slate[200],
     boxShadow: "0 6px 20px rgba(15, 23, 42, 0.07)",
     marginRight: 12,
   },
   imageWrap: {
     width: "100%",
     height: 120,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: TOKENS.color.semantic.slate[100],
     position: "relative",
   },
   fallbackImageWrap: {
@@ -166,7 +180,7 @@ const styles = StyleSheet.create({
     maxWidth: 160,
   },
   categoryBadgeText: {
-    color: "#FFFFFF",
+    color: TOKENS.color.surface.light,
     fontSize: 10,
     fontFamily: TOKENS.font.medium,
   },
@@ -176,7 +190,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   placeName: {
-    color: "#0F172A",
+    color: TOKENS.color.semantic.slate[900],
     fontSize: 14,
     fontFamily: TOKENS.font.semibold,
     lineHeight: 19,
@@ -189,7 +203,7 @@ const styles = StyleSheet.create({
   },
   locationText: {
     flex: 1,
-    color: "#64748B",
+    color: TOKENS.color.semantic.slate[500],
     fontSize: 11.5,
     fontFamily: TOKENS.font.body,
   },
@@ -199,11 +213,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
+    borderTopColor: TOKENS.color.semantic.slate[100],
     marginTop: 4,
   },
   priceText: {
-    color: "#2563EB",
+    color: TOKENS.color.primary[600],
     fontSize: 12,
     fontFamily: TOKENS.font.semibold,
     fontVariant: ["tabular-nums"],
@@ -214,13 +228,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    backgroundColor: "#FEF3C7",
+    backgroundColor: TOKENS.color.semantic.starSurface,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 10,
   },
   ratingText: {
-    color: "#92400E",
+    color: TOKENS.color.semantic.starText,
     fontSize: 11,
     fontFamily: TOKENS.font.semibold,
     fontVariant: ["tabular-nums"],

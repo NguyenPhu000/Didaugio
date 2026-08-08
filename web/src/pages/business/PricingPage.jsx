@@ -55,48 +55,50 @@ export default function PricingPage() {
   ];
 
   return (
-    <div className="space-y-8 p-4 md:p-6 lg:p-8">
+    <div className="space-y-8 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="text-center">
-        <h1 className="text-3xl font-bold tracking-tight">
+      <div className="animate-fade-down text-center space-y-2 max-w-2xl mx-auto">
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
           {t("subscription.plans.title")}
         </h1>
-        <p className="mt-2 text-muted-foreground">
+        <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base leading-relaxed">
           {t("subscription.plans.subtitle")}
         </p>
       </div>
 
       {/* Billing toggle */}
-      <div className="flex items-center justify-center gap-3">
-        <button
-          className={cn(
-            "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
-            billingCycle === "monthly"
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground hover:bg-muted/80",
-          )}
-          onClick={() => setBillingCycle("monthly")}
-        >
-          {t("subscription.plans.monthly")}
-        </button>
-        <button
-          className={cn(
-            "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
-            billingCycle === "yearly"
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground hover:bg-muted/80",
-          )}
-          onClick={() => setBillingCycle("yearly")}
-        >
-          {t("subscription.plans.yearly")}
-          <Badge variant="secondary" className="ml-1.5 text-xs">
-            {t("subscription.plans.yearlyDiscount")}
-          </Badge>
-        </button>
+      <div className="animate-fade-up [animation-delay:100ms] flex items-center justify-center gap-3">
+        <div className="p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center shadow-inner">
+          <button
+            className={cn(
+              "rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all duration-300",
+              billingCycle === "monthly"
+                ? "bg-emerald-500 text-slate-950 shadow-md scale-105"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
+            )}
+            onClick={() => setBillingCycle("monthly")}
+          >
+            {t("subscription.plans.monthly")}
+          </button>
+          <button
+            className={cn(
+              "rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center gap-1.5",
+              billingCycle === "yearly"
+                ? "bg-emerald-500 text-slate-950 shadow-md scale-105"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white",
+            )}
+            onClick={() => setBillingCycle("yearly")}
+          >
+            {t("subscription.plans.yearly")}
+            <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-[10px] uppercase font-bold">
+              {t("subscription.plans.yearlyDiscount")}
+            </Badge>
+          </button>
+        </div>
       </div>
 
       {/* Plan cards */}
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="animate-fade-up [animation-delay:200ms] grid gap-6 md:grid-cols-3">
         {sortedPlans.map((plan) => (
           <PlanCard
             key={plan.id}
@@ -115,15 +117,15 @@ export default function PricingPage() {
 
       {/* Feature comparison */}
       {allFeatures.length > 0 && (
-        <div className="mx-auto max-w-4xl">
-          <h2 className="mb-4 text-xl font-semibold">{t("subscription.plans.compareFeatures")}</h2>
-          <div className="rounded-lg border">
+        <div className="animate-fade-up [animation-delay:300ms] mx-auto max-w-5xl pt-6">
+          <h2 className="mb-4 text-xl font-bold tracking-tight text-slate-900 dark:text-white">{t("subscription.plans.compareFeatures")}</h2>
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl overflow-hidden shadow-sm">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[280px]">{t("subscription.plans.feature")}</TableHead>
+                <TableRow className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
+                  <TableHead className="w-[280px] font-bold text-slate-900 dark:text-white">{t("subscription.plans.feature")}</TableHead>
                   {sortedPlans.map((plan) => (
-                    <TableHead key={plan.id} className="text-center">
+                    <TableHead key={plan.id} className="text-center font-bold text-slate-900 dark:text-white">
                       {plan.name}
                     </TableHead>
                   ))}
@@ -131,14 +133,14 @@ export default function PricingPage() {
               </TableHeader>
               <TableBody>
                 {allFeatures.map((feature) => (
-                  <TableRow key={feature}>
-                    <TableCell className="text-sm">{feature}</TableCell>
+                  <TableRow key={feature} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/80 dark:hover:bg-slate-800/30">
+                    <TableCell className="text-sm font-medium text-slate-700 dark:text-slate-300">{feature}</TableCell>
                     {sortedPlans.map((plan) => (
                       <TableCell key={plan.id} className="text-center">
                         {(plan.features || []).includes(feature) ? (
                           <Check className="mx-auto h-4 w-4 text-emerald-500" />
                         ) : (
-                          <X className="mx-auto h-4 w-4 text-muted-foreground" />
+                          <X className="mx-auto h-4 w-4 text-slate-300 dark:text-slate-700" />
                         )}
                       </TableCell>
                     ))}

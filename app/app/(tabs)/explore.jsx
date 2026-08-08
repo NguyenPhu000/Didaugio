@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Linking,
   StyleSheet,
   Text,
@@ -58,6 +57,7 @@ import { AnnouncementBanner } from "../../src/modules/explore/components/Announc
 import { BlurCarousel } from "../../src/components/reacticx/blur-carousel";
 
 import { useSavePlace, useUnsavePlace, useSavedPlaces } from "../../src/modules/saved/hooks/useSaved";
+import { showAppAlert } from "../../src/utils/appAlert";
 
 const FOOD_HINTS = ["ẩm thực", "food", "restaurant", "ăn", "quán", "bánh"].map(
   (item) => normalizeText(item),
@@ -98,6 +98,7 @@ export default function ExploreScreen() {
   const {
     data: exploreData,
     isLoading,
+    isError: isExploreError,
     isRefetching,
     refetch,
     fetchNextPage,
@@ -163,10 +164,15 @@ export default function ExploreScreen() {
 
   const handleSavePlace = useCallback(async (place) => {
     if (!isLoggedIn) {
-      Alert.alert(t("explore.toast.loginToSave"), t("explore.toast.loginToSaveDesc"), [
-        { text: t("common.later"), style: "cancel" },
-        { text: t("common.login"), onPress: () => router.push("/(auth)/login") },
-      ]);
+      showAppAlert({
+        title: t("explore.toast.loginToSave"),
+        message: t("explore.toast.loginToSaveDesc"),
+        type: "confirm",
+        buttons: [
+          { text: t("common.later"), style: "cancel" },
+          { text: t("common.login"), onPress: () => router.push("/(auth)/login") },
+        ],
+      });
       return;
     }
     if (!place?.id) return;
@@ -382,7 +388,9 @@ export default function ExploreScreen() {
   }, [router, t]);
 
   const isInitialLoading = isLoading || isLoadingEvents || isLoadingCms;
-  const showEmpty = allPlaces.length === 0 && !isInitialLoading;
+  const showExploreError = isExploreError && allPlaces.length === 0 && !isInitialLoading;
+  const showEmpty = allPlaces.length === 0 && !isInitialLoading && !showExploreError;
+  const showEmptyState = showExploreError || showEmpty;
 
   const { width: screenWidth } = useWindowDimensions();
 
@@ -402,8 +410,8 @@ export default function ExploreScreen() {
   const emptyOpacity = useSharedValue(0);
 
   useEffect(() => {
-    emptyOpacity.value = showEmpty ? withTiming(1, { duration: 250 }) : 0;
-  }, [showEmpty, emptyOpacity]);
+    emptyOpacity.value = showEmptyState ? withTiming(1, { duration: 250 }) : 0;
+  }, [showEmptyState, emptyOpacity]);
 
   const emptyAnimStyle = useAnimatedStyle(() => ({ opacity: emptyOpacity.value }));
 
@@ -539,7 +547,24 @@ export default function ExploreScreen() {
             ) : null}
           </View>
 
-          {showEmpty ? (
+          {showExploreError ? (
+            <Animated.View style={[styles.emptyContainer, emptyAnimStyle]}>
+              <View style={styles.emptyIconWrapper}>
+                <MaterialIconsRounded name="cloud-off" size={32} color={APPLE_THEME.textMuted} />
+              </View>
+              <Text style={styles.emptyTitle}>{t("explore.error.title")}</Text>
+              <Text style={styles.emptyDesc}>{t("explore.error.description")}</Text>
+              <Pressable
+                haptic="light"
+                onPress={refetch}
+                style={styles.emptyActionBtn}
+                accessibilityRole="button"
+                accessibilityLabel={t("explore.error.retry")}
+              >
+                <Text style={styles.emptyActionText}>{t("explore.error.retry")}</Text>
+              </Pressable>
+            </Animated.View>
+          ) : showEmpty ? (
             <Animated.View style={[styles.emptyContainer, emptyAnimStyle]}>
               <View style={styles.emptyIconWrapper}>
                 <MaterialIconsRounded name="explore-off" size={32} color={APPLE_THEME.textMuted} />
@@ -582,7 +607,7 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: TOKENS.color.surface.light,
   },
   scrollContent: {
     paddingTop: 4,
@@ -595,7 +620,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 40,
     borderRadius: 999,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: TOKENS.color.surface.light,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(24,24,25,0.14)",
     gap: 10,
@@ -604,7 +629,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#181819",
+    backgroundColor: TOKENS.color.surface.dark,
   },
   filterText: {
     flex: 1,
@@ -620,7 +645,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: APPLE_THEME.white,
-    shadowColor: "#000",
+    shadowColor: TOKENS.color.semantic.apple.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 3,

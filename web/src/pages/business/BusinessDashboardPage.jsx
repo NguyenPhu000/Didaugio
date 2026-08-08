@@ -190,15 +190,17 @@ const BusinessDashboardPage = memo(() => {
   }, [navigate]);
 
   return (
-    <div className="space-y-4 p-4 md:space-y-6 md:p-6 lg:p-8 min-h-screen">
-      {/* Welcome Banner */}
-      <WelcomeBanner
-        name={user?.fullName || user?.username}
-        role={user?.businessProfile?.businessType || t("business.dashboard.businessOwner")}
-      />
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8 min-h-screen max-w-[1600px] mx-auto">
+      {/* Top Bar Chrome Header & Welcome Banner */}
+      <div className="animate-fade-down relative z-10">
+        <WelcomeBanner
+          name={user?.fullName || user?.username}
+          role={user?.businessProfile?.businessType || t("business.dashboard.businessOwner")}
+        />
+      </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      {/* Stat Cards Grid with Staggered Fade-Up */}
+      <div className="animate-fade-up [animation-delay:150ms] grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => <BusinessStatCardSkeleton key={i} />)
         ) : (
@@ -242,8 +244,8 @@ const BusinessDashboardPage = memo(() => {
         )}
       </div>
 
-      {/* Charts Row */}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {/* Charts & Analytics Section with Hero-Rise Animation */}
+      <div className="animate-fade-up [animation-delay:300ms] grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {/* Booking by status */}
         {isLoading ? (
           <BusinessSectionCardSkeleton rows={5} />

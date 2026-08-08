@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import NodeCache from "node-cache";
 import { appConfig } from "../../config/app.config.js";
 import logger from "../../config/logger.js";

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert } from "react-native";
 import { calculateRouteApi } from "../../../api/routingApi";
 import { sendLocalNotification } from "../../../lib/local-notifications";
 import { mapRoutingResponse } from "./routeMapping";
@@ -8,6 +7,7 @@ import {
   buildTripPreviewStops,
 } from "../utils/tripRoutePreview";
 import { buildTripPreviewRouteRequest } from "./useMapTripPreviewUtils";
+import { showAppAlert } from "../../../utils/appAlert";
 
 export function useMapTripPreview({
   activeTrip,
@@ -125,7 +125,12 @@ export function useMapTripPreview({
   const handleConfirmTripPreview = useCallback(() => {
     if (!previewTrip?.id || updatePreviewTripMutation.isPending) return;
     if (previewStops.length === 0) {
-      Alert.alert(t("common.error"), t("mapScreen.previewNoStops"));
+      showAppAlert({
+        title: t("common.error"),
+        message: t("mapScreen.previewNoStops"),
+        type: "error",
+        buttons: [{ text: t("common.close") }],
+      });
       return;
     }
 
@@ -146,10 +151,12 @@ export function useMapTripPreview({
           await locateActiveTripNow();
         },
         onError: (error) => {
-          Alert.alert(
-            t("common.error"),
-            error?.message || t("trip.detail.startError"),
-          );
+          showAppAlert({
+            title: t("common.error"),
+            message: error?.message || t("trip.detail.startError"),
+            type: "error",
+            buttons: [{ text: t("common.close") }],
+          });
         },
       },
     );

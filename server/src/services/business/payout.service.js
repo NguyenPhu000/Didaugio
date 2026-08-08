@@ -1,6 +1,7 @@
 import prisma from "../../config/prismaClient.js";
 import ServiceError from "../../utils/serviceError.js";
 import { getAvailableBalance } from "../booking/financialCore.service.js";
+import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 
 /**
  * Get earnings summary for a business
@@ -113,7 +114,7 @@ export const requestPayout = async (businessId, data) => {
     throw new ServiceError("Số tiền rút phải lớn hơn 0", 400, "INVALID_AMOUNT");
   }
 
-  return prisma.$transaction(async (tx) => {
+  const payout = await prisma.$transaction(async (tx) => {
     // Check subscription status - block payouts if past_due or canceled
     const subscription = await tx.subscription.findUnique({
       where: { businessId },
@@ -184,6 +185,15 @@ export const requestPayout = async (businessId, data) => {
 
     return payout;
   });
+
+  eventEmitter.emit(EVENTS.PAYOUT.UPDATED, {
+    businessId,
+    payoutId: payout.id,
+    amount: payout.amount,
+    status: payout.status,
+  });
+
+  return payout;
 };
 
 /**
@@ -232,7 +242,7 @@ export const cancelPayout = async (businessId, payoutId) => {
     throw new ServiceError("Chỉ có thể hủy yêu cầu đang chờ xử lý", 400, "INVALID_STATUS");
   }
 
-  return prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
     const [lockedPayout] = await tx.$queryRaw`
       SELECT id, status, amount, business_id AS "businessId"
       FROM payouts
@@ -259,6 +269,15 @@ export const cancelPayout = async (businessId, payoutId) => {
 
     return updated;
   });
+
+  eventEmitter.emit(EVENTS.PAYOUT.UPDATED, {
+    businessId,
+    payoutId: updated.id,
+    amount: updated.amount,
+    status: updated.status,
+  });
+
+  return updated;
 };
 
 /**
@@ -321,7 +340,7 @@ export const approvePayout = async (payoutId, reviewerId) => {
     );
   }
 
-  return prisma.payout.update({
+  const updated = await prisma.payout.update({
     where: { id: payoutId },
     data: {
       status: "approved",
@@ -329,6 +348,15 @@ export const approvePayout = async (payoutId, reviewerId) => {
       reviewedBy: reviewerId,
     },
   });
+
+  eventEmitter.emit(EVENTS.PAYOUT.UPDATED, {
+    businessId: updated.businessId,
+    payoutId: updated.id,
+    amount: updated.amount,
+    status: updated.status,
+  });
+
+  return updated;
 };
 
 /**
@@ -351,7 +379,7 @@ export const markTransferred = async (payoutId, reviewerId) => {
     );
   }
 
-  return prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
     const [lockedPayout] = await tx.$queryRaw`
       SELECT id, status, amount, business_id AS "businessId"
       FROM payouts
@@ -405,6 +433,15 @@ export const markTransferred = async (payoutId, reviewerId) => {
 
     return updated;
   });
+
+  eventEmitter.emit(EVENTS.PAYOUT.UPDATED, {
+    businessId: updated.businessId,
+    payoutId: updated.id,
+    amount: updated.amount,
+    status: updated.status,
+  });
+
+  return updated;
 };
 
 /**
@@ -427,7 +464,7 @@ export const rejectPayout = async (payoutId, reviewerId, rejectReason) => {
     );
   }
 
-  return prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
     const [lockedPayout] = await tx.$queryRaw`
       SELECT id, status, amount, business_id AS "businessId"
       FROM payouts
@@ -463,6 +500,16 @@ export const rejectPayout = async (payoutId, reviewerId, rejectReason) => {
 
     return updated;
   });
+
+  eventEmitter.emit(EVENTS.PAYOUT.UPDATED, {
+    businessId: updated.businessId,
+    payoutId: updated.id,
+    amount: updated.amount,
+    status: updated.status,
+    rejectReason: updated.rejectReason,
+  });
+
+  return updated;
 };
 
 /**

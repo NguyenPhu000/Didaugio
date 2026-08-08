@@ -64,12 +64,12 @@ const STATUS_STYLES = {
 };
 
 const STATUS_LABELS = {
-  active: "Hoạt động",
-  grace: "Gia hạn",
-  past_due: "Quá hạn",
-  canceled: "Đã hủy",
-  paused: "Tạm ngưng",
-  trialing: "Dùng thử",
+  active: "subscription.status.active",
+  grace: "subscription.status.grace",
+  past_due: "subscription.status.past_due",
+  canceled: "subscription.status.canceled",
+  paused: "subscription.status.paused",
+  trialing: "subscription.status.trialing",
 };
 
 function StatCard({ title, value, icon, tone = "default", subtitle }) {
@@ -186,7 +186,7 @@ export default function AdminSubscriptionPage() {
             {t("subscription.admin.title")}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {t("subscription.admin.title")}
+            {t("subscription.admin.subtitle")}
           </p>
         </div>
         <Button variant="outline" onClick={refresh} className="gap-1.5">
@@ -230,13 +230,13 @@ export default function AdminSubscriptionPage() {
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Gói" />
+                <SelectValue placeholder={t("subscription.admin.filters.planPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("common.all")}</SelectItem>
-                <SelectItem value="basic">Basic</SelectItem>
-                <SelectItem value="plus">Plus</SelectItem>
-                <SelectItem value="pro">Pro</SelectItem>
+                <SelectItem value="basic">{t("subscription.plans.basic", "Basic")}</SelectItem>
+                <SelectItem value="plus">{t("subscription.plans.plus", "Plus")}</SelectItem>
+                <SelectItem value="pro">{t("subscription.plans.pro", "Pro")}</SelectItem>
               </SelectContent>
             </Select>
             <Select
@@ -246,13 +246,13 @@ export default function AdminSubscriptionPage() {
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder={t("common.status")} />
+                <SelectValue placeholder={t("subscription.admin.filters.statusPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("common.all")}</SelectItem>
-                {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                {Object.entries(STATUS_LABELS).map(([key, labelKey]) => (
                   <SelectItem key={key} value={key}>
-                    {label}
+                    {t(labelKey)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -276,12 +276,12 @@ export default function AdminSubscriptionPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Doanh nghiệp</TableHead>
-                  <TableHead>Gói</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Chu kỳ</TableHead>
-                  <TableHead className="text-right">Doanh thu</TableHead>
-                  <TableHead>Ngày hết hạn</TableHead>
+                  <TableHead>{t("subscription.admin.table.business")}</TableHead>
+                  <TableHead>{t("subscription.admin.table.plan")}</TableHead>
+                  <TableHead>{t("subscription.admin.table.status")}</TableHead>
+                  <TableHead>{t("subscription.admin.table.cycle")}</TableHead>
+                  <TableHead className="text-right">{t("subscription.admin.table.amount")}</TableHead>
+                  <TableHead>{t("subscription.admin.table.expiresAt")}</TableHead>
                   <TableHead className="text-right">{t("common.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -304,11 +304,15 @@ export default function AdminSubscriptionPage() {
                         variant="outline"
                         className={cn(STATUS_STYLES[sub.status])}
                       >
-                        {STATUS_LABELS[sub.status] || sub.status}
+                        {t(STATUS_LABELS[sub.status] || "common.statusUnknown")}
                       </Badge>
                     </TableCell>
-                    <TableCell className="capitalize">
-                      {sub.billingCycle || "monthly"}
+                    <TableCell>
+                      {t(
+                        sub.billingCycle === "yearly"
+                          ? "subscription.plans.yearly"
+                          : "subscription.plans.monthly",
+                      )}
                     </TableCell>
                     <TableCell className="text-right font-mono">
                       {formatVND(sub.amount || sub.plan?.priceMonthly)}
@@ -329,7 +333,7 @@ export default function AdminSubscriptionPage() {
                                   handleStatusChange(sub.id, "paused")
                                 }
                               >
-                                Tạm ngưng
+                                {t("subscription.admin.actions.pause")}
                               </DropdownMenuItem>
                             )}
                             {(sub.status === "paused" ||
@@ -339,7 +343,7 @@ export default function AdminSubscriptionPage() {
                                   handleStatusChange(sub.id, "active")
                                 }
                               >
-                                Kích hoạt lại
+                                {t("subscription.admin.actions.resume")}
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
@@ -348,7 +352,7 @@ export default function AdminSubscriptionPage() {
                                 handleStatusChange(sub.id, "canceled")
                               }
                             >
-                              Hủy subscription
+                              {t("subscription.admin.actions.cancel")}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -363,7 +367,11 @@ export default function AdminSubscriptionPage() {
           {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between pt-2">
               <p className="text-sm text-muted-foreground">
-                Trang {pagination.page} / {pagination.totalPages} ({pagination.total})
+                {t("subscription.admin.pagination", {
+                  page: pagination.page,
+                  totalPages: pagination.totalPages,
+                  total: pagination.total,
+                })}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -399,13 +407,13 @@ export default function AdminSubscriptionPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Hủy subscription</DialogTitle>
+            <DialogTitle>{t("subscription.admin.cancelDialog.title")}</DialogTitle>
             <DialogDescription>
-              Vui lòng nhập lý do hủy subscription. Thông báo sẽ được gửi đến doanh nghiệp.
+              {t("subscription.admin.cancelDialog.description")}
             </DialogDescription>
           </DialogHeader>
           <Textarea
-            placeholder="Nhập lý do hủy..."
+            placeholder={t("subscription.admin.cancelDialog.reasonPlaceholder")}
             value={cancelReason}
             onChange={(e) => setCancelReason(e.target.value)}
             rows={4}
@@ -422,7 +430,9 @@ export default function AdminSubscriptionPage() {
               onClick={handleConfirmCancel}
               disabled={updateStatusMutation.isPending}
             >
-              {updateStatusMutation.isPending ? "Đang hủy..." : "Xác nhận hủy"}
+              {updateStatusMutation.isPending
+                ? t("subscription.admin.cancelDialog.submitting")
+                : t("subscription.admin.cancelDialog.confirm")}
             </Button>
           </DialogFooter>
         </DialogContent>

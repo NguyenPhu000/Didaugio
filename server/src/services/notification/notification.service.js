@@ -3,9 +3,12 @@ import logger from "../../config/logger.js";
 import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import { emitToUser, emitToAll, isUserOnline } from "../../config/socketIO.js";
 import { sendWebPush } from "./webPush.service.js";
+import { ROLES } from "../../config/constants.js";
+import { sendBusinessNotificationEmail } from "../communication/mailer.service.js";
+import { isBusinessNotificationEnabled } from "../business/businessSettings.policy.js";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
-const ADMIN_ROLE_IDS = [1, 2, 4];
+const ADMIN_ROLE_IDS = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
 
 const FIELD_LABELS = {
   idCardFront: "CCCD mặt trước",
@@ -119,6 +122,7 @@ async function createNotification({
   createdBy = null,
   targetType = "users",
   eventKey = null,
+  pushEnabled = true,
 }) {
   const normalizedRecipients = uniqueRecipients(recipients);
   if (normalizedRecipients.length === 0) return null;
@@ -164,12 +168,14 @@ async function createNotification({
       for (const recipient of hydratedRecipients) {
         const payload = toPayload(existingNotification, recipient);
         emitToUser(recipient.userId, "notification", payload);
-        sendPushIfOffline(
-          recipient.userId,
-          existingNotification.title,
-          existingNotification.body,
-          existingNotification.data || {},
-        ).catch(() => {});
+        if (pushEnabled) {
+          sendPushIfOffline(
+            recipient.userId,
+            existingNotification.title,
+            existingNotification.body,
+            existingNotification.data || {},
+          ).catch(() => {});
+        }
       }
 
       return { ...existingNotification, createdRecipients };
@@ -205,7 +211,9 @@ async function createNotification({
   for (const recipient of notification.recipients) {
     const payload = toPayload(notification, recipient);
     emitToUser(recipient.userId, "notification", payload);
-    sendPushIfOffline(recipient.userId, title, body, metadata).catch(() => {});
+    if (pushEnabled) {
+      sendPushIfOffline(recipient.userId, title, body, metadata).catch(() => {});
+    }
   }
 
   return notification;
@@ -251,22 +259,48 @@ async function notifyBusinessOwner(
   body,
   data = {},
   createdBy = null,
+  options = {},
 ) {
   const business = await prisma.business.findUnique({
     where: { id: Number(businessId) },
-    select: { id: true, ownerId: true },
+    select: {
+      id: true,
+      ownerId: true,
+      settings: true,
+      owner: { select: { email: true } },
+    },
   });
 
   if (!business) return null;
 
-  return createNotification({
+  const pushEnabled = options.pushKey
+    ? isBusinessNotificationEnabled(business.settings, options.pushKey)
+    : true;
+  const emailEnabled = options.emailKey
+    ? isBusinessNotificationEnabled(business.settings, options.emailKey)
+    : false;
+  const notification = await createNotification({
     title,
     body,
     data: { ...data, businessId: business.id },
     createdBy,
     targetType: "business",
     recipients: [{ userId: business.ownerId, businessId: business.id, roleId: 3 }],
+    pushEnabled,
   });
+
+  if (emailEnabled && business.owner?.email) {
+    sendBusinessNotificationEmail({
+      to: business.owner.email,
+      subject: `[Didaugio] ${title}`,
+      title,
+      body,
+    }).catch((error) => {
+      logNotificationError("[Notification] Business email failed", error);
+    });
+  }
+
+  return notification;
 }
 
 const formatChangedFields = (changedFields = []) =>
@@ -540,19 +574,35 @@ eventEmitter.on(EVENTS.PLACE.REJECTED, async ({ id, rejectedBy, reason, ownerId 
 
 eventEmitter.on(
   EVENTS.BOOKING.CREATED,
-  async ({ bookingId, bookingCode, userId, businessOwnerId }) => {
+  async ({ bookingId, bookingCode, userId, businessId, businessOwnerId, status }) => {
+    const businessTitle = status === "confirmed" ? "Booking đã tự động xác nhận" : "Booking mới";
+    const businessBody = status === "confirmed"
+      ? `Booking #${bookingCode} đã được hệ thống tự động xác nhận.`
+      : `Có booking mới #${bookingCode} cần xác nhận.`;
+    const businessNotification = businessId
+      ? notifyBusinessOwner(
+          businessId,
+          businessTitle,
+          businessBody,
+          { bookingId, type: "booking_created" },
+          userId,
+          { emailKey: "newBookingEmail", pushKey: "newBookingPush" },
+        )
+      : notifyUser(
+          businessOwnerId,
+          businessTitle,
+          businessBody,
+          { bookingId, type: "booking_created" },
+          userId,
+        );
     await Promise.all([
-      notifyUser(
-        businessOwnerId,
-        "Booking mới",
-        `Có booking mới #${bookingCode} cần xác nhận.`,
-        { bookingId, type: "booking_created" },
-        userId,
-      ),
+      businessNotification,
       notifyUser(
         userId,
         "Đặt chỗ thành công",
-        `Đặt chỗ #${bookingCode} đã được ghi nhận, đang chờ xác nhận.`,
+        status === "confirmed"
+          ? `Đặt chỗ #${bookingCode} đã được xác nhận tự động.`
+          : `Đặt chỗ #${bookingCode} đã được ghi nhận, đang chờ xác nhận.`,
         { bookingId, type: "booking_created" },
       ),
     ]).catch((error) => {
@@ -575,6 +625,8 @@ eventEmitter.on(EVENTS.BOOKING.PAID, async ({ bookingId, bookingCode, userId, bu
           "Có đơn thanh toán mới, vui lòng xác nhận",
           `Booking #${bookingCode} đã được thanh toán. Vui lòng xác nhận đơn.`,
           { bookingId, type: "booking_paid_business" },
+          null,
+          { emailKey: "newBookingEmail", pushKey: "newBookingPush" },
         )
       : Promise.resolve(),
   ]).catch((error) => {
@@ -643,14 +695,28 @@ eventEmitter.on(
 
 eventEmitter.on(
   EVENTS.BOOKING.CANCELLED,
-  async ({ bookingId, bookingCode, cancelledBy, cancelReason, userId }) => {
-    await notifyUser(
-      userId,
-      "Booking đã bị hủy",
-      `Booking #${bookingCode} đã bị hủy. Lý do: ${cancelReason}`,
-      { bookingId, type: "booking_cancelled", cancelReason },
-      cancelledBy,
-    ).catch((error) => {
+  async ({ bookingId, bookingCode, cancelledBy, cancelReason, userId, businessId }) => {
+    const title = "Booking đã bị hủy";
+    const body = `Booking #${bookingCode} đã bị hủy. Lý do: ${cancelReason}`;
+    await Promise.all([
+      notifyUser(
+        userId,
+        title,
+        body,
+        { bookingId, type: "booking_cancelled", cancelReason },
+        cancelledBy,
+      ),
+      businessId
+        ? notifyBusinessOwner(
+            businessId,
+            title,
+            body,
+            { bookingId, type: "booking_cancelled_business", cancelReason },
+            cancelledBy,
+            { emailKey: "cancellationEmail", pushKey: "cancellationPush" },
+          )
+        : Promise.resolve(),
+    ]).catch((error) => {
       logNotificationError("[Notification] Error processing BOOKING.CANCELLED", error);
     });
   },
@@ -709,6 +775,24 @@ eventEmitter.on(EVENTS.BOOKING.NO_SHOW, async ({ bookingId, bookingCode, markedB
   });
 });
 
+eventEmitter.on(
+  EVENTS.REVIEW.CREATED,
+  async ({ reviewId, placeId, businessId, userId, rating }) => {
+    if (!businessId) return;
+
+    await notifyBusinessOwner(
+      businessId,
+      "Đánh giá mới",
+      `Doanh nghiệp nhận được đánh giá ${rating}/5 cho địa điểm của bạn.`,
+      { reviewId, placeId, type: "review_created", rating },
+      userId,
+      { emailKey: "newReviewEmail", pushKey: "newReviewPush" },
+    ).catch((error) => {
+      logNotificationError("[Notification] Error processing REVIEW.CREATED", error);
+    });
+  },
+);
+
 eventEmitter.on(EVENTS.REVIEW.REPLIED, async ({ reviewId, replyId, repliedBy, reviewUserId }) => {
   await notifyUser(
     reviewUserId,
@@ -720,6 +804,24 @@ eventEmitter.on(EVENTS.REVIEW.REPLIED, async ({ reviewId, replyId, repliedBy, re
     logNotificationError("[Notification] Error processing REVIEW.REPLIED", error);
   });
 });
+
+eventEmitter.on(
+  EVENTS.PAYOUT.UPDATED,
+  async ({ businessId, payoutId, amount, status, rejectReason }) => {
+    if (!businessId) return;
+
+    await notifyBusinessOwner(
+      businessId,
+      "Cập nhật yêu cầu rút tiền",
+      `Yêu cầu rút tiền #${payoutId} trị giá ${Number(amount || 0).toLocaleString("vi-VN")} đã chuyển sang trạng thái ${status}.${rejectReason ? ` Lý do: ${rejectReason}` : ""}`,
+      { payoutId, amount, status, rejectReason: rejectReason || null, type: "payout_updated" },
+      null,
+      { emailKey: "payoutEmail" },
+    ).catch((error) => {
+      logNotificationError("[Notification] Error processing PAYOUT.UPDATED", error);
+    });
+  },
+);
 
 /**
  * Tạo thông báo hệ thống (announcement) — hiển thị ngay cho tất cả user.

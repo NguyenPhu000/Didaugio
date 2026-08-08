@@ -157,7 +157,7 @@ export function useTripsCached(enabled = true) {
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     refetchOnMount: false,
-    refetchOnReconnect: true,
+    refetchOnReconnect: false,
     placeholderData: (previousData) => previousData,
   });
 
@@ -364,23 +364,16 @@ export function useOfflineSync() {
       try {
         const pendingActionsKey = OFFLINE_STORAGE_KEYS.PENDING_TRIP_ACTIONS;
         const raw = await safeAsyncStorage.getItem(pendingActionsKey);
-        if (!raw) {
-          isSyncingRef.current = false;
-          return;
-        }
+        if (!raw) return;
 
         let actions = JSON.parse(raw);
-        if (actions.length === 0) {
-          isSyncingRef.current = false;
-          return;
-        }
+        if (actions.length === 0) return;
 
         // Triệt tiêu cặp CREATE+DELETE và action trung gian
         actions = dedupOfflineActions(actions);
 
         if (actions.length === 0) {
           await safeAsyncStorage.removeItem(pendingActionsKey);
-          isSyncingRef.current = false;
           return;
         }
 

@@ -127,6 +127,7 @@ export function useGoogleLogin() {
     clearCallbackTimeout();
     timeoutRef.current = setTimeout(() => {
       if (callbackHandledRef.current || finishingRef.current) return;
+      callbackHandledRef.current = true;
       setIsLoading(false);
       setError(i18n.t("authValidation.googleNoResponse"));
     }, CALLBACK_TIMEOUT_MS);
@@ -220,7 +221,7 @@ export function useGoogleLogin() {
 
   useEffect(() => {
     const completeGoogleLogin = async () => {
-      if (!response) return;
+      if (!response || callbackHandledRef.current) return;
 
       debugLog("response", {
         type: response.type,

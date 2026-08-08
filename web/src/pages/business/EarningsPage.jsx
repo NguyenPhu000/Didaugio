@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from "react";
+import { memo, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Wallet,
@@ -11,6 +11,8 @@ import {
   Copy,
   ChevronRight,
   ChevronLeft,
+  Search,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -25,6 +27,7 @@ import {
   BusinessSectionCard,
   BusinessSectionCardSkeleton,
 } from "@/components/business/ui";
+import FinancialSubNav from "@/components/business/FinancialSubNav";
 import { formatVND } from "@/components/business/dashboardWidgetHelpers";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +35,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -98,13 +108,31 @@ const EarningsPage = memo(() => {
     note: "",
   });
 
+  const [payoutFilter, setPayoutFilter] = useState({
+    status: "all",
+    search: "",
+  });
+
   const { data: earningsRes, isLoading: earningsLoading } = useEarnings();
-  const { data: historyRes, isLoading: historyLoading } = usePayoutHistory({ page: 1, limit: 20 });
+  const { data: historyRes, isLoading: historyLoading } = usePayoutHistory({ page: 1, limit: 50 });
   const createPayout = useCreatePayout();
   const cancelPayout = useCancelPayout();
 
   const earnings = earningsRes?.data || {};
   const payouts = historyRes?.data?.payouts || [];
+
+  const filteredPayouts = useMemo(() => {
+    return payouts.filter((p) => {
+      const matchesStatus = payoutFilter.status === "all" || p.status === payoutFilter.status;
+      const matchesSearch =
+        !payoutFilter.search.trim() ||
+        p.bankName?.toLowerCase().includes(payoutFilter.search.toLowerCase()) ||
+        p.bankAccount?.toLowerCase().includes(payoutFilter.search.toLowerCase()) ||
+        p.bankAccountNumber?.toLowerCase().includes(payoutFilter.search.toLowerCase()) ||
+        p.note?.toLowerCase().includes(payoutFilter.search.toLowerCase());
+      return matchesStatus && matchesSearch;
+    });
+  }, [payouts, payoutFilter]);
 
   const resetForm = useCallback(() => {
     setForm({
@@ -229,6 +257,8 @@ const EarningsPage = memo(() => {
         }
       />
 
+      <FinancialSubNav activeTab="earnings" />
+
       {/* Balance Card */}
       <Card className="rounded-xl border border-zinc-200/80 bg-gradient-to-br from-zinc-950 to-zinc-900 text-white shadow-sm dark:from-zinc-950 dark:to-zinc-800">
         <CardContent className="p-6">
@@ -271,9 +301,50 @@ const EarningsPage = memo(() => {
 
       {/* Payout History */}
       <BusinessSectionCard title={t("business.earnings.payoutHistory")} titleIcon={Clock}>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={payoutFilter.search}
+              onChange={(e) => setPayoutFilter((f) => ({ ...f, search: e.target.value }))}
+              placeholder="Tìm theo tên ngân hàng, số TK, ghi chú..."
+              className="pl-9"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Select
+              value={payoutFilter.status}
+              onValueChange={(val) => setPayoutFilter((f) => ({ ...f, status: val }))}
+            >
+              <SelectTrigger className="w-[170px]">
+                <SelectValue placeholder="Trạng thái" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                <SelectItem value="pending">Chờ duyệt</SelectItem>
+                <SelectItem value="approved">Đã duyệt</SelectItem>
+                <SelectItem value="transferred">Đã chuyển khoản</SelectItem>
+                <SelectItem value="rejected">Từ chối</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {(payoutFilter.status !== "all" || payoutFilter.search) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPayoutFilter({ status: "all", search: "" })}
+                className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5 mr-1" />
+                Xóa lọc
+              </Button>
+            )}
+          </div>
+        </div>
+
         {historyLoading ? (
           <BusinessSectionCardSkeleton rows={5} />
-        ) : payouts.length === 0 ? (
+        ) : filteredPayouts.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-8">
             <Wallet className="h-8 w-8 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">{t("business.earnings.noPayoutHistory")}</p>
@@ -293,7 +364,7 @@ const EarningsPage = memo(() => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {payouts.map((p) => {
+                  {filteredPayouts.map((p) => {
                     const statusInfo = STATUS_MAP[p.status] || STATUS_MAP.pending;
                     const StatusIcon = statusInfo.icon;
                     return (
@@ -340,7 +411,7 @@ const EarningsPage = memo(() => {
 
             {/* Mobile card view */}
             <div className="md:hidden divide-y divide-border/50">
-              {payouts.map((p) => {
+              {filteredPayouts.map((p) => {
                 const statusInfo = STATUS_MAP[p.status] || STATUS_MAP.pending;
                 const StatusIcon = statusInfo.icon;
                 return (

@@ -109,6 +109,30 @@ const rejectPendingQueue = (error) => {
   }
 };
 
+let permissionSyncPromise = null;
+
+const syncCurrentUserPermissions = () => {
+  if (permissionSyncPromise) return permissionSyncPromise;
+
+  permissionSyncPromise = api
+    .get("/auth/me", {
+      skipPermissionToast: true,
+      skipAuthRedirect: true,
+    })
+    .then((response) => {
+      const freshUser = response?.data || response;
+      if (freshUser?.id) {
+        useAuthStore.getState().setUser(freshUser);
+      }
+      return freshUser;
+    })
+    .finally(() => {
+      permissionSyncPromise = null;
+    });
+
+  return permissionSyncPromise;
+};
+
 api.interceptors.request.use((config) => {
   const accessToken = useAuthStore.getState().accessToken;
   if (accessToken) {
@@ -234,10 +258,28 @@ api.interceptors.response.use(
     // Handle 403 Forbidden — permissions may have been revoked mid-session
     if (response?.status === 403 && !isPublicRequest && hasAccessToken) {
       const errorCode = response?.data?.errorCode;
+      const normalizedPath = normalizeRequestPath(requestUrl);
+
+      // Owner-side staff changes invalidate server cache immediately. Refresh
+      // the persisted user once so the UI and the retried request use the same
+      // permission snapshot without forcing a logout or a manual reload.
+      if (
+        errorCode === "FORBIDDEN" &&
+        normalizedPath !== "/auth/me" &&
+        !originalRequest._permissionSynced
+      ) {
+        originalRequest._permissionSynced = true;
+        try {
+          await syncCurrentUserPermissions();
+          return api(originalRequest);
+        } catch {
+          // Continue through the normal forbidden response below.
+        }
+      }
 
       // If the 403 is from a permission/auth endpoint itself, force logout to avoid infinite loops
       const isPermissionEndpoint =
-        normalizeRequestPath(requestUrl).includes("/permissions") ||
+        normalizedPath.includes("/permissions") ||
         errorCode === "FORBIDDEN_USER" ||
         errorCode === "FORBIDDEN_SYSTEM_ROLE";
 

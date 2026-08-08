@@ -3,7 +3,7 @@ import * as userPermissionController from "../../controllers/rbac/userPermission
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { requirePermission } from "../../middlewares/permissionMiddleware.js";
 import { checkRoleHierarchy } from "../../middlewares/checkRoleHierarchy.js";
-import { blockGuestFromAdmin } from "../../middlewares/blockGuestFromAdmin.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import {
   validateBody,
   validateParams,
@@ -20,7 +20,7 @@ import {
 const router = express.Router();
 
 // 🔒 SECURITY: Block GUEST from user permission management
-router.use(authenticate, blockGuestFromAdmin);
+router.use(authenticate, requireBackOfficeRole);
 
 // Lấy danh sách users trong role
 router.get(

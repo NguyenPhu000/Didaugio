@@ -36,7 +36,9 @@ const ProtectedRoute = ({ allowedRoles = [], roles = [], children }) => {
 
   if (effectiveRoles.length > 0 && !effectiveRoles.includes(roleId)) {
     let fallback = AUTH_ROUTES.LOGIN;
-    if (roleId === ROLES.BUSINESS || roleId === ROLES.STAFF) {
+    if (roleId === ROLES.STAFF) {
+      fallback = BUSINESS_ROUTES.BOOKINGS;
+    } else if (roleId === ROLES.BUSINESS) {
       fallback = BUSINESS_ROUTES.DASHBOARD;
     } else if ([ROLES.SUPER_ADMIN, ROLES.ADMIN].includes(roleId)) {
       fallback = ADMIN_ROUTES.DASHBOARD;

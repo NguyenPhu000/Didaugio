@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
  * @param {string} props.title - Page title
  * @param {string} [props.description] - Subtitle description
  * @param {string|number} [props.badge] - Count or status badge
+ * @param {string} [props.badgeClassName] - Badge styling override
  * @param {React.ReactNode} [props.action] - Primary action button
  * @param {React.ReactNode} [props.secondaryActions] - Secondary action buttons
  * @param {Array<{label: string, href?: string}>} [props.breadcrumbs] - Breadcrumb trail
@@ -19,6 +20,7 @@ export function BusinessPageHeader({
   title,
   description,
   badge,
+  badgeClassName,
   action,
   secondaryActions,
   breadcrumbs,
@@ -74,7 +76,10 @@ export function BusinessPageHeader({
               {title}
             </h1>
             {badge !== undefined && badge !== null && (
-              <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+              <span className={cn(
+                "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+                badgeClassName
+              )}>
                 {badge}
               </span>
             )}

@@ -171,7 +171,10 @@ export const getNotifications = async (req, res, next) => {
       prisma.notificationRecipient.findMany({
         where,
         include: { notification: true },
-        orderBy: [{ readAt: "asc" }, { createdAt: "desc" }],
+        orderBy: [
+          { readAt: { sort: "asc", nulls: "first" } },
+          { createdAt: "desc" },
+        ],
         skip: (page - 1) * limit,
         take: limit,
       }),

@@ -27,11 +27,14 @@ function StatusPill({ status }) {
     <Box className="flex-row items-center gap-1.5 rounded-full bg-black/50 border border-white/20 px-3 py-1.5">
       <Box
         className="w-2 h-2 rounded-full"
-        style={{ backgroundColor: status.accent || "#34D399" }}
+        style={{
+          backgroundColor:
+            status.accent || TOKENS.color.semantic.success,
+        }}
       />
       <Text
         className="text-[11px] font-bold uppercase tracking-wider text-white"
-        style={{ color: status.accent || "#FFFFFF" }}
+        style={{ color: status.accent || TOKENS.color.surface.light }}
         numberOfLines={1}
       >
         {status.label}
@@ -43,7 +46,11 @@ function StatusPill({ status }) {
 function MetaRow({ icon, label }) {
   return (
     <Box className="flex-row items-center gap-1.5">
-      <MaterialIconsRounded name={icon} size={14} color="#FFFFFF" />
+      <MaterialIconsRounded
+        name={icon}
+        size={14}
+        color={TOKENS.color.surface.light}
+      />
       <Text
         className="text-xs font-semibold text-white"
         style={{ fontVariant: ["tabular-nums"] }}
@@ -61,6 +68,8 @@ function ImmersiveCard({
   displayStatus,
   displayUri,
   onImageError,
+  onSave,
+  isSaved,
   dateText,
   destinationCount,
   t,
@@ -68,7 +77,10 @@ function ImmersiveCard({
   const isCompleted = displayStatus === "completed";
 
   return (
-    <Box className="flex-1 bg-[#0B0D12]">
+    <Box
+      className="flex-1"
+      style={{ backgroundColor: TOKENS.color.semantic.apple.deep }}
+    >
       {displayUri ? (
         <Image
           source={{ uri: displayUri }}
@@ -80,7 +92,10 @@ function ImmersiveCard({
           onError={onImageError}
         />
       ) : (
-        <Box className="absolute inset-0 bg-[#121620]" />
+        <Box
+          className="absolute inset-0"
+          style={{ backgroundColor: TOKENS.color.semantic.apple.deepSurface }}
+        />
       )}
 
       {/* 3-stop Linear Gradient Overlay cho độ tương phản tối ưu */}
@@ -94,9 +109,26 @@ function ImmersiveCard({
       {/* Top Header: Status Pill (Left) & Arrow Button (Right) */}
       <Box className="absolute top-4 left-4 right-4 flex-row items-center justify-between z-10">
         <StatusPill status={status} />
-        <Box className="w-8 h-8 rounded-full bg-black/40 border border-white/25 items-center justify-center">
-          <MaterialIconsRounded name="arrow-forward" size={16} color="#FFFFFF" />
-        </Box>
+        <Pressable
+          onPress={(event) => {
+            event.stopPropagation();
+            onSave?.(trip.id);
+          }}
+          className="h-11 w-11 rounded-full bg-black/45 border border-white/25 items-center justify-center active:opacity-75"
+          accessibilityRole="button"
+          accessibilityLabel={
+            isSaved
+              ? t("tripCard.unsaveAccessibility")
+              : t("tripCard.saveAccessibility")
+          }
+          accessibilityState={{ selected: Boolean(isSaved) }}
+        >
+          <MaterialIconsRounded
+            name={isSaved ? "bookmark" : "bookmark-border"}
+            size={19}
+            color={TOKENS.color.surface.light}
+          />
+        </Pressable>
       </Box>
 
       {/* Watermark Con Dấu "ĐÃ HOÀN THÀNH" ở giữa Card cho chuyến đi đã kết thúc */}
@@ -104,7 +136,7 @@ function ImmersiveCard({
         <Box className="absolute inset-0 items-center justify-center pointer-events-none z-10">
           <Box className="border-2 border-slate-300/70 rounded-xl px-4 py-1.5 rotate-[-12deg] bg-black/40">
             <Text className="text-[12px] font-black tracking-[0.22em] text-slate-200 uppercase">
-              ĐÃ HOÀN THÀNH
+              {t("tripCard.completedStamp")}
             </Text>
           </Box>
         </Box>
@@ -140,6 +172,8 @@ function ImmersiveCard({
 export const TripCard = memo(function TripCard({
   trip,
   onPress,
+  onSave,
+  isSaved = trip?.isSaved,
 }) {
   const { t } = useTranslation();
   const displayStatus = getDisplayStatus(trip);
@@ -188,8 +222,12 @@ export const TripCard = memo(function TripCard({
             status: status.label,
           })}
           accessibilityHint={t("tripCard.tripHint")}
-          style={[cardAnimStyle, SHADOW_IMMERSIVE]}
-          className="rounded-[24px] overflow-hidden h-[248px] bg-[#0B0D12] border border-white/15"
+          className="rounded-[24px] overflow-hidden h-[248px] border border-white/15"
+          style={[
+            cardAnimStyle,
+            SHADOW_IMMERSIVE,
+            { backgroundColor: TOKENS.color.semantic.apple.deep },
+          ]}
         >
           <ImmersiveCard
             trip={trip}
@@ -197,6 +235,8 @@ export const TripCard = memo(function TripCard({
             displayStatus={displayStatus}
             displayUri={displayUri}
             onImageError={handleImageError}
+            onSave={onSave}
+            isSaved={isSaved}
             dateText={dateText}
             destinationCount={destinationCount}
             t={t}
@@ -208,7 +248,7 @@ export const TripCard = memo(function TripCard({
 });
 
 const SHADOW_IMMERSIVE = {
-  shadowColor: "#000000",
+  shadowColor: TOKENS.color.semantic.apple.black,
   shadowOffset: { width: 0, height: 12 },
   shadowOpacity: 0.25,
   shadowRadius: 20,

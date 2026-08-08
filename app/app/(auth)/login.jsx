@@ -229,7 +229,7 @@ export default function LoginScreen() {
           <View className="flex-row items-center self-center mb-7 px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.04]">
             <View className="w-1.5 h-1.5 rounded-full bg-[#7DD3FC] mr-2" />
             <Text className="text-[10px] font-bold tracking-[0.2em] text-white/70 uppercase">
-              iPoint Genie
+              {t("common.appName")}
             </Text>
           </View>
 

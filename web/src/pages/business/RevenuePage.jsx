@@ -26,6 +26,7 @@ import {
   BusinessSectionCard,
   BusinessSectionCardSkeleton,
 } from "@/components/business/ui";
+import FinancialSubNav from "@/components/business/FinancialSubNav";
 import { formatVND } from "@/components/business/dashboardWidgetHelpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -238,6 +239,8 @@ const RevenuePage = memo(() => {
           </div>
         }
       />
+
+      <FinancialSubNav activeTab="revenue" />
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

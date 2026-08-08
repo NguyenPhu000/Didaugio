@@ -104,6 +104,9 @@ export const BookingCard = memo(({
   onNoShow,
   onView,
   actionLoading,
+  canConfirm,
+  canCancel,
+  canComplete,
 }) => {
   const { t } = useTranslation();
   const isPending = booking.status === BOOKING_STATUS.PENDING;
@@ -211,7 +214,7 @@ export const BookingCard = memo(({
           <div className="flex items-center gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
             {isPending && (
               <>
-                <Button
+                {canConfirm && <Button
                   size="sm"
                   variant="default"
                   onClick={() => onConfirm(booking.id)}
@@ -224,8 +227,8 @@ export const BookingCard = memo(({
                     <Check className="h-3 w-3" />
                   )}
                   {t("business.bookings.confirm")}
-                </Button>
-                <Button
+                </Button>}
+                {canConfirm && <Button
                   size="sm"
                   variant="outline"
                   onClick={() => onReschedule(booking)}
@@ -234,8 +237,8 @@ export const BookingCard = memo(({
                 >
                   <CalendarClock className="h-3 w-3" aria-hidden="true" />
                   {t("business.bookings.reschedule")}
-                </Button>
-                <Button
+                </Button>}
+                {canCancel && <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => onReject(booking.id)}
@@ -244,12 +247,12 @@ export const BookingCard = memo(({
                 >
                   <X className="h-3 w-3" aria-hidden="true" />
                   {t("business.bookings.reject")}
-                </Button>
+                </Button>}
               </>
             )}
             {isConfirmed && (
               <>
-                <Button
+                {canComplete && <Button
                   size="sm"
                   variant="default"
                   onClick={() => onComplete(booking.id)}
@@ -262,8 +265,8 @@ export const BookingCard = memo(({
                     <CheckCircle2 className="h-3 w-3" />
                   )}
                   {t("business.bookings.complete")}
-                </Button>
-                <Button
+                </Button>}
+                {canCancel && <Button
                   size="sm"
                   variant="outline"
                   onClick={() => onCancel(booking.id)}
@@ -272,8 +275,8 @@ export const BookingCard = memo(({
                 >
                   <XCircle className="h-3 w-3" aria-hidden="true" />
                   {t("business.bookings.cancel")}
-                </Button>
-                <Button
+                </Button>}
+                {canComplete && <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => onNoShow(booking.id)}
@@ -282,7 +285,7 @@ export const BookingCard = memo(({
                 >
                   <UserX className="h-3 w-3" aria-hidden="true" />
                   {t("business.bookings.noShow")}
-                </Button>
+                </Button>}
               </>
             )}
             <Button

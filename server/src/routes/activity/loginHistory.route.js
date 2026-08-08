@@ -1,7 +1,7 @@
 import express from "express";
 import * as loginHistoryController from "../../controllers/activity/loginHistory.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
-import { blockGuestFromAdmin } from "../../middlewares/blockGuestFromAdmin.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import { validateParams } from "../../middlewares/validateSchema.js";
 import { idSchema } from "../../models/index.js";
@@ -10,7 +10,7 @@ import { z } from "zod";
 const router = express.Router();
 
 // 🔒 SECURITY: Block GUEST from viewing login history
-router.use(authenticate, blockGuestFromAdmin);
+router.use(authenticate, requireBackOfficeRole);
 
 /**
  * @route   GET /api/login-history
@@ -18,7 +18,7 @@ router.use(authenticate, blockGuestFromAdmin);
  * @access  Private (Admin hoặc User xem history của mình)
  * @query   page, limit, userId, deviceName, isActive
  */
-router.get("/", hasPermission("password_reset.view"), loginHistoryController.getAll);
+router.get("/", hasPermission("login_history.view"), loginHistoryController.getAll);
 
 /**
  * @route   GET /api/login-history/:id
@@ -27,7 +27,7 @@ router.get("/", hasPermission("password_reset.view"), loginHistoryController.get
  */
 router.get(
   "/:id",
-  hasPermission("password_reset.view"),
+  hasPermission("login_history.view"),
   validateParams(z.object({ id: idSchema })),
   loginHistoryController.getById,
 );
@@ -38,7 +38,7 @@ router.get(
  * @access  Private (Admin hoặc User revoke session của mình)
  * @body    { sessionId }
  */
-router.post("/revoke", hasPermission("password_reset.view"), loginHistoryController.revoke);
+router.post("/revoke", hasPermission("login_history.revoke"), loginHistoryController.revoke);
 
 /**
  * @route   POST /api/login-history/revoke-all/:userId
@@ -48,7 +48,7 @@ router.post("/revoke", hasPermission("password_reset.view"), loginHistoryControl
  */
 router.post(
   "/revoke-all/:userId",
-  hasPermission("password_reset.view"),
+  hasPermission("login_history.revoke"),
   validateParams(z.object({ userId: idSchema })),
   loginHistoryController.revokeAll,
 );

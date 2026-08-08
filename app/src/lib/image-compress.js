@@ -1,6 +1,7 @@
 import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system";
 import i18n from "@/i18n";
+import { logger } from "./logger";
 
 const DEFAULT_MAX_BYTES = 200 * 1024;
 
@@ -55,8 +56,8 @@ export async function compressImageToDataUrl(
       if (fileInfo?.exists && typeof fileInfo?.size === "number") {
         fileSizeBytes = fileInfo.size;
       }
-    } catch {
-      // Fallback if getInfoAsync fails
+    } catch (error) {
+      logger.warn("[image-compress] Unable to read compressed file size:", error);
     }
 
     if (fileSizeBytes > 0 && fileSizeBytes <= maxBytes) {

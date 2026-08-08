@@ -32,7 +32,6 @@ export function TicketIllustration({
   variant = "hero", // "hero" | "mini" | "empty"
 }) {
   const isMini = variant === "mini";
-  const isEmpty = variant === "empty";
   const showDetails = !isMini;
 
   return (

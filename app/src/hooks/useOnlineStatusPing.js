@@ -4,7 +4,7 @@ import { useAuthStore } from "../stores/authStore";
 import client from "../api/client";
 import { ENDPOINTS } from "../api/endpoints";
 
-const PING_INTERVAL = 45 * 1000; // 45 giay
+const PING_INTERVAL = 5 * 60 * 1000;
 
 export const useOnlineStatusPing = () => {
   const accessToken = useAuthStore((state) => state.accessToken);

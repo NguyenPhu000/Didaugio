@@ -24,7 +24,9 @@ import * as bookingApi from "@/apis/bookingService";
 import { getMyPlaces } from "@/apis/businessApi";
 import { blockedDateApi } from "@/apis/blockedDateApi";
 import { BUSINESS_ROUTES } from "@/constants/routes";
-import { BOOKING_STATUS } from "@/constants/constants";
+import { BOOKING_STATUS, ROLES } from "@/constants/constants";
+import { useAuthStore } from "@/stores/authStore";
+import { resolveRoleId } from "@/utils/authRouting";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -577,6 +579,8 @@ function BookingDetailModal({ booking, open, onClose, t }) {
 
 const BookingSchedulePage = memo(() => {
   const { t } = useTranslation();
+  const user = useAuthStore((state) => state.user);
+  const isBusinessOwner = resolveRoleId(user) === ROLES.BUSINESS;
   // Week start (Monday)
   const [weekStart, setWeekStart] = useState(() => {
     const now = new Date();
@@ -619,7 +623,9 @@ const BookingSchedulePage = memo(() => {
 
       const [bookingRes, blockedRes] = await Promise.all([
         bookingApi.getAll({ fromDate, toDate, limit: 500 }),
-        blockedDateApi.getAll({ fromDate, toDate }).catch((err) => { console.error("Failed to load blocked dates:", err); return { data: [] }; }),
+        isBusinessOwner
+          ? blockedDateApi.getAll({ fromDate, toDate }).catch(() => ({ data: [] }))
+          : Promise.resolve({ data: [] }),
       ]);
 
       setAllBookings(bookingRes.data || []);
@@ -629,7 +635,7 @@ const BookingSchedulePage = memo(() => {
     } finally {
       setLoading(false);
     }
-  }, [weekStart]);
+  }, [isBusinessOwner, weekStart]);
 
   useEffect(() => {
     loadBookings();

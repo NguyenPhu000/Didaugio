@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 import {
-  Alert,
   Pressable,
   Text,
   View,
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { showAppAlertLegacy } from "../../src/utils/appAlert";
 import { MaterialIconsRounded } from "../../src/components/primitives/MaterialIconsRounded";
 import {
   useTripDetail,
@@ -110,7 +110,7 @@ export default function TripDetailScreen() {
   const handleDeleteTrip = useCallback(() => {
     if (!trip?.id || deleteTripMutation.isPending) return;
 
-    Alert.alert(
+    showAppAlertLegacy(
       t("trip.detail.deleteTitle"),
       t("trip.detail.deleteMessage"),
       [
@@ -122,7 +122,7 @@ export default function TripDetailScreen() {
             deleteTripMutation.mutate(trip.id, {
               onSuccess: () => router.replace("/(tabs)/trips"),
               onError: (error) => {
-                Alert.alert(t("common.error"), error?.message || t("trip.detail.deleteError"));
+                showAppAlertLegacy(t("common.error"), error?.message || t("trip.detail.deleteError"));
               },
             });
           },
@@ -136,7 +136,7 @@ export default function TripDetailScreen() {
       updateTripMutation.mutate(payload, {
         onSuccess: () => setIsEditTripOpen(false),
         onError: (error) => {
-          Alert.alert(t("common.error"), error?.message || t("trip.detail.updateError"));
+          showAppAlertLegacy(t("common.error"), error?.message || t("trip.detail.updateError"));
         },
       });
     },
@@ -154,7 +154,7 @@ export default function TripDetailScreen() {
   const handleStartTrip = useCallback(() => {
     if (!trip?.id || updateTripMutation.isPending) return;
     if (!Array.isArray(trip.destinations) || trip.destinations.length === 0) {
-      Alert.alert(t("trip.detail.startTitle"), t("trip.itinerary.noDestinationsDesc"));
+      showAppAlertLegacy(t("trip.detail.startTitle"), t("trip.itinerary.noDestinationsDesc"));
       return;
     }
 
@@ -169,13 +169,13 @@ export default function TripDetailScreen() {
     if (trip.isSaved) {
       unsaveTripMutation.mutate(trip.id, {
         onError: (error) => {
-          Alert.alert(t("common.error"), error?.message || t("trip.detail.unsaveError"));
+          showAppAlertLegacy(t("common.error"), error?.message || t("trip.detail.unsaveError"));
         },
       });
     } else {
       saveTripMutation.mutate(trip.id, {
         onError: (error) => {
-          Alert.alert(t("common.error"), error?.message || t("trip.detail.saveError"));
+          showAppAlertLegacy(t("common.error"), error?.message || t("trip.detail.saveError"));
         },
       });
     }
@@ -187,7 +187,7 @@ export default function TripDetailScreen() {
     duplicateMutation.mutate(trip.id, {
       onSuccess: (result) => {
         const newId = result?.data?.id;
-        Alert.alert(
+        showAppAlertLegacy(
           t("trip.detail.duplicateSuccess"),
           t("trip.detail.duplicateSuccessMsg", { name: `${trip.title} (${t("trip.detail.duplicateTrip")})` }),
           [
@@ -197,7 +197,7 @@ export default function TripDetailScreen() {
         );
       },
       onError: (error) => {
-        Alert.alert(t("common.error"), error?.message || t("trip.detail.duplicateError"));
+        showAppAlertLegacy(t("common.error"), error?.message || t("trip.detail.duplicateError"));
       },
     });
   }, [duplicateMutation, router, t, trip?.id, trip?.title]);

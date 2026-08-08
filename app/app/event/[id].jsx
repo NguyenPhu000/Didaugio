@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Modal,
   Pressable,
@@ -18,6 +17,7 @@ import * as Location from "expo-location";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { showAppAlertLegacy } from "../../src/utils/appAlert";
 import safeAsyncStorage from "../../src/utils/safeAsyncStorage";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useAuthStore } from "../../src/stores/authStore";
@@ -105,7 +105,7 @@ export default function EventDetailScreen() {
 
   const handleJoinEvent = useCallback(async () => {
     if (!user) {
-      Alert.alert("Cần đăng nhập", "Đăng nhập để tham gia sự kiện và nhận bản sao chuyến đi.", [
+      showAppAlertLegacy("Cần đăng nhập", "Đăng nhập để tham gia sự kiện và nhận bản sao chuyến đi.", [
         { text: "Để sau", style: "cancel" },
         { text: "Đăng nhập", onPress: () => router.push("/(auth)/login") },
       ]);
@@ -122,19 +122,19 @@ export default function EventDetailScreen() {
         );
       }
       await refetch();
-      Alert.alert("Đã tham gia", "Chuyến đi mẫu đã được clone về tài khoản của bạn.", [
+      showAppAlertLegacy("Đã tham gia", "Chuyến đi mẫu đã được clone về tài khoản của bạn.", [
         { text: "Xem chuyến đi", onPress: () => router.replace("/(tabs)/trips") },
         { text: "Ở lại", style: "cancel" },
       ]);
     } catch (error) {
-      Alert.alert("Không thể tham gia", error?.message || "Vui lòng thử lại.");
+      showAppAlertLegacy("Không thể tham gia", error?.message || "Vui lòng thử lại.");
     }
   }, [id, joinEventMutation, refetch, router, user]);
 
   const getCurrentLocation = useCallback(async () => {
     const permission = await Location.requestForegroundPermissionsAsync();
     if (permission.status !== "granted") {
-      Alert.alert("Cần quyền vị trí", "Bật vị trí để xác nhận bạn đang ở gần điểm check-in.");
+      showAppAlertLegacy("Cần quyền vị trí", "Bật vị trí để xác nhận bạn đang ở gần điểm check-in.");
       return null;
     }
 
@@ -152,7 +152,7 @@ export default function EventDetailScreen() {
   const handleCheckInDestination = useCallback(async (destination) => {
     const placeId = getDestinationPlaceId(destination);
     if (!event?.isJoined) {
-      Alert.alert("Chưa tham gia", "Bạn cần tham gia sự kiện trước khi check-in.");
+      showAppAlertLegacy("Chưa tham gia", "Bạn cần tham gia sự kiện trước khi check-in.");
       return;
     }
     if (!placeId) return;
@@ -162,7 +162,7 @@ export default function EventDetailScreen() {
 
     const distance = getDestinationDistance(destination, location);
     if (distance !== null && distance > CHECK_IN_RADIUS_M) {
-      Alert.alert(
+      showAppAlertLegacy(
         "Chưa đủ gần điểm",
         `Bạn đang cách điểm này khoảng ${Math.round(distance)}m. Check-in mở khi trong bán kính ${CHECK_IN_RADIUS_M}m.`,
       );
@@ -171,7 +171,7 @@ export default function EventDetailScreen() {
 
     const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
     if (cameraPermission.status !== "granted") {
-      Alert.alert("Cần quyền camera", "Bật camera để chụp khoảnh khắc check-in.");
+      showAppAlertLegacy("Cần quyền camera", "Bật camera để chụp khoảnh khắc check-in.");
       return;
     }
 
@@ -204,9 +204,9 @@ export default function EventDetailScreen() {
       setOptimisticChecked((prev) => ({ ...prev, [placeId]: true }));
       await safeAsyncStorage.setItem(`didaugio:event:${id}:checkedin:${placeId}`, "true");
       await Promise.all([refetch(), refetchMoments()]);
-      Alert.alert("Check-in thành công", "Khoảnh khắc đã được thêm vào tường sự kiện.");
+      showAppAlertLegacy("Check-in thành công", "Khoảnh khắc đã được thêm vào tường sự kiện.");
     } catch (error) {
-      Alert.alert("Check-in thất bại", error?.message || "Vui lòng thử lại.");
+      showAppAlertLegacy("Check-in thất bại", error?.message || "Vui lòng thử lại.");
     } finally {
       setUploadingPlaceId(null);
     }

@@ -95,6 +95,17 @@ export default function PlanCard({
           <Button variant="outline" className="w-full" disabled>
             {t("subscription.plans.current")}
           </Button>
+        ) : isCurrent && canChangeBillingCycle ? (
+          <Button
+            className="w-full"
+            variant={isPopular ? "default" : "outline"}
+            onClick={() => onSelect?.(plan)}
+            disabled={!isAvailableForCycle}
+          >
+            {isAvailableForCycle
+              ? t("subscription.plans.changeCycle")
+              : t("subscription.plans.unavailable")}
+          </Button>
         ) : (
           <Button
             className="w-full"

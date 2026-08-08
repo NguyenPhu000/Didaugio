@@ -6,6 +6,10 @@
  */
 
 import { REVIEW_MEDIA_LIMIT } from "../utils/reviewMedia";
+import {
+  BOOKING_APPLE_THEME,
+  TOKENS as DESIGN_TOKENS,
+} from "../../../constants/design-tokens";
 
 const ACTIVE_FONT_FAMILY = "BeVietnamPro";
 
@@ -27,22 +31,22 @@ const FONT_FAMILIES = {
 const ACTIVE_FONTS = FONT_FAMILIES[ACTIVE_FONT_FAMILY];
 
 export const PALETTE = {
-  bg: "#FFFFFF",
-  surface: "#FFFFFF",
-  surfaceAlt: "#F5F5F7",
-  heroFallback: "#E8EDF2",
+  bg: BOOKING_APPLE_THEME.white,
+  surface: BOOKING_APPLE_THEME.white,
+  surfaceAlt: DESIGN_TOKENS.color.semantic.apple.surface,
+  heroFallback: DESIGN_TOKENS.color.semantic.slate[200],
   overlayStrong: "rgba(0,0,0,0.45)",
-  text: "#1D1D1F",
+  text: BOOKING_APPLE_THEME.text,
   textMuted: "rgba(0,0,0,0.48)",
   textSoft: "rgba(0,0,0,0.32)",
-  primary: "#1D1D1F",
-  primaryDark: "#000000",
+  primary: BOOKING_APPLE_THEME.primary,
+  primaryDark: BOOKING_APPLE_THEME.black,
   primarySoft: "rgba(0,0,0,0.06)",
   border: "rgba(0,0,0,0.12)",
   borderSoft: "rgba(0,0,0,0.06)",
-  success: "#34C759",
-  warning: "#FF9F0A",
-  accent: "#007BFF",
+  success: DESIGN_TOKENS.color.semantic.success,
+  warning: DESIGN_TOKENS.color.semantic.warning,
+  accent: DESIGN_TOKENS.color.semantic.info,
 };
 
 export const TOKENS = {

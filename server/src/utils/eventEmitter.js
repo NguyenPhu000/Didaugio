@@ -31,6 +31,9 @@ export const EVENTS = {
     COMPLETED: "booking:completed",
     NO_SHOW: "booking:no_show",
   },
+  PAYOUT: {
+    UPDATED: "payout:updated",
+  },
   BUSINESS: {
     REGISTERED: "business:registered",
     APPROVED: "business:approved",

@@ -72,7 +72,7 @@ const SWIPE_TAB_KEYS = TABS.map((tab) => tab.key);
 const SWIPE_DISTANCE = 34;
 const SWIPE_VELOCITY = 360;
 const MAX_DRAG_OFFSET = 12;
-const MAP_PLACES_PREFETCH_LIMIT = 500;
+const MAP_PLACES_PREFETCH_LIMIT = 150;
 const PUBLIC_PREFETCH_STALE_TIME = 5 * 60 * 1000;
 
 function resolveTabKey(pathname) {
@@ -369,6 +369,7 @@ export default function TabsLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
+          freezeOnBlur: true,
           tabBarStyle: { display: "none" },
           sceneStyleInterpolator: forStackedCardTransition,
           transitionSpec: {

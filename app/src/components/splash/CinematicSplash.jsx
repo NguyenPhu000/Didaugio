@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import Animated, {
   Easing,
   cancelAnimation,
@@ -22,7 +23,8 @@ import {
 const VIDEO_SOURCE = require("../../../assets/splash.mp4");
 const FALLBACK_SOURCE = require("../../../assets/splash.png");
 
-export default function CinematicSplash({ active, onFinish }) {
+export default function CinematicSplash({ active, ready, onFinish }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
   const [showFallback, setShowFallback] = useState(false);
@@ -79,6 +81,12 @@ export default function CinematicSplash({ active, onFinish }) {
     lifecycle.prepare();
     return () => lifecycle.dispose();
   }, [lifecycle]);
+
+  useEffect(() => {
+    if (active && ready) {
+      lifecycle.signalReady();
+    }
+  }, [active, ready, lifecycle]);
 
   // Subscribe while the native splash is still visible so early media failures
   // cannot be missed before playback is activated.
@@ -255,7 +263,7 @@ export default function CinematicSplash({ active, onFinish }) {
           allowFontScaling={false}
           numberOfLines={1}
         >
-          iPoint Genie
+          {t("common.appName")}
         </Text>
         <Text
           style={[
@@ -265,7 +273,7 @@ export default function CinematicSplash({ active, onFinish }) {
           allowFontScaling={false}
           numberOfLines={2}
         >
-          Trợ lý hành trình thông minh
+          {t("common.appTagline")}
         </Text>
       </Animated.View>
 

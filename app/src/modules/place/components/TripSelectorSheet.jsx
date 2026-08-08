@@ -1,7 +1,6 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -15,6 +14,7 @@ import { useTrips } from "../../trips/hooks/useTrips";
 import { addDestinationApi } from "../../trips/api/tripsApi";
 import { getTripSelectorItemViewModel } from "../utils/tripSelectorDisplay";
 import { PALETTE, TOKENS } from "../constants/placeSheetConstants";
+import { showAppAlertLegacy } from "../../../utils/appAlert";
 
 const STEP_SELECT = 1;
 const STEP_CONFIRM = 2;
@@ -88,13 +88,13 @@ export const TripSelectorSheet = memo(function TripSelectorSheet({
     setIsAdding(true);
     try {
       await addDestinationApi(selectedTrip.id, { placeId });
-      Alert.alert(
+      showAppAlertLegacy(
         t("place.detail.addedToTrip"),
         t("place.detail.addedToTripDesc", { placeName, tripName: selectedTripTitle }),
       );
       onClose?.();
     } catch {
-      Alert.alert(
+      showAppAlertLegacy(
         t("place.detail.somethingWentWrong"),
         t("place.detail.addToTripError"),
       );

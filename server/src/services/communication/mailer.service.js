@@ -765,3 +765,28 @@ export const sendContractVerificationEmail = async ({ to, code, name }) => {
     console.log(`[DEV OTP FALLBACK] Mã OTP xác thực hợp đồng của ${to} là: ${code}`);
   }
 };
+
+export const sendBusinessNotificationEmail = async ({ to, subject, title, body }) => {
+  const safeTitle = escapeHtml(title);
+  const safeBody = escapeHtml(body).replace(/\n/g, "<br />");
+
+  await transporter.sendMail({
+    from: EMAIL_FROM,
+    to,
+    subject,
+    text: `${title}\n\n${body}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #172033;">
+        <div style="padding: 20px 24px; background: #172033; color: #ffffff; border-radius: 12px 12px 0 0;">
+          <strong>Didaugio Business</strong>
+        </div>
+        <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: 0; border-radius: 0 0 12px 12px;">
+          <h2 style="margin: 0 0 12px; font-size: 20px;">${safeTitle}</h2>
+          <p style="margin: 0; line-height: 1.6;">${safeBody}</p>
+        </div>
+      </div>
+    `,
+  });
+
+  return { provider: "smtp", to };
+};

@@ -105,7 +105,7 @@ export const useAuthStore = create((set, get) => ({
       hydrationError: null,
     });
 
-    await Promise.all([
+    const [accessTokenStored, refreshTokenStored] = await Promise.all([
       nextAccessToken
         ? safeSetItem(ACCESS_TOKEN_KEY, nextAccessToken)
         : safeDeleteItem(ACCESS_TOKEN_KEY),
@@ -116,6 +116,11 @@ export const useAuthStore = create((set, get) => ({
         ? safeAsyncStorage.setItem(USER_KEY, JSON.stringify(nextUser))
         : safeAsyncStorage.removeItem(USER_KEY),
     ]);
+
+    if ((nextAccessToken && !accessTokenStored) || (nextRefreshToken && !refreshTokenStored)) {
+      set({ user: null, accessToken: null, refreshToken: null, isGuest: false, hydrationError: "AUTH_PERSIST_FAILED" });
+      throw new Error("AUTH_PERSIST_FAILED");
+    }
   },
 
   clearSession: async () => {

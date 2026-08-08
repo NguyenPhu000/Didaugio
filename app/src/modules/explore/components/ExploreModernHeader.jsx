@@ -30,8 +30,8 @@ function ExploreModernHeaderInner({ onPressSearch }) {
     <View style={styles.container}>
       <View style={styles.topRow}>
         <View>
-          <Text style={styles.brand}>iPoint Genie</Text>
-          <Text style={styles.location}>CẦN THƠ, VIỆT NAM</Text>
+          <Text style={styles.brand}>{t("common.appName")}</Text>
+          <Text style={styles.location}>{t("explore.header.location")}</Text>
         </View>
         <NotificationBell size={42} />
       </View>

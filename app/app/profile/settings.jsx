@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Animated,
-  Alert,
   Linking,
   Modal,
   Pressable,
@@ -14,6 +13,7 @@ import {
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { showAppAlertLegacy } from "../../src/utils/appAlert";
 import { useAuth } from "../../src/modules/auth/hooks/useAuth";
 import { useAuthStore } from "../../src/stores/authStore";
 import { useUIStore } from "../../src/stores/uiStore";
@@ -322,7 +322,7 @@ export default function SettingsScreen() {
   }, [logout]);
 
   const handleClearCache = useCallback(() => {
-    Alert.alert(
+    showAppAlertLegacy(
       t("settings.clearCacheTitle"),
       t("settings.clearCacheMessage"),
       [
@@ -332,7 +332,7 @@ export default function SettingsScreen() {
           style: "destructive",
           onPress: () => {
             // Có thể thêm AsyncStorage.clear() hoặc tương tự ở đây nếu cần
-            Alert.alert(t("settings.clearCacheSuccess"), t("settings.clearCacheSuccessMessage"));
+            showAppAlertLegacy(t("settings.clearCacheSuccess"), t("settings.clearCacheSuccessMessage"));
           },
         },
       ]

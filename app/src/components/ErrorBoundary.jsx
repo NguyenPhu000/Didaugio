@@ -38,7 +38,7 @@ export class ErrorBoundary extends Component {
           {i18n.t("errorBoundary.title")}
         </Text>
         <Text className="text-sm text-[#737373] text-center leading-[22px]" style={{ fontFamily: "BeVietnamPro_400Regular" }}>
-          {this.state.error?.message || i18n.t("errorBoundary.message")}
+          {i18n.t("errorBoundary.message")}
         </Text>
         <Pressable
           className="flex-row items-center gap-2 bg-[#0077b8] px-6 py-3 rounded-6xl mt-2"

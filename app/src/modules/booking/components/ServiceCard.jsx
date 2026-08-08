@@ -30,6 +30,9 @@ export function ServiceCard({ service, isSelected, onSelect }) {
   return (
     <Pressable
       onPress={() => onSelect(service)}
+      accessibilityRole="button"
+      accessibilityLabel={service.name}
+      accessibilityState={{ selected: isSelected }}
       style={{
         borderRadius: 20,
         padding: 16,

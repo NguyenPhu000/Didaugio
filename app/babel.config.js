@@ -10,6 +10,7 @@ module.exports = function (api) {
         "babel-preset-expo",
         {
           jsxImportSource: "nativewind",
+          reactCompiler: true,
           // Expo auto-injects the worklets/reanimated Babel plugin when it sees
           // these packages installed. Disable that so Metro doesn't try to resolve
           // the plugin from inside `babel-preset-expo`'s dependency tree.

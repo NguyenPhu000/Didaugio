@@ -2,7 +2,7 @@ import express from "express";
 import * as auditLogController from "../../controllers/activity/auditLog.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
-import { blockGuestFromAdmin } from "../../middlewares/blockGuestFromAdmin.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import { validateParams } from "../../middlewares/validateSchema.js";
 import { idSchema } from "../../models/index.js";
 import { z } from "zod";
@@ -10,7 +10,7 @@ import { z } from "zod";
 const router = express.Router();
 
 // ECURITY: Block GUEST role from audit logs
-router.use(authenticate, blockGuestFromAdmin);
+router.use(authenticate, requireBackOfficeRole);
 
 /**
  * @route   GET /api/audit-logs

@@ -119,7 +119,7 @@ const MapBase = forwardRef(
     );
 
     return (
-      <div className={`relative w-full h-full ${className}`}>
+      <div className={`relative w-full ${className || "h-full"}`}>
         <MapGL
           ref={(node) => {
             mapRef.current = node;

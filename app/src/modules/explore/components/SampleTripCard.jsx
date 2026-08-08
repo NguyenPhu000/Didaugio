@@ -9,6 +9,7 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { useTranslation } from "react-i18next";
 import { TOKENS } from "../../../constants/design-tokens";
 import { resolveTripCoverUri } from "../../../lib/media-url";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
@@ -25,6 +26,7 @@ const compareDestination = (a, b) => {
 };
 
 function SampleTripCardInner({ trip, onPress }) {
+  const { t } = useTranslation();
   const { width: screenWidth } = useWindowDimensions();
   const scale = useSharedValue(1);
 
@@ -46,10 +48,14 @@ function SampleTripCardInner({ trip, onPress }) {
     const names = destinations
       .map((item) => item?.place?.name)
       .filter(Boolean);
-    if (!names.length) return "Khám phá vẻ đẹp Cần Thơ theo nhịp riêng";
+    if (!names.length) return t("explore.sampleTrip.defaultRoute");
     const visible = names.slice(0, 3).join(" • ");
-    return names.length > 3 ? `${visible} (+${names.length - 3} điểm)` : visible;
-  }, [destinations]);
+    return names.length > 3
+      ? `${visible} (+${t("explore.countLabel", {
+          count: names.length - 3,
+        })})`
+      : visible;
+  }, [destinations, t]);
 
   const imageUri = useMemo(
     () =>
@@ -105,7 +111,9 @@ function SampleTripCardInner({ trip, onPress }) {
       <View className="absolute top-3.5 left-3.5 flex-row items-center space-x-1.5 px-3 py-1.5 rounded-full bg-[#0B0D12]/80 border border-white/20">
         <MaterialIconsRounded name="explore" size={14} color="#38BDF8" />
         <Text className="text-[10px] font-bold tracking-wider text-sky-300 uppercase">
-          LỊCH TRÌNH MẪU • CẦN THƠ
+          {t("explore.sampleTrip.badge", {
+            location: t("explore.header.location"),
+          })}
         </Text>
       </View>
 
@@ -123,7 +131,7 @@ function SampleTripCardInner({ trip, onPress }) {
           numberOfLines={2}
           className="text-xl font-bold text-white leading-snug tracking-tight"
         >
-          {trip?.title || "Hành trình trải nghiệm Cần Thơ"}
+          {trip?.title || t("explore.sampleTrip.defaultTitle")}
         </Text>
 
         {/* Route Preview */}
@@ -147,7 +155,7 @@ function SampleTripCardInner({ trip, onPress }) {
                 color="#E2E8F0"
               />
               <Text className="text-xs font-semibold text-slate-200" style={{ fontVariant: ["tabular-nums"] }}>
-                {dayCount} ngày
+                {t("explore.sampleTrip.days", { count: dayCount })}
               </Text>
             </View>
 

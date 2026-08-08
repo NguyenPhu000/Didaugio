@@ -1,4 +1,4 @@
-import { ROLES } from "../config/constants.js";
+import { isBackOfficeRole, ROLES } from "../config/constants.js";
 
 export const blockGuestFromAdmin = (req, res, next) => {
   if (!req.user) {
@@ -16,6 +16,28 @@ export const blockGuestFromAdmin = (req, res, next) => {
       data: null,
       message: "Tài khoản Guest không có quyền truy cập khu vực quản trị",
       errorCode: "GUEST_NOT_ALLOWED",
+    });
+  }
+
+  next();
+};
+
+export const requireBackOfficeRole = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      data: null,
+      message: "Chưa xác thực. Vui lòng đăng nhập.",
+      errorCode: "NOT_AUTHENTICATED",
+    });
+  }
+
+  if (!isBackOfficeRole(req.user.roleId)) {
+    return res.status(403).json({
+      success: false,
+      data: null,
+      message: "Chỉ Admin hoặc Super Admin được truy cập khu vực này.",
+      errorCode: "BACK_OFFICE_ROLE_REQUIRED",
     });
   }
 
@@ -48,4 +70,4 @@ export const checkMinRole = (allowedRoles) => {
   };
 };
 
-export default { blockGuestFromAdmin, checkMinRole };
+export default { blockGuestFromAdmin, requireBackOfficeRole, checkMinRole };

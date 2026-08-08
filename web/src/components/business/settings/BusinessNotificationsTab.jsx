@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui";
-import SettingsSection from "@/components/settings/SettingsSection";
+import { cn } from "@/lib/utils";
+import { BusinessSectionCard } from "@/components/business/ui/BusinessSectionCard";
 
 const BusinessNotificationsTab = ({ value, onChange }) => {
   const { t } = useTranslation();
@@ -10,51 +10,94 @@ const BusinessNotificationsTab = ({ value, onChange }) => {
     {
       section: t("business.settings.notifications.bookingSection"),
       items: [
-        { key: "newBookingEmail", label: t("business.settings.notifications.newBookingEmail") },
-        { key: "newBookingPush", label: t("business.settings.notifications.newBookingPush") },
-        { key: "cancellationEmail", label: t("business.settings.notifications.cancellationEmail") },
-        { key: "cancellationPush", label: t("business.settings.notifications.cancellationPush") },
+        {
+          key: "newBookingEmail",
+          label: t("business.settings.notifications.newBookingEmail"),
+          description: t("business.settings.notifications.newBookingEmailDescription"),
+        },
+        {
+          key: "newBookingPush",
+          label: t("business.settings.notifications.newBookingPush"),
+          description: t("business.settings.notifications.newBookingPushDescription"),
+        },
+        {
+          key: "cancellationEmail",
+          label: t("business.settings.notifications.cancellationEmail"),
+          description: t("business.settings.notifications.cancellationEmailDescription"),
+        },
+        {
+          key: "cancellationPush",
+          label: t("business.settings.notifications.cancellationPush"),
+          description: t("business.settings.notifications.cancellationPushDescription"),
+        },
       ],
     },
     {
       section: t("business.settings.notifications.reviewSection"),
       items: [
-        { key: "newReviewEmail", label: t("business.settings.notifications.newReviewEmail") },
-        { key: "newReviewPush", label: t("business.settings.notifications.newReviewPush") },
-        { key: "payoutEmail", label: t("business.settings.notifications.payoutEmail") },
+        {
+          key: "newReviewEmail",
+          label: t("business.settings.notifications.newReviewEmail"),
+          description: t("business.settings.notifications.newReviewEmailDescription"),
+        },
+        {
+          key: "newReviewPush",
+          label: t("business.settings.notifications.newReviewPush"),
+          description: t("business.settings.notifications.newReviewPushDescription"),
+        },
+        {
+          key: "payoutEmail",
+          label: t("business.settings.notifications.payoutEmail"),
+          description: t("business.settings.notifications.payoutEmailDescription"),
+        },
       ],
     },
   ];
 
   return (
-    <SettingsSection
+    <BusinessSectionCard
       title={t("business.settings.notifications.title")}
       description={t("business.settings.notifications.description")}
     >
-      {notificationGroups.map((group) => (
-        <div key={group.section} className="space-y-2">
-          <Label className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            {group.section}
-          </Label>
-          <div className="space-y-1">
-            {group.items.map((item) => (
-              <div
-                key={item.key}
-                className="flex items-center justify-between gap-3 border border-gray-200 px-3 sm:px-4 py-3 hover:border-black transition-colors"
-              >
-                <span className="font-mono text-xs uppercase tracking-wide leading-relaxed">
-                  {item.label}
-                </span>
-                <Switch
-                  checked={!!value[item.key]}
-                  onCheckedChange={(checked) => onChange(item.key, checked)}
-                />
-              </div>
-            ))}
+      <div className="space-y-6">
+        {notificationGroups.map((group) => (
+          <div key={group.section} className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+              {group.section}
+            </p>
+            <div className="space-y-2">
+              {group.items.map((item) => {
+                const on = !!value[item.key];
+                return (
+                  <div
+                    key={item.key}
+                    className={cn(
+                      "flex items-center justify-between gap-3 rounded-lg border px-3 py-3 transition-colors",
+                      on
+                        ? "border-emerald-200/70 bg-emerald-50/50 dark:border-emerald-900/50 dark:bg-emerald-950/20"
+                        : "border-zinc-200/80 dark:border-zinc-800"
+                    )}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                        {item.label}
+                      </p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                        {item.description}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={on}
+                      onCheckedChange={(checked) => onChange(item.key, checked)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
-    </SettingsSection>
+        ))}
+      </div>
+    </BusinessSectionCard>
   );
 };
 

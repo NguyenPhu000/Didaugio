@@ -46,7 +46,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { LanguageSelector } from "@/components/common/LanguageSelector";
 import { useTranslation } from "react-i18next";
 
-const REVIEW_NOTIFICATION_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF];
+const REVIEW_NOTIFICATION_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
 
 function formatTime(value) {
   if (!value) return "";

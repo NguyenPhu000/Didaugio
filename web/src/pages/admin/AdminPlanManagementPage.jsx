@@ -39,18 +39,36 @@ import {
 } from "@/hooks/queries/useSubscriptionQueries";
 import PlanBadge from "@/components/subscription/PlanBadge";
 
-const planSchema = z.object({
-  name: z.string().min(1, "Tên gói là bắt buộc"),
-  slug: z.string().min(1, "Slug là bắt buộc"),
-  description: z.string().optional(),
-  priceMonthly: z.coerce.number().min(0, "Giá phải >= 0"),
-  priceYearly: z.coerce.number().min(0, "Giá phải >= 0"),
-  maxPlaces: z.coerce.number().min(-1, "-1 = không giới hạn").optional(),
-  maxBookings: z.coerce.number().min(-1, "-1 = không giới hạn").optional(),
-  maxStaff: z.coerce.number().min(0).optional(),
-  features: z.string().optional(),
-  sortOrder: z.coerce.number().min(0).optional(),
-});
+function LimitBadge({ icon: Icon, value, label }) {
+  return (
+    <div className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2.5 py-1.5 text-xs">
+      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+      <span className="font-medium">{value === -1 ? "∞" : value}</span>
+      <span className="text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
+function buildPlanSchema(t) {
+  return z.object({
+    name: z.string().min(1, t("subscription.admin.validation.nameRequired")),
+    slug: z.string().min(1, t("subscription.admin.validation.slugRequired")),
+    description: z.string().optional(),
+    priceMonthly: z.coerce.number().min(0, t("subscription.admin.validation.priceNonNegative")),
+    priceYearly: z.coerce.number().min(0, t("subscription.admin.validation.priceNonNegative")),
+    maxPlaces: z.coerce
+      .number()
+      .min(-1, t("subscription.admin.validation.minOneUnlimited"))
+      .optional(),
+    maxBookings: z.coerce
+      .number()
+      .min(-1, t("subscription.admin.validation.minOneUnlimited"))
+      .optional(),
+    maxStaff: z.coerce.number().min(0).optional(),
+    features: z.string().optional(),
+    sortOrder: z.coerce.number().min(0).optional(),
+  });
+}
 
 const DEFAULT_VALUES = {
   name: "",
@@ -92,16 +110,6 @@ function calcYearlySavings(monthly, yearly) {
   return Math.round(((yearlyIfMonthly - yearly) / yearlyIfMonthly) * 100);
 }
 
-function LimitBadge({ icon: Icon, value, label }) {
-  return (
-    <div className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2.5 py-1.5 text-xs">
-      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-      <span className="font-medium">{value === -1 ? "∞" : value}</span>
-      <span className="text-muted-foreground">{label}</span>
-    </div>
-  );
-}
-
 function PlanFormDialog({ open, onOpenChange, plan, onSubmit, isLoading }) {
   const { t } = useTranslation();
 
@@ -112,7 +120,7 @@ function PlanFormDialog({ open, onOpenChange, plan, onSubmit, isLoading }) {
     watch,
     formState: { errors },
   } = useForm({
-    resolver: zodResolver(planSchema),
+    resolver: zodResolver(buildPlanSchema(t)),
     defaultValues: DEFAULT_VALUES,
   });
 
@@ -144,49 +152,57 @@ function PlanFormDialog({ open, onOpenChange, plan, onSubmit, isLoading }) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <PlanBadge planSlug={plan?.slug} />
-            Chỉnh sửa gói {plan?.name}
+            {t("subscription.admin.form.title", { name: plan?.name || "" })}
           </DialogTitle>
           <DialogDescription>
-            Cập nhật thông tin và giới hạn gói dịch vụ
+            {t("subscription.admin.form.description")}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Tên gói *</Label>
-              <Input {...register("name")} placeholder="Plus" />
+              <Label>{t("subscription.admin.form.nameLabel")}</Label>
+              <Input {...register("name")} placeholder={t("subscription.admin.form.namePlaceholder")} />
               {errors.name && (
                 <p className="text-xs text-destructive">{errors.name.message}</p>
               )}
             </div>
             <div className="space-y-1.5">
-              <Label>Slug</Label>
+              <Label>{t("subscription.admin.form.slugLabel")}</Label>
               <Input {...register("slug")} disabled className="bg-muted" />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Mô tả</Label>
-            <Textarea {...register("description")} rows={2} placeholder="Mô tả ngắn về gói dịch vụ" />
+            <Label>{t("subscription.admin.form.descriptionLabel")}</Label>
+            <Textarea
+              {...register("description")}
+              rows={2}
+              placeholder={t("subscription.admin.form.descriptionPlaceholder")}
+            />
           </div>
 
           <div className="space-y-3">
-            <Label>Giá dịch vụ</Label>
+            <Label>{t("subscription.admin.form.pricingLabel")}</Label>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Giá / tháng (VND)</Label>
+                <Label className="text-xs text-muted-foreground">
+                  {t("subscription.admin.form.monthlyLabel")}
+                </Label>
                 <Input type="number" {...register("priceMonthly")} />
                 {errors.priceMonthly && (
                   <p className="text-xs text-destructive">{errors.priceMonthly.message}</p>
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Giá / năm (VND)</Label>
+                <Label className="text-xs text-muted-foreground">
+                  {t("subscription.admin.form.yearlyLabel")}
+                </Label>
                 <Input type="number" {...register("priceYearly")} />
                 {savings > 0 && (
                   <p className="text-xs text-emerald-600 font-medium">
-                    Tiết kiệm {savings}% khi thanh toán theo năm
+                    {t("subscription.admin.form.yearlySavings", { percent: savings })}
                   </p>
                 )}
               </div>
@@ -194,20 +210,30 @@ function PlanFormDialog({ open, onOpenChange, plan, onSubmit, isLoading }) {
           </div>
 
           <div className="space-y-3">
-            <Label>Giới hạn sử dụng</Label>
+            <Label>{t("subscription.admin.form.limitsLabel")}</Label>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Địa điểm tối đa</Label>
+                <Label className="text-xs text-muted-foreground">
+                  {t("subscription.admin.form.placesFieldLabel")}
+                </Label>
                 <Input type="number" {...register("maxPlaces")} />
-                <p className="text-[10px] text-muted-foreground">-1 = không giới hạn</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {t("subscription.admin.form.unlimitedHint")}
+                </p>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Booking / tháng</Label>
+                <Label className="text-xs text-muted-foreground">
+                  {t("subscription.admin.form.bookingsFieldLabel")}
+                </Label>
                 <Input type="number" {...register("maxBookings")} />
-                <p className="text-[10px] text-muted-foreground">-1 = không giới hạn</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {t("subscription.admin.form.unlimitedHint")}
+                </p>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Nhân viên tối đa</Label>
+                <Label className="text-xs text-muted-foreground">
+                  {t("subscription.admin.form.staffFieldLabel")}
+                </Label>
                 <Input type="number" {...register("maxStaff")} />
               </div>
             </div>
@@ -215,17 +241,17 @@ function PlanFormDialog({ open, onOpenChange, plan, onSubmit, isLoading }) {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Thứ tự hiển thị</Label>
+              <Label>{t("subscription.admin.form.sortOrderLabel")}</Label>
               <Input type="number" {...register("sortOrder")} />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Tính năng (mỗi dòng một tính năng)</Label>
+            <Label>{t("subscription.admin.form.featuresLabel")}</Label>
             <Textarea
               {...register("features")}
               rows={4}
-              placeholder={"Quản lý 5 địa điểm\nHỗ trợ ưu tiên\nBáo cáo nâng cao"}
+              placeholder={t("subscription.admin.form.featuresPlaceholder")}
             />
           </div>
 
@@ -235,7 +261,7 @@ function PlanFormDialog({ open, onOpenChange, plan, onSubmit, isLoading }) {
             </Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t("common.save")}
+              {isLoading ? t("subscription.admin.form.submitting") : t("common.save")}
             </Button>
           </DialogFooter>
         </form>
@@ -245,6 +271,7 @@ function PlanFormDialog({ open, onOpenChange, plan, onSubmit, isLoading }) {
 }
 
 function PlanCard({ plan, onEdit, onToggleActive }) {
+  const { t } = useTranslation();
   const savings = calcYearlySavings(plan.priceMonthly, plan.priceYearly);
   const features = Array.isArray(plan.features) ? plan.features : [];
 
@@ -253,7 +280,7 @@ function PlanCard({ plan, onEdit, onToggleActive }) {
       {!plan.isActive && (
         <div className="absolute right-3 top-3">
           <Badge variant="outline" className="bg-muted text-muted-foreground">
-            Tạm ẩn
+            {t("subscription.admin.card.hidden")}
           </Badge>
         </div>
       )}
@@ -276,12 +303,12 @@ function PlanCard({ plan, onEdit, onToggleActive }) {
         <div className="rounded-lg bg-muted/30 p-3">
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-bold">{formatVND(plan.priceMonthly)}</span>
-            <span className="text-xs text-muted-foreground">/ tháng</span>
+            <span className="text-xs text-muted-foreground">{t("subscription.admin.card.perMonth")}</span>
           </div>
           {plan.priceYearly > 0 && (
             <div className="mt-1 flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">
-                {formatVND(plan.priceYearly)} / năm
+                {formatVND(plan.priceYearly)} {t("subscription.admin.card.perYear")}
               </span>
               {savings > 0 && (
                 <Badge variant="secondary" className="text-[10px] bg-emerald-50 text-emerald-700">
@@ -294,15 +321,15 @@ function PlanCard({ plan, onEdit, onToggleActive }) {
 
         {/* Limits */}
         <div className="flex flex-wrap gap-2">
-          <LimitBadge icon={MapPin} value={plan.maxPlaces} label="địa điểm" />
-          <LimitBadge icon={CalendarDays} value={plan.maxBookings} label="booking" />
-          <LimitBadge icon={UserCheck} value={plan.maxStaff} label="NV" />
+          <LimitBadge icon={MapPin} value={plan.maxPlaces} label={t("subscription.admin.card.placesLabel")} />
+          <LimitBadge icon={CalendarDays} value={plan.maxBookings} label={t("subscription.admin.card.bookingsLabel")} />
+          <LimitBadge icon={UserCheck} value={plan.maxStaff} label={t("subscription.admin.card.staffLabel")} />
         </div>
 
         {/* Features */}
         {features.length > 0 && (
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">Tính năng</p>
+            <p className="text-xs font-medium text-muted-foreground">{t("subscription.admin.card.featuresLabel")}</p>
             <div className="space-y-1">
               {features.map((f, i) => (
                 <div key={i} className="flex items-center gap-1.5 text-xs">
@@ -318,7 +345,7 @@ function PlanCard({ plan, onEdit, onToggleActive }) {
         <div className="flex items-center justify-between border-t pt-3">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Users className="h-3.5 w-3.5" />
-            <span>{plan._count?.subscriptions || 0} subscriber</span>
+            <span>{t("subscription.admin.card.subscribers", { count: plan._count?.subscriptions || 0 })}</span>
           </div>
 
           <div className="flex items-center gap-2">

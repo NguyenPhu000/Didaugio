@@ -26,7 +26,11 @@ export const isNonAdminRole = (roleId) =>
 export const resolvePostLoginRoute = (user) => {
   const roleId = resolveRoleId(user);
 
-  if (roleId === ROLES.BUSINESS || roleId === ROLES.STAFF) {
+  if (roleId === ROLES.STAFF) {
+    return BUSINESS_ROUTES.BOOKINGS;
+  }
+
+  if (roleId === ROLES.BUSINESS) {
     return BUSINESS_ROUTES.DASHBOARD;
   }
 

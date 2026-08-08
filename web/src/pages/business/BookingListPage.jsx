@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { usePermission } from "@/hooks/usePermission";
 
 import { BookingListProvider, useBookingListContext } from "@/components/booking/BookingListContext";
 import { BookingFilterBar } from "@/components/booking/BookingFilterBar";
@@ -53,6 +54,10 @@ const PAGE_SIZE = 20;
 function BookingListPageContent() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { hasPermission } = usePermission();
+  const canConfirm = hasPermission("bookings.confirm");
+  const canCancel = hasPermission("bookings.cancel");
+  const canComplete = hasPermission("bookings.complete");
 
   const {
     activeTab,
@@ -316,6 +321,9 @@ function BookingListPageContent() {
               onNoShow={handleNoShow}
               onView={(bk) => navigate(`/business/bookings/${bk.id}`)}
               actionLoading={actionLoading}
+              canConfirm={canConfirm}
+              canCancel={canCancel}
+              canComplete={canComplete}
             />
           ))}
         </div>

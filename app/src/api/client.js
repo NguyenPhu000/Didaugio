@@ -126,8 +126,8 @@ const processQueue = (error, token = null) => {
 };
 
 // Retry logic cho GET requests trên mobile network
-const MAX_RETRIES = 2;
-const RETRY_DELAY_MS = 1000;
+const MAX_RETRIES = 1;
+const RETRY_DELAY_MS = 500;
 
 client.interceptors.response.use(
   (response) => response.data,
@@ -249,6 +249,7 @@ function buildError(error) {
     message,
     status: error?.response?.status,
     code: error?.response?.data?.errorCode || "UNKNOWN_ERROR",
+    requestId: error?.response?.headers?.["x-request-id"],
     attemptedBases: error?.config?._attemptedBases || apiBaseCandidates,
     raw: error,
   };

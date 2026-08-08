@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "../../../constants/query-keys";
 import {
   getNotificationsApi,
@@ -9,21 +9,27 @@ import {
 const DEFAULT_PAGE_SIZE = 40;
 
 export function useNotifications(options = {}) {
-  const { enabled = true } = options;
+  const { enabled = true, unreadOnly = false } = options;
+  const filters = {
+    limit: DEFAULT_PAGE_SIZE,
+    unreadOnly: unreadOnly || undefined,
+  };
 
-  return useQuery({
-    queryKey: QUERY_KEYS.notifications.list({ limit: DEFAULT_PAGE_SIZE }),
-    queryFn: () =>
+  return useInfiniteQuery({
+    queryKey: QUERY_KEYS.notifications.list(filters),
+    queryFn: ({ pageParam = 1 }) =>
       getNotificationsApi({
-        page: 1,
-        limit: DEFAULT_PAGE_SIZE,
+        page: pageParam,
+        ...filters,
       }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      const pagination = lastPage?.pagination;
+      return pagination && pagination.page < pagination.totalPages
+        ? pagination.page + 1
+        : undefined;
+    },
     enabled,
-    select: (res) => ({
-      items: res?.data || [],
-      unreadCount: res?.unreadCount ?? 0,
-      pagination: res?.pagination || null,
-    }),
     staleTime: 30 * 1000,
   });
 }

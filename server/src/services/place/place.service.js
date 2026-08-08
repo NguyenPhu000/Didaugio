@@ -13,6 +13,7 @@ import {
   writeSpokenGuide,
 } from "./placeSpokenGuide.service.js";
 import { validatePlaceLocation } from "./placeLocation.service.js";
+import { applyPlaceBusinessSettings } from "../business/businessSettings.service.js";
 
 /**
  * Generate slug từ tên
@@ -276,7 +277,7 @@ export const getAllPlaces = async (filters = {}) => {
           select: { reviews: true, favorites: true },
         },
         business: {
-          select: { id: true, businessName: true, status: true },
+          select: { id: true, businessName: true, status: true, settings: true },
         },
       },
       orderBy,
@@ -287,7 +288,7 @@ export const getAllPlaces = async (filters = {}) => {
   ]);
 
   return {
-    data: places,
+    data: places.map(applyPlaceBusinessSettings),
     pagination: {
       page: parseInt(page),
       limit: take,
@@ -402,7 +403,7 @@ export const getPlaceById = async (id, incrementView = false) => {
         },
       },
       business: {
-        select: { id: true, businessName: true, status: true },
+        select: { id: true, businessName: true, status: true, settings: true },
       },
       businessServices: {
         where: { isActive: true },
@@ -422,7 +423,7 @@ export const getPlaceById = async (id, incrementView = false) => {
     });
   }
 
-  return attachPrimarySpokenGuide(place);
+  return attachPrimarySpokenGuide(applyPlaceBusinessSettings(place));
 };
 
 /**
@@ -442,6 +443,9 @@ export const getPlaceBySlug = async (slug, incrementView = false) => {
         orderBy: { dayOfWeek: "asc" },
       },
       amenities: true,
+      business: {
+        select: { id: true, businessName: true, status: true, settings: true },
+      },
       businessServices: {
         where: { isActive: true },
         select: { id: true },
@@ -466,7 +470,7 @@ export const getPlaceBySlug = async (slug, incrementView = false) => {
     });
   }
 
-  return attachPrimarySpokenGuide(place);
+  return attachPrimarySpokenGuide(applyPlaceBusinessSettings(place));
 };
 
 /**

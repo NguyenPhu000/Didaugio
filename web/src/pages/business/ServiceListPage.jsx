@@ -29,6 +29,7 @@ import {
   BusinessStatCardSkeleton,
   BusinessFilterBar,
 } from "@/components/business/ui";
+import { MetricCard } from "@/components/business/ui/MetricCard";
 import { formatVND } from "@/components/business/dashboardWidgetHelpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -888,54 +889,51 @@ const ServiceListPage = () => {
 
   return (
     <div className="space-y-4 md:space-y-6 p-4 md:p-6 lg:p-8">
-      {/* Header */}
-      <BusinessPageHeader
-        title={t("business.services.title")}
-        description={t("business.services.subtitle")}
-        badge={total > 0 ? total : undefined}
-        action={
-          <Button
-            onClick={() => openCreate("")}
-            className="gap-2 bg-zinc-950 text-white hover:bg-zinc-900"
-          >
-            <Plus className="h-4 w-4" />
-            Tạo dịch vụ
-          </Button>
-        }
-      />
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-100">
+            {t("business.services.title")}
+          </h1>
+          <p className="text-sm text-zinc-500 mt-1 dark:text-zinc-400">
+            {t("business.services.subtitle")}
+          </p>
+        </div>
+        <Button
+          onClick={() => openCreate("")}
+          className="gap-2 bg-zinc-950 hover:bg-zinc-900 text-white font-semibold rounded-lg px-4 py-2 shadow-sm dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 shrink-0"
+        >
+          <Plus className="h-4 w-4" />
+          Tạo dịch vụ mới
+        </Button>
+      </div>
 
-      {/* Stat Cards */}
+      {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {loading ? (
-          Array.from({ length: 4 }).map((_, i) => <BusinessStatCardSkeleton key={i} />)
-        ) : (
-          <>
-            <BusinessStatCard
-              title={t("business.services.title")}
-              value={total}
-              icon={Ticket}
-              iconColor="blue"
-            />
-            <BusinessStatCard
-              title={t("common.active")}
-              value={totalActive}
-              icon={CalendarCheck}
-              iconColor="emerald"
-            />
-            <BusinessStatCard
-              title="Giảm giá"
-              value={totalDiscounted}
-              icon={Tag}
-              iconColor="amber"
-            />
-            <BusinessStatCard
-              title={t("business.places.title")}
-              value={places.length}
-              icon={Users}
-              iconColor="violet"
-            />
-          </>
-        )}
+        <MetricCard
+          title={t("business.services.title")}
+          value={total}
+          icon={Ticket}
+          loading={loading}
+        />
+        <MetricCard
+          title={t("common.active")}
+          value={totalActive}
+          icon={CalendarCheck}
+          loading={loading}
+        />
+        <MetricCard
+          title="Giảm giá"
+          value={totalDiscounted}
+          icon={Tag}
+          loading={loading}
+        />
+        <MetricCard
+          title={t("business.places.title")}
+          value={places.length}
+          icon={Users}
+          loading={loading}
+        />
       </div>
 
       {/* Place Overview */}

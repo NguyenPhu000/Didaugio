@@ -37,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import * as bookingApi from "@/apis/bookingService";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { BOOKING_STATUS } from "@/constants/constants";
+import { usePermission } from "@/hooks/usePermission";
 import {
   StatusBadge,
 } from "@/components/business/DashboardWidgets";
@@ -453,6 +454,7 @@ PaymentTimeline.displayName = "PaymentTimeline";
 
 const BookingDetailPage = memo(() => {
   const { t } = useTranslation();
+  const { hasPermission, isStaff } = usePermission();
   const { id } = useParams();
   const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
@@ -597,6 +599,9 @@ const BookingDetailPage = memo(() => {
 
   const isPending = booking.status === BOOKING_STATUS.PENDING;
   const isConfirmed = booking.status === BOOKING_STATUS.CONFIRMED;
+  const canConfirm = hasPermission("bookings.confirm");
+  const canCancel = hasPermission("bookings.cancel");
+  const canComplete = hasPermission("bookings.complete");
   const paymentStatus = String(
     booking?.paymentStatus || "unpaid",
   ).toLowerCase();
@@ -607,8 +612,8 @@ const BookingDetailPage = memo(() => {
     paymentStatusLabel = t("business.bookingDetail.refunded");
   }
   const canMarkPaid =
-    paymentStatus !== "paid" && !paymentStatus.includes("refund");
-  const canRefund = paymentStatus === "paid";
+    !isStaff() && paymentStatus !== "paid" && !paymentStatus.includes("refund");
+  const canRefund = !isStaff() && paymentStatus === "paid";
 
   return (
     <div className="space-y-4 p-4 md:space-y-6 md:p-6 lg:p-8 min-h-screen">
@@ -639,42 +644,42 @@ const BookingDetailPage = memo(() => {
         <div className="flex gap-2 shrink-0 flex-wrap">
           {isPending && (
             <>
-              <Button
+              {canConfirm && <Button
                 onClick={handleConfirm}
                 className="gap-2"
                 disabled={actionLoading}
               >
                 <Check className="h-4 w-4" />{" "}
                 {actionLoading ? t("business.bookingDetail.processing") : t("business.bookingDetail.confirm")}
-              </Button>
-              <Button
+              </Button>}
+              {canCancel && <Button
                 variant="destructive"
                 onClick={() => setCancelOpen(true)}
                 className="gap-2"
                 disabled={actionLoading}
               >
                 <X className="h-4 w-4" /> {t("business.bookingDetail.cancel")}
-              </Button>
+              </Button>}
             </>
           )}
           {isConfirmed && (
             <>
-              <Button
+              {canComplete && <Button
                 onClick={handleComplete}
                 className="gap-2"
                 disabled={actionLoading}
               >
                 <CheckCircle className="h-4 w-4" />{" "}
                 {actionLoading ? t("business.bookingDetail.processing") : t("business.bookingDetail.complete")}
-              </Button>
-              <Button
+              </Button>}
+              {canComplete && <Button
                 variant="outline"
                 onClick={handleNoShow}
                 className="gap-2"
                 disabled={actionLoading}
               >
                 <AlertTriangle className="h-4 w-4" /> {t("business.bookingDetail.noShow")}
-              </Button>
+              </Button>}
             </>
           )}
         </div>
@@ -762,7 +767,7 @@ const BookingDetailPage = memo(() => {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button
+                {canMarkPaid && <Button
                   size="sm"
                   className="gap-1.5"
                   onClick={() => setMarkPaidOpen(true)}
@@ -770,9 +775,9 @@ const BookingDetailPage = memo(() => {
                 >
                   <CheckCircle className="h-4 w-4" />
                   {t("business.bookingDetail.confirmPaymentBtn")}
-                </Button>
+                </Button>}
 
-                <Button
+                {canRefund && <Button
                   size="sm"
                   variant="destructive"
                   className="gap-1.5"
@@ -781,7 +786,7 @@ const BookingDetailPage = memo(() => {
                 >
                   <RotateCcw className="h-4 w-4" />
                   {t("business.bookingDetail.refundBtn")}
-                </Button>
+                </Button>}
               </div>
             </div>
           </BusinessSectionCard>

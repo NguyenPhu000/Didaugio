@@ -57,12 +57,6 @@ export function UpcomingTripCard({ trip, onPress }) {
     }
   }
 
-  const shadowStyle = {
-    textShadowColor: "rgba(0, 0, 0, 0.55)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
-  };
-
   return (
     <Pressable
       onPress={onPress}

@@ -5,6 +5,8 @@ import tripService, { TRIP_PLACE_SELECT } from "../trip/trip.service.js";
 import { deletePlaceImage, uploadPlaceImage } from "../media/media.service.js";
 import { anonymousAiUserRef } from "../adminAi/aiLog.service.js";
 import { RATEABLE_AI_FEATURES } from "../ai/aiFeedbackPolicy.js";
+import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
+import { applyPlaceBusinessSettings } from "../business/businessSettings.service.js";
 
 const toInt = (value, fallback = null) => {
   const number = parseInt(value, 10);
@@ -292,6 +294,9 @@ export const getHomeData = async (query = {}) => {
             isCover: true,
           },
         },
+        business: {
+          select: { id: true, businessName: true, status: true, settings: true },
+        },
       },
       take: limit,
     }),
@@ -316,7 +321,7 @@ export const getHomeData = async (query = {}) => {
 
   return {
     categories,
-    featuredPlaces,
+    featuredPlaces: featuredPlaces.map(applyPlaceBusinessSettings),
     banners,
   };
 };
@@ -359,13 +364,16 @@ export const searchPlaces = async (query = {}) => {
           orderBy: [{ isCover: "desc" }, { order: "asc" }],
           select: { id: true, imageData: true, secureUrl: true, thumbnailUrl: true, isCover: true },
         },
+        business: {
+          select: { id: true, businessName: true, status: true, settings: true },
+        },
       },
     }),
     prisma.place.count({ where }),
   ]);
 
   return {
-    data: places,
+    data: places.map(applyPlaceBusinessSettings),
     pagination: {
       page,
       limit,
@@ -412,6 +420,9 @@ export const getPlaceDetail = async (placeId, userId = null) => {
           favorites: true,
         },
       },
+      business: {
+        select: { id: true, businessName: true, status: true, settings: true },
+      },
     },
   });
 
@@ -433,10 +444,7 @@ export const getPlaceDetail = async (placeId, userId = null) => {
     isSaved = !!favorite;
   }
 
-  return {
-    ...place,
-    isSaved,
-  };
+  return { ...applyPlaceBusinessSettings(place), isSaved };
 };
 
 export const getPlaceReviews = async (placeId, query = {}) => {
@@ -544,7 +552,10 @@ export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
       id: placeId,
       ...approvedPlaceWhere,
     },
-    select: { id: true },
+    select: {
+      id: true,
+      business: { select: { id: true } },
+    },
   });
 
   if (!place) {
@@ -644,6 +655,14 @@ export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
         },
       },
     });
+    });
+
+    eventEmitter.emit(EVENTS.REVIEW.CREATED, {
+      reviewId: review.id,
+      placeId,
+      businessId: place.business?.id,
+      userId,
+      rating,
     });
 
     return normalizeReviewMediaResponse(review);

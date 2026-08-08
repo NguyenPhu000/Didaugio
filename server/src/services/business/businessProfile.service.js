@@ -14,6 +14,12 @@ import {
 } from "./business.serializer.js";
 import { uploadImage } from "../../utils/cloudinaryService.js";
 import { buildSubscriptionEntitlements } from "../subscription/subscriptionEntitlement.service.js";
+import { getPublicBusinessSettings } from "./businessSettings.service.js";
+
+const BUSINESS_REGISTRATION_ROLE_IDS = new Set([
+  ROLES.USER,
+  ROLES.BUSINESS,
+]);
 
 const uploadLegalDocument = async (fileData) => {
   if (!fileData) return null;
@@ -61,6 +67,7 @@ const getMonthRange = () => {
 
 const mapProfileResponse = async (business) => {
   const serialized = serializeBusiness(business, { includeDocumentUrls: true, decryptSensitive: true });
+  const publicSettings = getPublicBusinessSettings(business.settings);
   const { monthStart, nextMonthStart, now } = getMonthRange();
 
   const [
@@ -130,6 +137,7 @@ const mapProfileResponse = async (business) => {
 
   return {
     ...serialized,
+    settings: publicSettings,
     subscription: business.subscription
       ? {
           id: business.subscription.id,
@@ -144,6 +152,13 @@ const mapProfileResponse = async (business) => {
       : null,
     businessInfo: {
       businessName: serialized.businessName,
+      displayName: publicSettings.displayName || serialized.businessName,
+      description: publicSettings.description,
+      logoUrl: publicSettings.logoUrl,
+      contactPhone: publicSettings.contactPhone,
+      contactEmail: publicSettings.contactEmail,
+      address: publicSettings.address,
+      operatingHours: publicSettings.operatingHours,
       businessType: serialized.businessType,
       taxCode: serialized.taxCode,
       idCardNumber: serialized.idCardNumberMasked,
@@ -198,13 +213,26 @@ export const getProfile = async (userId) => {
 export const register = async (data, userId) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, emailVerified: true, status: true, deletedAt: true },
+    select: {
+      id: true,
+      roleId: true,
+      emailVerified: true,
+      status: true,
+      deletedAt: true,
+    },
   });
 
   if (!user || user.deletedAt) {
     const error = new Error("Người dùng không tồn tại hoặc đã bị xóa");
     error.statusCode = 404;
     error.errorCode = "USER_NOT_FOUND";
+    throw error;
+  }
+
+  if (!BUSINESS_REGISTRATION_ROLE_IDS.has(user.roleId)) {
+    const error = new Error("This account cannot register a business profile");
+    error.statusCode = 403;
+    error.errorCode = "BUSINESS_REGISTRATION_NOT_ALLOWED";
     throw error;
   }
 
@@ -291,19 +319,20 @@ export const register = async (data, userId) => {
   return serialized;
 };
 
-export const getMyPlaces = async (userId) => {
-  const business = await prisma.business.findUnique({
-    where: { ownerId: userId },
-    select: { id: true },
-  });
+export const getMyPlaces = async (userId, activeBusinessId = null) => {
+  const business = activeBusinessId
+    ? { id: activeBusinessId }
+    : await prisma.business.findUnique({
+        where: { ownerId: userId },
+        select: { id: true },
+      });
 
-  const where = {
-    deletedAt: null,
-    OR: [{ createdBy: userId }],
-  };
-  if (business) {
-    where.OR.push({ businessId: business.id });
-  }
+  const where = activeBusinessId
+    ? { deletedAt: null, businessId: activeBusinessId }
+    : {
+        deletedAt: null,
+        OR: [{ createdBy: userId }, ...(business ? [{ businessId: business.id }] : [])],
+      };
 
   const places = await prisma.place.findMany({
     where,

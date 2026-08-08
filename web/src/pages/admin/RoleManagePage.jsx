@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import TimStatsCard from "@/components/admin/TimStatsCard";
 import { usePermission } from "@/hooks/usePermission";
 import { ROLES } from "@/constants/constants";
+import { PERMISSIONS } from "@/constants/permissions";
 import {
   RefreshCw,
   ShieldAlert,
@@ -36,7 +37,7 @@ export default function RoleManagePage() {
   const [selectedRole, setSelectedRole] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
-  const { isSuperAdmin, user: currentUser } = usePermission();
+  const { hasPermission, canEditRolePermissions } = usePermission();
   const { t } = useTranslation();
 
   const fetchRoles = useCallback(async () => {
@@ -50,7 +51,7 @@ export default function RoleManagePage() {
 
       if (response?.success && response.data) {
         const filteredRoles = response.data.filter(
-          (role) => role.name !== "guest" && role.name !== "user",
+          (role) => !["guest", "user"].includes(role.name),
         );
         setRoles(filteredRoles);
       }
@@ -240,7 +241,8 @@ export default function RoleManagePage() {
                           <Eye className="w-3 h-3 mr-2" />
                           {t("roles.viewPermissions")}
                         </Button>
-                      ) : currentUser?.roleId >= role.id ? (
+                      ) : !hasPermission(PERMISSIONS.ROLES.MANAGE_PERMISSIONS) ||
+                        !canEditRolePermissions(role.id) ? (
                         <div className="w-full bg-gray-50 border border-gray-300 text-gray-400 rounded-none h-9 text-xs font-bold uppercase tracking-wider flex items-center justify-center cursor-not-allowed">
                           <ShieldOff className="w-3 h-3 mr-2" />
                           {t("roles.noPermissions")}

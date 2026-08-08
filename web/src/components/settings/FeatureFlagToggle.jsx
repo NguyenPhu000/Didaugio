@@ -42,19 +42,19 @@ const FeatureFlagToggle = ({
     <>
       <div
         className={cn(
-          "flex items-center justify-between border px-4 py-3 transition-colors",
-          enabled ? "border-green-300 bg-green-50" : "border-gray-200 bg-white"
+          "flex items-center justify-between gap-4 rounded-xl border px-4 py-3 transition-colors",
+          enabled ? "border-emerald-200 bg-emerald-50/70" : "border-zinc-200 bg-white"
         )}
       >
         <div className="flex-1 space-y-0.5 pr-4">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold uppercase tracking-wide">
+            <span className="text-sm font-medium text-zinc-900">
               {name}
             </span>
             {critical && (
               <Badge
                 variant="outline"
-                className="rounded-none border-red-300 text-red-600 font-mono text-[9px] uppercase"
+                className="rounded-full border-red-300 px-2 py-0.5 text-xs uppercase"
               >
                 CRITICAL
               </Badge>
@@ -62,7 +62,7 @@ const FeatureFlagToggle = ({
             {percentageRollout != null && enabled && (
               <Badge
                 variant="outline"
-                className="rounded-none border-blue-300 text-blue-600 font-mono text-[9px]"
+                className="rounded-full border-blue-300 px-2 py-0.5 text-xs"
               >
                 {percentageRollout}%
               </Badge>
@@ -86,9 +86,9 @@ const FeatureFlagToggle = ({
       </div>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="sm:max-w-[400px] rounded-none border-black">
+        <DialogContent className="rounded-2xl border-black sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle className="font-black uppercase text-sm flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-base font-semibold">
               <AlertTriangle className="h-4 w-4 text-red-500" />
               XÁC NHẬN TẮT TÍNH NĂNG
             </DialogTitle>
@@ -101,13 +101,13 @@ const FeatureFlagToggle = ({
             <Button
               variant="outline"
               onClick={() => setConfirmOpen(false)}
-              className="rounded-none border-black uppercase font-bold text-xs"
+              className="rounded-xl border-black/30 text-sm"
             >
               HỦY
             </Button>
             <Button
               onClick={handleConfirm}
-              className="rounded-none border-2 border-red-600 bg-red-600 text-white hover:bg-red-700 uppercase font-bold text-xs"
+              className="rounded-xl border-2 border-red-600 bg-red-600 text-sm font-semibold uppercase text-white hover:bg-red-700"
             >
               TẮT TÍNH NĂNG
             </Button>

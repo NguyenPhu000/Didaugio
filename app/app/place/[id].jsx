@@ -1,6 +1,5 @@
   import { useCallback, useEffect, useMemo, useRef, useState } from "react";
   import {
-    Alert,
     FlatList,
     Linking,
     Platform,
@@ -65,6 +64,7 @@
   } from "../../src/modules/place/utils/spokenGuide";
   import { getReviewSubmissionError } from "../../src/modules/place/utils/reviewSubmissionError";
   import { trackPlaceTelemetryApi } from "../../src/modules/place/api/placeApi";
+  import { showAppAlert } from "../../src/utils/appAlert";
 
   const MAIN_REVIEW_LIMIT = 2;
   const MAX_GALLERY_IMAGES = 8;
@@ -124,7 +124,7 @@
     if (todayHours.isClosed) {
       return {
         label: t("place.detail.closedToday"),
-        color: "#EF4444",
+        color: TOKENS.color.semantic.danger,
         icon: "do-not-disturb-on",
       };
     }
@@ -212,6 +212,7 @@
       isLoading,
       isError,
       error,
+      refetch,
     } = usePlaceDetail(placeIdentifier);
     const resolvedPlaceId = useMemo(() => {
       const parsed = Number(place?.id);
@@ -289,17 +290,18 @@
 
     const handleSaveToggle = useCallback(async () => {
       if (!accessToken) {
-        Alert.alert(
-          t("common.loginRequired"),
-          t("place.detail.loginToSave"),
-          [
+        showAppAlert({
+          title: t("common.loginRequired"),
+          message: t("place.detail.loginToSave"),
+          type: "confirm",
+          buttons: [
             { text: t("common.later"), style: "cancel" },
             {
               text: t("common.login"),
               onPress: () => router.push("/(auth)/login"),
             },
           ],
-        );
+        });
         return;
       }
 
@@ -360,17 +362,18 @@
       if (!place?.id) return;
 
       if (!accessToken) {
-        Alert.alert(
-          t("common.loginRequired"),
-          t("place.detail.loginToAddToTrip"),
-          [
+        showAppAlert({
+          title: t("common.loginRequired"),
+          message: t("place.detail.loginToAddToTrip"),
+          type: "confirm",
+          buttons: [
             { text: t("common.later"), style: "cancel" },
             {
               text: t("common.login"),
               onPress: () => router.push("/(auth)/login"),
             },
           ],
-        );
+        });
         return;
       }
       setTripSheetKey((prev) => prev + 1);
@@ -379,17 +382,18 @@
 
     const handleGetTicket = useCallback(() => {
       if (!accessToken) {
-        Alert.alert(
-          t("common.loginRequired"),
-          t("place.detail.loginToBook"),
-          [
+        showAppAlert({
+          title: t("common.loginRequired"),
+          message: t("place.detail.loginToBook"),
+          type: "confirm",
+          buttons: [
             { text: t("common.later"), style: "cancel" },
             {
               text: t("common.login"),
               onPress: () => router.push("/(auth)/login"),
             },
           ],
-        );
+        });
         return;
       }
 
@@ -400,17 +404,18 @@
 
     const handleOpenReviewComposer = useCallback(() => {
       if (!accessToken) {
-        Alert.alert(
-          t("common.loginRequired"),
-          t("place.detail.loginToWriteReview"),
-          [
+        showAppAlert({
+          title: t("common.loginRequired"),
+          message: t("place.detail.loginToWriteReview"),
+          type: "confirm",
+          buttons: [
             { text: t("common.later"), style: "cancel" },
             {
               text: t("common.login"),
               onPress: () => router.push("/(auth)/login"),
             },
           ],
-        );
+        });
         return;
       }
       writeReviewSheetRef.current?.expand();
@@ -421,20 +426,24 @@
         try {
           await createReviewMutation.mutateAsync(payload);
           writeReviewSheetRef.current?.close();
-          Alert.alert(
-            t("place.detail.reviewSubmitted"),
-            t("place.detail.reviewSubmittedDesc"),
-          );
+          showAppAlert({
+            title: t("place.detail.reviewSubmitted"),
+            message: t("place.detail.reviewSubmittedDesc"),
+            type: "success",
+            buttons: [{ text: t("common.close") }],
+          });
         } catch (error) {
           const submissionError = getReviewSubmissionError(error);
-          Alert.alert(
-            submissionError.kind === "cooldown"
+          showAppAlert({
+            title: submissionError.kind === "cooldown"
               ? t("place.detail.reviewCooldownTitle")
               : t("common.error"),
-            submissionError.kind === "cooldown"
+            message: submissionError.kind === "cooldown"
               ? t("place.detail.reviewCooldownMessage")
               : submissionError.message || t("place.detail.reviewSubmitError"),
-          );
+            type: "error",
+            buttons: [{ text: t("common.close") }],
+          });
         }
       },
       [createReviewMutation, t],
@@ -510,19 +519,52 @@
     if (isError || !place) {
       return (
         <View className="flex-1 items-center justify-center px-8 gap-3.5 bg-white">
-          <View className="w-[88px] h-[88px] rounded-[28px] items-center justify-center bg-[#FDECEC]">
+          <View
+            className="w-[88px] h-[88px] rounded-[28px] items-center justify-center"
+            style={{ backgroundColor: TOKENS.color.semantic.dangerSurface }}
+          >
             <MaterialIconsRounded
               name="error-outline"
               size={40}
-              color="#EF4444"
+              color={TOKENS.color.semantic.danger}
             />
           </View>
           <Text
-            className="text-xl leading-7 text-center  "
+            className="text-xl leading-7 text-center"
             style={{ color: PALETTE.text, fontFamily: TOKENS.font.heading }}
           >
             {error?.message || t("place.notFound")}
           </Text>
+          <View className="w-full flex-row gap-2.5 pt-2">
+            <Pressable
+              onPress={() => router.back()}
+              className="h-11 flex-1 items-center justify-center rounded-[14px] border border-slate-200 bg-white active:opacity-75"
+              style={{ borderCurve: "continuous" }}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.back")}
+            >
+              <Text
+                className="text-[14px]"
+                style={{ color: PALETTE.text, fontFamily: TOKENS.font.semibold }}
+              >
+                {t("common.back")}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => refetch()}
+              className="h-11 flex-1 items-center justify-center rounded-[14px] bg-slate-900 active:opacity-75"
+              style={{ borderCurve: "continuous" }}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.retry")}
+            >
+              <Text
+                className="text-[14px] text-white"
+                style={{ fontFamily: TOKENS.font.semibold }}
+              >
+                {t("common.retry")}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       );
     }
@@ -535,8 +577,11 @@
         >
           {/* ───── Task 2 Step 1: 16:10 Hero Gallery ───── */}
           <View
-            className="relative bg-[#E8EDF2]"
-            style={{ height: heroHeight }}
+            className="relative"
+            style={{
+              height: heroHeight,
+              backgroundColor: PALETTE.heroFallback,
+            }}
           >
             <FlatList
               ref={imageListRef}
@@ -580,13 +625,16 @@
                   />
                 ) : (
                   <View
-                    className="h-full items-center justify-center bg-[#E8EDF2]"
-                    style={{ width: SCREEN_WIDTH }}
+                    className="h-full items-center justify-center"
+                    style={{
+                      width: SCREEN_WIDTH,
+                      backgroundColor: PALETTE.heroFallback,
+                    }}
                   >
                     <MaterialIconsRounded
                       name="travel-explore"
                       size={54}
-                      color="#FFFFFF"
+                      color={TOKENS.color.surface.light}
                     />
                   </View>
                 );
@@ -705,7 +753,11 @@
                   onPress={handleOpenAllReviews}
                   className="flex-row items-center gap-0.5"
                 >
-                  <MaterialIconsRounded name="star" size={14} color="#FF9F0A" />
+                  <MaterialIconsRounded
+                    name="star"
+                    size={14}
+                    color={TOKENS.color.semantic.star}
+                  />
                   <Text
                     className="text-[13px]"
                     style={{
@@ -782,11 +834,15 @@
                   borderCurve: "continuous",
                 }}
               >
-                <MaterialIconsRounded name="near-me" size={17} color="#FFFFFF" />
+                <MaterialIconsRounded
+                  name="near-me"
+                  size={17}
+                  color={TOKENS.color.surface.light}
+                />
                 <Text
                   className="text-[13px]"
                   style={{
-                    color: "#FFFFFF",
+                    color: TOKENS.color.surface.light,
                     fontFamily: TOKENS.font.semibold,
                   }}
                 >
@@ -796,23 +852,31 @@
 
               <Pressable
                 onPress={handleSaveToggle}
-                className="h-12 w-12 items-center justify-center rounded-[16px] bg-[#F5F5F7] active:opacity-75"
-                style={{ borderCurve: "continuous" }}
+                className="h-12 w-12 items-center justify-center rounded-[16px] active:opacity-75"
+                style={{
+                  borderCurve: "continuous",
+                  backgroundColor: TOKENS.color.semantic.apple.surface,
+                }}
                 accessibilityRole="button"
                 accessibilityLabel={isSavedLocal ? t("place.saved") : t("place.save")}
               >
                 <MaterialIconsRounded
                   name={isSavedLocal ? "bookmark" : "bookmark-border"}
                   size={16}
-                  color={isSavedLocal ? "#FF9F0A" : PALETTE.text}
+                  color={
+                    isSavedLocal ? TOKENS.color.semantic.star : PALETTE.text
+                  }
                 />
               </Pressable>
 
               {place?.phone ? (
                 <Pressable
                   onPress={() => handleOpenUrl(`tel:${place.phone}`)}
-                  className="h-12 w-12 items-center justify-center rounded-[16px] bg-[#F5F5F7] active:opacity-75"
-                  style={{ borderCurve: "continuous" }}
+                  className="h-12 w-12 items-center justify-center rounded-[16px] active:opacity-75"
+                  style={{
+                    borderCurve: "continuous",
+                    backgroundColor: TOKENS.color.semantic.apple.surface,
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel={t("place.detail.quickCall")}
                 >
@@ -875,8 +939,11 @@
                     {totalReviews > MAIN_REVIEW_LIMIT ? (
                       <Pressable
                         onPress={handleOpenAllReviews}
-                        className="h-11 rounded-[14px] flex-row items-center justify-center gap-1.5 bg-[#F5F5F7] active:opacity-75"
-                        style={{ borderCurve: "continuous" }}
+                        className="h-11 rounded-[14px] flex-row items-center justify-center gap-1.5 active:opacity-75"
+                        style={{
+                          borderCurve: "continuous",
+                          backgroundColor: PALETTE.surfaceAlt,
+                        }}
                       >
                         <Text
                           className="text-[13px]"
@@ -924,12 +991,18 @@
                         accessibilityState={{
                           selected: activeSpeechKey === INTRO_SPEECH_KEY,
                         }}
-                        className={cn(
-                          "h-9 w-9 items-center justify-center rounded-full active:scale-95",
+                        className="h-11 w-11 items-center justify-center rounded-full active:scale-95"
+                        accessibilityLabel={t(
                           activeSpeechKey === INTRO_SPEECH_KEY
-                            ? "bg-[#087E8B]"
-                            : "bg-[#ECF8FA]",
+                            ? "place.detail.stopGuide"
+                            : "place.detail.listenGuide",
                         )}
+                        style={{
+                          backgroundColor:
+                            activeSpeechKey === INTRO_SPEECH_KEY
+                              ? TOKENS.color.semantic.info
+                              : TOKENS.color.semantic.infoSurface,
+                        }}
                       >
                         <MaterialIconsRounded
                           name={
@@ -940,8 +1013,8 @@
                           size={17}
                           color={
                             activeSpeechKey === INTRO_SPEECH_KEY
-                              ? "#FFFFFF"
-                              : "#087E8B"
+                              ? TOKENS.color.surface.light
+                              : TOKENS.color.semantic.info
                           }
                         />
                       </Pressable>
@@ -1213,7 +1286,8 @@
                 onPress={() => hoursSheetRef.current?.close()}
                 accessibilityRole="button"
                 accessibilityLabel={t("common.close")}
-                className="h-9 w-9 items-center justify-center rounded-full bg-[#F5F5F7] active:scale-95"
+                className="h-11 w-11 items-center justify-center rounded-full active:scale-95"
+                style={{ backgroundColor: PALETTE.surfaceAlt }}
               >
                 <MaterialIconsRounded
                   name="close"

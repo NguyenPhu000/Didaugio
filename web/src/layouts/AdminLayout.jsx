@@ -88,13 +88,13 @@ const AdminLayout = ({ children }) => {
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon" className="bg-sidebar border-r">
-        <SidebarHeader className="bg-sidebar px-4 py-4">
+        <SidebarHeader className="bg-sidebar px-3 py-4 border-b border-sidebar-border/30">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
                 size="lg"
                 asChild
-                className="hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:!p-2"
+                className="hover:bg-white/[0.04] transition-colors rounded-xl data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:!p-1.5"
               >
                 <Link
                   to={
@@ -102,15 +102,20 @@ const AdminLayout = ({ children }) => {
                       ? BUSINESS_ROUTES.DASHBOARD
                       : ADMIN_ROUTES.DASHBOARD
                   }
+                  className="flex items-center gap-[12px]"
                 >
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden">
-                    <img src="/logo512.png" alt="iPoint Genie" className="size-8 object-contain" />
+                  {/* Khung Logo Tối Giản & Sắc Sảo */}
+                  <div className="flex size-10 items-center justify-center rounded-[14px] bg-white/[0.04] border border-white/[0.08] shrink-0 overflow-hidden">
+                    <img src="/logo512.png" alt="iPoint Genie" className="size-7 object-contain" />
                   </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                    <span className="font-semibold">{APP_META.NAME}</span>
-                    <span className="text-xs text-muted-foreground uppercase">
+                  {/* Cụm Chữ Thương Hiệu Premium */}
+                  <div className="grid flex-1 text-left group-data-[collapsible=icon]:hidden">
+                    <span className="text-[18px] font-semibold text-white leading-tight">
+                      {APP_META.NAME}
+                    </span>
+                    <span className="text-[11px] font-medium uppercase tracking-[1px] text-[#BDE0FE] leading-tight mt-0.5">
                       {ROLE_NAMES[user?.roleId]
-                        ? `${ROLE_NAMES[user?.roleId]} TERMINAL`
+                        ? `${ROLE_NAMES[user?.roleId]}`
                         : APP_META.ADMIN_SUBTITLE}
                     </span>
                   </div>

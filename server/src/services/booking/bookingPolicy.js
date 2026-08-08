@@ -1,4 +1,5 @@
 import { ERROR_CODES } from "../../config/messages.js";
+import { getEffectiveBusinessBookingRules } from "../business/businessSettings.policy.js";
 
 const BLOCKING_STATUSES = ["pending", "confirmed"];
 const DEFAULT_OCCUPIED_DURATION_MINUTES = 60;
@@ -71,7 +72,10 @@ export function normalizeRequestedResourceId(service, resourceId) {
   return normalized;
 }
 
-export function allowsCapacityOverbooking(service) {
+export function allowsCapacityOverbooking(service, businessSettings) {
+  if (businessSettings?.bookingRules && Object.keys(businessSettings.bookingRules).length > 0) {
+    return getEffectiveBusinessBookingRules(businessSettings).allowOverbooking === true;
+  }
   return service?.allowOverbooking === true;
 }
 

@@ -58,17 +58,36 @@ export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPl
   useEffect(() => {
     if (step !== "qr" || !invoice || !targetPlan?.id) return undefined;
 
+    let cancelled = false;
+    const POLL_INTERVAL_MS = 3000;
+    const POLL_TIMEOUT_MS = 5 * 60 * 1000;
+    const deadline = Date.now() + POLL_TIMEOUT_MS;
+
     const interval = setInterval(() => {
+      if (cancelled || Date.now() > deadline) {
+        clearInterval(interval);
+        return;
+      }
       refetchSub().then((res) => {
+        if (cancelled) return;
         const sub = unwrapResponse(res);
-        if (sub?.planId === targetPlan.id && sub?.billingCycle === billingCycle) {
+        const planChanged = sub?.planId === targetPlan.id;
+        const cycleChanged = sub?.billingCycle === billingCycle;
+        if (planChanged && cycleChanged) {
           setStep("success");
           clearInterval(interval);
+        } else if (Date.now() > deadline) {
+          clearInterval(interval);
         }
+      }).catch(() => {
+        // swallow polling errors to avoid noisy UX; periodic retry continues
       });
-    }, 3000);
+    }, POLL_INTERVAL_MS);
 
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [billingCycle, invoice, refetchSub, step, targetPlan?.id]);
 
   const handleConfirm = () => {

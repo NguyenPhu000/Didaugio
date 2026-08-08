@@ -4,14 +4,14 @@ import { authenticate } from "../../middlewares/authMiddleware.js";
 import { requirePermission } from "../../middlewares/permissionMiddleware.js";
 import { checkRoleHierarchy } from "../../middlewares/checkRoleHierarchy.js";
 import { auditLog } from "../../middlewares/auditLogMiddleware.js";
-import { blockGuestFromAdmin } from "../../middlewares/blockGuestFromAdmin.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import { validateBody } from "../../middlewares/validateSchema.js";
 import { updateUserRoleSchema } from "../../models/index.js";
 
 const router = express.Router();
 
 // 🔒 SECURITY: Block GUEST role from all user management routes
-router.use(authenticate, blockGuestFromAdmin);
+router.use(authenticate, requireBackOfficeRole);
 
 // User routes
 router.get(

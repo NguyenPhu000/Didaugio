@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   ActivityIndicator,
   Pressable,
   ScrollView,
@@ -19,7 +18,10 @@ import {
 } from "../../src/modules/booking/hooks/useBooking";
 import { useServiceAvailability } from "../../src/modules/booking/hooks/useServiceAvailability";
 import { usePlaceDetail } from "../../src/modules/place/hooks/usePlaceDetail";
-import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../src/constants/design-tokens";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../src/constants/design-tokens";
 import {
   useCreateTrip,
   useTrips,
@@ -28,10 +30,7 @@ import { StepIndicator } from "../../src/modules/booking/components/StepIndicato
 import { ServiceCard } from "../../src/modules/booking/components/ServiceCard";
 import { ResourcePicker } from "../../src/modules/booking/components/ResourcePicker";
 import { VoucherApplyField } from "../../src/modules/booking/components/VoucherApplyField";
-import {
-  useApplicableVouchers,
-  useValidateVoucherCode,
-} from "../../src/modules/booking/hooks/useVoucherQueries";
+import { useValidateVoucherCode } from "../../src/modules/booking/hooks/useVoucherQueries";
 import {
   buildBookingPayload,
   getActiveResources,
@@ -41,6 +40,7 @@ import {
   requiresResourceSelection,
 } from "../../src/modules/booking/utils/resourceAvailability";
 import { useTranslation } from "react-i18next";
+import { showAppAlert } from "../../src/utils/appAlert";
 
 const buildTimeSlots = ({
   startHour = 6,
@@ -107,9 +107,10 @@ const addMonths = (date, delta) => {
   return next;
 };
 
-const buildCalendarDays = (monthDate) => {
+const buildCalendarDays = (monthDate, nowTs = Date.now()) => {
   const monthStart = normalizeMonthStart(monthDate);
   const month = monthStart.getMonth();
+  const todayValue = formatDateYmd(new Date(nowTs));
   const firstWeekdayOffset = (monthStart.getDay() + 6) % 7;
   const gridStart = new Date(monthStart);
   gridStart.setDate(monthStart.getDate() - firstWeekdayOffset);
@@ -122,6 +123,7 @@ const buildCalendarDays = (monthDate) => {
       day: date.getDate(),
       date,
       isCurrentMonth: date.getMonth() === month,
+      isToday: formatDateYmd(date) === todayValue,
     };
   });
 };
@@ -220,7 +222,12 @@ export default function BookingScreen() {
     discountAmount: 0,
     finalPrice: null,
   });
-  const didPrefillContactRef = useRef(false);
+  const contactTouchedRef = useRef({
+    name: false,
+    phone: false,
+    email: false,
+  });
+  const contactUserIdRef = useRef(null);
 
   const { data: place } = usePlaceDetail(placeId);
   const { data: services = [], isLoading: servicesLoading } =
@@ -263,18 +270,56 @@ export default function BookingScreen() {
   }, []);
 
   useEffect(() => {
-    if (didPrefillContactRef.current || !currentUser) return;
+    if (!currentUser) {
+      contactUserIdRef.current = null;
+      contactTouchedRef.current = { name: false, phone: false, email: false };
+      return;
+    }
+
+    const userId = currentUser.id || currentUser.email || "current-user";
+    const isNewUser = contactUserIdRef.current !== userId;
+    if (isNewUser) {
+      contactTouchedRef.current = { name: false, phone: false, email: false };
+    }
 
     const profile = currentUser.profile || {};
-    setGuestName(profile.fullName || currentUser.fullName || "");
-    setGuestPhone(profile.phone || currentUser.phone || "");
-    setGuestEmail(currentUser.email || "");
-    didPrefillContactRef.current = true;
+    const nextContact = {
+      name: profile.fullName || currentUser.fullName || "",
+      phone: profile.phone || currentUser.phone || "",
+      email: currentUser.email || "",
+    };
+
+    if (isNewUser || !contactTouchedRef.current.name) {
+      setGuestName(nextContact.name);
+    }
+    if (isNewUser || !contactTouchedRef.current.phone) {
+      setGuestPhone(nextContact.phone);
+    }
+    if (isNewUser || !contactTouchedRef.current.email) {
+      setGuestEmail(nextContact.email);
+    }
+
+    contactUserIdRef.current = userId;
   }, [currentUser]);
 
+  const handleGuestNameChange = useCallback((value) => {
+    contactTouchedRef.current.name = true;
+    setGuestName(value);
+  }, []);
+
+  const handleGuestPhoneChange = useCallback((value) => {
+    contactTouchedRef.current.phone = true;
+    setGuestPhone(value);
+  }, []);
+
+  const handleGuestEmailChange = useCallback((value) => {
+    contactTouchedRef.current.email = true;
+    setGuestEmail(value);
+  }, []);
+
   const calendarDays = useMemo(
-    () => buildCalendarDays(calendarMonth),
-    [calendarMonth],
+    () => buildCalendarDays(calendarMonth, nowTs),
+    [calendarMonth, nowTs],
   );
   const calendarMonthLabel = useMemo(
     () => formatMonthYearLabel(calendarMonth),
@@ -351,6 +396,13 @@ export default function BookingScreen() {
   const unitPrice =
     selectedService?.salePrice ?? selectedService?.price ?? null;
   const totalPrice = unitPrice !== null ? unitPrice * quantity : null;
+  const maxQuantity = useMemo(() => {
+    const availableQuantity = isResourceBooking
+      ? selectedResource?.capacity ?? 20
+      : availabilityData?.slots?.find((slot) => slot.time === selectedTime)?.remaining ?? 20;
+
+    return Math.min(availableQuantity, 20);
+  }, [availabilityData?.slots, isResourceBooking, selectedResource?.capacity, selectedTime]);
 
   // Khi đổi service → reset voucher (voucher cũ có thể không còn áp dụng cho service mới).
   useEffect(() => {
@@ -358,7 +410,6 @@ export default function BookingScreen() {
     setVoucher((prev) =>
       prev?.voucherId ? { voucherId: null, code: "", discountAmount: 0, finalPrice: null } : prev,
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedService?.id]);
 
   // Khi quantity thay đổi → re-validate voucher đang áp dụng để cập nhật discountAmount/finalPrice.
@@ -418,11 +469,12 @@ export default function BookingScreen() {
     if (slotWarningRef.current === warningKey) return;
     slotWarningRef.current = warningKey;
 
-    Alert.alert(
-      t("booking.alerts.slotUnavailable.title"),
-      t("booking.alerts.slotUnavailable.message"),
-      [{ text: t("booking.alerts.slotUnavailable.ok") }],
-    );
+    showAppAlert({
+      title: t("booking.alerts.slotUnavailable.title"),
+      message: t("booking.alerts.slotUnavailable.message"),
+      type: "warning",
+      buttons: [{ text: t("booking.alerts.slotUnavailable.ok") }],
+    });
   }, [step, isSelectedTimeAvailable, selectedDate, selectedTime, t]);
 
   const depositInfo = useMemo(() => {
@@ -569,33 +621,44 @@ export default function BookingScreen() {
 
   const handleConfirmBooking = async () => {
     if (!hasValidContact) {
-      Alert.alert(
-        t("booking.alerts.missingContact.title"),
-        t("booking.alerts.missingContact.message"),
-      );
+      showAppAlert({
+        title: t("booking.alerts.missingContact.title"),
+        message: t("booking.alerts.missingContact.message"),
+        type: "warning",
+        buttons: [{ text: t("common.close") }],
+      });
       return;
     }
 
     if (!isSelectedTimeAvailable) {
-      Alert.alert(
-        t("booking.alerts.slotUnavailable.title"),
-        t("booking.alerts.slotUnavailable.expired"),
-      );
+      showAppAlert({
+        title: t("booking.alerts.slotUnavailable.title"),
+        message: t("booking.alerts.slotUnavailable.expired"),
+        type: "warning",
+        buttons: [{ text: t("common.close") }],
+      });
       setStep(2);
       return;
     }
 
     if (isResourceBooking && !selectedResource) {
-      Alert.alert(
-        t("booking.alerts.resourceRequired.title"),
-        t("booking.alerts.resourceRequired.message"),
-      );
+      showAppAlert({
+        title: t("booking.alerts.resourceRequired.title"),
+        message: t("booking.alerts.resourceRequired.message"),
+        type: "warning",
+        buttons: [{ text: t("common.close") }],
+      });
       setStep(2);
       return;
     }
 
     if (tripLinkMode === "existing" && !selectedTripId) {
-      Alert.alert(t("booking.alerts.selectTrip.title"), t("booking.alerts.selectTrip.message"));
+      showAppAlert({
+        title: t("booking.alerts.selectTrip.title"),
+        message: t("booking.alerts.selectTrip.message"),
+        type: "warning",
+        buttons: [{ text: t("common.close") }],
+      });
       setStep(2);
       return;
     }
@@ -668,10 +731,12 @@ export default function BookingScreen() {
         setBookingDone(true);
       }
     } catch (error) {
-      Alert.alert(
-        t("booking.errors.bookingFailed"),
-        error?.message || t("booking.errors.generic"),
-      );
+      showAppAlert({
+        title: t("booking.errors.bookingFailed"),
+        message: error?.message || t("booking.errors.generic"),
+        type: "error",
+        buttons: [{ text: t("common.close") }],
+      });
     }
   };
 
@@ -841,8 +906,8 @@ export default function BookingScreen() {
         <Pressable
           onPress={() => (step > 1 ? setStep(step - 1) : router.back())}
           style={{
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             borderRadius: 14,
             backgroundColor: BOOKING_THEME.glass,
             alignItems: "center",
@@ -850,6 +915,8 @@ export default function BookingScreen() {
             borderWidth: 1,
             borderColor: BOOKING_THEME.glassBorder,
           }}
+          accessibilityRole="button"
+          accessibilityLabel={t("common.back")}
         >
           <MaterialIconsRounded
             name="arrow-back"
@@ -1047,16 +1114,21 @@ export default function BookingScreen() {
                 >
                   <Pressable
                     onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                    disabled={quantity <= 1}
                     style={{
-                      width: 32,
-                      height: 32,
+                      width: 44,
+                      height: 44,
                       borderRadius: 10,
                       backgroundColor: BOOKING_THEME.glass,
                       alignItems: "center",
                       justifyContent: "center",
                       borderWidth: 1,
                       borderColor: BOOKING_THEME.glassBorder,
+                      opacity: quantity <= 1 ? 0.45 : 1,
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`− ${t("booking.fields.quantity")}`}
+                    accessibilityState={{ disabled: quantity <= 1 }}
                   >
                     <MaterialIconsRounded
                       name="remove"
@@ -1077,23 +1149,25 @@ export default function BookingScreen() {
                   </Text>
                   <Pressable
                     onPress={() => {
-                      const maxQty = isResourceBooking
-                        ? selectedResource?.capacity ?? 20
-                        : availabilityData?.slots?.find((s) => s.time === selectedTime)?.remaining ?? 20;
-                      if (quantity < Math.min(maxQty, 20)) {
+                      if (quantity < maxQuantity) {
                         setQuantity(quantity + 1);
                       }
                     }}
+                    disabled={quantity >= maxQuantity}
                     style={{
-                      width: 32,
-                      height: 32,
+                      width: 44,
+                      height: 44,
                       borderRadius: 10,
                       backgroundColor: BOOKING_THEME.glass,
                       alignItems: "center",
                       justifyContent: "center",
                       borderWidth: 1,
                       borderColor: BOOKING_THEME.glassBorder,
+                      opacity: quantity >= maxQuantity ? 0.45 : 1,
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`+ ${t("booking.fields.quantity")}`}
+                    accessibilityState={{ disabled: quantity >= maxQuantity }}
                   >
                     <MaterialIconsRounded
                       name="add"
@@ -1122,7 +1196,7 @@ export default function BookingScreen() {
                     emptyLabel={t("booking.resources.noneAvailable")}
                   />
                   {!selectedResource ? (
-                    <Text style={{ color: "#F59E0B", fontSize: 12 }}>
+                    <Text style={{ color: BOOKING_THEME.warning, fontSize: 12 }}>
                       {t("booking.resources.required")}
                     </Text>
                   ) : null}
@@ -1165,8 +1239,8 @@ export default function BookingScreen() {
                       }}
                       disabled={!canMovePrevMonth}
                       style={{
-                        width: 30,
-                        height: 30,
+                        width: 44,
+                        height: 44,
                         borderRadius: 10,
                         borderWidth: 1,
                         borderColor: BOOKING_THEME.glassBorder,
@@ -1175,6 +1249,9 @@ export default function BookingScreen() {
                         justifyContent: "center",
                         opacity: canMovePrevMonth ? 1 : 0.35,
                       }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${calendarMonthLabel} ${t("common.back")}`}
+                      accessibilityState={{ disabled: !canMovePrevMonth }}
                     >
                       <MaterialIconsRounded
                         name="chevron-left"
@@ -1199,8 +1276,8 @@ export default function BookingScreen() {
                         setCalendarMonth((prev) => addMonths(prev, 1))
                       }
                       style={{
-                        width: 30,
-                        height: 30,
+                        width: 44,
+                        height: 44,
                         borderRadius: 10,
                         borderWidth: 1,
                         borderColor: BOOKING_THEME.glassBorder,
@@ -1208,6 +1285,8 @@ export default function BookingScreen() {
                         alignItems: "center",
                         justifyContent: "center",
                       }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${calendarMonthLabel} ${t("common.next")}`}
                     >
                       <MaterialIconsRounded
                         name="chevron-right"
@@ -1258,18 +1337,26 @@ export default function BookingScreen() {
                               );
                             }}
                             style={{
-                              height: 34,
+                              height: 44,
                               borderRadius: 10,
                               alignItems: "center",
                               justifyContent: "center",
                               backgroundColor: isSelected
                                 ? BOOKING_THEME.neon
                                 : BOOKING_THEME.glass,
-                              borderWidth: 1,
                               borderColor: isSelected
                                 ? BOOKING_THEME.neon
-                                : BOOKING_THEME.glassBorder,
+                                : dayItem.isToday
+                                  ? BOOKING_THEME.focusBlue
+                                  : BOOKING_THEME.glassBorder,
+                              borderWidth: dayItem.isToday ? 2 : 1,
                               opacity: selectable ? 1 : 0.35,
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${dayItem.day} ${calendarMonthLabel}${dayItem.isToday ? `, ${t("booking.fields.today")}` : ""}`}
+                            accessibilityState={{
+                              disabled: !selectable,
+                              selected: isSelected,
                             }}
                           >
                             <Text
@@ -1285,6 +1372,20 @@ export default function BookingScreen() {
                             >
                               {dayItem.day}
                             </Text>
+                            {dayItem.isToday && !isSelected ? (
+                              <View
+                                accessibilityElementsHidden
+                                importantForAccessibility="no"
+                                style={{
+                                  position: "absolute",
+                                  bottom: 4,
+                                  width: 4,
+                                  height: 4,
+                                  borderRadius: 2,
+                                  backgroundColor: BOOKING_THEME.focusBlue,
+                                }}
+                              />
+                            ) : null}
                           </Pressable>
                         </View>
                       );
@@ -1340,7 +1441,12 @@ export default function BookingScreen() {
                           backgroundColor: isActive
                             ? BOOKING_THEME.neonGlow
                             : BOOKING_THEME.glass,
+                          minHeight: 44,
+                          alignItems: "center",
                         }}
+                        accessibilityRole="button"
+                        accessibilityLabel={group.label}
+                        accessibilityState={{ selected: isActive }}
                       >
                         <Text
                           style={{
@@ -1400,7 +1506,8 @@ export default function BookingScreen() {
                           style={{
                             minWidth: 64,
                             paddingHorizontal: 11,
-                            paddingVertical: 8,
+                            paddingVertical: 10,
+                            minHeight: 44,
                             borderRadius: 10,
                             borderWidth: 1,
                             borderColor: isSelected
@@ -1413,6 +1520,12 @@ export default function BookingScreen() {
                                 : BOOKING_THEME.glass,
                             opacity: available ? 1 : 0.45,
                             alignItems: "center",
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={slot.label}
+                          accessibilityState={{
+                            disabled: !available,
+                            selected: isSelected,
                           }}
                         >
                           <Text
@@ -1429,9 +1542,10 @@ export default function BookingScreen() {
                           {remaining !== null ? (
                             <Text
                               style={{
-                                color: remaining > 0
-                                  ? "#22C55E"
-                                  : "#EF4444",
+                                color:
+                                  remaining > 0
+                                    ? TOKENS.color.semantic.success
+                                    : TOKENS.color.semantic.danger,
                                 fontSize: 10,
                                 fontWeight: "600",
                               }}
@@ -1450,7 +1564,7 @@ export default function BookingScreen() {
                 </Text>
 
               {!isSelectedTimeAvailable ? (
-                <Text style={{ color: "#F59E0B", fontSize: 12 }}>
+                <Text style={{ color: BOOKING_THEME.warning, fontSize: 12 }}>
                   {t("booking.slotUnavailableWarning")}
                 </Text>
               ) : null}
@@ -1515,7 +1629,12 @@ export default function BookingScreen() {
                           backgroundColor: selected
                             ? BOOKING_THEME.neonGlow
                             : BOOKING_THEME.glass,
+                          minHeight: 44,
+                          alignItems: "center",
                         }}
+                        accessibilityRole="button"
+                        accessibilityLabel={item.label}
+                        accessibilityState={{ selected }}
                       >
                         <Text
                           style={{
@@ -1560,6 +1679,9 @@ export default function BookingScreen() {
                               paddingHorizontal: 12,
                               paddingVertical: 10,
                             }}
+                            accessibilityRole="button"
+                            accessibilityLabel={trip.title || `Trip #${trip.id}`}
+                            accessibilityState={{ selected }}
                           >
                             <Text
                               style={{
@@ -1684,7 +1806,7 @@ export default function BookingScreen() {
                       </Text>
                       <Text
                         style={{
-                          color: BOOKING_THEME.danger || "#EF4444",
+                          color: BOOKING_THEME.danger,
                           fontSize: 13,
                           fontWeight: "700",
                         }}
@@ -1821,7 +1943,7 @@ export default function BookingScreen() {
 
                 <TextInput
                   value={guestName}
-                  onChangeText={setGuestName}
+                  onChangeText={handleGuestNameChange}
                   placeholder={t("booking.placeholders.name")}
                   placeholderTextColor={BOOKING_THEME.textMuted}
                   style={{
@@ -1840,7 +1962,7 @@ export default function BookingScreen() {
 
                 <TextInput
                   value={guestPhone}
-                  onChangeText={setGuestPhone}
+                  onChangeText={handleGuestPhoneChange}
                   placeholder={t("booking.placeholders.phone")}
                   placeholderTextColor={BOOKING_THEME.textMuted}
                   style={{
@@ -1859,7 +1981,7 @@ export default function BookingScreen() {
 
                 <TextInput
                   value={guestEmail}
-                  onChangeText={setGuestEmail}
+                  onChangeText={handleGuestEmailChange}
                   placeholder={t("booking.placeholders.email")}
                   placeholderTextColor={BOOKING_THEME.textMuted}
                   style={{
@@ -1899,7 +2021,7 @@ export default function BookingScreen() {
                 />
 
                 {!hasValidContact ? (
-                  <Text style={{ color: "#F59E0B", fontSize: 12 }}>
+                  <Text style={{ color: BOOKING_THEME.warning, fontSize: 12 }}>
                     {t("booking.contactValidation")}
                   </Text>
                 ) : null}
@@ -2073,6 +2195,13 @@ export default function BookingScreen() {
                   ? 0
                   : 10,
             }}
+            accessibilityRole="button"
+            accessibilityLabel={step === 1 ? t("booking.buttons.next") : t("booking.buttons.confirm")}
+            accessibilityState={{
+              disabled:
+                (step === 1 && !selectedService) ||
+                (step === 2 && !canProceedFromStep2),
+            }}
           >
             <Text
               style={{
@@ -2107,6 +2236,12 @@ export default function BookingScreen() {
               shadowOpacity: hasValidContact && canProceedFromStep2 ? 0.35 : 0,
               shadowRadius: 20,
               elevation: hasValidContact && canProceedFromStep2 ? 10 : 0,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t("booking.buttons.confirmBooking")}
+            accessibilityState={{
+              disabled: isSubmittingBooking || !hasValidContact || !canProceedFromStep2,
+              busy: isSubmittingBooking,
             }}
           >
             {isSubmittingBooking ? (

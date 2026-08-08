@@ -42,6 +42,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import FinancialSubNav from "@/components/business/FinancialSubNav";
 import { getDashboard } from "@/apis/businessApi";
 import { getMyPlaces } from "@/apis/businessApi";
 import { exportToCsv, slugifyFilename } from "@/utils/csvExport";
@@ -368,6 +369,8 @@ const BusinessReportCenterPage = () => {
             </Button>
           </div>
         </div>
+
+        <FinancialSubNav activeTab="reports" />
 
         {/* Report Type Selector */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">
