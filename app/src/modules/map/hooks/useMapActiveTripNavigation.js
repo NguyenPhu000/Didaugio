@@ -85,10 +85,6 @@ export function useMapActiveTripNavigation({
           return;
         }
 
-        const bg = await Location.requestBackgroundPermissionsAsync();
-        if (!cancelled && bg.status !== "granted") {
-          showLocationPermissionState();
-        }
       } catch {
         if (!cancelled) {
           showLocationPermissionState();

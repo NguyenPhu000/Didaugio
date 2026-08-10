@@ -3,20 +3,25 @@ import { FlatList, Modal, Pressable, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { Image } from "expo-image";
+import { useTranslation } from "react-i18next";
 import { resolvePlaceImageUri, PLACE_IMAGE_BLURHASH } from "../../../lib/media-url";
 import { getPlaceLocation, formatRatingLabel } from "../utils/exploreHelpers";
 import { getCategoryIconName } from "../../../constants/categoryIcons";
 
 const SheetPlaceCard = memo(function SheetPlaceCard({ place, onPress }) {
+  const { t } = useTranslation();
   const img = resolvePlaceImageUri(place);
   const location = getPlaceLocation(place);
   const rating = Number(place?.ratingAvg ?? place?.averageRating ?? 0);
   const ratingMeta = formatRatingLabel(place);
-  const categoryName = place?.category?.name || "Địa điểm";
+  const categoryName = place?.category?.name || t("explore.sheet.place");
 
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={place?.name || t("explore.sheet.place")}
+      accessibilityHint={t("explore.accessibility.openPlace")}
       className="w-full rounded-[24px] bg-white border border-black/[0.06] shadow-sm elevation-2 overflow-hidden active:opacity-95 active:scale-[0.985]"
     >
       {/* 1. Hình ảnh ở trên */}
@@ -62,13 +67,13 @@ const SheetPlaceCard = memo(function SheetPlaceCard({ place, onPress }) {
       {/* 2. Khối thông tin ở dưới - Gom nhóm padding hợp lý */}
       <View className="p-4 bg-white">
         <Text className="text-[#181819] text-[17px] font-bold tracking-[-0.3px] mb-1" numberOfLines={1} ellipsizeMode="tail">
-          {place?.name || "Địa điểm"}
+          {place?.name || t("explore.sheet.place")}
         </Text>
 
         <View className="flex-row items-center gap-1.5 mb-1">
           <MaterialCommunityIcons name="map-marker-outline" size={14} color="#6B7280" />
           <Text className="text-[#6B7280] text-[13px] font-medium flex-1" numberOfLines={1} ellipsizeMode="tail">
-            {location || "Cần Thơ"}
+            {location || t("explore.header.location")}
           </Text>
         </View>
 
@@ -78,7 +83,7 @@ const SheetPlaceCard = memo(function SheetPlaceCard({ place, onPress }) {
 
         {/* Nút màu đen High-End với hiệu ứng tinh chỉnh */}
         <View className="h-11 rounded-2xl bg-[#181819] flex-row items-center justify-center gap-2 shadow-sm">
-          <Text className="text-white text-[13px] font-semibold">Khám phá địa điểm</Text>
+          <Text className="text-white text-[13px] font-semibold">{t("explore.sheet.openPlace")}</Text>
           <MaterialCommunityIcons name="arrow-right" size={16} color="#FFFFFF" />
         </View>
       </View>
@@ -93,9 +98,10 @@ export const CategoryPlacesSheet = memo(function CategoryPlacesSheet({
   onClose,
   onPressPlace,
 }) {
+  const { t } = useTranslation();
   if (!visible) return null;
 
-  const categoryName = category?.name || "Tất cả địa điểm";
+  const categoryName = category?.name || t("explore.sheet.allPlaces");
   const categoryIcon = getCategoryIconName(category);
 
   return (
@@ -125,7 +131,7 @@ export const CategoryPlacesSheet = memo(function CategoryPlacesSheet({
                   {categoryName}
                 </Text>
                 <Text className="text-[13px] font-medium text-gray-500">
-                  {places.length} địa điểm
+                  {t("explore.sheet.placeCount", { count: places.length })}
                 </Text>
               </View>
             </View>
@@ -133,6 +139,8 @@ export const CategoryPlacesSheet = memo(function CategoryPlacesSheet({
             {/* Nút đóng X */}
             <Pressable
               onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.close")}
               className="w-9 h-9 rounded-full items-center justify-center bg-gray-100 active:bg-gray-200"
             >
               <MaterialIconsRounded name="close" size={20} color="#374151" />

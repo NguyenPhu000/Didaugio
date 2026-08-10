@@ -11,7 +11,6 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -43,7 +42,6 @@ const PillItem = memo(function PillItem({
   }, [scale]);
 
   const handlePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPressCategory(categoryId);
   }, [categoryId, onPressCategory]);
 
@@ -52,6 +50,9 @@ const PillItem = memo(function PillItem({
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      accessibilityRole="tab"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: isActive }}
       className="flex-row items-center gap-2 min-h-[40px] px-4 py-2 rounded-full border"
       style={[
         animatedStyle,

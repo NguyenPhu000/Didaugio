@@ -33,6 +33,7 @@
     "audit:booking:orphans": "node src/scripts/verifyBookingAuditCleanup.js",
     "generate": "prisma generate --schema=prisma/schema.prisma",
     "trip:backfill": "node src/scripts/backfillTripPlans.js"
+    ,"media:backfill-place-urls": "node src/scripts/backfillPlaceImageUrls.js"
   },
   "dependencies": {
     "@pdf-lib/fontkit": "^1.1.1",

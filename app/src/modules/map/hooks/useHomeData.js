@@ -4,7 +4,7 @@ import { getHomeApi } from "../api/mapApi";
 export const useHomeData = (params = { limit: 12 }) => {
   return useQuery({
     queryKey: ["home-data", params],
-    queryFn: () => getHomeApi(params),
+    queryFn: ({ signal }) => getHomeApi(params, { signal }),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     placeholderData: (previousData) => previousData,

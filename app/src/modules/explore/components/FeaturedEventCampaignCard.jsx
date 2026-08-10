@@ -7,7 +7,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../constants/design-tokens";
 import { getOptimizedCloudinaryUrl, resolveMediaUrl } from "../../../lib/media-url";
@@ -15,6 +15,7 @@ import { getOptimizedCloudinaryUrl, resolveMediaUrl } from "../../../lib/media-u
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function FeaturedEventCampaignCardInner({ event, width, onPress }) {
+  const { t } = useTranslation();
   const scale = useSharedValue(1);
 
   const imageUri = useMemo(() => {
@@ -30,17 +31,16 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
     const now = Date.now();
     const start = event?.startDate ? new Date(event.startDate).getTime() : null;
     const end = event?.endDate ? new Date(event.endDate).getTime() : null;
-    if (start && end && now >= start && now <= end) return "Đang diễn ra";
-    if (end && now > end) return "Đã kết thúc";
-    return "Sắp mở";
-  }, [event?.endDate, event?.startDate]);
+    if (start && end && now >= start && now <= end) return t("explore.event.ongoing");
+    if (end && now > end) return t("explore.event.ended");
+    return t("explore.event.upcoming");
+  }, [event?.endDate, event?.startDate, t]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
   const handlePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress?.(event);
   }, [event, onPress]);
 
@@ -53,6 +53,9 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
       onPressOut={() => {
         scale.value = withSpring(1, TOKENS.spring.press);
       }}
+      accessibilityRole="button"
+      accessibilityLabel={event?.title}
+      accessibilityHint={t("explore.accessibility.openEvent")}
       style={[styles.card, animatedStyle, { width }]}
     >
       {imageUri ? (
@@ -78,7 +81,7 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
       <View style={styles.topRow}>
         <View style={styles.featuredBadge}>
           <MaterialIconsRounded name="campaign" size={13} color="#FFFFFF" />
-          <Text style={styles.featuredText}>NỔI BẬT</Text>
+          <Text style={styles.featuredText}>{t("explore.event.featuredBadge")}</Text>
         </View>
         <View style={styles.statusPill}>
           <View style={styles.statusDot} />
@@ -87,7 +90,7 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
       </View>
 
       <View style={styles.copy}>
-        <Text style={styles.kicker}>Community event</Text>
+        <Text style={styles.kicker}>{t("explore.event.kicker")}</Text>
         <Text style={styles.title} numberOfLines={2}>
           {event?.title}
         </Text>
@@ -98,9 +101,9 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
         ) : null}
 
         <View style={styles.metricRow}>
-          <Metric icon="people" value={participantCount} label="tham gia" />
-          <Metric icon="photo-camera" value={checkInCount} label="check-in" />
-          <Metric icon="route" value={legCount} label="chặng" />
+          <Metric icon="people" value={participantCount} label={t("explore.event.participantLabel")} />
+          <Metric icon="photo-camera" value={checkInCount} label={t("explore.event.checkInLabel")} />
+          <Metric icon="route" value={legCount} label={t("explore.event.legLabel")} />
         </View>
 
       </View>

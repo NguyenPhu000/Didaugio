@@ -3,6 +3,7 @@ import { ERROR_CODES } from "../../config/messages.js";
 import appService from "../../services/app/app.service.js";
 import prisma from "../../config/prismaClient.js";
 import { ROLES } from "../../config/constants.js";
+import { toMobilePlaceMedia } from "../../utils/mobilePlaceMedia.js";
 import {
   buildKey,
   get as cacheGet,
@@ -30,10 +31,12 @@ export const getPlaces = async (req, res, next) => {
       search,
       priceRange,
       minRating,
+      compact,
       sortBy,
       page,
       limit,
     } = req.query;
+    const isMobileClient = req.query.client === "mobile";
 
     let businessId = req.query.businessId;
     const isPublicRequest = !req.user || req.user.roleId >= ROLES.BUSINESS;
@@ -49,6 +52,7 @@ export const getPlaces = async (req, res, next) => {
       search,
       priceRange,
       minRating,
+      compact,
       sortBy,
       page,
       limit,
@@ -74,7 +78,12 @@ export const getPlaces = async (req, res, next) => {
     }
 
     // Cache only public/guest requests (no auth-specific filters)
-    const cacheKey = isPublicRequest ? buildKey("places:list", filters) : null;
+    const cacheKey = isPublicRequest
+      ? buildKey("places:list", {
+          ...filters,
+          client: isMobileClient ? "mobile" : "web",
+        })
+      : null;
     if (cacheKey) {
       const cached = await cacheGet(cacheKey);
       if (cached) {
@@ -86,7 +95,7 @@ export const getPlaces = async (req, res, next) => {
 
     const body = {
       success: true,
-      data: result.data,
+      data: isMobileClient ? result.data.map(toMobilePlaceMedia) : result.data,
       pagination: result.pagination,
       message: "Lấy danh sách địa điểm thành công",
     };
@@ -107,6 +116,7 @@ export const getPlaces = async (req, res, next) => {
 export const getNearbyPlaces = async (req, res, next) => {
   try {
     const { latitude, longitude, radius, limit, categoryId } = req.query;
+    const isMobileClient = req.query.client === "mobile";
 
     const cacheKey = buildKey("places:nearby", {
       latitude,
@@ -114,6 +124,7 @@ export const getNearbyPlaces = async (req, res, next) => {
       radius,
       limit,
       categoryId,
+      client: isMobileClient ? "mobile" : "web",
     });
     const cached = await cacheGet(cacheKey);
     if (cached) {
@@ -130,7 +141,7 @@ export const getNearbyPlaces = async (req, res, next) => {
 
     const body = {
       success: true,
-      data: places,
+      data: isMobileClient ? places.map(toMobilePlaceMedia) : places,
       message: "Lấy danh sách địa điểm gần bạn thành công",
     };
 
@@ -151,7 +162,7 @@ export const getPlaceById = async (req, res, next) => {
 
     // Skip cache when incrementing view count
     if (!incrementView) {
-      const cacheKey = buildKey("places:detail:id", { id });
+      const cacheKey = buildKey("places:detail:id", { id, client: req.query.client });
       const cached = await cacheGet(cacheKey);
       if (cached) {
         return res.json(cached);
@@ -171,12 +182,12 @@ export const getPlaceById = async (req, res, next) => {
 
     const body = {
       success: true,
-      data: place,
+      data: req.query.client === "mobile" ? toMobilePlaceMedia(place) : place,
       message: "Lấy chi tiết địa điểm thành công",
     };
 
     if (!incrementView) {
-      await cacheSet(buildKey("places:detail:id", { id }), body, TTL.PLACES);
+      await cacheSet(buildKey("places:detail:id", { id, client: req.query.client }), body, TTL.PLACES);
     }
 
     res.json(body);
@@ -194,7 +205,7 @@ export const getPlaceBySlug = async (req, res, next) => {
     const incrementView = req.query.view === "true";
 
     if (!incrementView) {
-      const cacheKey = buildKey("places:detail:slug", { slug });
+      const cacheKey = buildKey("places:detail:slug", { slug, client: req.query.client });
       const cached = await cacheGet(cacheKey);
       if (cached) {
         return res.json(cached);
@@ -214,12 +225,12 @@ export const getPlaceBySlug = async (req, res, next) => {
 
     const body = {
       success: true,
-      data: place,
+      data: req.query.client === "mobile" ? toMobilePlaceMedia(place) : place,
       message: "Lấy địa điểm theo slug thành công",
     };
 
     if (!incrementView) {
-      await cacheSet(buildKey("places:detail:slug", { slug }), body, TTL.PLACES);
+      await cacheSet(buildKey("places:detail:slug", { slug, client: req.query.client }), body, TTL.PLACES);
     }
 
     res.json(body);

@@ -50,6 +50,9 @@ const PlaceRow = memo(function PlaceRow({ place, onPress }) {
       onPress={onPress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
+      accessibilityRole="button"
+      accessibilityLabel={place?.name}
+      accessibilityHint={t("explore.accessibility.openPlace")}
       style={[
         cardStyle,
         {

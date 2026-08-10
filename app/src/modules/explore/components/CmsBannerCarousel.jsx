@@ -14,7 +14,6 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
@@ -55,7 +54,6 @@ function BannerSlide({ banner, width, onPress }) {
 
   const handlePress = useCallback(() => {
     if (!canNavigate) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress?.(banner);
   }, [banner, canNavigate, onPress]);
 
@@ -64,6 +62,9 @@ function BannerSlide({ banner, width, onPress }) {
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      accessibilityRole={canNavigate ? "button" : undefined}
+      accessibilityLabel={banner.title || t("explore.cmsFallbackTitle")}
+      accessibilityHint={canNavigate ? t("explore.accessibility.openBanner") : undefined}
       style={[
         animatedStyle,
         {

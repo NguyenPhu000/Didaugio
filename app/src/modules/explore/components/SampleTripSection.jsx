@@ -1,5 +1,6 @@
 import { memo, useCallback } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { SampleTripCard, SAMPLE_TRIP_CARD_W } from "./SampleTripCard";
@@ -16,6 +17,8 @@ const keyExtractor = (item, index) =>
   item?.id != null ? String(item.id) : `sample-trip-${index}`;
 
 function SampleTripSectionInner({ sampleTrips, onPressTrip, onPressViewAll }) {
+  const { t } = useTranslation();
+
   const renderItem = useCallback(
     ({ item }) => {
       const handlePress = () => onPressTrip?.(item);
@@ -36,16 +39,16 @@ function SampleTripSectionInner({ sampleTrips, onPressTrip, onPressViewAll }) {
         <View className="flex-1 space-y-0.5">
           <View className="flex-row items-center space-x-2">
             <Text className="text-2xl font-bold text-slate-900 tracking-tight">
-              Lịch trình gợi ý
+              {t("explore.sampleTrip.sectionTitle")}
             </Text>
             <View className="px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300/60">
               <Text className="text-[10px] font-extrabold text-amber-800 uppercase">
-                Hot
+                {t("explore.sampleTrip.sectionBadge")}
               </Text>
             </View>
           </View>
           <Text className="text-xs font-medium text-slate-500">
-            Khám phá Cần Thơ trọn vẹn cùng các gợi ý tối ưu
+            {t("explore.sampleTrip.sectionSubtitle")}
           </Text>
         </View>
 
@@ -53,6 +56,8 @@ function SampleTripSectionInner({ sampleTrips, onPressTrip, onPressViewAll }) {
           <Pressable
             onPress={onPressViewAll}
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t("explore.sampleTrip.viewAll")}
             className="flex-row items-center space-x-1.5 px-3 py-1.5 rounded-full bg-slate-100 active:bg-slate-200"
           >
             <Text className="text-xs font-bold text-slate-800">Tất cả</Text>

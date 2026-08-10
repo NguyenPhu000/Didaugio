@@ -124,6 +124,48 @@ const defaultInclude = {
   },
 };
 
+const compactPlaceSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  shortDescription: true,
+  address: true,
+  latitude: true,
+  longitude: true,
+  priceRange: true,
+  priceFrom: true,
+  priceTo: true,
+  thumbnail: true,
+  markerUrl: true,
+  ratingAvg: true,
+  ratingCount: true,
+  viewCount: true,
+  isFeatured: true,
+  createdAt: true,
+  category: {
+    select: { id: true, name: true, slug: true, icon: true, color: true },
+  },
+  district: {
+    select: { id: true, name: true },
+  },
+  ward: {
+    select: { id: true, name: true },
+  },
+  images: {
+    take: 1,
+    orderBy: [{ isCover: "desc" }, { order: "asc" }],
+    select: {
+      id: true,
+      secureUrl: true,
+      thumbnailUrl: true,
+      isCover: true,
+    },
+  },
+  _count: {
+    select: { reviews: true, favorites: true },
+  },
+};
+
 const attachPrimarySpokenGuide = (place) => {
   if (!place) return place;
   const [primaryGuide] = place.aiGuides || [];
@@ -150,6 +192,7 @@ export const getAllPlaces = async (filters = {}) => {
     search,
     priceRange,
     minRating,
+    compact = false,
     ownerUserId,
     sortBy = "newest",
     page = PAGINATION.DEFAULT_PAGE,
@@ -230,7 +273,7 @@ export const getAllPlaces = async (filters = {}) => {
   const [places, total] = await Promise.all([
     prisma.place.findMany({
       where,
-      include: {
+      ...(compact ? { select: compactPlaceSelect } : { include: {
         category: {
           select: { id: true, name: true, slug: true, icon: true, color: true },
         },
@@ -279,7 +322,7 @@ export const getAllPlaces = async (filters = {}) => {
         business: {
           select: { id: true, businessName: true, status: true, settings: true },
         },
-      },
+      } }),
       orderBy,
       skip,
       take,
@@ -288,7 +331,7 @@ export const getAllPlaces = async (filters = {}) => {
   ]);
 
   return {
-    data: places.map(applyPlaceBusinessSettings),
+    data: compact ? places : places.map(applyPlaceBusinessSettings),
     pagination: {
       page: parseInt(page),
       limit: take,

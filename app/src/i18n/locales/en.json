@@ -138,7 +138,8 @@
       "greeting": "What do you want to explore today?",
       "subtitle": "Pick a category, check out top spots and start your journey in Can Tho.",
       "searchPlaceholder": "Search places, food, activities...",
-      "location": "Can Tho"
+      "location": "Can Tho",
+      "searchHint": "Opens place search and filters"
     },
     "categories": {
       "all": "All"
@@ -230,7 +231,15 @@
       "viewAll": "View all",
       "featuredBadge": "FEATURED EVENT",
       "onlineCount": "{{count}} ONLINE",
-      "viewNow": "View now"
+      "viewNow": "View now",
+      "eyebrow": "COMMUNITY",
+      "live": "LIVE",
+      "subtitle": "Join, check in and go together",
+      "kicker": "Community event",
+      "defaultDescription": "Explore and meet the community",
+      "participantLabel": "joined",
+      "checkInLabel": "check-ins",
+      "legLabel": "legs"
     },
     "sampleTrip": {
       "adventure": "Adventure",
@@ -241,10 +250,15 @@
       "budget": "Budget",
       "luxury": "Luxury",
       "days": "{{count}} days",
+      "legs": "{{count}} stops",
       "from": "From {{price}}",
       "badge": "SAMPLE ITINERARY • {{location}}",
       "defaultTitle": "Can Tho experience trip",
-      "defaultRoute": "Explore Can Tho at your own pace"
+      "defaultRoute": "Explore Can Tho at your own pace",
+      "sectionTitle": "Suggested trips",
+      "sectionBadge": "Hot",
+      "sectionSubtitle": "Explore Can Tho with a route that is ready to go",
+      "viewAll": "View all"
     },
     "headerBrand": "iPoint Genie",
     "headerGreeting": "Hello, {{name}}",
@@ -252,7 +266,34 @@
     "cmsFallbackTitle": "Discover Can Tho",
     "cmsFallbackDesc": "Discover hundreds of fascinating places in Can Tho",
     "heroBadge": "RECOMMENDED FOR YOU",
-    "heroExplore": "Explore"
+    "heroExplore": "Explore",
+    "announcement": {
+      "info": "UPDATE",
+      "warning": "NOTE",
+      "success": "UPDATE",
+      "error": "URGENT",
+      "details": "View details",
+      "collapse": "Collapse",
+      "dismiss": "Dismiss announcement",
+      "toggleHint": "Expands or collapses the announcement"
+    },
+    "accessibility": {
+      "clearCategory": "Clear category filter",
+      "openPlace": "Opens place details",
+      "savePlace": "Save {{name}}",
+      "unsavePlace": "Remove {{name}} from saved places",
+      "saveHint": "Saves this place for later",
+      "openEvent": "Opens event details",
+      "openTrip": "Opens trip details",
+      "openBanner": "Opens the featured recommendation",
+      "clearSearch": "Clear search"
+    },
+    "sheet": {
+      "place": "Place",
+      "allPlaces": "All places",
+      "placeCount": "{{count}} places",
+      "openPlace": "Open place"
+    }
   },
   "saved": {
     "title": "Favorites",
@@ -371,9 +412,17 @@
     "clearCacheConfirm": "Clear",
     "clearCacheSuccess": "Done!",
     "clearCacheSuccessMessage": "Cache has been cleared successfully.",
+    "clearCacheError": "Unable to clear cache. Please try again.",
     "legal": "Legal",
     "privacyPolicy": "Privacy policy",
     "termsOfService": "Terms of service",
+    "legalUnavailable": "This legal page is unavailable right now.",
+    "deleteAccount": "Delete account",
+    "deleteAccountSubtitle": "Permanently remove your account and personal data",
+    "deleteAccountTitle": "Delete your account?",
+    "deleteAccountMessage": "This permanently removes your personal profile, sessions, saved data, and trip data. Payment and booking records required by law remain anonymized.",
+    "deleteAccountConfirm": "Delete account",
+    "deleteAccountError": "Unable to delete your account. Please try again.",
     "appVersion": "App version",
     "logout": "Log out",
     "logoutConfirmTitle": "Log out?",
@@ -749,6 +798,7 @@
       "emailLabel": "Email",
       "facebookLabel": "Facebook",
       "openingHoursLabel": "Opening hours",
+      "viewWeeklyHours": "View weekly opening hours",
       "reviewsSection": "Reviews",
       "seeAllReviews": "See all {{count}} reviews",
       "mapButton": "Map",

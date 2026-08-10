@@ -47,8 +47,23 @@ export function registerMetrics(
   }
 
   if (enabled) {
-    app.get("/metrics", async (_req, res, next) => {
+    const metricsToken = String(process.env.METRICS_TOKEN || "").trim();
+    app.get("/metrics", async (req, res, next) => {
       try {
+        if (!metricsToken && process.env.NODE_ENV === "production") {
+          return res.status(503).json({ error: "Metrics authentication is not configured" });
+        }
+
+        if (metricsToken) {
+          const authorization = String(req.headers.authorization || "");
+          const providedToken = authorization.startsWith("Bearer ")
+            ? authorization.slice(7).trim()
+            : String(req.headers["x-metrics-token"] || "").trim();
+          if (providedToken !== metricsToken) {
+            return res.status(401).json({ error: "Unauthorized" });
+          }
+        }
+
         res.setHeader("Content-Type", registry.contentType);
         res.send(await registry.metrics());
       } catch (error) {

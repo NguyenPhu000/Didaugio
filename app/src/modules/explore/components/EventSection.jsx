@@ -35,20 +35,26 @@ function EventSectionInner({ events, onPressEvent, onPressViewAll }) {
         <View style={styles.titleBlock}>
           <View style={styles.eyebrowRow}>
             <View style={styles.liveDot} />
-            <Text style={styles.eyebrow}>CỘNG ĐỒNG</Text>
+            <Text style={styles.eyebrow}>{t("explore.event.eyebrow")}</Text>
           </View>
           <View style={styles.titleRow}>
             <Text style={styles.title}>{t("explore.event.communityEvents")}</Text>
             <View style={styles.hotPill}>
-              <Text style={styles.hotText}>LIVE</Text>
+              <Text style={styles.hotText}>{t("explore.event.live")}</Text>
             </View>
           </View>
-          <Text style={styles.subtitle}>Tham gia, check-in và đi cùng mọi người</Text>
+          <Text style={styles.subtitle}>{t("explore.event.subtitle")}</Text>
         </View>
 
         {onPressViewAll ? (
-          <Pressable onPress={onPressViewAll} hitSlop={8} style={styles.viewAll}>
-            <Text style={styles.viewAllText}>Xem tất cả</Text>
+          <Pressable
+            onPress={onPressViewAll}
+            hitSlop={8}
+            style={styles.viewAll}
+            accessibilityRole="button"
+            accessibilityLabel={t("explore.event.viewAll")}
+          >
+            <Text style={styles.viewAllText}>{t("explore.event.viewAll")}</Text>
           </Pressable>
         ) : null}
       </View>

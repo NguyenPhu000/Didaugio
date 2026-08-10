@@ -4,7 +4,6 @@ import { BlurView } from "expo-blur";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
 import { BOOKING_APPLE_THEME as APPLE_THEME, TOKENS } from "../../../constants/design-tokens";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import {
@@ -62,7 +61,6 @@ function FeaturedCardInner({ place, onPress, onSave, isSaved }) {
   });
 
   const handleSave = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     onSave?.(place);
   }, [onSave, place]);
 
@@ -71,6 +69,9 @@ function FeaturedCardInner({ place, onPress, onSave, isSaved }) {
       onPress={onPress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
+      accessibilityRole="button"
+      accessibilityLabel={place?.name}
+      accessibilityHint={t("explore.accessibility.openPlace")}
       style={[
         cardStyle,
         {
@@ -79,9 +80,9 @@ function FeaturedCardInner({ place, onPress, onSave, isSaved }) {
           padding: POSTER_INSET,
           borderRadius: POSTER_RADIUS,
           borderCurve: "continuous",
-          backgroundColor: "#FFFFFF",
+          backgroundColor: "#F7F3EB",
           borderWidth: StyleSheet.hairlineWidth,
-          borderColor: "rgba(11,11,12,0.08)",
+          borderColor: "rgba(11,11,12,0.06)",
           ...posterShadow,
         },
       ]}
@@ -99,7 +100,7 @@ function FeaturedCardInner({ place, onPress, onSave, isSaved }) {
           <PosterMedia uri={rawImageUri} width={MEDIA_W} />
         </Animated.View>
 
-        <PosterScrim bottomHeight="62%" topHeight="26%" strength={0.92} />
+        <PosterScrim bottomHeight="62%" topHeight="26%" strength={0.82} />
 
         {/* Hàng chip trên: flex-row nên không còn phụ thuộc toạ độ cứng
             left-[94px] — badge dài do dịch thuật không đẩy lệch nữa. */}
@@ -114,7 +115,7 @@ function FeaturedCardInner({ place, onPress, onSave, isSaved }) {
             gap: 6,
           }}
         >
-          <MetaChip icon="bolt" iconColor={STAR} label={t("explore.card.featuredBadge")} />
+          <MetaChip label={t("explore.card.featuredBadge")} />
           {hasRating ? (
             <MetaChip icon="star" iconColor={STAR} label={rating.toFixed(1)} />
           ) : null}
@@ -125,6 +126,13 @@ function FeaturedCardInner({ place, onPress, onSave, isSaved }) {
         <Pressable
           onPress={handleSave}
           hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={t(
+            isSaved ? "explore.accessibility.unsavePlace" : "explore.accessibility.savePlace",
+            { name: place?.name },
+          )}
+          accessibilityHint={t("explore.accessibility.saveHint")}
+          accessibilityState={{ selected: isSaved }}
           style={{
             position: "absolute",
             top: 12,

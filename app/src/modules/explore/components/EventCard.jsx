@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../constants/design-tokens";
 import { resolveMediaUrl, getOptimizedCloudinaryUrl } from "../../../lib/media-url";
@@ -14,6 +14,7 @@ const CARD_W = Math.min(340, SCREEN_W - 40);
 const CARD_H = 154;
 
 function EventCardInner({ event, onPress }) {
+  const { t } = useTranslation();
   const [imgError, setImgError] = useState(false);
   const scale = useSharedValue(1);
   const imageUri = useMemo(() => {
@@ -23,7 +24,6 @@ function EventCardInner({ event, onPress }) {
   const dateRange = event?.startDate ? formatDayMonthNumeric(event.startDate) : null;
   const participantCount = event?._count?.participants || event?.participantCount || 0;
   const handlePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress?.();
   }, [onPress]);
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -31,6 +31,8 @@ function EventCardInner({ event, onPress }) {
   return (
     <AnimatedPressable
       accessibilityRole="button"
+      accessibilityLabel={event?.title}
+      accessibilityHint={t("explore.accessibility.openEvent")}
       onPress={handlePress}
       onPressIn={() => { scale.value = withSpring(0.985, TOKENS.spring.press); }}
       onPressOut={() => { scale.value = withSpring(1, TOKENS.spring.press); }}
@@ -44,12 +46,12 @@ function EventCardInner({ event, onPress }) {
         )}
       </View>
       <View style={styles.content}>
-        <View style={styles.eyebrowRow}><MaterialIconsRounded name="calendar-today" size={13} color="#181819" /><Text style={styles.eyebrow}>SỰ KIỆN NỔI BẬT</Text></View>
+        <View style={styles.eyebrowRow}><MaterialIconsRounded name="calendar-today" size={13} color="#181819" /><Text style={styles.eyebrow}>{t("explore.event.featuredBadge")}</Text></View>
         <Text style={styles.title} numberOfLines={2}>{event?.title}</Text>
-        <Text style={styles.description} numberOfLines={1}>{event?.description || "Cùng khám phá và gặp gỡ cộng đồng"}</Text>
+        <Text style={styles.description} numberOfLines={1}>{event?.description || t("explore.event.defaultDescription")}</Text>
         <View style={styles.metaRow}>
           {dateRange ? <View style={styles.meta}><MaterialIconsRounded name="schedule" size={13} color="#181819" /><Text style={styles.metaText}>{dateRange}</Text></View> : null}
-          <View style={styles.meta}><MaterialIconsRounded name="people" size={13} color="#181819" /><Text style={styles.metaText}>{participantCount} tham gia</Text></View>
+          <View style={styles.meta}><MaterialIconsRounded name="people" size={13} color="#181819" /><Text style={styles.metaText}>{t("explore.event.participants", { count: participantCount })}</Text></View>
         </View>
       </View>
       <View style={styles.arrow}><MaterialIconsRounded name="arrow-forward" size={18} color="#FFFFFF" /></View>

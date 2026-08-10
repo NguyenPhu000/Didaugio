@@ -1,6 +1,5 @@
 import { memo, useCallback, useMemo } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
@@ -8,7 +7,6 @@ import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { TOKENS } from "../../../constants/design-tokens";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import { getPlaceLocation } from "../utils/exploreHelpers";
-import { getCategoryIconName } from "../../../constants/categoryIcons";
 import {
   CREAM,
   Eyebrow,
@@ -19,8 +17,8 @@ import {
   POSTER_RADIUS,
   PosterMedia,
   PosterScrim,
-  STAR,
   SectionHeading,
+  STAR,
   posterShadow,
   usePressScale,
 } from "./cinematic";
@@ -41,6 +39,7 @@ const keyExtractor = (item, index) =>
   item?.id != null ? String(item.id) : `cat-place-${index}`;
 
 function CategoryPlaceCard({ place, onPress }) {
+  const { t } = useTranslation();
   const imageUri = resolvePlaceImageUri(place);
   const location = getPlaceLocation(place);
   const rating = Number(place?.ratingAvg ?? place?.averageRating);
@@ -54,6 +53,9 @@ function CategoryPlaceCard({ place, onPress }) {
       onPress={onPress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
+      accessibilityRole="button"
+      accessibilityLabel={place?.name}
+      accessibilityHint={t("explore.accessibility.openPlace")}
       style={[
         cardStyle,
         {
@@ -62,9 +64,9 @@ function CategoryPlaceCard({ place, onPress }) {
           padding: POSTER_INSET,
           borderRadius: POSTER_RADIUS,
           borderCurve: "continuous",
-          backgroundColor: "#FFFFFF",
+          backgroundColor: "#F7F3EB",
           borderWidth: StyleSheet.hairlineWidth,
-          borderColor: "rgba(11,11,12,0.08)",
+          borderColor: "rgba(11,11,12,0.06)",
           ...posterShadow,
         },
       ]}
@@ -83,7 +85,7 @@ function CategoryPlaceCard({ place, onPress }) {
           <PosterMedia uri={imageUri} width={MEDIA_W} />
         </Animated.View>
 
-        <PosterScrim bottomHeight="66%" topHeight="30%" strength={0.88} />
+        <PosterScrim bottomHeight="62%" topHeight="30%" strength={0.78} />
 
         {hasRating ? (
           <View style={{ position: "absolute", top: 10, right: 10 }}>
@@ -139,6 +141,9 @@ function ViewMoreCard({ onPress, label }) {
       onPress={onPress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={label}
       style={[
         cardStyle,
         {
@@ -147,6 +152,9 @@ function ViewMoreCard({ onPress, label }) {
           borderRadius: POSTER_RADIUS,
           borderCurve: "continuous",
           backgroundColor: CREAM,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: "rgba(11,11,12,0.08)",
+          ...posterShadow,
           alignItems: "center",
           justifyContent: "center",
           gap: 12,
@@ -188,10 +196,8 @@ function CategoryPlacesSectionInner({
   places,
   onPressPlace,
   onPressViewAll,
-  icon,
 }) {
   const { t } = useTranslation();
-  const categoryIcon = getCategoryIconName({ name: categoryName, icon });
   const viewAllLabel = t("common.viewAll");
 
   const dataWithViewMore = useMemo(
@@ -225,9 +231,6 @@ function CategoryPlacesSectionInner({
       <View style={{ paddingHorizontal: TAB_SCREEN_PADDING, marginBottom: 14 }}>
         <SectionHeading
           title={categoryName}
-          icon={
-            <MaterialCommunityIcons name={categoryIcon} size={16} color={INK} />
-          }
         />
       </View>
 

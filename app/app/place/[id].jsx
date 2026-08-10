@@ -30,7 +30,6 @@
     useUnsavePlace,
   } from "../../src/modules/saved/hooks/useSaved";
   import {
-    OpeningHours,
     DetailRow,
   } from "../../src/modules/place/components/PlaceDetailComponents";
   import { useAuthStore } from "../../src/stores/authStore";
@@ -49,7 +48,10 @@
   import {
     PALETTE,
     formatReviewCount,
+    PLACE_SHEET_BACKGROUND,
+    PLACE_SHEET_INDICATOR,
   } from "../../src/modules/place/constants/placeSheetConstants";
+  import { PlaceOpeningHoursSheet } from "../../src/modules/place/components/PlaceOpeningHoursSheet";
   import { TripSelectorSheet } from "../../src/modules/place/components/TripSelectorSheet";
   import { ReviewComposerSheetContent } from "../../src/modules/place/components/ReviewComposerSheet";
   import {
@@ -77,19 +79,6 @@
   const ICON_BUTTON_SHADOW = TOKENS.shadow.md;
   const BOTTOM_BAR_SHADOW = TOKENS.shadow.lg;
   const INTRO_SPEECH_KEY = "intro";
-
-  const SHEET_BACKGROUND = {
-    backgroundColor: PALETTE.surface,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderColor: PALETTE.border,
-  };
-
-  const SHEET_INDICATOR = {
-    backgroundColor: "rgba(0, 0, 0, 0.18)",
-    width: 36,
-  };
 
   function getAddressLine(place) {
     return [place?.address, place?.ward?.name, place?.district?.name]
@@ -1078,6 +1067,8 @@
                         )}`}
                         highlight
                         onPress={handleOpenHours}
+                        actionIcon="expand-more"
+                        accessibilityLabel={t("place.detail.viewWeeklyHours")}
                       />
                     ) : null}
 
@@ -1199,8 +1190,8 @@
               setTripSheetKey((prev) => prev + 1);
             }
           }}
-          backgroundStyle={SHEET_BACKGROUND}
-          handleIndicatorStyle={SHEET_INDICATOR}
+          backgroundStyle={PLACE_SHEET_BACKGROUND}
+          handleIndicatorStyle={PLACE_SHEET_INDICATOR}
         >
           <View className="flex-1">
             <TripSelectorSheet
@@ -1252,53 +1243,13 @@
         </BottomSheet>
 
         {/* ───── Task 3 Step 3: Weekly Hours Sheet ───── */}
-        <BottomSheet
+        <PlaceOpeningHoursSheet
           ref={hoursSheetRef}
-          index={-1}
-          snapPoints={["48%"]}
-          enablePanDownToClose
-          backgroundStyle={SHEET_BACKGROUND}
-          handleIndicatorStyle={SHEET_INDICATOR}
-        >
-          <View className="flex-1 px-5 pt-3">
-            <View className="mb-4 flex-row items-center justify-between">
-              <View className="gap-0.5">
-                <Text
-                  className="text-[18px]"
-                  style={{
-                    color: PALETTE.text,
-                    fontFamily: TOKENS.font.heading,
-                  }}
-                >
-                  {t("place.detail.openingHoursLabel")}
-                </Text>
-                <Text
-                  className="text-[13px]"
-                  style={{
-                    color: openState.color,
-                    fontFamily: TOKENS.font.semibold,
-                  }}
-                >
-                  {openState.label}
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => hoursSheetRef.current?.close()}
-                accessibilityRole="button"
-                accessibilityLabel={t("common.close")}
-                className="h-11 w-11 items-center justify-center rounded-full active:scale-95"
-                style={{ backgroundColor: PALETTE.surfaceAlt }}
-              >
-                <MaterialIconsRounded
-                  name="close"
-                  size={18}
-                  color={PALETTE.textMuted}
-                />
-              </Pressable>
-            </View>
-            <OpeningHours hours={place?.openingHours} t={t} />
-          </View>
-        </BottomSheet>
+          hours={place?.openingHours}
+          openState={openState}
+          t={t}
+          onClose={() => hoursSheetRef.current?.close()}
+        />
       </View>
     );
   }

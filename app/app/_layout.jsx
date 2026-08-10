@@ -1,4 +1,6 @@
 import "../global.css";
+import * as Sentry from "@sentry/react-native";
+import "../src/config/sentry";
 import i18n, { resolveLanguage } from "../src/i18n";
 import { useEffect, useRef, useState } from "react";
 import { View, AppState } from "react-native";
@@ -104,7 +106,7 @@ function ThemeSyncManager() {
   return null;
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
   const pathname = usePathname();
@@ -301,3 +303,5 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(RootLayout);

@@ -13,7 +13,6 @@ import { memo, useCallback } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -48,11 +47,11 @@ const SPRING = TOKENS.spring.press;
 export const posterShadow = Platform.select({
   ios: {
     shadowColor: INK,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.16,
-    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
   },
-  android: { elevation: 7 },
+  android: { elevation: 4 },
   default: {},
 });
 
@@ -60,18 +59,13 @@ export const posterShadow = Platform.select({
  * Scale khi nhấn cho card + counter-scale cho ảnh bên trong, tạo cảm giác
  * ảnh "đẩy tới" (Ken Burns) chứ không phải cả khối bị co lại.
  *
- * Haptic bắn ở press-in (không phải press) để phản hồi trùng đúng khoảnh khắc
- * ngón tay chạm — trễ tới onPress đã cảm thấy rời rạc.
  */
-export function usePressScale({ to = 0.965, mediaTo = 1.05, haptic = true } = {}) {
+export function usePressScale({ to = 0.965, mediaTo = 1.05 } = {}) {
   const progress = useSharedValue(0);
 
   const onPressIn = useCallback(() => {
-    if (haptic) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    }
     progress.value = withSpring(1, SPRING);
-  }, [progress, haptic]);
+  }, [progress]);
 
   const onPressOut = useCallback(() => {
     progress.value = withSpring(0, SPRING);

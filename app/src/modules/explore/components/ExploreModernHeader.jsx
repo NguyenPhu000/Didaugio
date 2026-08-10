@@ -5,7 +5,6 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../constants/design-tokens";
@@ -18,7 +17,6 @@ function ExploreModernHeaderInner({ onPressSearch }) {
   const scale = useSharedValue(1);
 
   const handlePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPressSearch?.();
   }, [onPressSearch]);
 
@@ -39,6 +37,7 @@ function ExploreModernHeaderInner({ onPressSearch }) {
       <AnimatedPressable
         accessibilityRole="button"
         accessibilityLabel={t("explore.header.searchPlaceholder")}
+        accessibilityHint={t("explore.header.searchHint")}
         onPress={handlePress}
         onPressIn={() => { scale.value = withSpring(0.982, TOKENS.spring.press); }}
         onPressOut={() => { scale.value = withSpring(1, TOKENS.spring.press); }}

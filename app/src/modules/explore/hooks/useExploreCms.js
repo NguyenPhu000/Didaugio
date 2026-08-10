@@ -11,8 +11,8 @@ import { getCmsExploreLandingApi } from "../../../api/cms";
 export function useExploreCms() {
   return useQuery({
     queryKey: ["cms-explore-landing"],
-    queryFn: () =>
-      getCmsExploreLandingApi().then((res) => res?.data || res),
+    queryFn: ({ signal }) =>
+      getCmsExploreLandingApi({ signal }).then((res) => res?.data || res),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,

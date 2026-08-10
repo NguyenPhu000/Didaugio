@@ -64,7 +64,7 @@ export function useMapRouting({
 
   const query = useQuery({
     queryKey,
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       calculateRouteApi({
         origin: normalizedOrigin,
         destination: normalizedDestination,
@@ -78,7 +78,7 @@ export function useMapRouting({
           simplifyGeometry: true,
           ...options,
         },
-      }),
+      }, { signal }),
     enabled: isReady,
     staleTime: STALE_TIME,
     gcTime: STALE_TIME * 2,

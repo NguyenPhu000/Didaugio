@@ -25,6 +25,9 @@ const VerifyEmailPublicPage = lazy(() => import("@/pages/auth/VerifyEmailPublicP
 const ResendVerificationPage = lazy(() => import("@/pages/auth/ResendVerificationPage"));
 const CheckEmailPage = lazy(() => import("@/pages/auth/CheckEmailPage"));
 const StaffInvitePage = lazy(() => import("@/pages/auth/StaffInvitePage"));
+const PrivacyPage = lazy(() => import("@/pages/legal/LegalPage").then((module) => ({ default: module.PrivacyPage })));
+const TermsPage = lazy(() => import("@/pages/legal/LegalPage").then((module) => ({ default: module.TermsPage })));
+const AccountDeletionPage = lazy(() => import("@/pages/legal/LegalPage").then((module) => ({ default: module.AccountDeletionPage })));
 
 // Shared pages - lazy loaded
 const ProfilePage = lazy(() => import("@/pages/shared/ProfilePage"));
@@ -269,6 +272,9 @@ const AppRoutes = () => {
 
       {/* Staff invite (public) */}
       <Route path="/invite" element={<StaffInvitePage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/account-deletion" element={<AccountDeletionPage />} />
 
       {/* Redirect root to dashboard - Business -> business dashboard */}
       <Route path="/" element={<RootRedirect />} />

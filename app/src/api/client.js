@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { isCancel } from "axios";
 import { API_BASE_CANDIDATES, API_BASE_URL, REQUEST_TIMEOUT } from "../constants/api";
 import { useAuthStore } from "../stores/authStore";
 import { ENDPOINTS } from "./endpoints";
@@ -132,6 +132,10 @@ const RETRY_DELAY_MS = 500;
 client.interceptors.response.use(
   (response) => response.data,
   async (error) => {
+    if (isCancel(error) || error?.code === "ERR_CANCELED") {
+      return Promise.reject(error);
+    }
+
     const originalRequest = error.config;
     if (!originalRequest) {
       return Promise.reject(buildError(error));

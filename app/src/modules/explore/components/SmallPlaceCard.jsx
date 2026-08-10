@@ -2,6 +2,7 @@ import { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import Animated from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { TOKENS } from "../../../constants/design-tokens";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import { getPlaceLocation } from "../utils/exploreHelpers";
@@ -27,6 +28,7 @@ const CARD_H = 282;
 const MEDIA_W = CARD_W - POSTER_INSET * 2;
 
 function SmallPlaceCardInner({ place, onPress }) {
+  const { t } = useTranslation();
   const imageUri = resolvePlaceImageUri(place);
   const location = getPlaceLocation(place);
   const rating = Number(place?.ratingAvg ?? place?.averageRating);
@@ -40,6 +42,9 @@ function SmallPlaceCardInner({ place, onPress }) {
       onPress={onPress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
+      accessibilityRole="button"
+      accessibilityLabel={place?.name}
+      accessibilityHint={t("explore.accessibility.openPlace")}
       style={[
         cardStyle,
         {
@@ -48,9 +53,9 @@ function SmallPlaceCardInner({ place, onPress }) {
           padding: POSTER_INSET,
           borderRadius: POSTER_RADIUS,
           borderCurve: "continuous",
-          backgroundColor: "#FFFFFF",
+          backgroundColor: "#F7F3EB",
           borderWidth: StyleSheet.hairlineWidth,
-          borderColor: "rgba(11,11,12,0.08)",
+          borderColor: "rgba(11,11,12,0.06)",
           ...posterShadow,
         },
       ]}
@@ -68,7 +73,7 @@ function SmallPlaceCardInner({ place, onPress }) {
           <PosterMedia uri={imageUri} width={MEDIA_W} />
         </Animated.View>
 
-        <PosterScrim bottomHeight="66%" topHeight="30%" strength={0.88} />
+        <PosterScrim bottomHeight="62%" topHeight="30%" strength={0.78} />
 
         {hasRating ? (
           <View style={{ position: "absolute", top: 10, right: 10 }}>

@@ -20,19 +20,23 @@ function normalizePlaceIdentifier(identifier) {
   return { kind: "slug", value };
 }
 
-export function usePlaceDetail(identifier) {
+export function buildPlaceDetailQueryOptions(identifier) {
   const normalized = normalizePlaceIdentifier(identifier);
   const enabled = normalized.kind !== "invalid";
 
-  return useQuery({
+  return {
     queryKey: ["place", normalized.kind, normalized.value ?? "invalid"],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       normalized.kind === "id"
-        ? getPlaceDetailApi(normalized.value)
-        : getPlaceDetailBySlugApi(normalized.value),
+        ? getPlaceDetailApi(normalized.value, { signal })
+        : getPlaceDetailBySlugApi(normalized.value, { signal }),
     select: (data) => data?.data || data,
     enabled,
-  });
+  };
+}
+
+export function usePlaceDetail(identifier) {
+  return useQuery(buildPlaceDetailQueryOptions(identifier));
 }
 
 export function usePlaceReviews(id, params = {}) {
@@ -41,7 +45,7 @@ export function usePlaceReviews(id, params = {}) {
 
   return useQuery({
     queryKey: ["place-reviews", isValidId ? parsedId : "invalid", params],
-    queryFn: () => getPlaceReviewsApi(parsedId, params),
+    queryFn: ({ signal }) => getPlaceReviewsApi(parsedId, params, { signal }),
     select: (data) => ({
       reviews: data?.data || [],
       pagination: data?.pagination,
@@ -56,7 +60,7 @@ export function useMyPlaceReview(id, enabled = true) {
 
   return useQuery({
     queryKey: ["my-place-review", isValidId ? parsedId : "invalid"],
-    queryFn: () => getMyPlaceReviewApi(parsedId),
+    queryFn: ({ signal }) => getMyPlaceReviewApi(parsedId, { signal }),
     select: (data) => data?.data || data || null,
     enabled: Boolean(enabled) && isValidId,
   });

@@ -255,6 +255,7 @@ export const getPlacesQuerySchema = paginationLargeSchema.extend({
     .optional(),
   priceRange: z.enum(["all", ...PRICE_RANGE_VALUES]).optional(),
   minRating: z.coerce.number().min(0).max(5).optional(),
+  compact: z.coerce.boolean().optional(),
   isFeatured: z.coerce.boolean().optional(),
   isVerified: z.coerce.boolean().optional(),
   sortBy: z

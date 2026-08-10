@@ -11,3 +11,5 @@ export const updateMyAvatarApi = (avatarUrl) =>
 
 export const updateNotificationSettingsApi = (settings) =>
   client.put(ENDPOINTS.profile.notifications, settings);
+
+export const deleteMyAccountApi = () => client.delete(ENDPOINTS.profile.deleteAccount);

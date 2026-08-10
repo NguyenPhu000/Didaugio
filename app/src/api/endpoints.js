@@ -30,6 +30,7 @@ export const ENDPOINTS = {
     summary: "/profile/summary",
     update: "/profile",
     updateAvatar: "/profile/avatar",
+    deleteAccount: "/profile/account",
     savedPlaces: "/profile/saved-places",
     savedPlaceById: (placeId) => `/profile/saved-places/${placeId}`,
     savedCollections: "/profile/saved-collections",

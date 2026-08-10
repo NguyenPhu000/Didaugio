@@ -7,6 +7,7 @@ import { anonymousAiUserRef } from "../adminAi/aiLog.service.js";
 import { RATEABLE_AI_FEATURES } from "../ai/aiFeedbackPolicy.js";
 import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import { applyPlaceBusinessSettings } from "../business/businessSettings.service.js";
+import { toMobileBannerMedia, toMobilePlaceMedia } from "../../utils/mobilePlaceMedia.js";
 
 const toInt = (value, fallback = null) => {
   const number = parseInt(value, 10);
@@ -256,6 +257,7 @@ const getDepositPolicy = (terms) => {
 
 export const getHomeData = async (query = {}) => {
   const limit = Math.min(Math.max(toInt(query.limit, 12), 1), 30);
+  const isMobileClient = query.client === "mobile";
 
   const [categories, featuredPlaces, banners] = await Promise.all([
     prisma.category.findMany({
@@ -321,8 +323,10 @@ export const getHomeData = async (query = {}) => {
 
   return {
     categories,
-    featuredPlaces: featuredPlaces.map(applyPlaceBusinessSettings),
-    banners,
+    featuredPlaces: featuredPlaces
+      .map(applyPlaceBusinessSettings)
+      .map((place) => (isMobileClient ? toMobilePlaceMedia(place) : place)),
+    banners: isMobileClient ? banners.map(toMobileBannerMedia) : banners,
   };
 };
 

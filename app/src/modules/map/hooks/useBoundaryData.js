@@ -6,14 +6,14 @@ const STALE_TIME = 30 * 60 * 1000;
 export function useBoundaryData() {
   const districts = useQuery({
     queryKey: ["boundaries-districts"],
-    queryFn: getDistrictsGeoJSON,
+    queryFn: ({ signal }) => getDistrictsGeoJSON({ signal }),
     staleTime: STALE_TIME,
     select: (res) => res?.data || res,
   });
 
   const wards = useQuery({
     queryKey: ["boundaries-wards"],
-    queryFn: getWardsGeoJSON,
+    queryFn: ({ signal }) => getWardsGeoJSON({ signal }),
     staleTime: STALE_TIME,
     select: (res) => res?.data || res,
   });

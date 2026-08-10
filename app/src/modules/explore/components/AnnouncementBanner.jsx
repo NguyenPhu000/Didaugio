@@ -8,8 +8,8 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import { useTranslation } from "react-i18next";
 import { TOKENS } from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { formatDayMonthNumeric } from "@/utils/dateFormat";
@@ -18,13 +18,14 @@ import { getOptimizedCloudinaryUrl, resolveMediaUrl } from "../../../lib/media-u
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const TONE = {
-  info: { icon: "campaign", accent: "#111111", label: "CẬP NHẬT" },
-  warning: { icon: "priority-high", accent: "#8A5A00", label: "LƯU Ý" },
-  success: { icon: "check-circle", accent: "#176B48", label: "CẬP NHẬT" },
-  error: { icon: "priority-high", accent: "#9D2020", label: "KHẨN" },
+  info: { icon: "campaign", accent: "#111111", labelKey: "explore.announcement.info" },
+  warning: { icon: "priority-high", accent: "#8A5A00", labelKey: "explore.announcement.warning" },
+  success: { icon: "check-circle", accent: "#176B48", labelKey: "explore.announcement.success" },
+  error: { icon: "priority-high", accent: "#9D2020", labelKey: "explore.announcement.error" },
 };
 
 function AnnouncementBannerInner({ announcement }) {
+  const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const opacity = useSharedValue(1);
@@ -49,7 +50,6 @@ function AnnouncementBannerInner({ announcement }) {
   }));
 
   const handleDismiss = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     opacity.value = withTiming(0, { duration: 180 });
     translateY.value = withTiming(-10, { duration: 180 }, () => {
       runOnJS(setDismissed)(true);
@@ -57,7 +57,6 @@ function AnnouncementBannerInner({ announcement }) {
   }, [opacity, translateY]);
 
   const handleToggle = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setExpanded((value) => !value);
   }, []);
 
@@ -67,6 +66,8 @@ function AnnouncementBannerInner({ announcement }) {
     <Animated.View style={[animatedStyle, styles.outer]}>
       <AnimatedPressable
         accessibilityRole="button"
+        accessibilityLabel={announcement.title}
+        accessibilityHint={t("explore.announcement.toggleHint")}
         accessibilityState={{ expanded }}
         onPress={handleToggle}
         onPressIn={() => { scale.value = withSpring(0.987, TOKENS.spring.press); }}
@@ -90,7 +91,7 @@ function AnnouncementBannerInner({ announcement }) {
         <View style={styles.content}>
           <View style={styles.metaRow}>
             <View style={[styles.labelPill, { borderColor: tone.accent }]}>
-              <Text style={[styles.label, { color: tone.accent }]}>{tone.label}</Text>
+              <Text style={[styles.label, { color: tone.accent }]}>{t(tone.labelKey)}</Text>
             </View>
             {dateText ? <Text style={styles.date}>{dateText}</Text> : null}
           </View>
@@ -103,7 +104,7 @@ function AnnouncementBannerInner({ announcement }) {
             </Text>
           ) : null}
           <View style={styles.detailRow}>
-            <Text style={styles.detailText}>{expanded ? "Thu gọn" : "Xem chi tiết"}</Text>
+            <Text style={styles.detailText}>{expanded ? t("explore.announcement.collapse") : t("explore.announcement.details")}</Text>
             <MaterialIconsRounded
               name={expanded ? "keyboard-arrow-up" : "arrow-forward"}
               size={16}
@@ -114,7 +115,7 @@ function AnnouncementBannerInner({ announcement }) {
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Đóng thông báo"
+          accessibilityLabel={t("explore.announcement.dismiss")}
           onPress={handleDismiss}
           hitSlop={12}
           style={styles.closeBtn}

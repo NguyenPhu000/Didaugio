@@ -138,7 +138,8 @@
       "greeting": "Bạn muốn khám phá gì hôm nay?",
       "subtitle": "Chọn danh mục, xem địa điểm nổi bật và bắt đầu hành trình tại Cần Thơ.",
       "searchPlaceholder": "Tìm địa điểm, món ăn, hoạt động...",
-      "location": "Cần Thơ"
+      "location": "Cần Thơ",
+      "searchHint": "Mở tìm kiếm và bộ lọc địa điểm"
     },
     "categories": {
       "all": "Tất cả"
@@ -230,7 +231,15 @@
       "viewAll": "Xem tất cả",
       "featuredBadge": "SỰ KIỆN NỔI BẬT",
       "onlineCount": "{{count}} ĐANG ONLINE",
-      "viewNow": "Xem ngay"
+      "viewNow": "Xem ngay",
+      "eyebrow": "CỘNG ĐỒNG",
+      "live": "LIVE",
+      "subtitle": "Tham gia, check-in và đi cùng mọi người",
+      "kicker": "Sự kiện cộng đồng",
+      "defaultDescription": "Cùng khám phá và gặp gỡ cộng đồng",
+      "participantLabel": "tham gia",
+      "checkInLabel": "check-in",
+      "legLabel": "chặng"
     },
     "sampleTrip": {
       "adventure": "Phiêu lưu",
@@ -241,10 +250,15 @@
       "budget": "Tiết kiệm",
       "luxury": "Cao cấp",
       "days": "{{count}} ngày",
+      "legs": "{{count}} chặng dừng",
       "from": "Từ {{price}}",
       "badge": "LỊCH TRÌNH MẪU • {{location}}",
       "defaultTitle": "Hành trình trải nghiệm Cần Thơ",
-      "defaultRoute": "Khám phá vẻ đẹp Cần Thơ theo nhịp riêng"
+      "defaultRoute": "Khám phá vẻ đẹp Cần Thơ theo nhịp riêng",
+      "sectionTitle": "Lịch trình gợi ý",
+      "sectionBadge": "Hot",
+      "sectionSubtitle": "Khám phá Cần Thơ trọn vẹn cùng các gợi ý tối ưu",
+      "viewAll": "Tất cả"
     },
     "headerBrand": "iPoint Genie",
     "headerGreeting": "Xin chào, {{name}}",
@@ -252,7 +266,34 @@
     "cmsFallbackTitle": "Khám phá Cần Thơ",
     "cmsFallbackDesc": "Khám phá hàng trăm địa điểm hấp dẫn tại Cần Thơ",
     "heroBadge": "ĐỀ XUẤT CHO BẠN",
-    "heroExplore": "Khám phá"
+    "heroExplore": "Khám phá",
+    "announcement": {
+      "info": "CẬP NHẬT",
+      "warning": "LƯU Ý",
+      "success": "CẬP NHẬT",
+      "error": "KHẨN",
+      "details": "Xem chi tiết",
+      "collapse": "Thu gọn",
+      "dismiss": "Đóng thông báo",
+      "toggleHint": "Mở rộng hoặc thu gọn thông báo"
+    },
+    "accessibility": {
+      "clearCategory": "Xóa bộ lọc danh mục",
+      "openPlace": "Mở chi tiết địa điểm",
+      "savePlace": "Lưu {{name}}",
+      "unsavePlace": "Bỏ lưu {{name}}",
+      "saveHint": "Lưu địa điểm để xem lại sau",
+      "openEvent": "Mở chi tiết sự kiện",
+      "openTrip": "Mở chi tiết hành trình",
+      "openBanner": "Mở đề xuất nổi bật",
+      "clearSearch": "Xóa nội dung tìm kiếm"
+    },
+    "sheet": {
+      "place": "Địa điểm",
+      "allPlaces": "Tất cả địa điểm",
+      "placeCount": "{{count}} địa điểm",
+      "openPlace": "Khám phá địa điểm"
+    }
   },
   "saved": {
     "title": "Yêu thích",
@@ -371,9 +412,17 @@
     "clearCacheConfirm": "Xóa",
     "clearCacheSuccess": "Xong!",
     "clearCacheSuccessMessage": "Cache đã được xóa thành công.",
+    "clearCacheError": "Không thể xóa cache. Vui lòng thử lại.",
     "legal": "Pháp lý",
     "privacyPolicy": "Chính sách bảo mật",
     "termsOfService": "Điều khoản dịch vụ",
+    "legalUnavailable": "Trang pháp lý hiện chưa khả dụng.",
+    "deleteAccount": "Xóa tài khoản",
+    "deleteAccountSubtitle": "Xóa vĩnh viễn tài khoản và dữ liệu cá nhân",
+    "deleteAccountTitle": "Xóa tài khoản?",
+    "deleteAccountMessage": "Thao tác này xóa hồ sơ cá nhân, phiên đăng nhập, dữ liệu đã lưu và chuyến đi. Dữ liệu thanh toán và booking bắt buộc lưu sẽ được ẩn danh.",
+    "deleteAccountConfirm": "Xóa tài khoản",
+    "deleteAccountError": "Không thể xóa tài khoản. Vui lòng thử lại.",
     "appVersion": "Phiên bản ứng dụng",
     "logout": "Đăng xuất",
     "logoutConfirmTitle": "Đăng xuất?",
@@ -749,6 +798,7 @@
       "emailLabel": "Email",
       "facebookLabel": "Facebook",
       "openingHoursLabel": "Giờ mở cửa",
+      "viewWeeklyHours": "Xem giờ mở cửa cả tuần",
       "reviewsSection": "Đánh giá",
       "seeAllReviews": "Xem tất cả {{count}} đánh giá",
       "mapButton": "Bản đồ",

@@ -7,7 +7,6 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useTranslation } from "react-i18next";
 import { TOKENS } from "../../../constants/design-tokens";
@@ -74,13 +73,11 @@ function SampleTripCardInner({ trip, onPress }) {
   }));
 
   const handlePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress?.(trip);
   }, [onPress, trip]);
 
   return (
     <AnimatedPressable
-      accessibilityRole="button"
       onPress={handlePress}
       onPressIn={() => {
         scale.value = withSpring(0.975, TOKENS.spring.press);
@@ -88,6 +85,9 @@ function SampleTripCardInner({ trip, onPress }) {
       onPressOut={() => {
         scale.value = withSpring(1, TOKENS.spring.press);
       }}
+      accessibilityRole="button"
+      accessibilityLabel={trip?.title || t("explore.sampleTrip.defaultTitle")}
+      accessibilityHint={t("explore.accessibility.openTrip")}
       style={[{ width: cardWidth, height: CARD_H }, animatedStyle]}
       className="relative overflow-hidden rounded-3xl bg-slate-900 shadow-xl border border-white/20 mb-4"
     >
@@ -120,7 +120,7 @@ function SampleTripCardInner({ trip, onPress }) {
       {/* Right Top Days Tag */}
       <View className="absolute top-3.5 right-3.5 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-400/40">
         <Text className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-tight" style={{ fontVariant: ["tabular-nums"] }}>
-          {dayCount} NGÀY
+          {t("explore.sampleTrip.days", { count: dayCount })}
         </Text>
       </View>
 
@@ -164,7 +164,7 @@ function SampleTripCardInner({ trip, onPress }) {
             <View className="flex-row items-center space-x-1">
               <MaterialIconsRounded name="route" size={14} color="#E2E8F0" />
               <Text className="text-xs font-semibold text-slate-200" style={{ fontVariant: ["tabular-nums"] }}>
-                {destinations.length || 1} chặng dừng
+                {t("explore.sampleTrip.legs", { count: destinations.length || 1 })}
               </Text>
             </View>
           </View>

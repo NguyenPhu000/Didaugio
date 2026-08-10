@@ -23,6 +23,7 @@ const BENTO_H = 344;
 const TILE_GAP = 10;
 
 function BentoTile({ place, large = false, onPress, defaultCategoryLabel, defaultExperienceLabel }) {
+  const { t } = useTranslation();
   const imageUri = resolvePlaceImageUri(place);
   const category = place?.category?.name || defaultCategoryLabel;
   const location = getPlaceLocation(place);
@@ -37,6 +38,9 @@ function BentoTile({ place, large = false, onPress, defaultCategoryLabel, defaul
       onPress={onPress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
+      accessibilityRole="button"
+      accessibilityLabel={place?.name || defaultExperienceLabel}
+      accessibilityHint={t("explore.accessibility.openPlace")}
       style={[
         cardStyle,
         {
@@ -61,7 +65,7 @@ function BentoTile({ place, large = false, onPress, defaultCategoryLabel, defaul
       <PosterScrim
         bottomHeight={large ? "58%" : "72%"}
         topHeight="22%"
-        strength={large ? 0.9 : 0.86}
+        strength={large ? 0.82 : 0.76}
         withTop={large}
       />
 

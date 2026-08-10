@@ -49,6 +49,19 @@ export const PALETTE = {
   accent: DESIGN_TOKENS.color.semantic.info,
 };
 
+export const PLACE_SHEET_BACKGROUND = {
+  backgroundColor: PALETTE.surface,
+  borderTopLeftRadius: 28,
+  borderTopRightRadius: 28,
+  borderWidth: 1,
+  borderColor: PALETTE.border,
+};
+
+export const PLACE_SHEET_INDICATOR = {
+  backgroundColor: "rgba(0, 0, 0, 0.18)",
+  width: 36,
+};
+
 export const TOKENS = {
   font: {
     heading: ACTIVE_FONTS.heading,
