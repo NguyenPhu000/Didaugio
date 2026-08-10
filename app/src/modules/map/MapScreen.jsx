@@ -308,7 +308,6 @@ export default function MapScreen() {
     previewStops,
   } = useMapTripPreview({
     activeTrip,
-    floatingTabClearance: FLOATING_TAB_CLEARANCE,
     followCameraRef,
     insets,
     isTripPreviewMode,

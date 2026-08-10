@@ -9,6 +9,7 @@ import Animated, {
   withTiming 
 } from "react-native-reanimated";
 import { TOKENS } from "../../constants/design-tokens";
+import { cn } from "../../lib/cn";
 
 // Sử dụng bộ Icon Lucide siêu sang trọng chuẩn thiết kế hiện đại
 import { CheckCircle2, AlertTriangle, XCircle, Info, HelpCircle } from "lucide-react-native";
@@ -21,19 +22,16 @@ const ALERT_CONFIGS = {
   info: { Icon: Info, color: TOKENS.color.semantic.info },
 };
 
-const BUTTON_CONFIGS = {
-  destructive: {
-    backgroundColor: TOKENS.color.semantic.danger,
-    textColor: TOKENS.color.neutral[0],
-  },
-  cancel: {
-    backgroundColor: TOKENS.color.semantic.slate[100],
-    textColor: TOKENS.color.semantic.slate[800],
-  },
-  default: {
-    backgroundColor: TOKENS.color.semantic.slate[900],
-    textColor: TOKENS.color.neutral[0],
-  },
+const BUTTON_CLASS_NAMES = {
+  destructive: "bg-danger border-danger",
+  cancel: "bg-slate-100 border-slate-200",
+  default: "bg-slate-950 border-slate-950",
+};
+
+const BUTTON_TEXT_CLASS_NAMES = {
+  destructive: "text-white",
+  cancel: "text-slate-800",
+  default: "text-white",
 };
 
 const CustomAlertModal = memo(function CustomAlertModal({
@@ -47,19 +45,17 @@ const CustomAlertModal = memo(function CustomAlertModal({
   confirmText,
   cancelText,
   isDestructive = false,
-  isLoading = false, // Thêm trạng thái loading như hình mẫu
+  isLoading = false,
 }) {
   const { t } = useTranslation();
   const config = ALERT_CONFIGS[type] || ALERT_CONFIGS.info;
   const TargetIcon = config.Icon;
 
-  // Khởi tạo các giá trị mượt mà cho hiệu ứng Spring nẩy nhẹ của Apple
   const scale = useSharedValue(0.9);
   const opacity = useSharedValue(0);
 
   useEffect(() => {
     if (visible) {
-      // Cấu hình vi dịch chuyển đàn hồi (Spring) cao cấp giống iOS Native
       scale.value = withSpring(1, {
         damping: 15,
         stiffness: 120,
@@ -82,7 +78,7 @@ const CustomAlertModal = memo(function CustomAlertModal({
     if (Array.isArray(buttons) && buttons.length > 0) return buttons;
     
     const list = [];
-    if (typeof onCancel === "function" && !isLoading) {
+    if (typeof onCancel === "function") {
       list.push({
         text: cancelText || t("common.cancel"),
         onPress: onCancel,
@@ -102,9 +98,13 @@ const CustomAlertModal = memo(function CustomAlertModal({
   const isVertical = resolvedButtons.length > 2;
 
   const handleDismiss = () => {
-    if (isLoading) return; // Đang chạy luồng ngầm không cho tự tắt tự do
+    if (isLoading) return;
     const cancelBtn = resolvedButtons.find(b => b.style === "cancel");
-    (cancelBtn || resolvedButtons[0])?.onPress?.();
+    if (cancelBtn) {
+      cancelBtn.onPress?.();
+      return;
+    }
+    if (type !== "confirm") resolvedButtons[0]?.onPress?.();
   };
 
   return (
@@ -122,7 +122,6 @@ const CustomAlertModal = memo(function CustomAlertModal({
         accessibilityLabel={[title, message].filter(Boolean).join(". ")}
       >
         
-        {/* Lớp nền mờ sương mỏng ban ngày (Subtle Daylight Apple Blur) */}
         <BlurView intensity={12} tint="dark" className="absolute inset-0" />
         <Pressable
           className="absolute inset-0 bg-black/[0.04]"
@@ -131,22 +130,10 @@ const CustomAlertModal = memo(function CustomAlertModal({
           accessibilityElementsHidden
         />
 
-        {/* Airy Floating Card — Rộng rãi max-w-[310px] chuẩn hình mẫu */}
         <Animated.View 
-          style={[
-            animatedStyle,
-            {
-              shadowColor: "#000",
-              shadowOpacity: 0.06,
-              shadowRadius: 24,
-              shadowOffset: { width: 0, height: 16 },
-              elevation: 4,
-            }
-          ]}
-          className="w-full max-w-[310px] bg-white rounded-[28px] p-6 items-center border border-gray-100/50"
+          style={animatedStyle}
+          className="w-full max-w-[340px] items-center rounded-[28px] border border-slate-100 bg-white p-6 shadow-xl"
         >
-          
-          {/* Naked Icon Box — Tối giản hoàn toàn, không ô màu nền */}
           <View className="mb-4 mt-2">
             {isLoading ? (
               <ActivityIndicator size="large" color={TOKENS.color.accent[500]} />
@@ -155,50 +142,52 @@ const CustomAlertModal = memo(function CustomAlertModal({
             )}
           </View>
 
-          {/* Typography Content — Căn chỉnh tỷ lệ thông thoáng */}
-          <View className="items-center mb-6 w-full px-2">
+          <View className="mb-6 w-full items-center px-2">
             <Text 
               accessibilityRole="header"
-              style={{ fontFamily: TOKENS.font.semibold }}
-              className="text-[18px] text-slate-900 text-center tracking-tight leading-6"
+              className="text-center font-semibold text-[18px] leading-6 tracking-tight text-slate-900"
             >
               {isLoading ? t("common.loading") : title}
             </Text>
             {message && (
               <Text 
-                style={{ fontFamily: TOKENS.font.body }}
-                className="text-[13.5px] text-slate-400 text-center mt-2.5 leading-5 tracking-wide"
+                className="mt-2.5 text-center font-sans text-[13.5px] leading-5 tracking-wide text-slate-500"
               >
                 {message}
               </Text>
             )}
           </View>
 
-          {/* Phím bấm dạng phẳng bo mềm Squircle Công thái học */}
-          <View className={`w-full gap-2.5 ${isVertical ? "flex-col items-stretch" : "flex-row items-center"}`}>
+          <View
+            className={cn(
+              "w-full gap-2.5",
+              isVertical ? "flex-col items-stretch" : "flex-row items-center",
+            )}
+          >
             {resolvedButtons.map((btn, index) => {
-              const btnStyle = BUTTON_CONFIGS[btn.style] || BUTTON_CONFIGS.default;
+              const buttonClassName = BUTTON_CLASS_NAMES[btn.style] || BUTTON_CLASS_NAMES.default;
+              const textClassName = BUTTON_TEXT_CLASS_NAMES[btn.style] || BUTTON_TEXT_CLASS_NAMES.default;
               
               return (
                 <Pressable
-                  key={index}
+                  key={`${btn.text || "alert-action"}-${index}`}
                   onPress={isLoading ? null : btn.onPress}
                   disabled={isLoading}
                   accessibilityRole="button"
                   accessibilityLabel={btn.text}
                   accessibilityState={{ disabled: isLoading }}
-                  style={({ pressed }) => [
-                    TOKENS.shadow.sm,
-                    {
-                      backgroundColor: btnStyle.backgroundColor,
-                      opacity: pressed ? 0.88 : 1,
-                    },
-                  ]}
-                  className={`h-11 rounded-xl items-center justify-center ${isVertical ? "w-full" : "flex-1"}`}
+                  className={cn(
+                    "h-12 items-center justify-center rounded-xl border px-4 shadow-sm active:opacity-80",
+                    isVertical ? "w-full" : "flex-1",
+                    buttonClassName,
+                    isLoading && "opacity-50",
+                  )}
                 >
                   <Text 
-                    className="text-[14px] tracking-tight"
-                    style={{ color: btnStyle.textColor, fontFamily: TOKENS.font.semibold }}
+                    className={cn(
+                      "font-semibold text-[14px] tracking-tight",
+                      textClassName,
+                    )}
                   >
                     {isLoading && btn.style !== "cancel" ? t("common.loading") : btn.text}
                   </Text>

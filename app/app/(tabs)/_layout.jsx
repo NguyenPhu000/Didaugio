@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { InteractionManager, Platform, Pressable, StyleSheet, View } from "react-native";
-import { Tabs, usePathname, useRouter } from "expo-router";
+import { Tabs, useGlobalSearchParams, usePathname, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { BlurView } from "expo-blur";
@@ -20,6 +20,7 @@ import { QUERY_KEYS } from "../../src/constants/query-keys";
 import { getHomeApi as getExploreHomeApi } from "../../src/modules/explore/api/exploreApi";
 import { buildExploreQueryOptions } from "../../src/modules/explore/hooks/useExplore";
 import { getMapPlacesApi } from "../../src/modules/map/api/mapApi";
+import { shouldHideFloatingTabBar } from "../../src/modules/map/utils/tripRoutePreview";
 
 /** Nang thanh tab cao hon so voi mep day (cong them vao safe area). */
 const EXTRA_FLOAT_LIFT = 26;
@@ -145,10 +146,14 @@ function FloatingBottomTabBar() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
+  const params = useGlobalSearchParams();
   const { t } = useTranslation();
 
   const currentKey = useMemo(() => resolveTabKey(pathname), [pathname]);
-  const hideForImmersiveRoute = currentKey === "ai";
+  const hideForImmersiveRoute = shouldHideFloatingTabBar(
+    currentKey,
+    params.tripPreviewId,
+  );
   const dragX = useSharedValue(0);
   const dragActive = useSharedValue(0);
 

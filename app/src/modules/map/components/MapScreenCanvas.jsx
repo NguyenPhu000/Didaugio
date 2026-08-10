@@ -116,13 +116,13 @@ export function MapScreenCanvas({
                 strokeWidth={6}
                 isPrimary
                 dashed={segment.dashed}
-                color={segment.color}
+                color="#111111"
                 strokeOpacity={0.96}
               />
             ))
           : null}
 
-        {(isTripPreviewMode || (isActiveTripMode && previewStops.length > 0)) && previewSegments.length > 0
+        {isActiveTripMode && previewStops.length > 0 && previewSegments.length > 0
           ? previewSegments.map((segment) =>
               segment.labelCoordinate ? (
                 <Marker
@@ -179,7 +179,7 @@ export function MapScreenCanvas({
             )
           : null}
 
-        {(isTripPreviewMode || (isActiveTripMode && previewStops.length > 0)) && previewStops.length > 0
+        {isTripPreviewMode && previewStops.length > 0
           ? previewStops.map((stop) => {
               const placeData = stop.place || stop.destination?.place || stop;
               const imageUri =
@@ -199,24 +199,10 @@ export function MapScreenCanvas({
                   zIndex={100 - stop.sequence}
                   tracksViewChanges
                 >
-                  <View style={{ flexDirection: "row", alignItems: "center" }} pointerEvents="none">
-                    {/* 1. Khung Ảnh Marker Tương Tự MapView PlaceMarker */}
+                  <View className="flex-row items-center" pointerEvents="none">
                     <View
-                      style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 14,
-                        backgroundColor: "#FFFFFF",
-                        borderWidth: 2.5,
-                        borderColor: badgeColor,
-                        padding: 2,
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 6,
-                        elevation: 6,
-                        position: "relative",
-                      }}
+                      className="relative h-12 w-12 rounded-[14px] border-[2.5px] bg-white p-0.5 shadow-lg"
+                      style={{ borderColor: badgeColor }}
                     >
                       {imageUri ? (
                         <Image
@@ -225,79 +211,21 @@ export function MapScreenCanvas({
                           contentFit="cover"
                         />
                       ) : (
-                        <View
-                          style={{
-                            flex: 1,
-                            borderRadius: 10,
-                            alignItems: "center",
-                            justifyContent: "center",
-                            backgroundColor: "#F3F4F6",
-                          }}
-                        >
+                        <View className="flex-1 items-center justify-center rounded-[10px] bg-slate-100">
                           <MaterialIconsRounded name="place" size={22} color={badgeColor} />
                         </View>
                       )}
 
-                      {/* 2. Tag Số Thứ Tự (Sequence Badge) Nổi Bật Sắc Nét */}
-                      <View
-                        style={{
-                          position: "absolute",
-                          top: -9,
-                          left: -9,
-                          minWidth: 24,
-                          height: 24,
-                          borderRadius: 12,
-                          paddingHorizontal: 5,
-                          alignItems: "center",
-                          justifyContent: "center",
-                          backgroundColor: "#181819",
-                          borderWidth: 2,
-                          borderColor: "#FFFFFF",
-                          shadowColor: "#000",
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.35,
-                          shadowRadius: 4,
-                          elevation: 5,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: "#FFFFFF",
-                            fontSize: 11.5,
-                            fontFamily: TOKENS.font.bold,
-                            textAlign: "center",
-                          }}
-                        >
-                          {stop.sequence}
+                      <View className="absolute -left-2 -top-2 h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-[#181819] px-1 shadow-md">
+                        <Text className="text-center font-bold text-[11.5px] text-white">
+                          {stop.markerLabel}
                         </Text>
                       </View>
                     </View>
 
-                    {/* 3. Label Tên Địa Điểm Đi Kèm Giống MapView PlaceMarker */}
-                    <View
-                      style={{
-                        marginLeft: 6,
-                        maxWidth: 154,
-                        borderRadius: 14,
-                        backgroundColor: "#FFFFFF",
-                        paddingHorizontal: 10,
-                        paddingVertical: 5.5,
-                        borderWidth: 1,
-                        borderColor: "rgba(0,0,0,0.08)",
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.16,
-                        shadowRadius: 4,
-                        elevation: 3,
-                      }}
-                    >
+                    <View className="ml-1.5 max-w-[154px] rounded-[14px] border border-black/[0.08] bg-white px-2.5 py-1.5 shadow-sm">
                       <Text
-                        style={{
-                          fontSize: 11.5,
-                          fontFamily: TOKENS.font.bold,
-                          color: "#181819",
-                          letterSpacing: -0.2,
-                        }}
+                        className="font-bold text-[11.5px] tracking-tight text-[#181819]"
                         numberOfLines={1}
                         ellipsizeMode="tail"
                       >

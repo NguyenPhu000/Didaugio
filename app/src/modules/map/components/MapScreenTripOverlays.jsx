@@ -1,10 +1,22 @@
-import React, { memo } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import React, { memo, useMemo } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { MaterialIconsRounded } from "../../../components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../constants/design-tokens";
 import { resolvePlaceImageUri, resolveMediaUrl } from "../../../lib/media-url";
+import { getTransportIcon } from "../../trips/utils/tripHelpers";
+import {
+  buildTripPreviewReview,
+  getTripPreviewSheetHeight,
+} from "../utils/tripRoutePreview";
 import ActiveTripNavBanner from "./navigation/ActiveTripNavBanner";
 import NearbyWarningBanner from "./navigation/NearbyWarningBanner";
 import DepartureReminderBanner from "./navigation/DepartureReminderBanner";
@@ -442,8 +454,26 @@ const ActiveDestinationHUD = memo(function ActiveDestinationHUD({
 // ==========================================
 // 6. BOTTOM CARD: TRIP PREVIEW MODE
 // ==========================================
+const formatPreviewDuration = (seconds, t, approximate = false) => {
+  const totalSeconds = Number(seconds);
+  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return null;
+
+  const totalMinutes = Math.max(1, Math.round(totalSeconds / 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const key = hours
+    ? approximate
+      ? "mapScreen.previewApproximateHoursMinutes"
+      : "mapScreen.previewHoursMinutes"
+    : approximate
+      ? "mapScreen.previewApproximateMinutes"
+      : "mapScreen.previewMinutes";
+
+  return t(key, { hours, minutes: hours ? minutes : totalMinutes });
+};
+
 const TripPreviewCard = memo(function TripPreviewCard({
-  bottomOffset,
+  bottomInset,
   previewTrip,
   previewStops,
   previewSegments,
@@ -455,19 +485,43 @@ const TripPreviewCard = memo(function TripPreviewCard({
   handleConfirmTripPreview,
   t,
 }) {
+  const { height: viewportHeight } = useWindowDimensions();
   const isDisabled =
     previewStops.length === 0 ||
     updatePreviewTripMutation.isPending ||
     isPreviewTripLoading;
+  const review = useMemo(
+    () => buildTripPreviewReview(previewStops, previewSegments),
+    [previewSegments, previewStops],
+  );
+  const fallbackDescription = review.fallbackSegmentCount
+    ? t("mapScreen.previewFallbackCount", {
+        count: review.fallbackSegmentCount,
+      })
+    : t("mapScreen.previewFallback");
+  const sheetHeight = getTripPreviewSheetHeight(viewportHeight);
+  const totalDurationLabel = formatPreviewDuration(review.totalDurationS, t, true);
+  const summary = review.totalDistanceLabel && totalDurationLabel
+    ? t("mapScreen.previewSummaryFull", {
+        count: previewStops.length,
+        segments: previewSegments.length,
+        distance: review.totalDistanceLabel,
+        duration: totalDurationLabel,
+      })
+    : t("mapScreen.previewSummary", {
+        count: previewStops.length,
+        segments: previewSegments.length,
+      });
+  const showFallbackWarning = isPreviewRouteError || review.fallbackSegmentCount > 0;
 
   return (
     <View
       pointerEvents="box-none"
       style={{
         position: "absolute",
-        left: 14,
-        right: 14,
-        bottom: bottomOffset,
+        left: 0,
+        right: 0,
+        bottom: 0,
         zIndex: 88,
       }}
     >
@@ -475,10 +529,12 @@ const TripPreviewCard = memo(function TripPreviewCard({
         tint="light"
         intensity={60}
         style={{
-          borderRadius: 24,
+          height: sheetHeight,
+          borderTopLeftRadius: 30,
+          borderTopRightRadius: 30,
           overflow: "hidden",
-          backgroundColor: "rgba(255,255,255,0.95)",
-          borderWidth: 1,
+          backgroundColor: "rgba(255,255,255,0.99)",
+          borderTopWidth: 1,
           borderColor: "rgba(17,24,39,0.08)",
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 8 },
@@ -487,83 +543,259 @@ const TripPreviewCard = memo(function TripPreviewCard({
           elevation: 8,
         }}
       >
-        <View className="p-4 gap-3">
-          <View className="flex-row items-center gap-3">
-            <View className="w-9 h-9 rounded-xl items-center justify-center bg-emerald-500/15">
-              {isPreviewTripLoading || isPreviewRouteLoading ? (
-                <ActivityIndicator size="small" color="#059669" />
-              ) : (
-                <MaterialIconsRounded name="route" size={20} color="#047857" />
-              )}
-            </View>
-            <View className="flex-1">
+        <View style={{ flex: 1, paddingTop: 12 }}>
+          <View className="items-center pb-4">
+            <View
+              style={{
+                width: 46,
+                height: 5,
+                borderRadius: 3,
+                backgroundColor: "rgba(17,24,39,0.2)",
+              }}
+            />
+          </View>
+
+          <View className="px-5 pb-3">
+            <View className="flex-row items-center gap-2">
               <Text
-                numberOfLines={1}
+                numberOfLines={2}
                 style={{
-                  color: "#111827",
-                  fontSize: 16,
+                  flex: 1,
+                  color: "#111111",
+                  fontSize: 27,
+                  lineHeight: 32,
                   fontFamily: TOKENS.font.bold,
+                  letterSpacing: -0.8,
                 }}
               >
                 {previewTrip?.title || t("mapScreen.previewTitle")}
               </Text>
-              <Text
-                numberOfLines={1}
-                style={{
-                  marginTop: 2,
-                  color: "#6B7280",
-                  fontSize: 12,
-                  fontFamily: TOKENS.font.medium,
-                }}
-              >
-                {isPreviewRouteError
-                  ? t("mapScreen.previewFallback")
-                  : t("mapScreen.previewSummary", {
-                      count: previewStops.length,
-                      segments: previewSegments.length,
-                    })}
-              </Text>
+              {isPreviewTripLoading || isPreviewRouteLoading ? (
+                <ActivityIndicator size="small" color="#111111" />
+              ) : null}
             </View>
+            <Text
+              numberOfLines={2}
+              style={{
+                marginTop: 5,
+                color: "rgba(17,17,17,0.72)",
+                fontSize: 13,
+                lineHeight: 18,
+                fontFamily: TOKENS.font.medium,
+              }}
+            >
+              {summary}
+            </Text>
           </View>
 
-          {/* Action Buttons */}
-          <View className="flex-row gap-2.5">
-            <Pressable
-              onPress={handleCancelTripPreview}
-              className="h-11 px-4 rounded-2xl bg-gray-100 items-center justify-center active:bg-gray-200 active:scale-95"
+          {showFallbackWarning ? (
+            <View
+              className="mx-5 mb-3 flex-row items-center gap-2.5 rounded-2xl px-3.5 py-3"
+              style={{
+                backgroundColor: "#FFF9E8",
+                borderWidth: 1,
+                borderColor: "#F2B544",
+              }}
             >
+              <MaterialIconsRounded name="warning-amber" size={20} color="#9A6200" />
               <Text
                 style={{
-                  color: "#111827",
-                  fontSize: 13,
+                  flex: 1,
+                  color: "#754A00",
+                  fontSize: 12.5,
+                  lineHeight: 18,
                   fontFamily: TOKENS.font.semibold,
                 }}
               >
-                {t("common.back")}
+                {fallbackDescription}
               </Text>
-            </Pressable>
+            </View>
+          ) : null}
 
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 8 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {review.rows.map(({ stop, incomingSegment }, index) => {
+              const isStartingPoint = index === 0;
+              const isLastStop = index === review.rows.length - 1;
+              const isFallbackSegment = incomingSegment?.source === "fallback";
+              const durationLabel = formatPreviewDuration(incomingSegment?.durationS, t);
+              const transportIcon = getTransportIcon(incomingSegment?.transportToNext);
+              const travelLabel = [durationLabel, incomingSegment?.distanceLabel]
+                .filter(Boolean)
+                .join(" · ");
+
+              return (
+                <View
+                  key={String(stop.id)}
+                  className="flex-row"
+                  style={isStartingPoint ? {
+                    borderRadius: 16,
+                    backgroundColor: "rgba(17,17,17,0.045)",
+                    paddingTop: 10,
+                    paddingHorizontal: 8,
+                  } : { paddingHorizontal: 8 }}
+                >
+                  <View style={{ width: 38, alignItems: "center" }}>
+                    <View
+                      className="h-9 w-9 items-center justify-center rounded-full"
+                      style={{
+                        backgroundColor: isStartingPoint ? "#000000" : "#FFFFFF",
+                        borderWidth: 1.75,
+                        borderColor: "#111111",
+                      }}
+                    >
+                      {isLastStop && !isStartingPoint ? (
+                        <MaterialIconsRounded name="flag" size={17} color="#111111" />
+                      ) : (
+                        <Text
+                          style={{
+                            color: isStartingPoint ? "#FFFFFF" : "#111111",
+                            fontSize: 13,
+                            fontFamily: TOKENS.font.bold,
+                          }}
+                        >
+                          {stop.sequence}
+                        </Text>
+                      )}
+                    </View>
+                    {index < review.rows.length - 1 ? (
+                      <View
+                        style={{
+                          width: 1.75,
+                          flex: 1,
+                          minHeight: 32,
+                          backgroundColor: "#111111",
+                        }}
+                      />
+                    ) : null}
+                  </View>
+
+                  <View
+                    style={{
+                      flex: 1,
+                      minHeight: 68,
+                      marginLeft: 12,
+                      paddingRight: 2,
+                      paddingBottom: index < review.rows.length - 1 ? 14 : 4,
+                      borderBottomWidth: !isStartingPoint && !isLastStop ? 1 : 0,
+                      borderBottomColor: "rgba(17,17,17,0.09)",
+                    }}
+                  >
+                    <View className="flex-row items-center">
+                      <View className="flex-1">
+                        <Text
+                          numberOfLines={2}
+                          style={{
+                            color: "#111111",
+                            fontSize: 15.5,
+                            lineHeight: 21,
+                            fontFamily: TOKENS.font.semibold,
+                          }}
+                        >
+                          {isStartingPoint ? t("mapScreen.previewStartPoint") : stop.name}
+                        </Text>
+                      </View>
+                      {isStartingPoint ? (
+                        <Pressable
+                          onPress={handleConfirmTripPreview}
+                          disabled={isDisabled}
+                          accessibilityRole="button"
+                          accessibilityLabel={t("mapScreen.previewStartButton")}
+                          className="ml-3 h-9 flex-row items-center gap-1.5 rounded-xl px-3 active:opacity-60"
+                          style={{
+                            opacity: isDisabled ? 0.45 : 1,
+                            borderWidth: 1,
+                            borderColor: "rgba(17,17,17,0.14)",
+                            backgroundColor: "#FFFFFF",
+                          }}
+                        >
+                          <MaterialIconsRounded name="play-arrow" size={17} color="#111111" />
+                          <Text style={{ color: "#111111", fontSize: 12.5, fontFamily: TOKENS.font.semibold }}>
+                            {t("mapScreen.previewStartButton")}
+                          </Text>
+                        </Pressable>
+                      ) : !isLastStop ? (
+                        <MaterialIconsRounded name="chevron-right" size={24} color="rgba(17,17,17,0.75)" />
+                      ) : null}
+                    </View>
+                    <View className="mt-1 flex-row items-center gap-1.5">
+                      <MaterialIconsRounded
+                        name={isStartingPoint ? "location-on" : transportIcon || "route"}
+                        size={15}
+                        color={isFallbackSegment ? "#9A6200" : "rgba(17,17,17,0.62)"}
+                      />
+                      <Text
+                        style={{
+                          color: isFallbackSegment ? "#754A00" : "rgba(17,17,17,0.66)",
+                          fontSize: 12.5,
+                          fontFamily: TOKENS.font.medium,
+                        }}
+                      >
+                        {isStartingPoint
+                          ? t("mapScreen.previewStartHere")
+                          : isFallbackSegment
+                            ? t("mapScreen.previewEstimatedSegment", {
+                                distance: travelLabel || t("mapScreen.previewDistancePending"),
+                              })
+                            : travelLabel || t("mapScreen.previewDistancePending")}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+          </ScrollView>
+
+          <View
+            className="px-5 pt-3"
+            style={{ borderTopWidth: 1, borderTopColor: "rgba(23,23,23,0.08)" }}
+          >
             <Pressable
               onPress={handleConfirmTripPreview}
               disabled={isDisabled}
-              style={{ opacity: isDisabled ? 0.55 : 1 }}
-              className="flex-1 h-11 rounded-2xl bg-[#111827] items-center justify-center active:scale-98 shadow-sm"
+              accessibilityRole="button"
+              accessibilityLabel={t("mapScreen.startGuidance")}
+              style={{
+                height: 52,
+                opacity: isDisabled ? 0.48 : 1,
+                backgroundColor: "#000000",
+                borderWidth: 1,
+                borderColor: "rgba(0,0,0,0.16)",
+              }}
+              className="flex-row items-center justify-center gap-2 rounded-2xl active:opacity-80"
             >
               {updatePreviewTripMutation.isPending ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text
-                  style={{
-                    color: "#FFFFFF",
-                    fontSize: 14,
-                    fontFamily: TOKENS.font.bold,
-                  }}
-                >
-                  {t("mapScreen.startGuidance")}
-                </Text>
+                <>
+                  <MaterialIconsRounded name="navigation" size={20} color="#FFFFFF" />
+                  <Text
+                    style={{
+                      color: "#FFFFFF",
+                      fontSize: 15,
+                      fontFamily: TOKENS.font.bold,
+                    }}
+                  >
+                    {t("mapScreen.startGuidance")}
+                  </Text>
+                </>
               )}
             </Pressable>
+            <Pressable
+              onPress={handleCancelTripPreview}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.back")}
+              className="h-10 items-center justify-center active:opacity-60"
+            >
+              <Text style={{ color: "#111111", fontSize: 13.5, fontFamily: TOKENS.font.semibold }}>
+                {t("common.back")}
+              </Text>
+            </Pressable>
           </View>
+          <View style={{ height: Math.max(bottomInset || 0, 12) }} />
         </View>
       </BlurView>
     </View>
@@ -708,7 +940,7 @@ export function MapScreenTripOverlays({
       {/* Trip Preview Bottom Sheet Card */}
       {isTripPreviewMode ? (
         <TripPreviewCard
-          bottomOffset={bottomCardOffset + 2}
+          bottomInset={insets.bottom}
           previewTrip={previewTrip}
           previewStops={previewStops}
           previewSegments={previewSegments}

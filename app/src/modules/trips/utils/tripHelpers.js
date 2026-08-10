@@ -778,7 +778,13 @@ export function getTransportIcon(transport) {
   if (!transport) return null;
   const t = transport.toLowerCase();
   if (t.includes("walk") || t.includes("đi bộ")) return "directions-walk";
-  if (t.includes("bike") || t.includes("xe máy") || t.includes("motorcycle")) return "motorcycle";
+  if (
+    t.includes("xe đạp") ||
+    t.includes("cycling") ||
+    t.includes("bicycle") ||
+    t === "bike"
+  ) return "directions-bike";
+  if (t.includes("xe máy") || t.includes("motorcycle") || t.includes("motorbike")) return "motorcycle";
   if (t.includes("bus") || t.includes("buýt")) return "directions-bus";
   if (t.includes("car") || t.includes("xe hơi") || t.includes("xe")) return "directions-car";
   return "swap-vert";

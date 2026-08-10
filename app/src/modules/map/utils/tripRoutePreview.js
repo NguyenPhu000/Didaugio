@@ -112,6 +112,8 @@ export function buildTripPreviewStops(destinations = []) {
     .map((stop, index) => ({
       ...stop,
       sequence: index + 1,
+      markerLabel: String(index + 1),
+      markerVariant: "image-numbered",
     }));
 }
 
@@ -177,6 +179,9 @@ export function buildTripPreviewSegments(stops = [], routeResults = []) {
           to.coordinate.latitude,
           to.coordinate.longitude,
         );
+    const durationS = Number.isFinite(Number(route.durationS))
+      ? Number(route.durationS)
+      : null;
 
     const { coordinate: labelCoordinate, bearing } =
       getSegmentMidpointAndBearing(coordinates);
@@ -188,6 +193,8 @@ export function buildTripPreviewSegments(stops = [], routeResults = []) {
       label: `${from.sequence}-${to.sequence}`,
       distanceM,
       distanceLabel: formatPreviewDistance(distanceM),
+      durationS,
+      transportToNext: from.destination?.transportToNext || null,
       coordinates,
       labelCoordinate,
       bearing,
@@ -197,4 +204,43 @@ export function buildTripPreviewSegments(stops = [], routeResults = []) {
     });
   }
   return segments;
+}
+
+export function buildTripPreviewReview(stops = [], segments = []) {
+  const incomingSegments = new Map(
+    segments.map((segment) => [String(segment?.to?.id), segment]),
+  );
+  const totalDistanceM = segments.reduce(
+    (total, segment) => total + (Number(segment?.distanceM) || 0),
+    0,
+  );
+
+  return {
+    rows: stops.map((stop) => ({
+      stop,
+      incomingSegment: incomingSegments.get(String(stop?.id)) || null,
+    })),
+    fallbackSegmentCount: segments.filter(
+      (segment) => segment?.source === "fallback",
+    ).length,
+    totalDistanceM,
+    totalDistanceLabel: formatPreviewDistance(totalDistanceM),
+    totalDurationS: segments.reduce(
+      (total, segment) => total + (Number(segment?.durationS) || 0),
+      0,
+    ),
+  };
+}
+
+export function getTripPreviewSheetHeight(viewportHeight) {
+  const height = Number(viewportHeight);
+  if (!Number.isFinite(height) || height <= 0) return 520;
+  return Math.min(600, Math.max(420, Math.round(height * 0.62)));
+}
+
+export function shouldHideFloatingTabBar(currentKey, tripPreviewId) {
+  const previewId = Array.isArray(tripPreviewId)
+    ? tripPreviewId[0]
+    : tripPreviewId;
+  return currentKey === "ai" || (currentKey === "map" && Boolean(previewId));
 }

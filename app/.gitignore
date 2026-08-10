@@ -1,3 +1,4 @@
 test
 .env
 app/node_modules/react-native-css-interop/.cache/*.js
+.env.local

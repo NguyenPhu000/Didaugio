@@ -36,10 +36,40 @@ function inferAlertType(title, message, buttons) {
   return "info";
 }
 
-export function showAppAlert({ title, message, type = "info", buttons = [], options = {} }) {
+export function showAppAlert({
+  title,
+  message,
+  type = "info",
+  buttons = [],
+  confirmText,
+  cancelText,
+  onConfirm,
+  onCancel,
+  isDestructive = false,
+  options = {},
+}) {
   const resolvedButtons = buttons.length > 0
     ? buttons
-    : [{ text: i18n.t("common.close"), style: "default" }];
+    : type === "confirm"
+      ? [
+          {
+            text: cancelText || i18n.t("common.cancel"),
+            style: "cancel",
+            onPress: onCancel,
+          },
+          {
+            text: confirmText || i18n.t("common.confirm"),
+            style: isDestructive ? "destructive" : "default",
+            onPress: onConfirm,
+          },
+        ]
+      : [
+          {
+            text: confirmText || i18n.t("common.close"),
+            style: isDestructive ? "destructive" : "default",
+            onPress: onConfirm,
+          },
+        ];
 
   useAlertStore.getState().showAlert({
     title,

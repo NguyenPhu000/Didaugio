@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useWindowDimensions } from "react-native";
 import { calculateRouteApi } from "../../../api/routingApi";
 import { sendLocalNotification } from "../../../lib/local-notifications";
 import { mapRoutingResponse } from "./routeMapping";
 import {
   buildTripPreviewSegments,
   buildTripPreviewStops,
+  getTripPreviewSheetHeight,
 } from "../utils/tripRoutePreview";
 import { buildTripPreviewRouteRequest } from "./useMapTripPreviewUtils";
 import { showAppAlert } from "../../../utils/appAlert";
 
 export function useMapTripPreview({
   activeTrip,
-  floatingTabClearance,
   followCameraRef,
   insets,
   isTripPreviewMode,
@@ -23,6 +24,7 @@ export function useMapTripPreview({
   t,
   updatePreviewTripMutation,
 }) {
+  const { height: viewportHeight } = useWindowDimensions();
   const [previewRouteResults, setPreviewRouteResults] = useState([]);
   const [isPreviewRouteLoading, setIsPreviewRouteLoading] = useState(false);
   const [isPreviewRouteError, setIsPreviewRouteError] = useState(false);
@@ -43,6 +45,7 @@ export function useMapTripPreview({
     }
     return previewStops.map((stop) => stop.coordinate);
   }, [previewSegments, previewStops]);
+  const previewSheetHeight = getTripPreviewSheetHeight(viewportHeight);
 
   useEffect(() => {
     if (!isTripPreviewMode || previewStops.length < 2) {
@@ -101,7 +104,7 @@ export function useMapTripPreview({
         edgePadding: {
           top: (insets.top || 0) + 130,
           right: 48,
-          bottom: floatingTabClearance + 150,
+          bottom: previewSheetHeight + 32,
           left: 48,
         },
         animated: true,
@@ -109,11 +112,11 @@ export function useMapTripPreview({
     }, 180);
     return () => clearTimeout(timer);
   }, [
-    floatingTabClearance,
     insets.top,
     isTripPreviewMode,
     mapRef,
     previewFitCoordinates,
+    previewSheetHeight,
   ]);
 
   const handleCancelTripPreview = useCallback(() => {
