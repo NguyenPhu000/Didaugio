@@ -369,7 +369,6 @@ export default function SettingsScreen() {
           text: t("settings.clearCacheConfirm"),
           style: "destructive",
           onPress: async () => {
-            // Có thể thêm AsyncStorage.clear() hoặc tương tự ở đây nếu cần
             try {
               await clearOfflineAccountData();
               queryClient.clear();
@@ -385,7 +384,6 @@ export default function SettingsScreen() {
   }, [queryClient, t]);
 
   const handleOpenPrivacy = useCallback((url) => {
-    // Demo mở link (bạn có thể thay bằng link thật của app)
     Linking.openURL(url).catch(() => {
       setToastMessage(t("settings.legalUnavailable"));
       setToastVisible(true);

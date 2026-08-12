@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Mail, CheckCircle2, Loader2, ShieldCheck, LogOut } from "lucide-react";
+import { Mail, CheckCircle2, Loader2, ShieldCheck, LogOut, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { motion, AnimatePresence } from "motion/react";
 import { useAuthStore } from "@/stores/authStore";
 import { authService } from "@/apis";
 import { BUSINESS_ROUTES } from "@/constants/routes";
@@ -59,11 +60,7 @@ const CheckEmailPage = () => {
       const payload = res.data || res;
       if (payload?.accessToken && payload?.user) {
         toast.success("Xác thực email thành công! Đang chuyển sang thủ tục đăng ký...");
-        useAuthStore.getState().setSession({
-          user: payload.user,
-          accessToken: payload.accessToken,
-          refreshToken: payload.refreshToken,
-        });
+        useAuthStore.getState().setSession({ user: payload.user, accessToken: payload.accessToken });
         navigate(BUSINESS_ROUTES.REGISTER, { replace: true });
         return;
       }
@@ -84,113 +81,165 @@ const CheckEmailPage = () => {
 
   return (
     <AuthShell
-      eyebrow="Xác thực tài khoản"
-      title="Chỉ còn một bước để hoàn tất đăng ký"
-      subtitle="Kiểm tra hộp thư của bạn và nhập mã OTP để kích hoạt tài khoản doanh nghiệp."
+      title="Chỉ còn một bước để hoàn tất đăng ký."
+      subtitle="Kiểm tra hộp thư và nhập mã OTP để kích hoạt tài khoản doanh nghiệp."
+      maxWidth="max-w-[420px]"
     >
-      <div className="mb-7 text-center">
-        <span className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#F3E600]/20 text-slate-900">
-          <Mail className="h-8 w-8" strokeWidth={2} />
-        </span>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          Kiểm tra email của bạn
-        </h1>
-        <p className="mt-2 text-sm text-slate-500">
-          Chúng tôi đã gửi email xác thực đến
-        </p>
-        <p className="mt-2 inline-block rounded-xl bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900">
-          {email || t("auth.resendVerification.enterValidEmail")}
-        </p>
-      </div>
+      {/* ── Main card ── */}
+      <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_16px_48px_-12px_rgba(15,23,42,0.16),0_4px_16px_-4px_rgba(15,23,42,0.08)]">
+        <div className="h-[3px] w-full bg-[#F3E600]" />
 
-      <div className="space-y-4">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
-          <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-900">
-            <ShieldCheck className="h-4 w-4 text-emerald-600" />
-            Xác thực nhanh bằng mã OTP
-          </div>
-          <OtpInput
-            value={otp}
-            onChange={(nextOtp) => {
-              setOtp(nextOtp);
-              if (otpError) setOtpError(null);
-            }}
-            disabled={isVerifying}
-            error={Boolean(otpError)}
-          />
-          {otpError ? (
-            <p className="mt-3 text-xs font-medium text-rose-600">{otpError}</p>
-          ) : (
-            <p className="mt-3 text-xs text-slate-500">
-              Mã OTP gồm 6 số, có hiệu lực trong 10 phút.
+        <div className="px-8 py-8 sm:px-10">
+          {/* Header — centered */}
+          <div className="mb-8 text-center">
+            <motion.div
+              className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#F3E600]/20"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.4, type: "spring", stiffness: 200, damping: 20 }}
+            >
+              <Mail className="h-8 w-8 text-slate-800" strokeWidth={1.75} />
+            </motion.div>
+
+            <h1 className="text-[24px] font-bold tracking-tight text-slate-900">
+              Kiểm tra email của bạn
+            </h1>
+            <p className="mt-2 text-sm text-slate-500">
+              Chúng tôi đã gửi mã xác thực đến
             </p>
-          )}
-          <Button
-            onClick={handleVerifyOtp}
-            disabled={isVerifying || !email}
-            className={`mt-4 ${primaryButton}`}
-          >
-            {isVerifying ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Đang xác thực...
-              </>
-            ) : (
-              <>
-                <ShieldCheck className="mr-1 h-4 w-4" />
-                Xác thực OTP
-              </>
-            )}
-          </Button>
-        </div>
-
-        {resent ? (
-          <div className="flex items-center justify-center gap-2 rounded-xl bg-emerald-50 p-3 text-emerald-700">
-            <CheckCircle2 className="h-5 w-5" />
-            <span className="text-sm font-medium">Đã gửi lại email!</span>
+            <div className="mt-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2">
+              <Mail className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+              <span className="text-sm font-semibold text-slate-800">
+                {email || t("auth.resendVerification.enterValidEmail")}
+              </span>
+            </div>
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={handleResend}
-            disabled={isResending || !email}
-            className={secondaryButton}
-          >
-            {isResending ? (
-              <>
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                Đang gửi...
-              </>
-            ) : (
-              <>
-                <Mail className="h-4 w-4" />
-                Gửi lại email xác thực
-              </>
+
+          {/* OTP section */}
+          <div className="space-y-5">
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-slate-700" strokeWidth={2} />
+                <span className="text-sm font-semibold text-slate-900">
+                  Nhập mã xác thực OTP
+                </span>
+              </div>
+
+              <OtpInput
+                value={otp}
+                onChange={(nextOtp) => {
+                  setOtp(nextOtp);
+                  if (otpError) setOtpError(null);
+                }}
+                disabled={isVerifying}
+                error={Boolean(otpError)}
+              />
+
+              <AnimatePresence mode="wait">
+                {otpError ? (
+                  <motion.p
+                    key="error"
+                    className="mt-3 text-xs font-medium text-rose-600"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    {otpError}
+                  </motion.p>
+                ) : (
+                  <motion.p
+                    key="hint"
+                    className="mt-3 text-xs text-slate-500"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    Mã OTP gồm 6 số, có hiệu lực trong 10 phút.
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Verify CTA */}
+            <Button
+              onClick={handleVerifyOtp}
+              disabled={isVerifying || !email}
+              className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#F3E600] text-[15px] font-bold text-slate-900 shadow-[0_4px_14px_rgba(243,230,0,0.45)] transition-all duration-300 hover:bg-[#e8d900] hover:shadow-[0_6px_22px_rgba(243,230,0,0.55)] active:scale-[0.99] disabled:opacity-60"
+            >
+              {isVerifying ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang xác thực...
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="h-4 w-4" />
+                  Xác thực tài khoản
+                </>
+              )}
+            </Button>
+
+            {/* Resend */}
+            <AnimatePresence mode="wait">
+              {resent ? (
+                <motion.div
+                  key="resent"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-[#F3E600]/40 bg-[#FEFCE8] py-3 text-sm font-medium text-slate-700"
+                  initial={{ opacity: 0, scale: 0.97 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Đã gửi lại email xác thực!
+                </motion.div>
+              ) : (
+                <motion.button
+                  key="resend-btn"
+                  type="button"
+                  onClick={handleResend}
+                  disabled={isResending || !email}
+                  className={secondaryButton}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
+                  {isResending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Đang gửi...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4" />
+                      Gửi lại email xác thực
+                    </>
+                  )}
+                </motion.button>
+              )}
+            </AnimatePresence>
+
+            {/* Switch account */}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium text-slate-400 transition hover:text-slate-700"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Đăng nhập với tài khoản khác
+            </button>
+
+            {!email && (
+              <Link
+                to="/resend-verification"
+                className="block text-center text-sm font-medium text-slate-600 underline underline-offset-4 decoration-[#F3E600] decoration-2 hover:decoration-slate-400 transition-colors"
+              >
+                Nhập email để gửi lại xác thực
+              </Link>
             )}
-          </button>
-        )}
-
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-medium text-slate-500 transition hover:text-slate-900"
-        >
-          <LogOut className="h-4 w-4" />
-          Đăng nhập với tài khoản khác
-        </button>
-
-        {!email && (
-          <Link
-            to="/resend-verification"
-            className="block text-center text-sm font-medium text-emerald-700 hover:text-emerald-800"
-          >
-            Nhập email để gửi lại xác thực
-          </Link>
-        )}
+          </div>
+        </div>
       </div>
 
-      <p className="mt-6 text-center text-xs text-slate-400">
-        Sau khi xác thực email, bạn có thể đăng ký doanh nghiệp.
+      <p className="mt-4 text-center text-[11px] tracking-wide text-slate-400">
+        Sau khi xác thực email, bạn có thể hoàn tất đăng ký doanh nghiệp.
       </p>
     </AuthShell>
   );

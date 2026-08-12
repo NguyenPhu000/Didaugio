@@ -1,6 +1,6 @@
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
-import { CloudinaryStorage } from "multer-storage-cloudinary";
+import { createCloudinaryStorage } from "./cloudinaryStorage.js";
 
 export const MAX_UPLOAD_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 export const MAX_UPLOAD_FIELD_SIZE_BYTES = 64 * 1024;
@@ -31,7 +31,7 @@ if (hasCloudinaryConfig) {
 const allowedMimeTypes = new Set(ALLOWED_UPLOAD_MIME_TYPES);
 
 const storage = hasCloudinaryConfig
-  ? new CloudinaryStorage({
+  ? createCloudinaryStorage({
       cloudinary,
       params: {
         folder: "didaugio",

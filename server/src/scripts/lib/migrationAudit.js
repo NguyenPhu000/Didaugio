@@ -199,6 +199,8 @@ const ALLOWED_RAW_SQL_DRIFT = new Set([
   'ALTER TABLE "province_boundaries" DROP CONSTRAINT "province_boundaries_dataset_release_id_province_code_fkey"',
   'DROP INDEX "ward_records_search_trgm_idx"',
   'DROP INDEX "province_records_search_trgm_idx"',
+  'DROP INDEX "idx_places_name_trgm"',
+  'DROP INDEX "idx_places_description_trgm"',
   'DROP TABLE "administrative_ward_boundaries"',
   'DROP TABLE "province_boundaries"',
 ]);

@@ -1,8 +1,12 @@
+import sanitizeHtml from "sanitize-html";
+
 const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
-const SCRIPT_STYLE_BLOCK_REGEX =
-  /<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi;
-const HTML_TAG_REGEX = /<[^>]+>/g;
 const MULTI_WHITESPACE_REGEX = /\s{2,}/g;
+const PLAIN_TEXT_OPTIONS = Object.freeze({
+  allowedTags: [],
+  allowedAttributes: {},
+  disallowedTagsMode: "discard",
+});
 
 const toStringSafe = (value) => (typeof value === "string" ? value : "");
 
@@ -17,8 +21,9 @@ export const sanitizeText = (
 
   let next = toStringSafe(value)
     .replace(CONTROL_CHARS_REGEX, "")
-    .replace(SCRIPT_STYLE_BLOCK_REGEX, "")
-    .replace(HTML_TAG_REGEX, "");
+    .normalize("NFC");
+
+  next = sanitizeHtml(next, PLAIN_TEXT_OPTIONS);
 
   if (collapseWhitespace) {
     next = next.replace(MULTI_WHITESPACE_REGEX, " ");

@@ -1,6 +1,21 @@
 import axios, { isCancel } from "axios";
 import { API_BASE_CANDIDATES, REQUEST_TIMEOUT } from "../constants/api";
 
+const TRANSPORT_ERROR_CODES = new Set([
+  "ERR_NETWORK",
+  "ECONNABORTED",
+  "ETIMEDOUT",
+  "ECONNREFUSED",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+]);
+
+const shouldFallbackToNextBase = (error) => {
+  if (error?.response) return false;
+  if (TRANSPORT_ERROR_CODES.has(error?.code)) return true;
+  return String(error?.message || "").toLowerCase().includes("network");
+};
+
 const buildPublicError = (error) => ({
   message:
     error?.response?.data?.message ||
@@ -30,6 +45,9 @@ export async function getPublicWithFallback(endpoint, config = {}) {
     } catch (error) {
       if (isCancel(error) || error?.code === "ERR_CANCELED") {
         throw error;
+      }
+      if (!shouldFallbackToNextBase(error)) {
+        throw buildPublicError(error);
       }
       lastError = error;
     }

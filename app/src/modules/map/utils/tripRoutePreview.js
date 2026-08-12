@@ -84,6 +84,90 @@ const compareDestinationOrder = (a, b) => {
   return Number(a?.id || 0) - Number(b?.id || 0);
 };
 
+const toLocalCalendarDate = (value) => {
+  if (!value) return null;
+
+  if (typeof value === "string") {
+    const ymdMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (ymdMatch) {
+      const [, year, month, day] = ymdMatch;
+      const date = new Date(Number(year), Number(month) - 1, Number(day), 12);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+  }
+
+  const date = value instanceof Date ? new Date(value) : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setHours(12, 0, 0, 0);
+  return date;
+};
+
+const toLocalYmd = (value) => {
+  const date = toLocalCalendarDate(value);
+  if (!date) return null;
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+};
+
+const formatPreviewDayDate = (date) => {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${day}/${month}`;
+};
+
+export function buildTripPreviewDays({
+  destinations = [],
+  startDate,
+  now = new Date(),
+} = {}) {
+  const start = toLocalCalendarDate(startDate);
+  const todayYmd = toLocalYmd(now);
+  if (!start || !todayYmd) return [];
+
+  const groups = new Map();
+  destinations.forEach((destination) => {
+    if (!toCoordinate(destination?.place)) return;
+    const dayNumber = Math.max(1, Number(destination?.dayNumber) || 1);
+    groups.set(dayNumber, [...(groups.get(dayNumber) || []), destination]);
+  });
+
+  return [...groups.entries()]
+    .sort(([firstDay], [secondDay]) => firstDay - secondDay)
+    .map(([dayNumber, dayDestinations]) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + dayNumber - 1);
+      const dateYmd = toLocalYmd(date);
+      return {
+        dayNumber,
+        dateYmd,
+        dateLabel: formatPreviewDayDate(date),
+        status:
+          dateYmd < todayYmd ? "past" : dateYmd > todayYmd ? "future" : "today",
+        destinations: [...dayDestinations].sort(compareDestinationOrder),
+      };
+    });
+}
+
+export function getDefaultTripPreviewDayNumber(days = []) {
+  return (
+    days.find((day) => day.status === "today")?.dayNumber ||
+    days.find((day) => day.status === "future")?.dayNumber ||
+    days[days.length - 1]?.dayNumber ||
+    null
+  );
+}
+
+export function getTripPreviewDayStartState(day) {
+  if (!day || day.status === "today") {
+    return { canStart: true, lockReason: null };
+  }
+  return {
+    canStart: false,
+    lockReason: day.status === "past" ? "past" : "future",
+  };
+}
+
 export function buildTripPreviewStops(destinations = []) {
   return [...destinations]
     .sort(compareDestinationOrder)

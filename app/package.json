@@ -19,8 +19,9 @@
     "test:trips": "vitest run test/modules/trips",
     "test:stores": "vitest run test/stores test/constants test/lib",
     "test:routing-contract": "vitest run src/api/__tests__/routingApi.contract.test.js src/modules/map/hooks/__tests__/useMapRouting.mapping.contract.test.js",
-    "validate:release-config": "node scripts/validate-release-config.cjs",
-    "eas-build-pre-install": "node scripts/validate-release-config.cjs",
+      "validate:release-config": "node scripts/validate-release-config.cjs",
+      "validate:native-config": "node scripts/validate-native-config.cjs",
+    "eas-build-pre-install": "node scripts/validate-release-config.cjs && node scripts/validate-native-config.cjs",
     "maestro:explore": "maestro test maestro/explore-smoke.yaml",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
@@ -43,7 +44,7 @@
     "@tanstack/query-async-storage-persister": "^5.100.11",
     "@tanstack/react-query": "^5.100.11",
     "@tanstack/react-query-persist-client": "^5.100.11",
-    "axios": "^1.13.5",
+    "axios": "^1.19.0",
     "expo": "~54.0.36",
     "expo-asset": "~12.0.13",
     "expo-audio": "~1.1.1",
@@ -93,6 +94,12 @@
     "react-native-web": "^0.21.2",
     "react-native-worklets": "0.5.1",
     "zustand": "^5.0.11"
+  },
+  "overrides": {
+    "@xmldom/xmldom": "0.8.13",
+    "fast-uri": "^3.1.5",
+    "shell-quote": "^1.9.0",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@expo/ngrok": "4.1.3",

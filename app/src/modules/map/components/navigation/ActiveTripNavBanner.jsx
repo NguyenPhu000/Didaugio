@@ -46,22 +46,22 @@ const getBannerTone = (distanceMeters, isOffRoute) => {
   }
   if (Number(distanceMeters) < 30) {
     return {
-      background: "rgba(127,29,29,0.86)",
+      background: "rgba(16,16,16,0.94)",
       accent: "#FCA5A5",
-      iconBg: "#EF4444",
+      iconBg: "#B91C1C",
     };
   }
   if (Number(distanceMeters) < 100) {
     return {
-      background: "rgba(124,45,18,0.86)",
-      accent: "#FDBA74",
-      iconBg: "#F97316",
+      background: "rgba(16,16,16,0.94)",
+      accent: "#F5C451",
+      iconBg: "#765213",
     };
   }
   return {
-    background: "rgba(16,32,24,0.84)",
-    accent: "#5DD39E",
-    iconBg: "hsl(145, 63%, 32%)",
+    background: "rgba(16,16,16,0.94)",
+    accent: "#F5C451",
+    iconBg: "#292929",
   };
 };
 

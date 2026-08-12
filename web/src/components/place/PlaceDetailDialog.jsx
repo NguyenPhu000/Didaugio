@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui";
-import * as LucideIcons from "lucide-react";
 import {
   MapPin,
   Clock,
@@ -37,6 +36,7 @@ import {
   User,
 } from "lucide-react";
 import { BUSINESS_STATUS_LABELS } from "@/constants/businessConstants";
+import { MdiCategoryIcon } from "@/components/category/MdiCategoryIcon";
 import { MapView } from "@/modules/map";
 import { cn } from "@/lib/utils";
 
@@ -44,14 +44,10 @@ import { cn } from "@/lib/utils";
 
 function CategoryIcon({ icon, className = "w-4 h-4" }) {
   if (!icon) return <Compass className={className} />;
-  if (typeof icon === "string" && LucideIcons[icon]) {
-    const IconComponent = LucideIcons[icon];
-    return <IconComponent className={className} />;
-  }
   if (typeof icon === "string" && icon.length <= 4) {
     return <span className="text-base leading-none">{icon}</span>;
   }
-  return <Tag className={className} />;
+  return <MdiCategoryIcon category={icon} className={className} />;
 }
 
 // ─── Price Range Formatting Helper ───────────────────────────────────────────

@@ -3,7 +3,9 @@ import { check, sleep } from "k6";
 import { Rate, Trend } from "k6/metrics";
 
 const baseUrl = (__ENV.BASE_URL || "http://localhost:8081").replace(/\/$/, "");
-const serviceId = __ENV.SERVICE_ID || "1";
+const serviceId = String(__ENV.SERVICE_ID || "").trim();
+const provinceCode = String(__ENV.PROVINCE_CODE || "").trim();
+const categoryId = String(__ENV.CATEGORY_ID || "").trim();
 const bookingDate = __ENV.BOOKING_DATE || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 const testDuration = __ENV.TEST_DURATION || "5m";
 const configuredRateScale = Number(__ENV.RATE_SCALE || 1);
@@ -17,6 +19,24 @@ const filteredPlacesDuration = new Trend("filtered_places_duration", true);
 const mapDuration = new Trend("map_duration", true);
 const nearbyDuration = new Trend("nearby_duration", true);
 const bookingReadDuration = new Trend("booking_read_duration", true);
+const cmsLandingDuration = new Trend("cms_landing_duration", true);
+
+if (!serviceId) {
+  throw new Error("SERVICE_ID is required for the booking-read scenario");
+}
+
+if (!/^\d+$/.test(provinceCode)) {
+  throw new Error("PROVINCE_CODE must be a numeric province code");
+}
+
+const filteredPlacesPath = [
+  "limit=25",
+  "sortBy=newest",
+  `provinceCode=${encodeURIComponent(provinceCode)}`,
+  categoryId ? `categoryId=${encodeURIComponent(categoryId)}` : null,
+]
+  .filter(Boolean)
+  .join("&");
 
 export const options = {
   scenarios: {
@@ -26,8 +46,8 @@ export const options = {
       rate: scaled(125),
       timeUnit: "1s",
       duration: testDuration,
-      preAllocatedVUs: scaled(500),
-      maxVUs: scaled(500),
+      preAllocatedVUs: scaled(450),
+      maxVUs: scaled(450),
     },
     map_markers: {
       executor: "constant-arrival-rate",
@@ -35,8 +55,8 @@ export const options = {
       rate: scaled(75),
       timeUnit: "1s",
       duration: testDuration,
-      preAllocatedVUs: scaled(300),
-      maxVUs: scaled(300),
+      preAllocatedVUs: scaled(250),
+      maxVUs: scaled(250),
     },
     nearby_places: {
       executor: "constant-arrival-rate",
@@ -56,6 +76,15 @@ export const options = {
       preAllocatedVUs: scaled(100),
       maxVUs: scaled(100),
     },
+    cms_landing: {
+      executor: "constant-arrival-rate",
+      exec: "cmsLanding",
+      rate: scaled(25),
+      timeUnit: "1s",
+      duration: testDuration,
+      preAllocatedVUs: scaled(100),
+      maxVUs: scaled(100),
+    },
   },
   thresholds: {
     http_req_failed: ["rate<0.01"],
@@ -65,6 +94,7 @@ export const options = {
     map_duration: ["p(95)<700"],
     nearby_duration: ["p(95)<700"],
     booking_read_duration: ["p(95)<1000"],
+    cms_landing_duration: ["p(95)<500"],
   },
 };
 
@@ -91,7 +121,7 @@ function assertSuccess(response, trend) {
 
 export function filteredPlaces() {
   const response = http.get(
-    `${baseUrl}/api/v2/places?limit=25&sortBy=newest&categoryId=1`,
+    `${baseUrl}/api/v2/places?${filteredPlacesPath}`,
     requestParams("filtered-places"),
   );
   assertSuccess(response, filteredPlacesDuration);
@@ -122,5 +152,14 @@ export function bookingRead() {
     requestParams("booking-read"),
   );
   assertSuccess(response, bookingReadDuration);
+  sleep(0.05);
+}
+
+export function cmsLanding() {
+  const response = http.get(
+    `${baseUrl}/api/cms/explore-landing`,
+    requestParams("cms-explore-landing"),
+  );
+  assertSuccess(response, cmsLandingDuration);
   sleep(0.05);
 }

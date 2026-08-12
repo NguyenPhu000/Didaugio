@@ -72,6 +72,8 @@ export const registerSchema = z
       .min(2, "Họ tên phải có ít nhất 2 ký tự")
       .max(100, "Họ tên quá dài")
       .optional(),
+
+    roleId: z.coerce.number().int().positive().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Mật khẩu xác nhận không khớp",
@@ -183,6 +185,10 @@ export const logoutSchema = z.object({
     .min(1, "Refresh token không được để trống"),
 });
 
+export const browserLogoutSchema = z.object({
+  refreshToken: z.string().min(1, "Refresh token không hợp lệ").optional(),
+});
+
 export const revokeSessionParamSchema = z.object({
   sessionId: z.coerce
     .number()
@@ -229,6 +235,7 @@ export default {
   resendVerificationPublicSchema,
   loginGoogleSchema,
   logoutSchema,
+  browserLogoutSchema,
   revokeSessionParamSchema,
   updateProfileSchema,
 };

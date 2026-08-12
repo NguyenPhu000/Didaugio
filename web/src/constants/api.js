@@ -18,7 +18,11 @@ axios.defaults.headers.common["ngrok-skip-browser-warning"] = "true";
  */
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: { "Content-Type": "application/json" },
+  withCredentials: true,
+  headers: {
+    "Content-Type": "application/json",
+    "X-Client-Platform": "web",
+  },
   timeout: API_TIMEOUT,
 });
 
@@ -59,6 +63,70 @@ const isPublicAuthRequest = (requestUrl) =>
 
 const isRefreshRequest = (requestUrl) =>
   normalizeRequestPath(requestUrl) === "/auth/refresh";
+
+let browserCsrfToken = null;
+let browserCsrfRequest = null;
+
+const fetchBrowserCsrfToken = async () => {
+  const response = await axios.get(`${API_BASE_URL}/auth/csrf`, {
+    withCredentials: true,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Client-Platform": "web",
+    },
+    timeout: API_TIMEOUT,
+  });
+  const token = response?.data?.data?.csrfToken;
+  if (!token) {
+    throw new Error("Missing CSRF token");
+  }
+  browserCsrfToken = token;
+  return token;
+};
+
+const ensureBrowserCsrfToken = async () => {
+  if (browserCsrfToken) return browserCsrfToken;
+  if (!browserCsrfRequest) {
+    browserCsrfRequest = fetchBrowserCsrfToken().finally(() => {
+      browserCsrfRequest = null;
+    });
+  }
+  return browserCsrfRequest;
+};
+
+const resetBrowserCsrfToken = () => {
+  browserCsrfToken = null;
+};
+
+const requestBrowserRefresh = async () => {
+  const request = async () =>
+    axios.post(
+      `${API_BASE_URL}/auth/refresh`,
+      {},
+      {
+        withCredentials: true,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Client-Platform": "web",
+          "X-CSRF-Token": await ensureBrowserCsrfToken(),
+        },
+      },
+    );
+
+  try {
+    return await request();
+  } catch (error) {
+    const shouldRetryCsrf =
+      error?.response?.status === 403 &&
+      ["CSRF_TOKEN_MISSING", "CSRF_TOKEN_INVALID"].includes(
+        error?.response?.data?.errorCode,
+      );
+    if (!shouldRetryCsrf) throw error;
+
+    resetBrowserCsrfToken();
+    return request();
+  }
+};
 
 const redirectToLogin = () => {
   if (typeof window === "undefined") return;
@@ -133,10 +201,14 @@ const syncCurrentUserPermissions = () => {
   return permissionSyncPromise;
 };
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
+  config.headers = config.headers || {};
   const accessToken = useAuthStore.getState().accessToken;
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
+  }
+  if (isRefreshRequest(config.url) && !config.headers["X-CSRF-Token"]) {
+    config.headers["X-CSRF-Token"] = await ensureBrowserCsrfToken();
   }
   return config;
 });
@@ -158,6 +230,25 @@ api.interceptors.response.use(
     const isLogoutInProgress = Boolean(useAuthStore.getState().isLoggingOut);
     const skipAuthRefresh = Boolean(originalRequest?.skipAuthRefresh);
     const skipAuthRedirect = Boolean(originalRequest?.skipAuthRedirect);
+
+    if (
+      isRefresh &&
+      response?.status === 403 &&
+      ["CSRF_TOKEN_MISSING", "CSRF_TOKEN_INVALID"].includes(
+        response?.data?.errorCode,
+      ) &&
+      !originalRequest._csrfRetry
+    ) {
+      originalRequest._csrfRetry = true;
+      resetBrowserCsrfToken();
+      if (typeof originalRequest.headers?.delete === "function") {
+        originalRequest.headers.delete("X-CSRF-Token");
+      }
+      if (originalRequest.headers) {
+        delete originalRequest.headers["X-CSRF-Token"];
+      }
+      return api(originalRequest);
+    }
 
     if (
       response?.status === 401 &&
@@ -184,30 +275,16 @@ api.interceptors.response.use(
           .catch((err) => Promise.reject(err));
       }
 
-      const refreshToken = useAuthStore.getState().refreshToken;
       originalRequest._retry = true;
-
-      if (!refreshToken) {
-        rejectPendingQueue(new Error("Missing refresh token"));
-        if (!skipAuthRedirect) {
-          clearAuthAndRedirect();
-        }
-        return Promise.reject(error);
-      }
 
       isRefreshing = true;
 
       try {
-        const refreshResponse = await axios.post(
-          `${API_BASE_URL}/auth/refresh`,
-          { refreshToken },
-          { headers: { "Content-Type": "application/json" } },
-        );
+        const refreshResponse = await requestBrowserRefresh();
 
         if (refreshResponse.data.success) {
           const {
             accessToken: newAccessToken,
-            refreshToken: newRefreshToken,
             user: refreshedUser,
           } = refreshResponse.data.data || {};
 
@@ -222,7 +299,6 @@ api.interceptors.response.use(
           useAuthStore.getState().setSession({
             user: refreshedUser,
             accessToken: newAccessToken,
-            refreshToken: newRefreshToken || refreshToken,
           });
           processQueue(null, newAccessToken);
           originalRequest.headers = originalRequest.headers || {};

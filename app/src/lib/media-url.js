@@ -244,7 +244,11 @@ export function resolveTripCoverUri(trip, width = 400) {
     return tripThumb;
   }
 
-  const destinations = Array.isArray(trip.destinations) ? trip.destinations : [];
+  const destinations = Array.isArray(trip.destinations)
+    ? trip.destinations
+    : Array.isArray(trip.stops)
+      ? trip.stops
+      : [];
   for (const dest of destinations) {
     const place = dest?.place;
     if (!place) continue;

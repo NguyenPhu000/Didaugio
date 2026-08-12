@@ -120,6 +120,7 @@ export function useNavigationController({
   );
   const machineStateRef = useRef(machineState);
   const [routeOverride, setRouteOverride] = useState(null);
+  const routeOverrideRef = useRef(null);
   const [navSnapshot, setNavSnapshot] = useState({
     state: enabled ? NAVIGATION_STATES.NAVIGATING : NAVIGATION_STATES.IDLE,
     isOffRoute: false,
@@ -167,6 +168,7 @@ export function useNavigationController({
       shadowAbortRef.current?.abort?.();
       shadowAbortRef.current = null;
       shadowPromiseRef.current = null;
+      routeOverrideRef.current = null;
       setRouteOverride(null);
       return;
     }
@@ -181,6 +183,7 @@ export function useNavigationController({
   const applyRoute = useCallback(
     (mappedRoute) => {
       if (!mappedRoute) return;
+      routeOverrideRef.current = mappedRoute;
       setRouteOverride(mappedRoute);
       onRouteReplace?.(mappedRoute);
       offRouteCountRef.current = 0;
@@ -426,7 +429,7 @@ export function useNavigationController({
         distanceToNextTurn,
         upcomingStep,
         progress,
-        routeOverride,
+        routeOverride: routeOverrideRef.current,
         lastLocation: location,
       }));
     },
@@ -434,7 +437,6 @@ export function useNavigationController({
       cancelShadowReroute,
       confirmReroute,
       enabled,
-      routeOverride,
       safeAnimateCamera,
       startShadowReroute,
     ],

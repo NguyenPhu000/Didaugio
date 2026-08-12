@@ -162,7 +162,7 @@ client.interceptors.response.use(
 
     if (shouldRetry) {
       originalRequest._retryCount = retryCount + 1;
-      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * retryCount));
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * (retryCount + 1)));
       return client(originalRequest);
     }
 

@@ -2,6 +2,9 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Prisma's native query engine needs the OpenSSL ABI available at build time.
+RUN apk add --no-cache openssl
+
 # Copy package files
 COPY package*.json ./
 
@@ -13,7 +16,7 @@ COPY . .
 
 # Generate Prisma client and prune devDependencies
 RUN npx prisma generate --schema=prisma/schema.prisma && \
-    npm prune --production && \
+    npm prune --omit=dev && \
     npm cache clean --force
 
 # Runtime stage
@@ -21,7 +24,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+RUN apk add --no-cache dumb-init openssl
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
@@ -43,7 +46,7 @@ EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:8080', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+    CMD node -e "require('http').get('http://localhost:8080/health/live', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]

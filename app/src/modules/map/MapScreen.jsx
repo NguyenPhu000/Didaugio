@@ -304,8 +304,12 @@ export default function MapScreen() {
     handleConfirmTripPreview,
     isPreviewRouteError,
     isPreviewRouteLoading,
+    isSelectedPreviewDayStartAllowed,
     previewSegments,
+    previewDays,
     previewStops,
+    selectedPreviewDay,
+    setSelectedPreviewDayNumber,
   } = useMapTripPreview({
     activeTrip,
     followCameraRef,
@@ -827,14 +831,18 @@ export default function MapScreen() {
         isPreviewRouteError={isPreviewRouteError}
         isPreviewRouteLoading={isPreviewRouteLoading}
         isPreviewTripLoading={isPreviewTripLoading}
+        isSelectedPreviewDayStartAllowed={isSelectedPreviewDayStartAllowed}
         isTripPreviewMode={isTripPreviewMode}
         isVoiceMuted={isVoiceMuted}
         mapText={MAP_TEXT}
         navigationController={navigationController}
         nearbyTriggered={nearbyTriggered}
         previewSegments={previewSegments}
+        previewDays={previewDays}
         previewStops={previewStops}
         previewTrip={previewTrip}
+        selectedPreviewDay={selectedPreviewDay}
+        onSelectPreviewDay={setSelectedPreviewDayNumber}
         t={t}
         updatePreviewTripMutation={updatePreviewTripMutation}
       />

@@ -27,7 +27,6 @@ import DepartureReminderBanner from "./navigation/DepartureReminderBanner";
 const ActiveTripQuickControls = memo(function ActiveTripQuickControls({
   topOffset,
   handlePauseActiveTrip,
-  handleRequestStopActiveTrip,
   t,
 }) {
   return (
@@ -47,7 +46,6 @@ const ActiveTripQuickControls = memo(function ActiveTripQuickControls({
         intensity={45}
         style={{
           flexDirection: "row",
-          gap: 6,
           padding: 5,
           borderRadius: 22,
           overflow: "hidden",
@@ -74,22 +72,6 @@ const ActiveTripQuickControls = memo(function ActiveTripQuickControls({
             }}
           >
             {t("mapScreen.pauseJourney")}
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={handleRequestStopActiveTrip}
-          className="flex-row items-center gap-1.5 h-9 px-3.5 rounded-full bg-[#EF4444]/20 active:opacity-75 active:scale-95"
-        >
-          <MaterialIconsRounded name="stop" size={16} color="#FCA5A5" />
-          <Text
-            style={{
-              color: "#FFFFFF",
-              fontSize: 12,
-              fontFamily: TOKENS.font.semibold,
-            }}
-          >
-            {t("mapScreen.stopJourney")}
           </Text>
         </Pressable>
       </BlurView>
@@ -360,7 +342,7 @@ const ActiveDestinationHUD = memo(function ActiveDestinationHUD({
                 overflow: "hidden",
                 backgroundColor: "#1F2937",
                 borderWidth: 1.5,
-                borderColor: "#38BDF8",
+                  borderColor: "#F5C451",
               }}
             >
               {imageUri ? (
@@ -371,7 +353,7 @@ const ActiveDestinationHUD = memo(function ActiveDestinationHUD({
                 />
               ) : (
                 <View className="flex-1 items-center justify-center">
-                  <MaterialIconsRounded name="place" size={22} color="#38BDF8" />
+                  <MaterialIconsRounded name="place" size={22} color="#F5C451" />
                 </View>
               )}
             </View>
@@ -420,10 +402,10 @@ const ActiveDestinationHUD = memo(function ActiveDestinationHUD({
 
             <View className="flex-row items-center gap-1.5">
               <View className="flex-row items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-500/20">
-                <MaterialIconsRounded name="navigation" size={11} color="#34D399" />
+                <MaterialIconsRounded name="navigation" size={11} color="#F5C451" />
                 <Text
                   style={{
-                    color: "#34D399",
+                    color: "#F5C451",
                     fontSize: 11,
                     fontFamily: TOKENS.font.bold,
                   }}
@@ -477,6 +459,10 @@ const TripPreviewCard = memo(function TripPreviewCard({
   previewTrip,
   previewStops,
   previewSegments,
+  previewDays,
+  selectedPreviewDay,
+  onSelectPreviewDay,
+  isSelectedPreviewDayStartAllowed,
   isPreviewTripLoading,
   isPreviewRouteLoading,
   isPreviewRouteError,
@@ -489,7 +475,18 @@ const TripPreviewCard = memo(function TripPreviewCard({
   const isDisabled =
     previewStops.length === 0 ||
     updatePreviewTripMutation.isPending ||
-    isPreviewTripLoading;
+    isPreviewTripLoading ||
+    !isSelectedPreviewDayStartAllowed;
+  const isExpiredDay = selectedPreviewDay?.status === "past";
+  const dayStatusMessage = isExpiredDay
+    ? t("mapScreen.previewExpiredMessage", {
+        date: selectedPreviewDay.dateLabel,
+      })
+    : selectedPreviewDay?.status === "future"
+      ? t("mapScreen.previewAvailableFrom", {
+          date: selectedPreviewDay.dateLabel,
+        })
+      : null;
   const review = useMemo(
     () => buildTripPreviewReview(previewStops, previewSegments),
     [previewSegments, previewStops],
@@ -587,6 +584,77 @@ const TripPreviewCard = memo(function TripPreviewCard({
               {summary}
             </Text>
           </View>
+
+          {previewDays.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="mb-3 pl-5"
+            >
+              <View className="flex-row gap-2 pr-5">
+                {previewDays.map((day) => {
+                  const isSelected = day.dayNumber === selectedPreviewDay?.dayNumber;
+                  const daySubtitle = day.status === "past"
+                    ? t("mapScreen.previewExpired")
+                    : day.status === "today"
+                      ? t("mapScreen.previewToday")
+                      : day.dateLabel;
+                  return (
+                    <Pressable
+                      key={day.dayNumber}
+                      onPress={() => onSelectPreviewDay(day.dayNumber)}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected: isSelected }}
+                      accessibilityLabel={t("mapScreen.previewDayTab", {
+                        day: day.dayNumber,
+                      })}
+                      className={`min-w-[82px] rounded-xl border px-3 py-2 active:opacity-70 ${
+                        isSelected
+                          ? "border-[#171717] bg-[#171717]"
+                          : "border-black/15 bg-white"
+                      } ${day.status === "past" && !isSelected ? "opacity-65" : ""}`}
+                    >
+                      <Text
+                        className={`font-semibold text-xs ${
+                          isSelected ? "text-white" : "text-[#171717]"
+                        }`}
+                      >
+                        {t("mapScreen.previewDayTab", { day: day.dayNumber })}
+                      </Text>
+                      <Text
+                        className={`mt-0.5 text-[11px] ${
+                          isSelected ? "text-white/70" : "text-black/55"
+                        }`}
+                      >
+                        {daySubtitle}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          ) : null}
+
+          {dayStatusMessage ? (
+            <View
+              className={`mx-5 mb-3 flex-row items-center gap-2 rounded-xl border px-3 py-2.5 ${
+                isExpiredDay
+                  ? "border-black/10 bg-[#F5F5F5]"
+                  : "border-[#F2B544] bg-[#FFF9E8]"
+              }`}
+            >
+              <MaterialIconsRounded
+                name={isExpiredDay ? "event-busy" : "event"}
+                size={17}
+                color={isExpiredDay ? "#5C5C5C" : "#9A6200"}
+              />
+              <Text
+                className={isExpiredDay ? "flex-1 font-medium text-xs text-[#5C5C5C]" : "flex-1 font-medium text-xs text-[#754A00]"}
+              >
+                {dayStatusMessage}
+              </Text>
+            </View>
+          ) : null}
 
           {showFallbackWarning ? (
             <View
@@ -703,10 +771,13 @@ const TripPreviewCard = memo(function TripPreviewCard({
                           onPress={handleConfirmTripPreview}
                           disabled={isDisabled}
                           accessibilityRole="button"
-                          accessibilityLabel={t("mapScreen.previewStartButton")}
-                          className="ml-3 h-9 flex-row items-center gap-1.5 rounded-xl px-3 active:opacity-60"
+                          accessibilityLabel={isExpiredDay
+                            ? t("mapScreen.previewExpiredCta")
+                            : t("mapScreen.previewStartButton")}
+                          className={`ml-3 h-9 flex-row items-center gap-1.5 rounded-xl px-3 active:opacity-60 ${
+                            isDisabled ? "opacity-45" : ""
+                          }`}
                           style={{
-                            opacity: isDisabled ? 0.45 : 1,
                             borderWidth: 1,
                             borderColor: "rgba(17,17,17,0.14)",
                             backgroundColor: "#FFFFFF",
@@ -714,7 +785,9 @@ const TripPreviewCard = memo(function TripPreviewCard({
                         >
                           <MaterialIconsRounded name="play-arrow" size={17} color="#111111" />
                           <Text style={{ color: "#111111", fontSize: 12.5, fontFamily: TOKENS.font.semibold }}>
-                            {t("mapScreen.previewStartButton")}
+                            {isExpiredDay
+                              ? t("mapScreen.previewExpiredCta")
+                              : t("mapScreen.previewStartButton")}
                           </Text>
                         </Pressable>
                       ) : !isLastStop ? (
@@ -757,15 +830,18 @@ const TripPreviewCard = memo(function TripPreviewCard({
               onPress={handleConfirmTripPreview}
               disabled={isDisabled}
               accessibilityRole="button"
-              accessibilityLabel={t("mapScreen.startGuidance")}
+              accessibilityLabel={isExpiredDay
+                ? t("mapScreen.previewExpiredCta")
+                : t("mapScreen.startGuidance")}
               style={{
                 height: 52,
                 opacity: isDisabled ? 0.48 : 1,
-                backgroundColor: "#000000",
                 borderWidth: 1,
                 borderColor: "rgba(0,0,0,0.16)",
               }}
-              className="flex-row items-center justify-center gap-2 rounded-2xl active:opacity-80"
+              className={`flex-row items-center justify-center gap-2 rounded-2xl active:opacity-80 ${
+                isExpiredDay ? "bg-[#8B8B92]" : "bg-[#000000]"
+              }`}
             >
               {updatePreviewTripMutation.isPending ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
@@ -779,7 +855,9 @@ const TripPreviewCard = memo(function TripPreviewCard({
                       fontFamily: TOKENS.font.bold,
                     }}
                   >
-                    {t("mapScreen.startGuidance")}
+                    {isExpiredDay
+                      ? t("mapScreen.previewExpiredCta")
+                      : t("mapScreen.startGuidance")}
                   </Text>
                 </>
               )}
@@ -837,8 +915,12 @@ export function MapScreenTripOverlays({
   navigationController,
   nearbyTriggered,
   previewSegments = [],
+  previewDays = [],
   previewStops = [],
   previewTrip,
+  selectedPreviewDay,
+  onSelectPreviewDay,
+  isSelectedPreviewDayStartAllowed,
   t,
   updatePreviewTripMutation,
 }) {
@@ -846,10 +928,17 @@ export function MapScreenTripOverlays({
   const isTripRunning = isActiveTripMode && !activeTrip?.isPaused;
 
   // Tính toán linh hoạt khoảng cách Top để tránh bị đè nhau
-  const controlsTopOffset = topSafeArea + 116;
-  const gpsLostTopOffset = topSafeArea + 94;
-  const broadcastTopOffset = isActiveTripMode ? topSafeArea + 160 : topSafeArea + 64;
+  const topAlertType = broadcastNotice
+    ? "broadcast"
+    : navigationController.isGpsLost
+      ? "gpsLost"
+      : nearbyTriggered
+        ? "nearby"
+        : null;
+  const alertTopOffset = topSafeArea + 120;
+  const controlsTopOffset = topSafeArea + (topAlertType ? 198 : 120);
   const bottomCardOffset = floatingTabClearance + 12;
+  const departureReminderBottomOffset = bottomCardOffset + 112;
 
   return (
     <>
@@ -878,44 +967,45 @@ export function MapScreenTripOverlays({
         <ActiveTripQuickControls
           topOffset={controlsTopOffset}
           handlePauseActiveTrip={handlePauseActiveTrip}
-          handleRequestStopActiveTrip={handleRequestStopActiveTrip}
           t={t}
         />
       ) : null}
 
-      {/* Proximity Warning Banner */}
-      <NearbyWarningBanner
-        visible={isTripRunning && nearbyTriggered}
-        topOffset={gpsLostTopOffset}
-        targetName={activeTargetPoint?.name}
-        distanceMeters={activeDistanceToTarget ?? 0}
-      />
-
-      {/* GPS Lost Warning */}
-      {isActiveTripMode && navigationController.isGpsLost ? (
-        <GpsSignalLostBanner
-          topOffset={gpsLostTopOffset}
-          mapText={mapText}
-          estimatedPosition={navigationController.estimatedPosition}
-        />
-      ) : null}
-
-      {/* Broadcast Emergency Notice */}
-      {broadcastNotice ? (
+      {/* One status lane: only the highest-priority alert is visible. */}
+      {topAlertType === "broadcast" ? (
         <BroadcastNoticeBanner
-          topOffset={broadcastTopOffset}
+          topOffset={alertTopOffset}
           broadcastNotice={broadcastNotice}
           t={t}
         />
       ) : null}
 
-      {/* Departure Reminder */}
-      <DepartureReminderBanner
-        visible={Boolean(departureReminder)}
-        bottomOffset={bottomCardOffset}
-        nextName={departureReminder?.nextName}
-        minutesLeft={departureReminder?.minutesLeft ?? 10}
-      />
+      {topAlertType === "gpsLost" ? (
+        <GpsSignalLostBanner
+          topOffset={alertTopOffset}
+          mapText={mapText}
+          estimatedPosition={navigationController.estimatedPosition}
+        />
+      ) : null}
+
+      {topAlertType === "nearby" ? (
+        <NearbyWarningBanner
+          visible
+          topOffset={alertTopOffset}
+          targetName={activeTargetPoint?.name}
+          distanceMeters={activeDistanceToTarget ?? 0}
+        />
+      ) : null}
+
+      {/* Departure reminder stays above the active destination HUD. */}
+      {isTripRunning ? (
+        <DepartureReminderBanner
+          visible={Boolean(departureReminder)}
+          bottomOffset={departureReminderBottomOffset}
+          nextName={departureReminder?.nextName}
+          minutesLeft={departureReminder?.minutesLeft ?? 10}
+        />
+      ) : null}
 
       {/* Bottom Paused Trip Control */}
       {isActiveTripMode && activeTrip?.isPaused ? (
@@ -944,6 +1034,10 @@ export function MapScreenTripOverlays({
           previewTrip={previewTrip}
           previewStops={previewStops}
           previewSegments={previewSegments}
+          previewDays={previewDays}
+          selectedPreviewDay={selectedPreviewDay}
+          onSelectPreviewDay={onSelectPreviewDay}
+          isSelectedPreviewDayStartAllowed={isSelectedPreviewDayStartAllowed}
           isPreviewTripLoading={isPreviewTripLoading}
           isPreviewRouteLoading={isPreviewRouteLoading}
           isPreviewRouteError={isPreviewRouteError}

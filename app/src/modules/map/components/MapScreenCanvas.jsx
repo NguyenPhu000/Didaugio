@@ -1,3 +1,4 @@
+import { memo, useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Marker } from "react-native-maps";
 import { Image } from "expo-image";
@@ -8,6 +9,73 @@ import { ContextualBoundaryLayer } from "./BoundaryLayer";
 import MapView from "./MapView";
 import RoutePolyline from "./RoutePolyline";
 import SnapLine from "./SnapLine";
+
+const PreviewStopMarker = memo(function PreviewStopMarker({ stop, previewSegments }) {
+  const placeData = stop.place || stop.destination?.place || stop;
+  const imageUri =
+    resolvePlaceImageUri(placeData) ||
+    resolveMediaUrl(stop.thumbnail || placeData?.thumbnail || placeData?.images?.[0]);
+  const badgeColor =
+    previewSegments[stop.sequence - 1]?.color ||
+    previewSegments[stop.sequence - 2]?.color ||
+    "#EF4444";
+  const stopName = stop.name || placeData?.name || `Điểm ${stop.sequence}`;
+  const [tracksViewChanges, setTracksViewChanges] = useState(Boolean(imageUri));
+
+  useEffect(() => {
+    setTracksViewChanges(Boolean(imageUri));
+  }, [imageUri]);
+
+  const handleImageSettled = useCallback(() => {
+    setTracksViewChanges(false);
+  }, []);
+
+  return (
+    <Marker
+      coordinate={stop.coordinate}
+      anchor={{ x: 0.2, y: 0.5 }}
+      zIndex={100 - stop.sequence}
+      tracksViewChanges={tracksViewChanges}
+    >
+      <View className="flex-row items-center" pointerEvents="none">
+        <View
+          className="relative h-12 w-12 rounded-[14px] border-[2.5px] bg-white p-0.5 shadow-lg"
+          style={{ borderColor: badgeColor }}
+        >
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={{ width: "100%", height: "100%", borderRadius: 10 }}
+              contentFit="cover"
+              onLoad={handleImageSettled}
+              onError={handleImageSettled}
+            />
+          ) : (
+            <View className="flex-1 items-center justify-center rounded-[10px] bg-slate-100">
+              <MaterialIconsRounded name="place" size={22} color={badgeColor} />
+            </View>
+          )}
+
+          <View className="absolute -left-2 -top-2 h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-[#181819] px-1 shadow-md">
+            <Text className="text-center font-bold text-[11.5px] text-white">
+              {stop.markerLabel}
+            </Text>
+          </View>
+        </View>
+
+        <View className="ml-1.5 max-w-[154px] rounded-[14px] border border-black/[0.08] bg-white px-2.5 py-1.5 shadow-sm">
+          <Text
+            className="font-bold text-[11.5px] tracking-tight text-[#181819]"
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {stopName}
+          </Text>
+        </View>
+      </View>
+    </Marker>
+  );
+});
 
 export function MapScreenCanvas({
   activeArea,
@@ -97,7 +165,7 @@ export function MapScreenCanvas({
         useNativeCleanStyle={mapStyle.useNativeCleanStyle === true}
         mapPadding={activeMapPadding}
         courseUpEnabled={courseUpEnabled}
-        showsUserLocation={shouldShowNativeUserLocation}
+        showsUserLocation={shouldShowNativeUserLocation && !isActiveTripMode}
         showsMyLocationButton={false}
         style={mapCanvasStyle}
       >
@@ -180,62 +248,13 @@ export function MapScreenCanvas({
           : null}
 
         {isTripPreviewMode && previewStops.length > 0
-          ? previewStops.map((stop) => {
-              const placeData = stop.place || stop.destination?.place || stop;
-              const imageUri =
-                resolvePlaceImageUri(placeData) ||
-                resolveMediaUrl(stop.thumbnail || placeData?.thumbnail || placeData?.images?.[0]);
-              const badgeColor =
-                previewSegments[stop.sequence - 1]?.color ||
-                previewSegments[stop.sequence - 2]?.color ||
-                "#EF4444";
-              const stopName = stop.name || placeData?.name || `Điểm ${stop.sequence}`;
-
-              return (
-                <Marker
-                  key={`preview-stop-${stop.id}`}
-                  coordinate={stop.coordinate}
-                  anchor={{ x: 0.2, y: 0.5 }}
-                  zIndex={100 - stop.sequence}
-                  tracksViewChanges
-                >
-                  <View className="flex-row items-center" pointerEvents="none">
-                    <View
-                      className="relative h-12 w-12 rounded-[14px] border-[2.5px] bg-white p-0.5 shadow-lg"
-                      style={{ borderColor: badgeColor }}
-                    >
-                      {imageUri ? (
-                        <Image
-                          source={{ uri: imageUri }}
-                          style={{ width: "100%", height: "100%", borderRadius: 10 }}
-                          contentFit="cover"
-                        />
-                      ) : (
-                        <View className="flex-1 items-center justify-center rounded-[10px] bg-slate-100">
-                          <MaterialIconsRounded name="place" size={22} color={badgeColor} />
-                        </View>
-                      )}
-
-                      <View className="absolute -left-2 -top-2 h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-[#181819] px-1 shadow-md">
-                        <Text className="text-center font-bold text-[11.5px] text-white">
-                          {stop.markerLabel}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View className="ml-1.5 max-w-[154px] rounded-[14px] border border-black/[0.08] bg-white px-2.5 py-1.5 shadow-sm">
-                      <Text
-                        className="font-bold text-[11.5px] tracking-tight text-[#181819]"
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                      >
-                        {stopName}
-                      </Text>
-                    </View>
-                  </View>
-                </Marker>
-              );
-            })
+          ? previewStops.map((stop) => (
+              <PreviewStopMarker
+                key={`preview-stop-${stop.id}`}
+                stop={stop}
+                previewSegments={previewSegments}
+              />
+            ))
           : null}
 
         {!isTripPreviewMode && isActiveTripMode && activeRouteCoordinates.length > 1 ? (
@@ -245,7 +264,7 @@ export function MapScreenCanvas({
             strokeWidth={6}
             isPrimary
             dashed={activeRouteSource === "fallback"}
-            color="hsl(145, 63%, 38%)"
+            color="#151515"
             strokeOpacity={navigationController.isGpsLost ? 0.4 : 0.95}
           />
         ) : !isTripPreviewMode && routeCoordinates.length > 1 ? (
@@ -256,6 +275,26 @@ export function MapScreenCanvas({
             isPrimary
             dashed={routeSource === "fallback"}
           />
+        ) : null}
+
+        {isActiveTripMode &&
+        !navigationController.isGpsLost &&
+        Number.isFinite(activeTripLocation?.latitude) &&
+        Number.isFinite(activeTripLocation?.longitude) ? (
+          <Marker
+            coordinate={activeTripLocation}
+            anchor={{ x: 0.5, y: 0.5 }}
+            flat
+            rotation={Number.isFinite(activeTripLocation.heading) ? activeTripLocation.heading : 0}
+            tracksViewChanges={false}
+            zIndex={220}
+          >
+            <View className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-md">
+              <View className="h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-[#101010]">
+                <MaterialIconsRounded name="navigation" size={25} color="#FFFFFF" />
+              </View>
+            </View>
+          </Marker>
         ) : null}
 
         {isActiveTripMode &&

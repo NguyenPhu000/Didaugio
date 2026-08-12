@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { searchPlacesApi, getHomeApi } from "../api/exploreApi";
+import { getCategoriesApi, searchPlacesApi } from "../api/exploreApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
 import { PLACE_STATUS } from "../../../constants/preferences";
 import { normalizePlaces } from "../../../lib/place";
@@ -65,12 +65,8 @@ export function useExplore(options = {}) {
 export function useCategories() {
   return useQuery({
     queryKey: ["home-categories"],
-    queryFn: ({ signal }) => getHomeApi({ limit: 1 }, { signal }),
-    select: (data) =>
-      data?.categories ||
-      data?.data?.categories ||
-      data?.data?.data?.categories ||
-      [],
+    queryFn: ({ signal }) => getCategoriesApi({ signal }),
+    select: (data) => data?.data || [],
     staleTime: 10 * 60 * 1000,
   });
 }

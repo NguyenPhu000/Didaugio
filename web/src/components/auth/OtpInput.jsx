@@ -22,11 +22,11 @@ const OtpInput = ({ value, onChange, disabled = false, error = false }) => {
       <div className={`grid grid-cols-6 gap-2 ${error ? "animate-shake" : ""}`}>
         {digits.map((digit, index) => {
           const active = normalizedValue.length === index;
-          let stateClass = "border-slate-200";
+          let stateClass = "border-slate-200 bg-white";
           if (error) {
-            stateClass = "border-rose-400";
+            stateClass = "border-rose-400 bg-rose-50/40";
           } else if (active || digit) {
-            stateClass = "border-emerald-500 ring-2 ring-emerald-100";
+            stateClass = "border-[#c9bc00] ring-2 ring-[#F3E600]/30 bg-white";
           }
 
           return (

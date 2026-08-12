@@ -9,7 +9,11 @@ import {
 } from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
 import { OFFLINE_STORAGE_KEYS } from "../../../constants/storage";
-import { normalizeServerTripSession } from "./activeTripSession";
+import {
+  getNextScheduledDestination,
+  getScheduledTripDayNumber,
+  normalizeServerTripSession,
+} from "./activeTripSession";
 
 const ACTIVE_TRIP_KEY = "ACTIVE_TRIP_ID";
 const VISITED_PREFIX = "visitedDestinations_";
@@ -160,6 +164,7 @@ export function useActiveTrip() {
   const [visitedIds, setVisitedIds] = useState([]);
   const [isPaused, setIsPaused] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [scheduleNow, setScheduleNow] = useState(() => new Date());
 
   const refreshActiveTripId = useCallback(async () => {
     const id = await getActiveTripId();
@@ -231,17 +236,41 @@ export function useActiveTrip() {
 
   const isActive = !!activeTripId && !!activeTrip;
 
+  useEffect(() => {
+    if (!activeTrip?.startDate) return undefined;
+
+    let timer;
+    const refreshAtNextMidnight = () => {
+      setScheduleNow(new Date());
+      const nextMidnight = new Date();
+      nextMidnight.setHours(24, 0, 0, 0);
+      timer = setTimeout(
+        refreshAtNextMidnight,
+        Math.max(nextMidnight.getTime() - Date.now() + 100, 1000),
+      );
+    };
+    refreshAtNextMidnight();
+    return () => clearTimeout(timer);
+  }, [activeTrip?.startDate]);
+
+  const scheduledDayNumber = useMemo(
+    () =>
+      getScheduledTripDayNumber({
+        startDate: activeTrip?.startDate,
+        now: scheduleNow,
+      }),
+    [activeTrip?.startDate, scheduleNow],
+  );
+
   // Tìm điểm đến chưa đi đầu tiên (theo thứ tự ngày + order).
   const nextDestination = useMemo(() => {
     if (!activeTrip?.destinations?.length) return null;
-    const ordered = [...activeTrip.destinations].sort((a, b) => {
-      if (a.dayNumber !== b.dayNumber) return a.dayNumber - b.dayNumber;
-      return a.order - b.order;
+    return getNextScheduledDestination({
+      destinations: activeTrip.destinations,
+      visitedIds,
+      scheduledDayNumber,
     });
-    return (
-      ordered.find((d) => !visitedIds.includes(d.id)) || null
-    );
-  }, [activeTrip, visitedIds]);
+  }, [activeTrip, scheduledDayNumber, visitedIds]);
 
   const targetPoint = useMemo(() => {
     const place = nextDestination?.place;

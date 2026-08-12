@@ -1,4 +1,14 @@
-test
+test/
+contract/
 .env
 app/node_modules/react-native-css-interop/.cache/*.js
 .env.local
+**/__tests__/
+**/*.test.js
+**/*.test.jsx
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.js
+**/*.spec.jsx
+**/*.spec.ts
+**/*.spec.tsx

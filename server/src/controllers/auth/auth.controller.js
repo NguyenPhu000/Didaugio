@@ -1,7 +1,27 @@
 import authService from "../../services/auth/auth.service.js";
 import { setOffline, setOnline } from "../../utils/onlineManager.js";
+import { clearBrowserCsrfCookie } from "../../middlewares/csrfProtection.js";
+import {
+  clearBrowserRefreshCookie,
+  getRequestRefreshToken,
+  isBrowserSessionRequest,
+  setBrowserRefreshCookie,
+  toBrowserSessionPayload,
+} from "../../utils/browserSession.js";
 
 // AUTH CONTROLLER
+
+const sendSession = (req, res, status, result, message) => {
+  if (isBrowserSessionRequest(req) && result.refreshToken) {
+    setBrowserRefreshCookie(res, result.refreshToken);
+  }
+
+  res.status(status).json({
+    success: true,
+    data: toBrowserSessionPayload(req, result),
+    message,
+  });
+};
 
 /**
  * POST /api/auth/google
@@ -19,11 +39,7 @@ export const loginGoogle = async (req, res, next) => {
     const result = await authService.loginWithGoogle(idToken, clientInfo, {
       context,
     });
-    res.json({
-      success: true,
-      data: result,
-      message: "Đăng nhập Google thành công",
-    });
+    sendSession(req, res, 200, result, "Đăng nhập Google thành công");
   } catch (error) {
     next(error);
   }
@@ -36,11 +52,7 @@ export const loginGoogle = async (req, res, next) => {
 export const register = async (req, res, next) => {
   try {
     const result = await authService.register(req.body);
-    res.status(201).json({
-      success: true,
-      data: result,
-      message: "Đăng ký thành công",
-    });
+    sendSession(req, res, 201, result, "Đăng ký thành công");
   } catch (error) {
     next(error);
   }
@@ -60,11 +72,7 @@ export const registerBusiness = async (req, res, next) => {
     };
 
     const result = await authService.registerBusiness(req.body, clientInfo);
-    res.status(201).json({
-      success: true,
-      data: result,
-      message: "Đăng ký doanh nghiệp thành công",
-    });
+    sendSession(req, res, 201, result, "Đăng ký doanh nghiệp thành công");
   } catch (error) {
     next(error);
   }
@@ -83,11 +91,7 @@ export const login = async (req, res, next) => {
     };
 
     const result = await authService.login(req.body, clientInfo);
-    res.json({
-      success: true,
-      data: result,
-      message: "Đăng nhập thành công",
-    });
+    sendSession(req, res, 200, result, "Đăng nhập thành công");
   } catch (error) {
     next(error);
   }
@@ -100,11 +104,7 @@ export const login = async (req, res, next) => {
 export const refreshToken = async (req, res, next) => {
   try {
     const result = await authService.refreshAccessToken(req.body);
-    res.json({
-      success: true,
-      data: result,
-      message: "Refresh token thành công",
-    });
+    sendSession(req, res, 200, result, "Refresh token thành công");
   } catch (error) {
     next(error);
   }
@@ -203,17 +203,20 @@ export const verifyEmail = async (req, res, next) => {
 export const verifyEmailOtp = async (req, res, next) => {
   try {
     const result = await authService.verifyEmailOtp(req.body);
-    res.json({
-      success: true,
-      data: result.user
-        ? {
-            user: result.user,
-            accessToken: result.accessToken,
-            refreshToken: result.refreshToken,
-          }
-        : null,
-      message: result.message,
-    });
+    const session = result.user
+      ? {
+          user: result.user,
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+        }
+      : null;
+
+    if (session) {
+      sendSession(req, res, 200, session, result.message);
+      return;
+    }
+
+    res.json({ success: true, data: null, message: result.message });
   } catch (error) {
     next(error);
   }
@@ -259,10 +262,14 @@ export const resendVerificationPublic = async (req, res, next) => {
  */
 export const logout = async (req, res, next) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken = getRequestRefreshToken(req);
     const result = await authService.logout(refreshToken, req.user?.userId);
     if (req.user?.userId) {
       setOffline(req.user.userId);
+    }
+    if (isBrowserSessionRequest(req)) {
+      clearBrowserRefreshCookie(res);
+      clearBrowserCsrfCookie(res);
     }
     res.json({
       success: true,

@@ -1,10 +1,18 @@
 import express from "express";
 import authController from "../../controllers/auth/auth.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
-import { getCsrfToken } from "../../middlewares/csrfProtection.js";
+import {
+  getCsrfToken,
+  verifyBrowserCsrfToken,
+} from "../../middlewares/csrfProtection.js";
+import {
+  getRequestRefreshToken,
+  isBrowserSessionRequest,
+} from "../../utils/browserSession.js";
 import { validateBody, validateParams } from "../../middlewares/validateSchema.js";
 import {
   changePasswordSchema,
+  browserLogoutSchema,
   forgotPasswordSchema,
   loginGoogleSchema,
   loginSchema,
@@ -20,6 +28,25 @@ import {
 
 const router = express.Router();
 
+const resolveRefreshToken = (req, _res, next) => {
+  const refreshToken = getRequestRefreshToken(req);
+  if (isBrowserSessionRequest(req)) {
+    req.body = refreshToken ? { refreshToken } : {};
+  } else if (refreshToken) {
+    req.body = { ...(req.body || {}), refreshToken };
+  }
+  next();
+};
+
+const validateBrowserLogout = validateBody(browserLogoutSchema);
+const validateMobileLogout = validateBody(logoutSchema);
+const validateLogout = (req, res, next) =>
+  (isBrowserSessionRequest(req) ? validateBrowserLogout : validateMobileLogout)(
+    req,
+    res,
+    next,
+  );
+
 router.post("/register", validateBody(registerSchema), authController.register);
 router.post("/register-business", validateBody(registerSchema), authController.registerBusiness);
 router.post("/login", validateBody(loginSchema), authController.login);
@@ -33,6 +60,8 @@ router.post(
 );
 router.post(
   "/refresh",
+  resolveRefreshToken,
+  verifyBrowserCsrfToken,
   validateBody(refreshTokenSchema),
   authController.refreshToken,
 );
@@ -77,7 +106,8 @@ router.post(
 router.post(
   "/logout",
   authenticate,
-  validateBody(logoutSchema),
+  resolveRefreshToken,
+  validateLogout,
   authController.logout,
 );
 router.post("/logout-all", authenticate, authController.logoutAll);
@@ -89,7 +119,7 @@ router.delete(
   authController.revokeSession,
 );
 
-router.get("/csrf", authenticate, getCsrfToken);
+router.get("/csrf", getCsrfToken);
 router.post("/ping", authenticate, authController.pingOnline);
 
 export default router;

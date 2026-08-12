@@ -16,6 +16,7 @@ const TTL_STATIC_SEC = parseInt(process.env.CACHE_TTL_STATIC_SEC || "1800", 10);
 const CHECK_PERIOD_SEC = 120;
 const CACHE_NAMESPACE = process.env.CACHE_NAMESPACE || "didaugio:v1";
 const redisStats = { hits: 0, misses: 0, errors: 0 };
+const pendingLoads = new Map();
 
 const cache = new NodeCache({
   stdTTL: TTL_PLACES_SEC,
@@ -80,6 +81,28 @@ export async function set(key, value, ttlSec = TTL_PLACES_SEC) {
   cache.set(resolvedKey, value, ttlSec);
 }
 
+/**
+ * Coalesce concurrent cache misses for one key inside this server replica.
+ */
+export async function getOrLoad(key, loader, ttlSec = TTL_PLACES_SEC) {
+  const cached = await get(key);
+  if (cached !== null) return cached;
+
+  const resolvedKey = namespaceKey(key);
+  let pending = pendingLoads.get(resolvedKey);
+  if (!pending) {
+    pending = Promise.resolve()
+      .then(loader)
+      .then(async (value) => {
+        await set(resolvedKey, value, ttlSec);
+        return value;
+      })
+      .finally(() => pendingLoads.delete(resolvedKey));
+    pendingLoads.set(resolvedKey, pending);
+  }
+  return pending;
+}
+
 /* ── TTL presets ─────────────────────────────────────────── */
 
 export const TTL = {
@@ -140,6 +163,7 @@ export default {
   buildKey,
   get,
   set,
+  getOrLoad,
   flushPattern,
   flushAll,
   getStats,

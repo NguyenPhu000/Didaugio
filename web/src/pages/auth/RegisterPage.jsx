@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { motion } from "motion/react";
 import i18n from "@/i18n";
 import { Button, Input, Label } from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
@@ -16,7 +17,6 @@ import {
   fieldLabel,
   fieldInput,
   fieldError,
-  primaryButton,
   eyeButton,
 } from "@/components/auth/authStyles";
 import { BUSINESS_ROUTES } from "@/constants/routes";
@@ -75,13 +75,8 @@ const RegisterPage = () => {
       }
       const response = await authService.googleRegister(idToken);
       if (response.success) {
-        setAuth(
-          response.data.user,
-          response.data.accessToken,
-          response.data.refreshToken,
-        );
+        setAuth(response.data.user, response.data.accessToken);
         toast.success(t("auth.register.googleSuccess"));
-        // Google is already email-verified, then the business onboarding handles role/profile unlock.
         navigate(BUSINESS_ROUTES.REGISTER, { replace: true });
       }
     } catch (error) {
@@ -95,9 +90,7 @@ const RegisterPage = () => {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm({
-    resolver: zodResolver(registerSchema),
-  });
+  } = useForm({ resolver: zodResolver(registerSchema) });
 
   const onSubmit = async (data) => {
     setIsLoading(true);
@@ -113,19 +106,12 @@ const RegisterPage = () => {
       if (response.success) {
         const { emailVerificationRequired } = response.data;
 
-        // Trigger browser's "Save password?" dialog
         if ("credentials" in navigator && navigator.credentials.create) {
           try {
             const credential = await navigator.credentials.create({
-              password: {
-                id: data.email,
-                password: data.password,
-                name: data.username || data.email,
-              },
+              password: { id: data.email, password: data.password, name: data.username || data.email },
             });
-            if (credential) {
-              await navigator.credentials.store(credential);
-            }
+            if (credential) await navigator.credentials.store(credential);
           } catch {
             // Browser doesn't support or user denied
           }
@@ -133,9 +119,7 @@ const RegisterPage = () => {
 
         if (emailVerificationRequired) {
           toast.success("Đăng ký thành công! Vui lòng kiểm tra email để xác thực.");
-          navigate(`/check-email?email=${encodeURIComponent(data.email.toLowerCase())}`, {
-            replace: true,
-          });
+          navigate(`/check-email?email=${encodeURIComponent(data.email.toLowerCase())}`, { replace: true });
           return;
         }
 
@@ -151,210 +135,223 @@ const RegisterPage = () => {
 
   return (
     <AuthShell
-      eyebrow="Dành cho đối tác doanh nghiệp"
       title="Đưa doanh nghiệp du lịch của bạn lên bản đồ"
       subtitle="Tạo tài khoản để quản lý địa điểm, tour và tiếp cận du khách trên toàn khu vực."
+      maxWidth="max-w-[480px]"
     >
-      <div className="mb-7">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          {t("auth.register.title")}
-        </h1>
-        <p className="mt-2 text-sm text-slate-500">
-          {t("auth.register.subtitle")}
-        </p>
-      </div>
+      {/* ── Main card ── */}
+      <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_16px_48px_-12px_rgba(15,23,42,0.16),0_4px_16px_-4px_rgba(15,23,42,0.08)]">
+        {/* Yellow top stripe */}
+        <div className="h-[3px] w-full bg-[#F3E600]" />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {/* Họ và tên */}
-        <div className="space-y-2">
-          <Label htmlFor="fullName" className={fieldLabel}>
-            <User className="h-4 w-4 text-slate-400" />
-            {t("auth.register.fullName")}
-          </Label>
-          <Input
-            id="fullName"
-            type="text"
-            name="fullName"
-            placeholder={t("auth.register.fullNamePlaceholder")}
-            className={fieldInput}
-            autoComplete="name"
-            autoCapitalize="off"
-            autoCorrect="off"
-            {...register("fullName")}
-          />
-          {errors.fullName && (
-            <p className={fieldError}>{errors.fullName.message}</p>
-          )}
-        </div>
-
-        {/* Tên đăng nhập */}
-        <div className="space-y-2">
-          <Label htmlFor="username" className={fieldLabel}>
-            <AtSign className="h-4 w-4 text-slate-400" />
-            {t("auth.register.username")}
-          </Label>
-          <Input
-            id="username"
-            type="text"
-            name="username"
-            placeholder={t("auth.register.usernamePlaceholder")}
-            className={fieldInput}
-            autoComplete="username"
-            autoCapitalize="off"
-            autoCorrect="off"
-            {...register("username")}
-          />
-          {errors.username && (
-            <p className={fieldError}>{errors.username.message}</p>
-          )}
-        </div>
-
-        {/* Email */}
-        <div className="space-y-2">
-          <Label htmlFor="email" className={fieldLabel}>
-            <Mail className="h-4 w-4 text-slate-400" />
-            {t("auth.register.email")}
-          </Label>
-          <Input
-            id="email"
-            type="email"
-            name="email"
-            placeholder={t("auth.register.emailPlaceholder")}
-            className={fieldInput}
-            autoComplete="email"
-            autoCapitalize="off"
-            autoCorrect="off"
-            {...register("email")}
-          />
-          {errors.email && (
-            <p className={fieldError}>{errors.email.message}</p>
-          )}
-        </div>
-
-        {/* Mật khẩu */}
-        <div className="space-y-2">
-          <Label htmlFor="password" className={fieldLabel}>
-            <Lock className="h-4 w-4 text-slate-400" />
-            {t("auth.register.password")}
-          </Label>
-          <div className="relative">
-            <Input
-              id="password"
-              type={showPassword ? "text" : "password"}
-              name="password"
-              placeholder="••••••••"
-              autoComplete="new-password"
-              className={`${fieldInput} pr-12`}
-              {...register("password")}
-            />
-            <button
-              type="button"
-              className={eyeButton}
-              onClick={() => setShowPassword(!showPassword)}
-              aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-            >
-              {showPassword ? (
-                <EyeOff className="h-5 w-5" />
-              ) : (
-                <Eye className="h-5 w-5" />
-              )}
-            </button>
+        <div className="px-8 py-8 sm:px-10">
+          {/* Header */}
+          <div className="mb-7">
+            <h1 className="text-[26px] font-bold tracking-tight text-slate-900 leading-tight">
+              {t("auth.register.title")}
+            </h1>
+            <p className="mt-1.5 text-[14px] text-slate-500">
+              {t("auth.register.subtitle")}
+            </p>
           </div>
-          {errors.password && (
-            <p className={fieldError}>{errors.password.message}</p>
-          )}
-          <p className="text-xs text-slate-400">
-            {t("auth.register.passwordHint")}
-          </p>
-        </div>
 
-        {/* Xác nhận mật khẩu */}
-        <div className="space-y-2">
-          <Label htmlFor="confirmPassword" className={fieldLabel}>
-            <Lock className="h-4 w-4 text-slate-400" />
-            {t("auth.register.confirmPassword")}
-          </Label>
-          <div className="relative">
-            <Input
-              id="confirmPassword"
-              type={showConfirmPassword ? "text" : "password"}
-              name="confirmPassword"
-              placeholder="••••••••"
-              autoComplete="new-password"
-              className={`${fieldInput} pr-12`}
-              {...register("confirmPassword")}
-            />
-            <button
-              type="button"
-              className={eyeButton}
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-            >
-              {showConfirmPassword ? (
-                <EyeOff className="h-5 w-5" />
-              ) : (
-                <Eye className="h-5 w-5" />
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* Row 1: Họ tên + Username */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="fullName" className={fieldLabel}>
+                  Họ và tên
+                </Label>
+                <div className="relative">
+                  <User className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    id="fullName"
+                    type="text"
+                    name="fullName"
+                    placeholder={t("auth.register.fullNamePlaceholder")}
+                    className={`${fieldInput} pl-9 text-sm`}
+                    autoComplete="name"
+                    autoCapitalize="words"
+                    autoCorrect="off"
+                    {...register("fullName")}
+                  />
+                </div>
+                {errors.fullName && (
+                  <p className={fieldError}>{errors.fullName.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="username" className={fieldLabel}>
+                  Tên đăng nhập
+                </Label>
+                <div className="relative">
+                  <AtSign className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    id="username"
+                    type="text"
+                    name="username"
+                    placeholder={t("auth.register.usernamePlaceholder")}
+                    className={`${fieldInput} pl-9 text-sm`}
+                    autoComplete="username"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    {...register("username")}
+                  />
+                </div>
+                {errors.username && (
+                  <p className={fieldError}>{errors.username.message}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Email */}
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className={fieldLabel}>
+                {t("auth.register.email")}
+              </Label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  name="email"
+                  placeholder={t("auth.register.emailPlaceholder")}
+                  className={`${fieldInput} pl-10`}
+                  autoComplete="email"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  {...register("email")}
+                />
+              </div>
+              {errors.email && (
+                <p className={fieldError}>{errors.email.message}</p>
               )}
-            </button>
-          </div>
-          {errors.confirmPassword && (
-            <p className={fieldError}>{errors.confirmPassword.message}</p>
-          )}
-        </div>
+            </div>
 
-        {/* Nút đăng ký */}
-        <Button
-          type="submit"
-          loading={isLoading}
-          className={`${primaryButton} mt-2`}
-        >
-          {isLoading ? (
-            t("auth.register.submitting")
-          ) : (
+            {/* Mật khẩu + Xác nhận — side by side */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className={fieldLabel}>
+                  {t("auth.register.password")}
+                </Label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    className={`${fieldInput} pl-9 pr-10 text-sm`}
+                    {...register("password")}
+                  />
+                  <button
+                    type="button"
+                    className={eyeButton}
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className={fieldError}>{errors.password.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="confirmPassword" className={fieldLabel}>
+                  Xác nhận
+                </Label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    className={`${fieldInput} pl-9 pr-10 text-sm`}
+                    {...register("confirmPassword")}
+                  />
+                  <button
+                    type="button"
+                    className={eyeButton}
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {errors.confirmPassword && (
+                  <p className={fieldError}>{errors.confirmPassword.message}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Password hint */}
+            <p className="text-[12px] leading-relaxed text-slate-400">
+              {t("auth.register.passwordHint")}
+            </p>
+
+            {/* Submit */}
+            <Button
+              type="submit"
+              loading={isLoading}
+              className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#F3E600] text-[15px] font-bold text-slate-900 shadow-[0_4px_14px_rgba(243,230,0,0.45)] transition-all duration-300 hover:bg-[#e8d900] hover:shadow-[0_6px_22px_rgba(243,230,0,0.55)] active:scale-[0.99] disabled:opacity-60"
+            >
+              {isLoading ? (
+                t("auth.register.submitting")
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4" />
+                  {t("auth.register.submit")}
+                </>
+              )}
+            </Button>
+          </form>
+
+          {HAS_GOOGLE_OAUTH && (
             <>
-              <UserPlus className="mr-1 h-4 w-4" />
-              {t("auth.register.submit")}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-100" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-white px-4 text-[11px] font-bold uppercase tracking-[0.15em] text-slate-300">
+                    {t("common.or")}
+                  </span>
+                </div>
+              </div>
+              <GoogleSignUpButton
+                onSuccess={handleGoogleSuccess}
+                onError={() => toast.error(t("auth.register.googleFailed"))}
+                disabled={isGoogleLoading}
+              />
             </>
           )}
-        </Button>
-      </form>
-
-      {HAS_GOOGLE_OAUTH && (
-        <>
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-white px-4 text-xs font-medium uppercase tracking-wide text-slate-400">
-                {t("common.or")}
-              </span>
-            </div>
-          </div>
-
-          <GoogleSignUpButton
-            onSuccess={handleGoogleSuccess}
-            onError={() => toast.error(t("auth.register.googleFailed"))}
-            disabled={isGoogleLoading}
-          />
-        </>
-      )}
-
-      {/* Đăng nhập */}
-      <div className="mt-4 text-center">
-        <p className="mb-3 text-sm text-slate-600">
-          {t("auth.register.hasAccount")}
-        </p>
-        <Link
-          to="/auth/login"
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {t("auth.register.loginNow")}
-        </Link>
+        </div>
       </div>
 
-      <p className="mt-6 text-center text-xs text-slate-400">
+      {/* ── Back to login ── */}
+      <motion.div
+        className="mt-3 flex items-center justify-between rounded-xl border border-slate-200/60 bg-white/70 px-5 py-4"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <p className="text-[14px] text-slate-600">{t("auth.register.hasAccount")}</p>
+        <Link
+          to="/auth/login"
+          className="ml-4 inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 active:scale-[0.97]"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          {t("auth.register.loginNow")}
+        </Link>
+      </motion.div>
+
+      <p className="mt-4 text-center text-[11px] tracking-wide text-slate-400">
         {t("auth.register.termsNote")}
       </p>
     </AuthShell>

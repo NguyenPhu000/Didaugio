@@ -4,8 +4,11 @@ import { calculateRouteApi } from "../../../api/routingApi";
 import { sendLocalNotification } from "../../../lib/local-notifications";
 import { mapRoutingResponse } from "./routeMapping";
 import {
+  buildTripPreviewDays,
   buildTripPreviewSegments,
   buildTripPreviewStops,
+  getDefaultTripPreviewDayNumber,
+  getTripPreviewDayStartState,
   getTripPreviewSheetHeight,
 } from "../utils/tripRoutePreview";
 import { buildTripPreviewRouteRequest } from "./useMapTripPreviewUtils";
@@ -25,13 +28,72 @@ export function useMapTripPreview({
   updatePreviewTripMutation,
 }) {
   const { height: viewportHeight } = useWindowDimensions();
+  const [previewNow, setPreviewNow] = useState(() => new Date());
+  const [selectedPreviewDayNumber, setSelectedPreviewDayNumber] = useState(null);
   const [previewRouteResults, setPreviewRouteResults] = useState([]);
   const [isPreviewRouteLoading, setIsPreviewRouteLoading] = useState(false);
   const [isPreviewRouteError, setIsPreviewRouteError] = useState(false);
 
+  const previewDays = useMemo(
+    () =>
+      buildTripPreviewDays({
+        destinations: previewTrip?.destinations || [],
+        startDate: previewTrip?.startDate,
+        now: previewNow,
+      }),
+    [previewNow, previewTrip?.destinations, previewTrip?.startDate],
+  );
+  const defaultPreviewDayNumber = useMemo(
+    () => getDefaultTripPreviewDayNumber(previewDays),
+    [previewDays],
+  );
+  const selectedPreviewDay = useMemo(
+    () =>
+      previewDays.find((day) => day.dayNumber === selectedPreviewDayNumber) ||
+      previewDays.find((day) => day.dayNumber === defaultPreviewDayNumber) ||
+      null,
+    [defaultPreviewDayNumber, previewDays, selectedPreviewDayNumber],
+  );
+  const isSelectedPreviewDayStartAllowed =
+    getTripPreviewDayStartState(selectedPreviewDay).canStart;
+  const previewDestinations = useMemo(
+    () => selectedPreviewDay?.destinations || previewTrip?.destinations || [],
+    [previewTrip?.destinations, selectedPreviewDay?.destinations],
+  );
+
+  useEffect(() => {
+    if (!isTripPreviewMode) {
+      setSelectedPreviewDayNumber(null);
+      return;
+    }
+
+    setSelectedPreviewDayNumber((currentDayNumber) =>
+      previewDays.some((day) => day.dayNumber === currentDayNumber)
+        ? currentDayNumber
+        : defaultPreviewDayNumber,
+    );
+  }, [defaultPreviewDayNumber, isTripPreviewMode, previewDays]);
+
+  useEffect(() => {
+    if (!isTripPreviewMode || !previewTrip?.startDate) return undefined;
+
+    setPreviewNow(new Date());
+    let timer;
+    const scheduleNextMidnight = () => {
+      const nextMidnight = new Date();
+      nextMidnight.setHours(24, 0, 0, 0);
+      timer = setTimeout(() => {
+        setPreviewNow(new Date());
+        scheduleNextMidnight();
+      }, Math.max(nextMidnight.getTime() - Date.now() + 100, 1000));
+    };
+    scheduleNextMidnight();
+    return () => clearTimeout(timer);
+  }, [isTripPreviewMode, previewTrip?.startDate]);
+
   const previewStops = useMemo(
-    () => buildTripPreviewStops(previewTrip?.destinations || []),
-    [previewTrip?.destinations],
+    () => buildTripPreviewStops(previewDestinations),
+    [previewDestinations],
   );
 
   const previewSegments = useMemo(
@@ -56,6 +118,8 @@ export function useMapTripPreview({
     }
 
     let cancelled = false;
+    const abortController = new AbortController();
+    setPreviewRouteResults([]);
     setIsPreviewRouteLoading(true);
     setIsPreviewRouteError(false);
 
@@ -69,6 +133,7 @@ export function useMapTripPreview({
               to,
               resolveMode: resolveTravelMode,
             }),
+            { signal: abortController.signal },
           );
           return mapRoutingResponse(response);
         } catch {
@@ -94,6 +159,7 @@ export function useMapTripPreview({
 
     return () => {
       cancelled = true;
+      abortController.abort();
     };
   }, [isTripPreviewMode, previewStops, resolveTravelMode]);
 
@@ -127,6 +193,7 @@ export function useMapTripPreview({
 
   const handleConfirmTripPreview = useCallback(() => {
     if (!previewTrip?.id || updatePreviewTripMutation.isPending) return;
+    if (!isSelectedPreviewDayStartAllowed) return;
     if (previewStops.length === 0) {
       showAppAlert({
         title: t("common.error"),
@@ -167,6 +234,7 @@ export function useMapTripPreview({
     activeTrip,
     followCameraRef,
     locateActiveTripNow,
+    isSelectedPreviewDayStartAllowed,
     previewStops.length,
     previewTrip,
     router,
@@ -179,7 +247,11 @@ export function useMapTripPreview({
     handleConfirmTripPreview,
     isPreviewRouteError,
     isPreviewRouteLoading,
+    isSelectedPreviewDayStartAllowed,
     previewSegments,
+    previewDays,
     previewStops,
+    selectedPreviewDay,
+    setSelectedPreviewDayNumber,
   };
 }

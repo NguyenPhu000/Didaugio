@@ -1,4 +1,5 @@
 import * as bannerService from "../../services/banner/banner.service.js";
+import { flushPattern } from "../../services/cache/cache.service.js";
 
 const getUserId = (req) => req.user?.userId || req.user?.id || null;
 
@@ -9,6 +10,7 @@ export const createBanner = async (req, res, next) => {
   try {
     const userId = getUserId(req);
     const banner = await bannerService.createBanner(userId, req.body);
+    await flushPattern("cms:explore-landing");
     return res.status(201).json({
       success: true,
       data: banner,
@@ -26,6 +28,7 @@ export const updateBanner = async (req, res, next) => {
   try {
     const bannerId = parseInt(req.params.id, 10);
     const banner = await bannerService.updateBanner(bannerId, req.body);
+    await flushPattern("cms:explore-landing");
     return res.json({
       success: true,
       data: banner,
@@ -43,6 +46,7 @@ export const deleteBanner = async (req, res, next) => {
   try {
     const bannerId = parseInt(req.params.id, 10);
     await bannerService.deleteBanner(bannerId);
+    await flushPattern("cms:explore-landing");
     return res.json({
       success: true,
       data: null,

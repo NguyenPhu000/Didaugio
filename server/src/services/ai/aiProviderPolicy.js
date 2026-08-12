@@ -105,6 +105,11 @@ export function toAiServiceError(error) {
 }
 
 export function canUseHybridFallback(error) {
+  const statusCode = Number(error?.statusCode ?? error?.status);
+  if (Number.isInteger(statusCode) && statusCode >= 400 && statusCode < 500 && statusCode !== 429) {
+    return false;
+  }
+
   const code = toAiServiceError(error).code;
   return [
     "AI_TIMEOUT",
@@ -115,7 +120,6 @@ export function canUseHybridFallback(error) {
     "AI_SECRET_UNAVAILABLE",
     "AI_REQUEST_LOG_UNAVAILABLE",
     "AI_ERROR",
-    "AI_INVALID_OUTPUT",
   ].includes(code);
 }
 

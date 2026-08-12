@@ -140,6 +140,33 @@ sonar_comparison.md
 .scannerwork
 .sonarlint
 /server/.backups/
+
+# Version the production quality gate. The broader workflow ignore above is legacy.
+!.github/
+!.github/workflows/
+!.github/workflows/quality.yml
+
+# Source tests are part of the release contract and must be available to CI.
+!server/test/
+!server/test/**
+!app/test/
+!app/test/**
+!app/contract/
+!app/contract/**
+!app/src/**/__tests__/
+!app/src/**/__tests__/**
+!app/src/**/*.test.js
+!app/src/**/*.test.jsx
+!app/src/**/*.test.ts
+!app/src/**/*.test.tsx
+!web/test/
+!web/test/**
+!web/src/**/__tests__/
+!web/src/**/__tests__/**
+!web/src/**/*.test.js
+!web/src/**/*.test.jsx
+!web/src/**/*.test.ts
+!web/src/**/*.test.tsx
 .superpowers/sdd/progress.md
 .superpowers/sdd/task-1-brief.md
 .superpowers/sdd/task-1-report.md
@@ -191,7 +218,18 @@ server/test/validateSchema.test.js
 *.md
 
 # Test suites are retained locally and are not published with this branch.
-/server/test/
+server/test/
+app/test/
+web/test/
+app/contract/
 **/__tests__/
 **/*.test.js
 **/*.test.jsx
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.js
+**/*.spec.jsx
+**/*.spec.ts
+**/*.spec.tsx
+.github/workflows/quality.yml
+server/docker-compose.high-load.yml

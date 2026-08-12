@@ -1,11 +1,13 @@
-export function getSentryOptions({ dsn, environment }) {
+export function getSentryOptions({ dsn, environment, release }) {
   const normalizedDsn = String(dsn || "").trim();
   if (!normalizedDsn) return null;
+  const normalizedEnvironment = String(environment || "production").trim() || "production";
 
   return {
     dsn: normalizedDsn,
-    environment: environment || "production",
-    tracesSampleRate: environment === "production" ? 0.1 : 0.25,
+    environment: normalizedEnvironment,
+    ...(release ? { release } : {}),
+    tracesSampleRate: normalizedEnvironment === "production" ? 0.1 : 0.25,
     sendDefaultPii: false,
     enableAutoSessionTracking: true,
     beforeSend(event) {

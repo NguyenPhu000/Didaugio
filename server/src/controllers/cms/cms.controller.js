@@ -1,5 +1,20 @@
 import * as cmsService from "../../services/cms/cms.service.js";
 import { setPublicListCache } from "../../utils/httpCacheHeaders.js";
+import {
+  get as cacheGet,
+  set as cacheSet,
+  TTL,
+} from "../../services/cache/cache.service.js";
+
+const EXPLORE_LANDING_CACHE_KEY = "cms:explore-landing";
+let pendingExploreLanding = null;
+
+const loadExploreLanding = () => {
+  pendingExploreLanding ??= cmsService.getExploreLandingData().finally(() => {
+    pendingExploreLanding = null;
+  });
+  return pendingExploreLanding;
+};
 
 /**
  * GET /api/cms/explore-landing
@@ -7,13 +22,18 @@ import { setPublicListCache } from "../../utils/httpCacheHeaders.js";
  */
 export const getExploreLanding = async (req, res) => {
   try {
+    const cached = await cacheGet(EXPLORE_LANDING_CACHE_KEY);
     setPublicListCache(res, req);
-    const data = await cmsService.getExploreLandingData();
-    return res.status(200).json({
+    if (cached) return res.status(200).json(cached);
+
+    const data = await loadExploreLanding();
+    const body = {
       success: true,
       data,
       message: "Lay du lieu CMS thanh cong",
-    });
+    };
+    await cacheSet(EXPLORE_LANDING_CACHE_KEY, body, TTL.PLACES);
+    return res.status(200).json(body);
   } catch (error) {
     return res.status(error.statusCode || 500).json({
       success: false,

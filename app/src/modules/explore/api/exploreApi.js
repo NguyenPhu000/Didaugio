@@ -13,5 +13,8 @@ export const searchPlacesApi = (params, config = {}) =>
     params: { ...params, client: "mobile" },
   });
 
+export const getCategoriesApi = (config = {}) =>
+  getPublicWithFallback(ENDPOINTS.categories.list, config);
+
 export const getServicesApi = () =>
   getPublicWithFallback(ENDPOINTS.places.services);

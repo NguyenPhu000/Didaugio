@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 import {
   getTripDetailApi,
   updateTripApi,
@@ -10,9 +11,28 @@ import {
 } from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
 import { TRIP_OFFLINE_GC_MS } from "../../../constants/trip-offline-cache";
+import { OFFLINE_STORAGE_KEYS } from "../../../constants/storage";
 import { getTripCacheDestinations, mapTripCacheValue } from "../utils/tripCache";
 
 const getDestinationClientId = (dest) => dest?.stopId ?? dest?.id;
+
+const isNetworkError = (error) =>
+  !(error?.status || error?.response?.status) &&
+  (error?.message === "Network Error" || error?.code === "ERR_NETWORK" || !error?.response);
+
+async function queueOfflineTripUpdate(tripId, data) {
+  const storageKey = OFFLINE_STORAGE_KEYS.PENDING_TRIP_ACTIONS;
+  const raw = await safeAsyncStorage.getItem(storageKey);
+  const actions = raw ? JSON.parse(raw) : [];
+  const nextActions = Array.isArray(actions) ? actions : [];
+  nextActions.push({
+    id: `trip-update-${Date.now()}`,
+    type: "UPDATE_TRIP",
+    data: { tripId, data },
+    createdAt: Date.now(),
+  });
+  await safeAsyncStorage.setItem(storageKey, JSON.stringify(nextActions));
+}
 
 export function useTripDetail(id) {
   return useQuery({
@@ -28,7 +48,15 @@ export function useTripDetail(id) {
 export function useUpdateTrip(id) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data) => updateTripApi(id, data),
+    mutationFn: async (data) => {
+      try {
+        return await updateTripApi(id, data);
+      } catch (error) {
+        if (!isNetworkError(error)) throw error;
+        await queueOfflineTripUpdate(id, data);
+        return { pending: true };
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.detail(id) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });

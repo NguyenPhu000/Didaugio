@@ -58,7 +58,7 @@ const normalizeIp = (value) => {
  * Prefer an authenticated account identity. IP is only the fallback for
  * callers that deliberately run without authentication.
  */
-export const buildAiRateLimitKey = (req = {}) => {
+export const buildUserOrIpRateLimitKey = (req = {}) => {
   const user = req?.user;
   if (user && typeof user === "object" && !Array.isArray(user)) {
     for (const candidate of [user.userId, user.id]) {
@@ -70,6 +70,8 @@ export const buildAiRateLimitKey = (req = {}) => {
   const ip = normalizeIp(req?.ip) || normalizeIp(req?.socket?.remoteAddress);
   return `ip:${ip || "unknown"}`;
 };
+
+export const buildAiRateLimitKey = buildUserOrIpRateLimitKey;
 
 /**
  * Factory function to create rate limiters with standardized config.
@@ -152,9 +154,11 @@ export const recoveryLimiter = createLimiter({
 });
 
 export const apiLimiter = createLimiter({
+  envKey: "API_RATE_LIMIT_MAX",
   namespace: "api",
   devDefault: 5000,
-  prodDefault: 100,
+  prodDefault: 1200,
+  keyGenerator: buildUserOrIpRateLimitKey,
   message: "Quá nhiều yêu cầu, vui lòng thử lại sau",
 });
 

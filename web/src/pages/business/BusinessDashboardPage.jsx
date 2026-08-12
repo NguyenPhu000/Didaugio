@@ -60,11 +60,12 @@ const BusinessDashboardPage = memo(() => {
   const { data: businessRes } = useBusinessProfile();
   const { data: statsRes, isLoading } = useBusinessDashboard();
   const [heatmapAction, setHeatmapAction] = useState("all");
+  const [heatmapPeriodEnd] = useState(() => new Date());
   const heatmapFilters = useMemo(() => ({
     action: heatmapAction,
-    fromDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    toDate: new Date().toISOString(),
-  }), [heatmapAction]);
+    fromDate: new Date(heatmapPeriodEnd.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    toDate: heatmapPeriodEnd.toISOString(),
+  }), [heatmapAction, heatmapPeriodEnd]);
   const placeHeatmap = useBusinessPlaceHeatmap(heatmapFilters);
 
   const business = businessRes?.data || businessRes;

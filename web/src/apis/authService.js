@@ -32,8 +32,8 @@ export const authService = {
   },
 
   // Refresh token
-  refreshToken: async (refreshToken) => {
-    const response = await api.post("/auth/refresh", { refreshToken });
+  refreshToken: async () => {
+    const response = await api.post("/auth/refresh", {});
     return response;
   },
 
@@ -99,8 +99,8 @@ export const authService = {
   },
 
   // Đăng xuất
-  logout: async (refreshToken, config = {}) => {
-    const response = await api.post("/auth/logout", { refreshToken }, config);
+  logout: async (config = {}) => {
+    const response = await api.post("/auth/logout", {}, config);
     return response;
   },
 

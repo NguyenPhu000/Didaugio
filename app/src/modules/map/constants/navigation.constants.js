@@ -1,7 +1,7 @@
 export const NAVIGATION_EVENT_DEDUP_MS = 1800;
 
 /** Thời gian (ms) không nhận GPS trước khi đánh dấu mất tín hiệu */
-export const GPS_LOST_TIMEOUT_MS = 7_000;
+export const GPS_LOST_TIMEOUT_MS = 30_000;
 
 /** Khoảng cách (m) không có ngã rẽ để kích hoạt giảm sáng màn hình */
 export const SCREEN_DIM_ACTIVATE_DISTANCE_M = 1_000;

@@ -603,14 +603,6 @@ const LoginHistoryPage = () => {
                       {formatDate(selectedSession.expiresAt)}
                     </p>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">
-                      {t("loginHistory.refreshToken")}
-                    </label>
-                    <p className="mt-1 font-mono text-xs truncate">
-                      {selectedSession.refreshToken}
-                    </p>
-                  </div>
                 </div>
 
                 {selectedSession.isActive && (

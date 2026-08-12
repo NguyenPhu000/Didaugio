@@ -53,6 +53,67 @@ export function validateEnv() {
     );
   }
 
+  const redisUrl = String(process.env.REDIS_URL || "").trim();
+  if (isProd && !redisUrl) {
+    throw new Error(
+      "[ENV] REDIS_URL bat buoc trong production de cache, rate limit, va scheduler nhat quan giua cac replica",
+    );
+  }
+
+  if (isProd && redisUrl) {
+    let redisPassword = "";
+    try {
+      redisPassword = new URL(redisUrl).password;
+    } catch {
+      redisPassword = "";
+    }
+
+    if (!redisPassword) {
+      throw new Error(
+        "[ENV] REDIS_URL trong production phai co password/ACL credential de bao ve Redis",
+      );
+    }
+  }
+
+  if (isProd && String(process.env.METRICS_ENABLED || "").toLowerCase() !== "true") {
+    throw new Error(
+      "[ENV] METRICS_ENABLED=true bat buoc trong production de theo doi API va ha tang",
+    );
+  }
+
+  if (isProd && !String(process.env.METRICS_TOKEN || "").trim()) {
+    throw new Error(
+      "[ENV] METRICS_TOKEN bat buoc trong production de bao ve endpoint /metrics",
+    );
+  }
+
+  if (isProd && String(process.env.CORS_ALLOW_ALL || "false").toLowerCase() === "true") {
+    throw new Error(
+      "[ENV] CORS_ALLOW_ALL=true khong duoc phep trong production; hay khai bao CORS_ORIGINS",
+    );
+  }
+
+  if (isProd && !String(process.env.CORS_ORIGINS || "").trim()) {
+    throw new Error(
+      "[ENV] CORS_ORIGINS bat buoc trong production de gioi han browser origins",
+    );
+  }
+
+  if (isProd && String(process.env.EMAIL_DELIVERY_ENABLED || "true").toLowerCase() === "false") {
+    throw new Error(
+      "[ENV] EMAIL_DELIVERY_ENABLED=false khong duoc phep trong production",
+    );
+  }
+
+  const missingEmailConfig = ["SMTP_HOST", "SMTP_USER", "SMTP_PASS", "EMAIL_FROM"].filter(
+    (key) => !String(process.env[key] || "").trim(),
+  );
+  if (isProd && missingEmailConfig.length > 0) {
+    throw new Error(
+      `[ENV] Thieu cau hinh SMTP trong production: ${missingEmailConfig.join(", ")}`,
+    );
+  }
+
   const googleAudienceKeys = [
     "GOOGLE_CLIENT_ID",
     "GOOGLE_ANDROID_CLIENT_ID",

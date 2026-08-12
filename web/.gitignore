@@ -32,7 +32,7 @@ e2e
 .gemini/
 .agent/
 .cursorrules
-test
+test/
 types
 vitest.config.js
 
@@ -41,3 +41,13 @@ playwright-report/
 test-results/
 blob-report/
 playwright/.cache/
+
+**/__tests__/
+**/*.test.js
+**/*.test.jsx
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.js
+**/*.spec.jsx
+**/*.spec.ts
+**/*.spec.tsx

@@ -32,11 +32,6 @@ export const validateSchema = (
           code: err.code,
         }));
 
-        console.error(
-          "Validation Errors:",
-          JSON.stringify(formattedErrors, null, 2),
-        );
-
         return res.status(400).json({
           success: false,
           data: null,

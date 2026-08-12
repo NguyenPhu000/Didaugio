@@ -21,11 +21,10 @@ export default function BusinessUpgradePrompt() {
 
       if (response.success) {
         // Update auth store with new user data
-        const { accessToken, refreshToken } = useAuthStore.getState();
+        const { accessToken } = useAuthStore.getState();
         setAuth(
           response.data.user,
           response.data.accessToken || accessToken,
-          response.data.refreshToken || refreshToken,
         );
 
         toast.success("Nâng cấp thành công! Vui lòng đăng ký doanh nghiệp.");

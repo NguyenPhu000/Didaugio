@@ -2,6 +2,8 @@ import nodemailer from "nodemailer";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const EMAIL_FROM = process.env.EMAIL_FROM || "Didaugio <no-reply@didaugio.vn>";
+const isEmailDeliveryEnabled = () =>
+  String(process.env.EMAIL_DELIVERY_ENABLED || "true").toLowerCase() !== "false";
 
 /**
  * Escape HTML special characters to prevent XSS in email templates
@@ -28,6 +30,14 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASS,
   },
 });
+
+const sendMail = async (message) => {
+  if (!isEmailDeliveryEnabled()) {
+    return { accepted: [], rejected: [], skipped: true };
+  }
+
+  return transporter.sendMail(message);
+};
 
 /**
  * Gửi email xác thực tài khoản
@@ -236,7 +246,7 @@ Link này có hiệu lực trong 24 giờ.
 Nếu bạn không thực hiện đăng ký này, vui lòng bỏ qua email này.
   `;
 
-  await transporter.sendMail({
+  await sendMail({
     from: EMAIL_FROM,
     to,
     subject: "Xác thực email",
@@ -444,7 +454,7 @@ ${resetUrl}
 ⚠️ CẢNH BÁO BẢO MẬT: Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.
   `;
 
-  await transporter.sendMail({
+  await sendMail({
     from: EMAIL_FROM,
     to,
     subject: "Đặt lại mật khẩu",
@@ -663,7 +673,7 @@ ${inviteUrl}
 ⚠️ Nếu bạn không mong đợi lời mời này, vui lòng bỏ qua email này.
   `;
 
-  await transporter.sendMail({
+  await sendMail({
     from: EMAIL_FROM,
     to,
     subject: `Lời mời làm việc tại ${escapeHtml(businessName)}`,
@@ -753,7 +763,7 @@ export const sendContractVerificationEmail = async ({ to, code, name }) => {
   `;
 
   try {
-    await transporter.sendMail({
+  await sendMail({
       from: EMAIL_FROM,
       to,
       subject: "[iPoint Genie] Mã OTP xác nhận ký hợp đồng dịch vụ điện tử",
@@ -770,7 +780,7 @@ export const sendBusinessNotificationEmail = async ({ to, subject, title, body }
   const safeTitle = escapeHtml(title);
   const safeBody = escapeHtml(body).replace(/\n/g, "<br />");
 
-  await transporter.sendMail({
+  await sendMail({
     from: EMAIL_FROM,
     to,
     subject,

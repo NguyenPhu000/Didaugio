@@ -3,7 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import NetInfo from "@react-native-community/netinfo";
-import { getMyTripsApi, createTripApi, deleteTripApi, getTripDetailApi } from "../api/tripsApi";
+import {
+  getMyTripsApi,
+  createTripApi,
+  deleteTripApi,
+  getTripDetailApi,
+  updateTripApi,
+} from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
 import { TRIP_OFFLINE_GC_MS } from "../../../constants/trip-offline-cache";
 import { OFFLINE_STORAGE_KEYS } from "../../../constants/storage";
@@ -391,6 +397,8 @@ export function useOfflineSync() {
               const queuedId = action.data?.id || action.data;
               const idToDelete = idMap[String(queuedId)] || queuedId;
               await deleteTripApi(idToDelete);
+            } else if (action.type === "UPDATE_TRIP") {
+              await updateTripApi(action.data?.tripId, action.data?.data);
             }
           } catch (err) {
             const isNetworkError = !err.response || err.message === "Network Error" || err.code === "ERR_NETWORK";

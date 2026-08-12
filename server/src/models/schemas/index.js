@@ -11,6 +11,7 @@ export {
   resendVerificationPublicSchema,
   loginGoogleSchema,
   logoutSchema,
+  browserLogoutSchema,
   revokeSessionParamSchema,
   updateProfileSchema,
 } from "./auth/auth.schema.js";

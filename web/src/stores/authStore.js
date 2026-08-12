@@ -14,7 +14,8 @@ const getPersistedAuth = () => {
     const raw = localStorage.getItem(STORAGE_KEYS.AUTH);
     if (raw) {
       const parsed = JSON.parse(raw);
-      return parsed?.state ?? {};
+      const { refreshToken: _refreshToken, ...persistedState } = parsed?.state ?? {};
+      return persistedState;
     }
   } catch {
     // Ignore malformed persisted auth state.
@@ -30,17 +31,17 @@ export const useAuthStore = create(
       // State — seeded from localStorage so first render is already correct
       user: _p.user ?? null,
       accessToken: _p.accessToken ?? null,
-      refreshToken: _p.refreshToken ?? null,
+      refreshToken: null,
       isAuthenticated: _p.isAuthenticated ?? false,
       isLoading: false,
       isLoggingOut: false,
 
       // Actions
-      setAuth: (user, accessToken, refreshToken) => {
+      setAuth: (user, accessToken) => {
         set({
           user,
           accessToken,
-          refreshToken,
+          refreshToken: null,
           isAuthenticated: true,
           isLoading: false,
         });
@@ -50,11 +51,11 @@ export const useAuthStore = create(
         set({ accessToken });
       },
 
-      setSession: ({ user, accessToken, refreshToken }) => {
+      setSession: ({ user, accessToken }) => {
         set((state) => ({
           user: user ?? state.user,
           accessToken: accessToken ?? state.accessToken,
-          refreshToken: refreshToken ?? state.refreshToken,
+          refreshToken: null,
           isAuthenticated: Boolean(accessToken ?? state.accessToken),
           isLoading: false,
         }));
@@ -88,7 +89,7 @@ export const useAuthStore = create(
       // Getters
       getUser: () => get().user,
       getAccessToken: () => get().accessToken,
-      getRefreshToken: () => get().refreshToken,
+      getRefreshToken: () => null,
       // Legacy support - alias for accessToken
       get token() {
         return get().accessToken;
@@ -114,14 +115,11 @@ export const useAuthStore = create(
       // Skip hydration during SSR
       skipHydration: false,
       // Version for migration
-      version: 1,
+      version: 2,
       // Migrate function to handle version changes
       migrate: (persistedState, version) => {
-        // If no version or version 1, return as is
-        if (version === 1) {
-          return persistedState;
-        }
-        return persistedState;
+        const { refreshToken: _refreshToken, ...safeState } = persistedState ?? {};
+        return safeState;
       },
     },
   ),

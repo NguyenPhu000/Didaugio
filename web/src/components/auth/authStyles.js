@@ -4,16 +4,16 @@
  */
 
 export const fieldLabel =
-  "flex items-center gap-2 text-sm font-medium text-slate-700";
+  "flex items-center gap-1.5 text-sm font-medium text-slate-700";
 
 export const fieldInput =
-  "h-12 rounded-xl border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:border-slate-900 focus-visible:ring-4 focus-visible:ring-slate-900/5";
+  "h-12 rounded-xl border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:border-[#c9bc00] focus-visible:ring-4 focus-visible:ring-[#F3E600]/25";
 
 export const fieldError = "text-xs font-medium text-rose-600";
 
-// Nút chính: vàng thương hiệu, chữ đậm màu mực
+// Nút chính: vàng thương hiệu, chữ đậm màu mực, shadow rõ hơn
 export const primaryButton =
-  "h-12 w-full rounded-xl bg-[#F3E600] text-sm font-semibold text-slate-900 shadow-sm transition-all duration-300 hover:bg-[#e3d600] hover:shadow active:scale-[0.99] disabled:opacity-60";
+  "h-12 w-full rounded-xl bg-[#F3E600] text-sm font-semibold text-slate-900 shadow-[0_2px_8px_rgba(243,230,0,0.35)] transition-all duration-300 hover:bg-[#e3d600] hover:shadow-[0_4px_16px_rgba(243,230,0,0.45)] active:scale-[0.99] disabled:opacity-60";
 
 // Nút phụ: viền, nền trắng
 export const secondaryButton =

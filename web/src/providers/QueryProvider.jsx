@@ -14,7 +14,7 @@ export const QueryProvider = ({ children }) => {
             gcTime: 10 * 60 * 1000, // 10 minutes
             retry: 2,
             refetchOnWindowFocus: false,
-            refetchOnReconnect: "always",
+            refetchOnReconnect: true,
           },
           mutations: {
             retry: 1,

@@ -134,10 +134,9 @@ export const filterItineraryToSelectedPlaces = (
   );
 
   // Tìm những địa điểm được người dùng yêu cầu chọn mà chưa xuất hiện trong draft đại điểm AI tạo
-  const unplacedSelectedIds = [];
   for (const selectedPlaceId of selectedPlaceIdSet) {
     if (!draftPlaceIds.has(selectedPlaceId)) {
-      unplacedSelectedIds.push(selectedPlaceId);
+      throw createInvalidConfirmationError();
     }
   }
 
@@ -168,26 +167,6 @@ export const filterItineraryToSelectedPlaces = (
       destinations,
     };
   });
-
-  // Phân bổ các địa điểm còn thiếu đều vào các ngày trong lịch trình
-  if (unplacedSelectedIds.length > 0) {
-    unplacedSelectedIds.forEach((missingPlaceId, idx) => {
-      const targetDayIndex = idx % days.length;
-      const targetDay = days[targetDayIndex];
-      const nextOrder = (targetDay.destinations.length || 0) + 1;
-
-      targetDay.destinations.push({
-        placeId: missingPlaceId,
-        order: nextOrder,
-        startTime: null,
-        endTime: null,
-        durationMinutes: 120,
-        note: "Địa điểm đã chọn theo yêu cầu",
-        transportToNext: "Di chuyển bằng xe máy",
-        estimatedCost: null,
-      });
-    });
-  }
 
   return {
     ...itinerary,

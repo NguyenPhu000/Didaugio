@@ -70,7 +70,6 @@ const LOCKOUT_DURATION_MINUTES = Number(process.env.AUTH_LOCKOUT_DURATION_MINUTE
 const LOCKOUT_DURATION = LOCKOUT_DURATION_MINUTES * 60 * 1000;
 const PUBLIC_REGISTRATION_ROLE_IDS = new Set([
   ROLES.USER,
-  ROLES.BUSINESS,
 ]);
 const RESEND_VERIFICATION_GENERIC_MESSAGE =
   "Nếu email tồn tại và chưa xác thực, hệ thống đã gửi lại email xác thực.";
@@ -1102,6 +1101,10 @@ export const verifyAccessToken = (token) => {
  * Used when mobile users want to register a business on web
  */
 export const upgradeToBusinessRole = async (userId) => {
+  if (!Number.isSafeInteger(userId) || userId <= 0) {
+    throw new ServiceError("Invalid user ID", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: { role: true },
