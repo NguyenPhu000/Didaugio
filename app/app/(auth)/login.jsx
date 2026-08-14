@@ -13,7 +13,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { Link, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import Feather from "@expo/vector-icons/Feather";
 import { GoogleLogo } from "../../src/components/primitives/GoogleLogo";
 import { useGoogleLogin } from "../../src/modules/auth/hooks/useGoogleLogin";
 import { useAuth } from "../../src/modules/auth/hooks/useAuth";

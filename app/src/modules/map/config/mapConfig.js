@@ -22,12 +22,25 @@ export const MAP_CONFIGS = {
 };
 
 export const MAP_STYLES = {
+  ISLAND: {
+    key: "island",
+    label: "Đảo Cần Thơ",
+    urls: [],
+    mapType: "standard",
+    useNativeCleanStyle: true,
+    showIslandMask: true,
+    showDistrictBorders: true,
+    showDistrictLabels: true,
+  },
   OSM: {
     key: "osm",
     label: MAP_TEXT.mapConfig.mapStyles.osm,
     urls: [],
     mapType: "standard",
     useNativeCleanStyle: true,
+    showIslandMask: false,
+    showDistrictBorders: false,
+    showDistrictLabels: false,
   },
   HYBRID: {
     key: "hybrid",
@@ -35,10 +48,13 @@ export const MAP_STYLES = {
     urls: [],
     mapType: "hybrid",
     useNativeCleanStyle: false,
+    showIslandMask: false,
+    showDistrictBorders: false,
+    showDistrictLabels: false,
   },
 };
 
-export const DEFAULT_MAP_STYLE = MAP_STYLES.OSM;
+export const DEFAULT_MAP_STYLE = MAP_STYLES.ISLAND;
 
 export const MAP_THEME = {
   PRIMARY: COLORS.primary,

@@ -173,6 +173,9 @@ export function MapScreenCanvas({
           geojson={districtGeo}
           activeArea={activeArea}
           allAreasKey={allAreasKey}
+          showIslandMask={mapStyle?.showIslandMask ?? true}
+          showDistrictBorders={mapStyle?.showDistrictBorders ?? true}
+          showDistrictLabels={mapStyle?.showDistrictLabels ?? true}
         />
 
         {isTripPreviewMode && previewSegments.length > 0

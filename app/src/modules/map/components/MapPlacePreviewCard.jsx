@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { useTranslation } from "react-i18next";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { CATEGORY_COLORS, TOKENS } from "@/constants/design-tokens";
 import { resolvePlaceImageUri } from "@/lib/media-url";

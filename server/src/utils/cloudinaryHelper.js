@@ -80,11 +80,19 @@ const extractPublicIdFromCloudinaryUrl = (imageUrl) => {
   }
 };
 
-export const deleteMapMarkerImage = async (imageUrl) => {
+export const shouldDeleteMapMarkerPublicId = (publicId) =>
+  typeof publicId === "string" && publicId.startsWith("didaugio/markers/");
+
+export const getMapMarkerPublicId = (imageUrl) => {
   const publicId = extractPublicIdFromCloudinaryUrl(imageUrl);
+  return shouldDeleteMapMarkerPublicId(publicId) ? publicId : null;
+};
+
+export const deleteMapMarkerImage = async (imageUrl) => {
+  const publicId = getMapMarkerPublicId(imageUrl);
 
   if (!publicId) {
-    return { result: "skipped", reason: "invalid_marker_url" };
+    return { result: "skipped", reason: "derived_or_invalid_marker_url" };
   }
 
   try {

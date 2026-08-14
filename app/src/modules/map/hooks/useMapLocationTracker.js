@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState } from "react-native";
 import * as Location from "expo-location";
 import { useSharedValue } from "react-native-reanimated";
 import { distanceMeters } from "../utils/distance";
@@ -311,6 +312,23 @@ export function useMapLocationTracker({
       return null;
     }
   }, [publishLocation]);
+
+  useEffect(() => {
+    if (!watchEnabled) return undefined;
+
+    let active = true;
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (!active || nextState !== "active") return;
+
+      // Foreground watchers can pause while the OS suspends the app; refresh immediately on resume.
+      locateNow();
+    });
+
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [locateNow, watchEnabled]);
 
   return {
     currentLocation,

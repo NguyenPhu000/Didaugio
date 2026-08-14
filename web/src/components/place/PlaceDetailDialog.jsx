@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui";
 import {
@@ -27,6 +27,10 @@ import {
   Award,
   ArrowUpRight,
   Volume2,
+  VolumeX,
+  Play,
+  Pause,
+  RotateCcw,
   Briefcase,
   Tag,
   Compass,
@@ -34,13 +38,18 @@ import {
   HelpCircle,
   Radio,
   User,
+  Copy,
+  Check,
+  Sparkles,
+  Layers,
 } from "lucide-react";
 import { BUSINESS_STATUS_LABELS } from "@/constants/businessConstants";
 import { MdiCategoryIcon } from "@/components/category/MdiCategoryIcon";
 import { MapView } from "@/modules/map";
+import { usePlaceDetail } from "@/hooks/queries/usePlaceQueries";
 import { cn } from "@/lib/utils";
 
-// ─── Dynamic Category Icon Component ──────────────────────────────────────────
+// ─── Dynamic Category Icon ──────────────────────────────────────────────────
 
 function CategoryIcon({ icon, className = "w-4 h-4" }) {
   if (!icon) return <Compass className={className} />;
@@ -65,10 +74,6 @@ const PRICE_LABELS_MAP = {
   premium: "Cao cấp",
   LUXURY: "Sang trọng",
   luxury: "Sang trọng",
-  "explore.search.price.free": "Miễn phí",
-  "explore.search.price.budget": "Bình dân",
-  "explore.search.price.midRange": "Vừa phải",
-  "explore.search.price.premium": "Cao cấp",
 };
 
 function formatPriceRange(val) {
@@ -174,41 +179,54 @@ function useCurrentOpenStatus(openingHours) {
   }, [openingHours]);
 }
 
-function StarRow({ value, count }) {
-  const v = Math.min(5, Math.max(0, Number(value) || 0));
+function SectionTitle({ icon: Icon, children }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex gap-0.5">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <svg
-            key={n}
-            className={cn(
-              "w-4 h-4",
-              n <= Math.round(v)
-                ? "fill-amber-400 text-amber-400"
-                : "fill-gray-200 text-gray-200",
-            )}
-            viewBox="0 0 24 24"
-          >
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
-          </svg>
-        ))}
+    <div className="flex items-center gap-2.5 mb-3.5">
+      <div className="w-7 h-7 rounded-xl bg-slate-950 flex items-center justify-center shadow-2xs">
+        <Icon className="w-3.5 h-3.5 text-[#F3E600]" />
       </div>
-      <span className="text-base font-black text-gray-900">{v.toFixed(1)}</span>
-      <span className="text-xs text-gray-500 font-medium">({count ?? 0} đánh giá)</span>
+      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+        {children}
+      </h3>
+      <div className="flex-1 h-px bg-black/[0.04]" />
     </div>
   );
 }
 
-function InfoChip({ icon: Icon, children, href, className }) {
+function InfoChip({ icon: Icon, children, href, className, onCopyText }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e) => {
+    if (!onCopyText) return;
+    e.stopPropagation();
+    e.preventDefault();
+    navigator.clipboard?.writeText?.(onCopyText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+
   const inner = (
-    <div className={cn("flex items-center gap-3 p-3 rounded-xl bg-gray-50/80 border border-gray-100 hover:border-gray-300 hover:bg-gray-100/70 transition-all group", className)}>
-      <div className="w-8 h-8 rounded-lg bg-white border border-gray-200/80 shadow-xs flex items-center justify-center shrink-0">
-        <Icon className="w-4 h-4 text-gray-600 group-hover:text-gray-900 transition-colors" />
+    <div className={cn("flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[#F8F7F3] border border-black/[0.04] hover:bg-[#FAF9F5] hover:border-black/[0.08] transition-all group", className)}>
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="w-8 h-8 rounded-xl bg-white border border-black/[0.05] shadow-2xs flex items-center justify-center shrink-0">
+          <Icon className="w-3.5 h-3.5 text-slate-700 group-hover:text-slate-950 transition-colors" />
+        </div>
+        <span className="text-xs font-medium text-slate-800 leading-snug break-all truncate">{children}</span>
       </div>
-      <span className="text-sm font-medium text-gray-800 leading-snug break-all">{children}</span>
+
+      {onCopyText && (
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-white transition-colors"
+          title="Sao chép"
+        >
+          {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+        </button>
+      )}
     </div>
   );
+
   if (href) {
     return (
       <a
@@ -222,20 +240,6 @@ function InfoChip({ icon: Icon, children, href, className }) {
     );
   }
   return inner;
-}
-
-function SectionTitle({ icon: Icon, children }) {
-  return (
-    <div className="flex items-center gap-2.5 mb-4">
-      <div className="w-7 h-7 rounded-lg bg-gray-900 flex items-center justify-center shadow-xs">
-        <Icon className="w-3.5 h-3.5 text-white" />
-      </div>
-      <h3 className="text-xs font-black uppercase tracking-wider text-gray-900">
-        {children}
-      </h3>
-      <div className="flex-1 h-px bg-gray-200/70" />
-    </div>
-  );
 }
 
 // ─── Image Gallery (Left Panel) ───────────────────────────────────────────────
@@ -256,7 +260,7 @@ function ImageGallery({ images, thumbnail, name, status, isFeatured }) {
   const s = STATUS_CFG[status] || STATUS_CFG.draft;
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 rounded-l-3xl overflow-hidden relative border-r border-slate-800">
+    <div className="flex flex-col h-full bg-slate-950 rounded-l-[32px] overflow-hidden relative border-r border-white/[0.08]">
       {/* Main Preview */}
       <div className="relative flex-1 min-h-0 overflow-hidden group">
         {currentSrc ? (
@@ -289,8 +293,8 @@ function ImageGallery({ images, thumbnail, name, status, isFeatured }) {
             {s.label}
           </div>
           {isFeatured && (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400 text-amber-950 text-[11px] font-black shadow-md border border-amber-300">
-              <Award className="w-3.5 h-3.5 fill-amber-950" /> DỊCH VỤ NỔI BẬT
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F3E600] text-slate-950 text-[11px] font-black shadow-md">
+              <Award className="w-3.5 h-3.5 fill-slate-950" /> DỊCH VỤ NỔI BẬT
             </div>
           )}
         </div>
@@ -306,6 +310,7 @@ function ImageGallery({ images, thumbnail, name, status, isFeatured }) {
         {imgs.length > 1 && (
           <>
             <button
+              type="button"
               onClick={() => setIdx((i) => (i - 1 + imgs.length) % imgs.length)}
               className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-900/70 hover:bg-slate-900 text-white flex items-center justify-center backdrop-blur-md border border-slate-700 transition-all opacity-0 group-hover:opacity-100 shadow-lg"
               title="Ảnh trước"
@@ -313,6 +318,7 @@ function ImageGallery({ images, thumbnail, name, status, isFeatured }) {
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button
+              type="button"
               onClick={() => setIdx((i) => (i + 1) % imgs.length)}
               className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-900/70 hover:bg-slate-900 text-white flex items-center justify-center backdrop-blur-md border border-slate-700 transition-all opacity-0 group-hover:opacity-100 shadow-lg"
               title="Ảnh sau"
@@ -324,7 +330,7 @@ function ImageGallery({ images, thumbnail, name, status, isFeatured }) {
 
         {/* Bottom Name Overlay */}
         <div className="absolute bottom-0 left-0 right-0 p-6 text-white z-10">
-          <h2 className="text-xl font-black tracking-tight leading-snug drop-shadow-md line-clamp-2">
+          <h2 className="text-xl font-extrabold tracking-tight leading-snug drop-shadow-md line-clamp-2">
             {name}
           </h2>
         </div>
@@ -335,12 +341,13 @@ function ImageGallery({ images, thumbnail, name, status, isFeatured }) {
         <div className="h-24 bg-slate-900/90 border-t border-slate-800 p-3 flex gap-2.5 overflow-x-auto scrollbar-thin">
           {imgs.map((img, i) => (
             <button
+              type="button"
               key={i}
               onClick={() => setIdx(i)}
               className={cn(
                 "flex-shrink-0 h-full w-20 rounded-xl overflow-hidden border-2 transition-all relative group",
                 i === idx
-                  ? "border-amber-400 ring-2 ring-amber-400/30 scale-105"
+                  ? "border-[#F3E600] ring-2 ring-[#F3E600]/30 scale-105"
                   : "border-slate-700/80 opacity-60 hover:opacity-100 hover:border-slate-500",
               )}
             >
@@ -350,7 +357,7 @@ function ImageGallery({ images, thumbnail, name, status, isFeatured }) {
                 className="w-full h-full object-cover"
               />
               {img.isCover && (
-                <span className="absolute top-1 left-1 bg-amber-400 text-amber-950 text-[9px] font-black px-1.5 py-0.5 rounded">
+                <span className="absolute top-1 left-1 bg-[#F3E600] text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded">
                   BÌA
                 </span>
               )}
@@ -362,10 +369,99 @@ function ImageGallery({ images, thumbnail, name, status, isFeatured }) {
   );
 }
 
+// ─── Voice Speech Player Hook ─────────────────────────────────────────────────
+
+function useSpeechSynthesizer() {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [currentId, setCurrentId] = useState(null);
+  const [speechRate, setSpeechRate] = useState(1.0);
+
+  const stop = useCallback(() => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlaying(false);
+    setIsPaused(false);
+    setCurrentId(null);
+  }, []);
+
+  const speak = useCallback(
+    (text, id = "main") => {
+      if (typeof window === "undefined" || !window.speechSynthesis) return;
+
+      // If already playing this ID, toggle pause/play
+      if (currentId === id && isPlaying) {
+        if (isPaused) {
+          window.speechSynthesis.resume();
+          setIsPaused(false);
+        } else {
+          window.speechSynthesis.pause();
+          setIsPaused(true);
+        }
+        return;
+      }
+
+      window.speechSynthesis.cancel();
+      if (!text || !text.trim()) return;
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "vi-VN";
+      utterance.rate = speechRate;
+
+      // Select Vietnamese voice if available
+      const voices = window.speechSynthesis.getVoices?.() || [];
+      const viVoice = voices.find((v) => v.lang?.includes("vi") || v.name?.toLowerCase().includes("vietnamese"));
+      if (viVoice) {
+        utterance.voice = viVoice;
+      }
+
+      utterance.onstart = () => {
+        setIsPlaying(true);
+        setIsPaused(false);
+        setCurrentId(id);
+      };
+
+      utterance.onend = () => {
+        setIsPlaying(false);
+        setIsPaused(false);
+        setCurrentId(null);
+      };
+
+      utterance.onerror = () => {
+        setIsPlaying(false);
+        setIsPaused(false);
+        setCurrentId(null);
+      };
+
+      window.speechSynthesis.speak(utterance);
+    },
+    [currentId, isPlaying, isPaused, speechRate],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  return {
+    isPlaying,
+    isPaused,
+    currentId,
+    speechRate,
+    setSpeechRate,
+    speak,
+    stop,
+  };
+}
+
 // ─── Main PlaceDetailDialog Component ─────────────────────────────────────────
 
 const PlaceDetailDialog = ({
-  place,
+  place: initialPlace,
   open,
   onOpenChange,
   onEdit,
@@ -375,7 +471,20 @@ const PlaceDetailDialog = ({
   onViewBusinessDetails,
 }) => {
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Fetch full details if opened to guarantee all sub-relations (aiGuides, faqs, openingHours, services) are loaded
+  const { data: fullDetailRes } = usePlaceDetail(open && initialPlace?.id ? initialPlace.id : null);
+  const place = fullDetailRes?.data || fullDetailRes || initialPlace;
+
   const openStatus = useCurrentOpenStatus(place?.openingHours);
+  const speech = useSpeechSynthesizer();
+
+  // Reset speech when dialog closes
+  useEffect(() => {
+    if (!open) {
+      speech.stop();
+    }
+  }, [open, speech]);
 
   if (!place) return null;
 
@@ -391,20 +500,37 @@ const PlaceDetailDialog = ({
     ? place.tagLinks.map((l) => l.tag).filter(Boolean)
     : place.tags || [];
 
-  const services = place.services || [];
+  const services = place.services || place.businessServices || [];
 
-  // Resolve Spoken Guide details
-  const spokenGuideObj =
-    place.spokenGuide || (place.aiGuides && place.aiGuides[0]) || null;
+  // Robustly resolve Spoken Guide and FAQs across all data shapes
+  let spokenGuideObj = place.spokenGuide || (place.aiGuides && place.aiGuides[0]) || null;
+  if (typeof spokenGuideObj === "string") {
+    try {
+      spokenGuideObj = JSON.parse(spokenGuideObj);
+    } catch {
+      spokenGuideObj = { text: spokenGuideObj, faqs: [] };
+    }
+  }
+
   const spokenText =
     spokenGuideObj?.text ||
-    (typeof place.spokenGuide === "string" ? place.spokenGuide : null);
-  const spokenFaqs = spokenGuideObj?.faqs || [];
+    (typeof place.spokenGuide === "string" ? place.spokenGuide : null) ||
+    "";
+
+  const spokenFaqs = Array.isArray(spokenGuideObj?.faqs)
+    ? spokenGuideObj.faqs
+    : Array.isArray(place.faqs)
+      ? place.faqs
+      : Array.isArray(place.aiGuides?.[0]?.faqs)
+        ? place.aiGuides[0].faqs
+        : [];
+
   const audioUrl =
     place.spokenGuideUrl ||
     place.audioGuide ||
     spokenGuideObj?.audioUrl ||
     null;
+
   const hasSpokenGuide = Boolean(spokenText || spokenFaqs.length > 0 || audioUrl);
 
   const TABS = [
@@ -413,6 +539,7 @@ const PlaceDetailDialog = ({
       id: "spokenGuide",
       label: `Thuyết minh & FAQs ${hasSpokenGuide ? "🎙️" : ""}`,
       icon: Volume2,
+      badge: spokenFaqs.length > 0 ? `${spokenFaqs.length} FAQs` : undefined,
     },
     {
       id: "services",
@@ -426,13 +553,13 @@ const PlaceDetailDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[1180px] w-full h-[92vh] max-h-[92vh] p-0 gap-0 overflow-hidden rounded-3xl border border-gray-200/90 bg-white shadow-2xl">
+      <DialogContent className="max-w-[1240px] w-full h-[92vh] max-h-[92vh] p-0 gap-0 overflow-hidden rounded-[32px] border border-black/[0.06] bg-white shadow-[0_20px_70px_rgba(0,0,0,0.15)]">
         <DialogTitle className="sr-only">
           {place.name} - Thông tin chi tiết địa điểm
         </DialogTitle>
         <div className="flex h-full overflow-hidden">
           {/* ═══ LEFT PANEL: Image Gallery ═══ */}
-          <div className="w-[420px] flex-shrink-0 flex flex-col overflow-hidden hidden md:flex">
+          <div className="w-[440px] flex-shrink-0 flex flex-col overflow-hidden hidden md:flex">
             <ImageGallery
               images={place.images}
               thumbnail={place.thumbnail}
@@ -445,27 +572,27 @@ const PlaceDetailDialog = ({
           {/* ═══ RIGHT PANEL: Information Workspace ═══ */}
           <div className="flex-1 flex flex-col overflow-hidden bg-white">
             {/* ── Header Area ── */}
-            <div className="px-8 pt-6 pb-5 border-b border-gray-100 flex-shrink-0 bg-white">
+            <div className="px-8 pt-6 pb-4 border-b border-black/[0.04] flex-shrink-0 bg-white">
               {/* Category & Status badges */}
-              <div className="flex flex-wrap items-center gap-2 mb-3">
+              <div className="flex flex-wrap items-center gap-2 mb-2.5">
                 {place.category?.name && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-gray-900 text-white shadow-xs">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-950 text-white shadow-2xs">
                     <CategoryIcon
                       icon={place.category.icon}
-                      className="w-3.5 h-3.5 text-amber-400 shrink-0"
+                      className="w-3.5 h-3.5 text-[#F3E600] shrink-0"
                     />
                     {place.category.name}
                   </span>
                 )}
                 {place.isVerified && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" /> Đã xác minh chính chủ
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200 shadow-2xs">
+                    <ShieldCheck className="w-3.5 h-3.5 text-sky-600" /> Đã xác minh chính chủ
                   </span>
                 )}
                 {priceInfo && (
                   <span
                     className={cn(
-                      "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border",
+                      "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-2xs",
                       priceInfo.cls,
                     )}
                   >
@@ -475,93 +602,100 @@ const PlaceDetailDialog = ({
               </div>
 
               {/* Title */}
-              <h1 className="text-2xl font-black text-gray-900 leading-tight tracking-tight mb-2">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-950 leading-tight tracking-tight mb-2">
                 {place.name}
               </h1>
 
               {/* Short Tagline / Description */}
               {place.shortDescription && (
-                <p className="text-sm text-gray-600 italic mb-4 line-clamp-2 leading-relaxed">
+                <p className="text-xs text-slate-500 italic mb-4 line-clamp-2 leading-relaxed font-medium">
                   "{place.shortDescription}"
                 </p>
               )}
 
               {/* KPI Strip */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200/70 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-amber-400 text-amber-950 flex items-center justify-center shrink-0 shadow-xs">
-                    <Star className="w-5 h-5 fill-amber-950" />
+                <div className="p-3.5 rounded-2xl bg-[#FFFDE6] border border-[#F3E600]/80 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-slate-950 text-[#F3E600] flex items-center justify-center shrink-0 shadow-2xs">
+                    <Star className="w-4 h-4 fill-[#F3E600]" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-amber-900/60 uppercase tracking-widest">Đánh giá</p>
-                    <p className="text-sm font-black text-amber-950">{rating.toFixed(1)} <span className="text-xs font-normal text-amber-800">({place.ratingCount || 0})</span></p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Đánh giá</p>
+                    <p className="text-xs font-mono font-bold text-slate-950 tabular-nums">
+                      {rating.toFixed(1)} <span className="text-[11px] font-normal text-slate-500">({place.ratingCount || 0})</span>
+                    </p>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-200/70 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <Eye className="w-5 h-5" />
+                <div className="p-3.5 rounded-2xl bg-[#F8F7F3] border border-black/[0.04] flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-white border border-black/[0.04] text-slate-800 flex items-center justify-center shrink-0 shadow-2xs">
+                    <Eye className="w-4 h-4 text-slate-700" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-blue-900/60 uppercase tracking-widest">Lượt xem</p>
-                    <p className="text-sm font-black text-blue-950">{(place.viewCount || 0).toLocaleString()}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lượt xem</p>
+                    <p className="text-xs font-mono font-bold text-slate-950 tabular-nums">{(place.viewCount || 0).toLocaleString()}</p>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/70 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <Clock className="w-5 h-5" />
+                <div className="p-3.5 rounded-2xl bg-[#F8F7F3] border border-black/[0.04] flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-white border border-black/[0.04] text-slate-800 flex items-center justify-center shrink-0 shadow-2xs">
+                    <Clock className="w-4 h-4 text-slate-700" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-emerald-900/60 uppercase tracking-widest">Trạng thái mở</p>
-                    <p className="text-xs font-black text-emerald-950 truncate">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trạng thái mở</p>
+                    <p className="text-xs font-bold text-slate-950 truncate flex items-center gap-1.5">
+                      <span className={cn("size-1.5 rounded-full", openStatus.open ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
                       {openStatus.open ? "Đang mở cửa" : "Đã đóng cửa"}
                     </p>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-purple-50/80 border border-purple-200/70 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <Navigation className="w-5 h-5" />
+                <div className="p-3.5 rounded-2xl bg-[#F8F7F3] border border-black/[0.04] flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-white border border-black/[0.04] text-slate-800 flex items-center justify-center shrink-0 shadow-2xs">
+                    <Navigation className="w-4 h-4 text-slate-700" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-purple-900/60 uppercase tracking-widest">Quận / Huyện</p>
-                    <p className="text-xs font-black text-purple-950 truncate">{place.district?.name || "Cần Thơ"}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quận / Huyện</p>
+                    <p className="text-xs font-bold text-slate-950 truncate">{place.district?.name || "Cần Thơ"}</p>
                   </div>
                 </div>
               </div>
 
               {/* Moderation & Edit Actions */}
               {(onEdit || onApprove || onReject || onDelete) && (
-                <div className="flex items-center gap-2 pt-3 border-t border-gray-100 flex-wrap">
+                <div className="flex items-center gap-2 pt-3 border-t border-black/[0.03] flex-wrap">
                   {onEdit && (
                     <button
+                      type="button"
                       onClick={() => onEdit(place)}
-                      className="inline-flex items-center gap-2 h-9 px-4 text-xs font-bold bg-gray-900 hover:bg-gray-800 text-white rounded-xl transition-all shadow-xs"
+                      className="inline-flex items-center gap-2 h-9 px-4 text-xs font-bold bg-slate-950 hover:bg-black text-white rounded-full transition-all shadow-2xs"
                     >
                       <Edit className="w-3.5 h-3.5" /> Chỉnh sửa thông tin
                     </button>
                   )}
                   {onApprove && place.status === "pending" && (
                     <button
+                      type="button"
                       onClick={() => onApprove(place)}
-                      className="inline-flex items-center gap-2 h-9 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-xs"
+                      className="inline-flex items-center gap-2 h-9 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-full transition-all shadow-2xs"
                     >
                       <CheckCircle className="w-3.5 h-3.5" /> Duyệt địa điểm
                     </button>
                   )}
                   {onReject && place.status === "pending" && (
                     <button
+                      type="button"
                       onClick={() => onReject(place)}
-                      className="inline-flex items-center gap-2 h-9 px-4 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition-all shadow-xs"
+                      className="inline-flex items-center gap-2 h-9 px-4 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-full transition-all shadow-2xs"
                     >
                       <XCircle className="w-3.5 h-3.5" /> Từ chối hồ sơ
                     </button>
                   )}
                   {onDelete && (
                     <button
+                      type="button"
                       onClick={() => onDelete(place)}
-                      className="ml-auto h-9 px-3.5 inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-all"
+                      className="ml-auto h-9 px-3.5 inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-all"
                       title="Xóa địa điểm khỏi hệ thống"
                     >
                       <Trash2 className="w-3.5 h-3.5" /> Xóa
@@ -572,45 +706,51 @@ const PlaceDetailDialog = ({
             </div>
 
             {/* ── Navigation Tab Bar ── */}
-            <div className="flex border-b border-gray-200/80 bg-gray-50/90 flex-shrink-0 px-4 overflow-x-auto">
-              {TABS.map(({ id, label, icon: Icon }) => (
+            <div className="flex border-b border-black/[0.04] bg-[#FAF9F5] flex-shrink-0 px-4 gap-1 overflow-x-auto">
+              {TABS.map(({ id, label, icon: Icon, badge }) => (
                 <button
+                  type="button"
                   key={id}
                   onClick={() => setActiveTab(id)}
                   className={cn(
-                    "flex items-center gap-2 px-5 py-3 text-xs font-bold transition-all border-b-2 -mb-px whitespace-nowrap",
+                    "flex items-center gap-2 px-4 py-3 text-xs font-bold transition-all border-b-2 -mb-px whitespace-nowrap",
                     activeTab === id
-                      ? "border-gray-900 text-gray-900 bg-white rounded-t-xl shadow-2xs font-extrabold"
-                      : "border-transparent text-gray-500 hover:text-gray-900 hover:bg-white/60",
+                      ? "border-slate-950 text-slate-950 bg-white rounded-t-xl font-extrabold shadow-2xs"
+                      : "border-transparent text-slate-500 hover:text-slate-900 hover:bg-white/40",
                   )}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3.5 h-3.5" />
                   {label}
+                  {badge && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-[#FFFDE6] text-slate-950 border border-[#F3E600] text-[9.5px] font-mono">
+                      {badge}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
 
             {/* ── Scrollable Tab Content ── */}
             <ScrollArea className="flex-1 min-h-0 bg-white">
-              <div className="p-8 space-y-8">
+              <div className="p-8 space-y-8 text-slate-900">
                 {/* ═══ OVERVIEW TAB ═══ */}
                 {activeTab === "overview" && (
                   <>
                     {/* Business Owner Card */}
                     {place.business?.id && (
-                      <div className="p-5 rounded-2xl border-2 border-amber-300/90 bg-gradient-to-r from-amber-50 to-orange-50/40 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="p-5 rounded-3xl border border-[#F3E600]/80 bg-[#FFFDE6] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex gap-4 items-start min-w-0">
-                          <div className="w-12 h-12 rounded-2xl bg-white border border-amber-300 shadow-sm flex items-center justify-center shrink-0">
-                            <Building2 className="w-6 h-6 text-amber-800" />
+                          <div className="w-12 h-12 rounded-2xl bg-white border border-[#F3E600] shadow-2xs flex items-center justify-center shrink-0">
+                            <Building2 className="w-6 h-6 text-slate-950" />
                           </div>
                           <div className="min-w-0">
-                            <span className="text-[10px] font-black text-amber-900/70 uppercase tracking-widest">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                               Doanh nghiệp sở hữu
                             </span>
-                            <h4 className="text-base font-black text-gray-900 truncate">
+                            <h4 className="text-sm font-extrabold text-slate-950 truncate">
                               {place.business.businessName || "Doanh nghiệp đối tác"}
                             </h4>
-                            <div className="flex items-center gap-3 mt-1 text-xs text-amber-900/90">
+                            <div className="flex items-center gap-3 mt-1 text-xs text-slate-600">
                               <span>MST: <strong>{place.business.taxCode || "Chưa cập nhật"}</strong></span>
                               <span>·</span>
                               <span>Trạng thái: <strong>{BUSINESS_STATUS_LABELS[place.business.status] || place.business.status || "Hoạt động"}</strong></span>
@@ -621,9 +761,9 @@ const PlaceDetailDialog = ({
                           <button
                             type="button"
                             onClick={() => onViewBusinessDetails(place.business.id)}
-                            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border-2 border-amber-900 bg-white px-4 py-2 text-xs font-black text-amber-950 hover:bg-amber-100 transition-all shadow-xs"
+                            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-black/[0.1] bg-white px-4 py-2 text-xs font-bold text-slate-950 hover:bg-[#FAF9F5] transition-all shadow-2xs"
                           >
-                            Chi tiết Doanh nghiệp <ArrowUpRight className="w-4 h-4" />
+                            Chi tiết Doanh nghiệp <ArrowUpRight className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
@@ -631,52 +771,52 @@ const PlaceDetailDialog = ({
 
                     {/* Information Grid Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="p-4 bg-gray-50/80 rounded-2xl border border-gray-100 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 shadow-2xs flex items-center justify-center shrink-0">
-                          <CategoryIcon icon={place.category?.icon} className="w-5 h-5 text-gray-800" />
+                      <div className="p-4 bg-[#F8F7F3] rounded-2xl border border-black/[0.04] flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white border border-black/[0.04] shadow-2xs flex items-center justify-center shrink-0">
+                          <CategoryIcon icon={place.category?.icon} className="w-4 h-4 text-slate-800" />
                         </div>
                         <div>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Danh mục chính</p>
-                          <p className="text-sm font-black text-gray-900 mt-0.5">{place.category?.name || "Chưa phân loại"}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Danh mục chính</p>
+                          <p className="text-xs font-bold text-slate-950 mt-0.5">{place.category?.name || "Chưa phân loại"}</p>
                         </div>
                       </div>
 
-                      <div className="p-4 bg-gray-50/80 rounded-2xl border border-gray-100 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 shadow-2xs flex items-center justify-center shrink-0">
-                          <Compass className="w-5 h-5 text-gray-700" />
+                      <div className="p-4 bg-[#F8F7F3] rounded-2xl border border-black/[0.04] flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white border border-black/[0.04] shadow-2xs flex items-center justify-center shrink-0">
+                          <Compass className="w-4 h-4 text-slate-800" />
                         </div>
                         <div>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Khu vực hành chính</p>
-                          <p className="text-sm font-black text-gray-900 mt-0.5">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Khu vực hành chính</p>
+                          <p className="text-xs font-bold text-slate-950 mt-0.5">
                             {[place.ward?.name, place.district?.name, "Cần Thơ"].filter(Boolean).join(", ")}
                           </p>
                         </div>
                       </div>
 
-                      <div className="p-4 bg-gray-50/80 rounded-2xl border border-gray-100 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 shadow-2xs flex items-center justify-center shrink-0">
-                          <DollarSign className="w-5 h-5 text-emerald-600" />
+                      <div className="p-4 bg-[#F8F7F3] rounded-2xl border border-black/[0.04] flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white border border-black/[0.04] shadow-2xs flex items-center justify-center shrink-0">
+                          <DollarSign className="w-4 h-4 text-emerald-600" />
                         </div>
                         <div>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Khung giá tham khảo</p>
-                          <p className="text-sm font-black text-gray-900 mt-0.5">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Khung giá tham khảo</p>
+                          <p className="text-xs font-bold text-slate-950 mt-0.5">
                             {formatPriceRange(place.priceRange)}
                           </p>
                           {(place.priceFrom || place.priceTo) && (
-                            <p className="text-xs text-gray-500 font-mono mt-0.5">
+                            <p className="text-[11px] text-slate-400 font-mono mt-0.5 tabular-nums">
                               {place.priceFrom ? new Intl.NumberFormat("vi-VN").format(place.priceFrom) : "0"}đ – {place.priceTo ? new Intl.NumberFormat("vi-VN").format(place.priceTo) : "Không giới hạn"}đ
                             </p>
                           )}
                         </div>
                       </div>
 
-                      <div className="p-4 bg-gray-50/80 rounded-2xl border border-gray-100 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-900 text-white shadow-2xs flex items-center justify-center shrink-0 font-black text-sm">
-                          <User className="w-5 h-5 text-white" />
+                      <div className="p-4 bg-[#F8F7F3] rounded-2xl border border-black/[0.04] flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-slate-950 text-[#F3E600] shadow-2xs flex items-center justify-center shrink-0">
+                          <User className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Người tạo hồ sơ</p>
-                          <p className="text-sm font-black text-gray-900 truncate mt-0.5">{creatorName}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Người tạo hồ sơ</p>
+                          <p className="text-xs font-bold text-slate-950 truncate mt-0.5">{creatorName}</p>
                         </div>
                       </div>
                     </div>
@@ -684,7 +824,7 @@ const PlaceDetailDialog = ({
                     {/* Detailed Description */}
                     <div>
                       <SectionTitle icon={FileText}>Mô tả chi tiết</SectionTitle>
-                      <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line bg-gray-50/80 rounded-2xl p-6 border border-gray-200/70 font-sans">
+                      <div className="text-xs text-slate-700 leading-relaxed whitespace-pre-line bg-[#F8F7F3] rounded-3xl p-6 border border-black/[0.04] font-sans">
                         {place.description || place.shortDescription || "Địa điểm chưa cập nhật bài viết mô tả chi tiết."}
                       </div>
                     </div>
@@ -694,23 +834,27 @@ const PlaceDetailDialog = ({
                       <SectionTitle icon={Phone}>Thông tin liên hệ & Mạng xã hội</SectionTitle>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {place.address && (
-                          <InfoChip icon={MapPin} className="col-span-1 sm:col-span-2">
+                          <InfoChip
+                            icon={MapPin}
+                            className="col-span-1 sm:col-span-2"
+                            onCopyText={`${place.address}${place.ward ? `, ${place.ward.name}` : ""}${place.district ? `, ${place.district.name}` : ""}, Cần Thơ`}
+                          >
                             {place.address}{place.ward ? `, ${place.ward.name}` : ""}{place.district ? `, ${place.district.name}` : ""}, Cần Thơ
                           </InfoChip>
                         )}
                         {phone && (
-                          <InfoChip icon={Phone} href={`tel:${phone}`}>
-                            <span className="font-bold text-blue-600">{phone}</span>
+                          <InfoChip icon={Phone} href={`tel:${phone}`} onCopyText={phone}>
+                            <span className="font-bold text-slate-950 font-mono">{phone}</span>
                           </InfoChip>
                         )}
                         {place.email && (
-                          <InfoChip icon={Mail} href={`mailto:${place.email}`}>
-                            <span className="font-semibold text-blue-600 truncate">{place.email}</span>
+                          <InfoChip icon={Mail} href={`mailto:${place.email}`} onCopyText={place.email}>
+                            <span className="font-semibold text-slate-900 truncate">{place.email}</span>
                           </InfoChip>
                         )}
                         {place.website && (
                           <InfoChip icon={Globe} href={place.website}>
-                            <span className="font-semibold text-blue-600 flex items-center gap-1 truncate">
+                            <span className="font-semibold text-slate-900 flex items-center gap-1 truncate">
                               {place.website.replace(/^https?:\/\//, "")}
                               <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
                             </span>
@@ -731,29 +875,106 @@ const PlaceDetailDialog = ({
                 {/* ═══ SPOKEN GUIDE & FAQS TAB ═══ */}
                 {activeTab === "spokenGuide" && (
                   <>
-                    {/* Audio Guide Banner */}
-                    <div className="p-6 bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 rounded-3xl text-white shadow-lg relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center backdrop-blur-md">
-                          <Volume2 className="w-5 h-5 text-indigo-300" />
+                    {/* Audio Synthesizer Master Banner */}
+                    <div className="p-6 bg-slate-950 rounded-3xl text-white shadow-lg relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-[#F3E600]/10 rounded-full blur-3xl pointer-events-none" />
+                      
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-11 h-11 rounded-2xl bg-white/[0.1] border border-white/[0.15] flex items-center justify-center backdrop-blur-md shadow-2xs">
+                            <Volume2 className="w-5 h-5 text-[#F3E600]" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold tracking-wider text-[#F3E600] uppercase font-mono">
+                                HƯỚNG DẪN VIÊN AI
+                              </span>
+                              {speech.isPlaying && (
+                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#F3E600]/20 text-[#F3E600] text-[9.5px] font-mono animate-pulse">
+                                  <Radio className="w-3 h-3" /> Đang đọc âm thanh...
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="text-base font-extrabold tracking-tight text-white">
+                              Thuyết minh & Trả lời tự động (Voice Assistant)
+                            </h3>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-[10px] font-black tracking-widest text-indigo-300 uppercase">
-                            Hệ Thống Thuyết Minh Tự Động
-                          </span>
-                          <h3 className="text-lg font-black tracking-tight text-white">
-                            Hướng Dẫn Viên Du Lịch AI (Spoken Audio Guide)
-                          </h3>
+
+                        {/* Speech Speed & Controls */}
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 bg-white/[0.08] p-1 rounded-full border border-white/[0.1]">
+                            {[1.0, 1.25, 1.5].map((speed) => (
+                              <button
+                                type="button"
+                                key={speed}
+                                onClick={() => speech.setSpeechRate(speed)}
+                                className={cn(
+                                  "px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold transition-colors",
+                                  speech.speechRate === speed
+                                    ? "bg-[#F3E600] text-slate-950"
+                                    : "text-slate-400 hover:text-white",
+                                )}
+                              >
+                                {speed}x
+                              </button>
+                            ))}
+                          </div>
+
+                          {spokenText && (
+                            <button
+                              type="button"
+                              onClick={() => speech.speak(spokenText, "main")}
+                              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#F3E600] text-slate-950 font-extrabold text-xs hover:bg-[#e6d800] transition-all shadow-md active:scale-95"
+                            >
+                              {speech.currentId === "main" && speech.isPlaying && !speech.isPaused ? (
+                                <>
+                                  <Pause className="w-3.5 h-3.5 fill-slate-950" /> Tạm dừng
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="w-3.5 h-3.5 fill-slate-950" /> Nghe toàn bài
+                                </>
+                              )}
+                            </button>
+                          )}
+
+                          {speech.isPlaying && (
+                            <button
+                              type="button"
+                              onClick={speech.stop}
+                              className="p-2 rounded-full bg-white/[0.1] text-slate-300 hover:text-white hover:bg-white/[0.2] transition-colors"
+                              title="Dừng đọc"
+                            >
+                              <VolumeX className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
-                      <p className="text-xs text-indigo-200/90 leading-relaxed mb-4 max-w-2xl">
-                        Tài liệu thuyết minh tự động giúp khách du lịch lắng nghe bài giới thiệu sâu sắc về văn hóa, lịch sử và nét độc đáo của địa điểm tại Cần Thơ.
-                      </p>
 
+                      {/* Equalizer Visualizer Waves */}
+                      {speech.isPlaying && (
+                        <div className="flex items-center gap-1.5 pt-4">
+                          {[4, 8, 14, 6, 12, 16, 9, 5, 15, 11, 7, 13, 8, 16, 10, 4].map((h, i) => (
+                            <div
+                              key={i}
+                              className="w-1 bg-[#F3E600] rounded-full animate-pulse"
+                              style={{
+                                height: `${speech.isPaused ? 4 : h}px`,
+                                animationDuration: `${0.3 + (i % 5) * 0.15}s`,
+                              }}
+                            />
+                          ))}
+                          <span className="text-[11px] text-[#F3E600] font-mono ml-2">
+                            {speech.isPaused ? "Đang tạm dừng phát âm thanh" : "Đang phát giọng đọc tiếng Việt (vi-VN)..."}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Audio URL Player if exists */}
                       {audioUrl && (
-                        <div className="mt-4 p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/15">
-                          <audio controls className="w-full h-10">
+                        <div className="mt-4 p-3 bg-white/[0.06] backdrop-blur-md rounded-2xl border border-white/[0.1]">
+                          <audio controls className="w-full h-9">
                             <source src={audioUrl} />
                             Trình duyệt không hỗ trợ phát âm thanh trực tiếp.
                           </audio>
@@ -762,49 +983,117 @@ const PlaceDetailDialog = ({
                     </div>
 
                     {/* Spoken Text Content */}
-                    {spokenText ? (
-                      <div>
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
                         <SectionTitle icon={Radio}>Nội dung bài thuyết minh âm thanh</SectionTitle>
-                        <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-6 text-sm text-indigo-950 leading-relaxed whitespace-pre-line font-sans shadow-2xs">
+                        {spokenText && (
+                          <button
+                            type="button"
+                            onClick={() => speech.speak(spokenText, "main")}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800 hover:text-black bg-[#F8F7F3] px-3 py-1 rounded-full border border-black/[0.04]"
+                          >
+                            <Volume2 className="w-3.5 h-3.5 text-[#F3E600]" />
+                            {speech.currentId === "main" && speech.isPlaying && !speech.isPaused ? "Tạm dừng" : "Nghe giọng đọc"}
+                          </button>
+                        )}
+                      </div>
+
+                      {spokenText ? (
+                        <div className="bg-[#F8F7F3] border border-black/[0.04] rounded-3xl p-6 text-xs text-slate-800 leading-relaxed whitespace-pre-line font-sans relative group">
                           {spokenText}
                         </div>
-                      </div>
-                    ) : (
-                      <div className="p-6 bg-gray-50 border border-gray-100 rounded-2xl text-center text-gray-500 text-xs">
-                        Địa điểm chưa cập nhật bài thuyết minh văn bản chi tiết.
-                      </div>
-                    )}
+                      ) : (
+                        <div className="p-8 bg-[#F8F7F3] border border-black/[0.04] rounded-3xl text-center text-slate-400 text-xs font-medium">
+                          Địa điểm chưa cập nhật bài thuyết minh văn bản chi tiết.
+                        </div>
+                      )}
+                    </div>
 
                     {/* FAQs Section */}
-                    {spokenFaqs.length > 0 ? (
-                      <div>
-                        <SectionTitle icon={HelpCircle}>Câu hỏi thường gặp của Khách Du Lịch (FAQs)</SectionTitle>
-                        <div className="space-y-4">
-                          {spokenFaqs.map((faq, idx) => (
-                            <div
-                              key={faq.id || idx}
-                              className="p-5 rounded-2xl bg-white border border-gray-200/80 shadow-2xs hover:border-gray-300 transition-all space-y-2"
-                            >
-                              <div className="flex items-start gap-3">
-                                <div className="w-6 h-6 rounded-lg bg-amber-400 text-amber-950 font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
-                                  Q{idx + 1}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <SectionTitle icon={HelpCircle}>
+                          Câu hỏi thường gặp của Khách Du Lịch (FAQs) {spokenFaqs.length > 0 && `(${spokenFaqs.length})`}
+                        </SectionTitle>
+                      </div>
+
+                      {spokenFaqs.length > 0 ? (
+                        <div className="space-y-3.5">
+                          {spokenFaqs.map((faq, idx) => {
+                            const faqId = `faq-${idx}`;
+                            const isFaqPlaying = speech.currentId === faqId && speech.isPlaying;
+                            const faqTextToRead = `Câu hỏi: ${faq.question}. Trả lời: ${faq.answer}`;
+
+                            return (
+                              <div
+                                key={faq.id || idx}
+                                className={cn(
+                                  "p-5 rounded-3xl bg-white border transition-all space-y-2.5",
+                                  isFaqPlaying
+                                    ? "border-[#F3E600] bg-[#FFFDE6]/40 shadow-sm"
+                                    : "border-black/[0.05] shadow-2xs hover:border-black/[0.1]",
+                                )}
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                                    <div className="w-7 h-7 rounded-xl bg-slate-950 text-[#F3E600] font-mono font-bold text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                                      Q{idx + 1}
+                                    </div>
+                                    <h4 className="text-xs font-extrabold text-slate-950 leading-snug">
+                                      {faq.question}
+                                    </h4>
+                                  </div>
+
+                                  {/* Sound read button per FAQ */}
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => speech.speak(faqTextToRead, faqId)}
+                                      className={cn(
+                                        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-2xs",
+                                        isFaqPlaying
+                                          ? "bg-slate-950 text-[#F3E600]"
+                                          : "bg-[#F8F7F3] border border-black/[0.04] text-slate-700 hover:bg-[#FFFDE6] hover:text-slate-950",
+                                      )}
+                                      title="Nghe câu trả lời này"
+                                    >
+                                      {isFaqPlaying && !speech.isPaused ? (
+                                        <>
+                                          <Pause className="w-3 h-3" /> Đang đọc
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Volume2 className="w-3 h-3 text-[#F3E600]" /> Nghe đọc
+                                        </>
+                                      )}
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        navigator.clipboard?.writeText?.(`Hỏi: ${faq.question}\nĐáp: ${faq.answer}`);
+                                      }}
+                                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                                      title="Sao chép nội dung FAQ"
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
                                 </div>
-                                <h4 className="text-sm font-black text-gray-900 leading-snug">
-                                  {faq.question}
-                                </h4>
+
+                                <div className="pl-10 text-xs text-slate-600 leading-relaxed whitespace-pre-line font-sans border-t border-black/[0.03] pt-2.5">
+                                  {faq.answer}
+                                </div>
                               </div>
-                              <p className="text-xs text-gray-700 leading-relaxed pl-9 whitespace-pre-line font-sans">
-                                {faq.answer}
-                              </p>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
-                      </div>
-                    ) : (
-                      <div className="p-6 bg-gray-50 border border-gray-100 rounded-2xl text-center text-gray-400 text-xs">
-                        Chưa có câu hỏi thường gặp (FAQs) cho địa điểm này.
-                      </div>
-                    )}
+                      ) : (
+                        <div className="p-8 bg-[#F8F7F3] border border-black/[0.04] rounded-3xl text-center text-slate-400 text-xs font-medium">
+                          Chưa có câu hỏi thường gặp (FAQs) cho địa điểm này.
+                        </div>
+                      )}
+                    </div>
                   </>
                 )}
 
@@ -817,17 +1106,17 @@ const PlaceDetailDialog = ({
                         <SectionTitle icon={Briefcase}>Dịch vụ & Sản phẩm ({services.length})</SectionTitle>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {services.map((s, i) => (
-                            <div key={s.id || i} className="p-4 rounded-2xl bg-gray-50 border border-gray-200/80 hover:border-gray-300 transition-all">
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <h4 className="text-sm font-black text-gray-900">{s.name || s.title}</h4>
+                            <div key={s.id || i} className="p-4 rounded-3xl bg-[#F8F7F3] border border-black/[0.04] hover:bg-[#FAF9F5] transition-all">
+                              <div className="flex items-start justify-between gap-2 mb-1.5">
+                                <h4 className="text-xs font-bold text-slate-950">{s.name || s.title}</h4>
                                 {s.price != null && (
-                                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-xs font-extrabold shrink-0">
+                                  <span className="px-2.5 py-0.5 rounded-full bg-[#FFFDE6] text-slate-950 border border-[#F3E600]/80 text-[11px] font-mono font-bold shrink-0 tabular-nums">
                                     {new Intl.NumberFormat("vi-VN").format(s.price)}đ
                                   </span>
                                 )}
                               </div>
                               {s.description && (
-                                <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">{s.description}</p>
+                                <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2">{s.description}</p>
                               )}
                             </div>
                           ))}
@@ -843,12 +1132,12 @@ const PlaceDetailDialog = ({
                           {place.amenities.map((a, i) => (
                             <div
                               key={i}
-                              className="flex items-center gap-2 px-3.5 py-2 bg-emerald-50/70 border border-emerald-200/80 rounded-xl text-xs font-bold text-emerald-950"
+                              className="flex items-center gap-2 px-3.5 py-2 bg-[#F8F7F3] border border-black/[0.04] rounded-2xl text-xs font-bold text-slate-800 shadow-2xs"
                             >
-                              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                               <span>{a.amenityType || a.name || a}</span>
                               {a.amenityValue && (
-                                <span className="text-emerald-700 font-normal">
+                                <span className="text-slate-400 font-normal">
                                   ({a.amenityValue})
                                 </span>
                               )}
@@ -858,9 +1147,9 @@ const PlaceDetailDialog = ({
                       </div>
                     ) : (
                       services.length === 0 && (
-                        <div className="py-16 text-center text-gray-400">
+                        <div className="py-16 text-center text-slate-400">
                           <Briefcase className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                          <p className="text-sm font-semibold">Chưa có thông tin dịch vụ & tiện ích</p>
+                          <p className="text-xs font-semibold">Chưa có thông tin dịch vụ & tiện ích</p>
                         </div>
                       )
                     )}
@@ -873,9 +1162,9 @@ const PlaceDetailDialog = ({
                           {tagList.map((tag, i) => (
                             <span
                               key={i}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-xl shadow-xs"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-950 text-white text-xs font-bold rounded-full shadow-2xs"
                             >
-                              <Hash className="w-3 h-3 text-amber-400" />
+                              <Hash className="w-3 h-3 text-[#F3E600]" />
                               {tag.name || tag}
                             </span>
                           ))}
@@ -892,39 +1181,39 @@ const PlaceDetailDialog = ({
                     {openStatus.known && (
                       <div
                         className={cn(
-                          "flex items-start gap-4 p-5 rounded-2xl border shadow-xs",
+                          "flex items-start gap-4 p-5 rounded-3xl border shadow-2xs",
                           openStatus.open
-                            ? "bg-emerald-50 border-emerald-200"
-                            : "bg-rose-50 border-rose-200",
+                            ? "bg-emerald-50/70 border-emerald-200/80"
+                            : "bg-rose-50/70 border-rose-200/80",
                         )}
                       >
                         <span
                           className={cn(
                             "w-3 h-3 rounded-full mt-1 shrink-0",
                             openStatus.open
-                              ? "bg-emerald-500 animate-pulse"
+                              ? "bg-emerald-500 animate-pulse shadow-[0_0_6px_#10b981]"
                               : "bg-rose-500",
                           )}
                         />
                         <div>
                           <h4
                             className={cn(
-                              "font-black text-base tracking-tight",
-                              openStatus.open ? "text-emerald-900" : "text-rose-900",
+                              "font-extrabold text-sm tracking-tight",
+                              openStatus.open ? "text-emerald-950" : "text-rose-950",
                             )}
                           >
                             {openStatus.open ? "Địa điểm hiện đang mở cửa" : "Địa điểm hiện đã đóng cửa"}
                           </h4>
                           {openStatus.todayHour && !openStatus.todayHour.isClosed && (
-                            <p className="text-sm text-gray-700 mt-1">
+                            <p className="text-xs text-slate-700 mt-1">
                               Giờ mở cửa {DAY_FULL[new Date().getDay()]}:{" "}
-                              <strong className="text-gray-900">
+                              <strong className="text-slate-950 font-mono">
                                 {openStatus.todayHour.openTime?.slice(0, 5)} – {openStatus.todayHour.closeTime?.slice(0, 5)}
                               </strong>
                             </p>
                           )}
                           {openStatus.todayHour?.isClosed && (
-                            <p className="text-sm text-rose-700 mt-1">
+                            <p className="text-xs text-rose-700 mt-1">
                               Hôm nay ({DAY_FULL[new Date().getDay()]}) địa điểm tạm nghỉ.
                             </p>
                           )}
@@ -949,31 +1238,31 @@ const PlaceDetailDialog = ({
                                 <div
                                   key={i}
                                   className={cn(
-                                    "flex items-center justify-between px-5 py-3.5 rounded-2xl transition-all border",
+                                    "flex items-center justify-between px-5 py-3 rounded-2xl transition-all border",
                                     isToday
-                                      ? "bg-gray-900 text-white border-gray-900 shadow-md"
-                                      : "bg-gray-50 hover:bg-gray-100/80 border-gray-100 text-gray-800",
+                                      ? "bg-[#FFFDE6] text-slate-950 border-[#F3E600]/80 shadow-2xs font-extrabold"
+                                      : "bg-[#F8F7F3] hover:bg-[#FAF9F5] border-black/[0.03] text-slate-700",
                                   )}
                                 >
                                   <div className="flex items-center gap-3">
                                     <span
                                       className={cn(
-                                        "w-8 text-xs font-black uppercase tracking-wider",
-                                        isToday ? "text-amber-400" : "text-gray-400",
+                                        "w-8 text-xs font-mono font-bold uppercase tracking-wider",
+                                        isToday ? "text-slate-950" : "text-slate-400",
                                       )}
                                     >
                                       {DAY_SHORT[h.dayOfWeek]}
                                     </span>
-                                    <span className="text-sm font-extrabold">
+                                    <span className="text-xs font-bold">
                                       {DAY_FULL[h.dayOfWeek]}
                                     </span>
                                     {isToday && (
-                                      <span className="text-[10px] bg-amber-400 text-amber-950 font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                                      <span className="text-[9.5px] bg-slate-950 text-[#F3E600] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
                                         Hôm nay
                                       </span>
                                     )}
                                   </div>
-                                  <span className={cn("text-sm font-bold font-mono", h.isClosed ? "text-rose-500" : isToday ? "text-amber-300" : "text-gray-900")}>
+                                  <span className={cn("text-xs font-bold font-mono tabular-nums", h.isClosed ? "text-rose-500" : isToday ? "text-slate-950" : "text-slate-600")}>
                                     {h.isClosed
                                       ? "Tạm đóng cửa"
                                       : `${h.openTime?.slice(0, 5)} – ${h.closeTime?.slice(0, 5)}`}
@@ -984,9 +1273,9 @@ const PlaceDetailDialog = ({
                         </div>
                       </div>
                     ) : (
-                      <div className="py-16 text-center text-gray-400">
+                      <div className="py-16 text-center text-slate-400">
                         <Clock className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                        <p className="text-sm font-semibold">Chưa cập nhật lịch mở cửa tuần</p>
+                        <p className="text-xs font-semibold">Chưa cập nhật lịch mở cửa tuần</p>
                       </div>
                     )}
                   </>
@@ -998,7 +1287,7 @@ const PlaceDetailDialog = ({
                     {place.latitude && place.longitude ? (
                       <>
                         {/* Interactive Digital Map */}
-                        <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+                        <div className="rounded-3xl overflow-hidden border border-black/[0.06] shadow-sm">
                           <div className="h-[300px]">
                             <MapView
                               places={[place]}
@@ -1011,10 +1300,10 @@ const PlaceDetailDialog = ({
                               }}
                             />
                           </div>
-                          <div className="bg-gray-900 px-6 py-3.5 flex items-center justify-between">
+                          <div className="bg-slate-950 px-6 py-3.5 flex items-center justify-between">
                             <div className="flex items-center gap-2 text-xs font-mono">
-                              <MapPin className="w-4 h-4 text-amber-400" />
-                              <span className="text-white font-bold">
+                              <MapPin className="w-4 h-4 text-[#F3E600]" />
+                              <span className="text-white font-bold tabular-nums">
                                 {Number(place.latitude).toFixed(6)}, {Number(place.longitude).toFixed(6)}
                               </span>
                             </div>
@@ -1022,7 +1311,7 @@ const PlaceDetailDialog = ({
                               href={`https://www.google.com/maps/search/?api=1&query=${place.latitude},${place.longitude}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs font-extrabold text-amber-400 hover:text-amber-300 transition-colors"
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#F3E600] hover:underline"
                             >
                               Mở Google Maps <ArrowUpRight className="w-4 h-4" />
                             </a>
@@ -1034,17 +1323,19 @@ const PlaceDetailDialog = ({
                           <SectionTitle icon={Navigation}>Địa chỉ & Tọa độ GPS</SectionTitle>
                           <div className="space-y-3">
                             {place.address && (
-                              <InfoChip icon={MapPin}>{place.address}</InfoChip>
+                              <InfoChip icon={MapPin} onCopyText={place.address}>
+                                {place.address}
+                              </InfoChip>
                             )}
                             {place.ward && (
                               <InfoChip icon={Building2}>
-                                <span className="text-gray-400 text-xs mr-2">Phường / Xã:</span>
+                                <span className="text-slate-400 text-xs mr-2">Phường / Xã:</span>
                                 <strong>{place.ward.name}</strong>
                               </InfoChip>
                             )}
                             {place.district && (
                               <InfoChip icon={Navigation}>
-                                <span className="text-gray-400 text-xs mr-2">Quận / Huyện:</span>
+                                <span className="text-slate-400 text-xs mr-2">Quận / Huyện:</span>
                                 <strong>{place.district.name}</strong>
                               </InfoChip>
                             )}
@@ -1052,9 +1343,9 @@ const PlaceDetailDialog = ({
                         </div>
                       </>
                     ) : (
-                      <div className="py-16 text-center text-gray-400">
+                      <div className="py-16 text-center text-slate-400">
                         <MapPin className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                        <p className="text-sm font-semibold">Chưa cập nhật tọa độ GPS bản đồ</p>
+                        <p className="text-xs font-semibold">Chưa cập nhật tọa độ GPS bản đồ</p>
                       </div>
                     )}
                   </>
@@ -1065,7 +1356,7 @@ const PlaceDetailDialog = ({
                   <>
                     <div>
                       <SectionTitle icon={TrendingUp}>Thông tin quản trị hệ thống</SectionTitle>
-                      <div className="bg-gray-50/80 rounded-2xl p-6 space-y-3 border border-gray-200/80">
+                      <div className="bg-[#F8F7F3] rounded-3xl p-6 space-y-3 border border-black/[0.04]">
                         {[
                           { label: "ID Địa điểm", value: `#${place.id}` },
                           { label: "Định danh Slug", value: place.slug || "—" },
@@ -1092,12 +1383,12 @@ const PlaceDetailDialog = ({
                         ].map(({ label, value }) => (
                           <div
                             key={label}
-                            className="flex items-center justify-between py-2 border-b border-gray-200/60 last:border-0"
+                            className="flex items-center justify-between py-2 border-b border-black/[0.03] last:border-0"
                           >
-                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                               {label}
                             </span>
-                            <span className="text-xs font-mono font-extrabold text-gray-900">
+                            <span className="text-xs font-mono font-bold text-slate-950 tabular-nums">
                               {value}
                             </span>
                           </div>
@@ -1107,12 +1398,12 @@ const PlaceDetailDialog = ({
 
                     {/* Rejection Reason Box */}
                     {place.status === "rejected" && place.rejectionReason && (
-                      <div className="p-5 bg-rose-50 border border-rose-200 rounded-2xl">
+                      <div className="p-5 bg-rose-50 border border-rose-200 rounded-3xl">
                         <div className="flex items-center gap-2 mb-2 text-rose-800">
                           <XCircle className="w-5 h-5 text-rose-600" />
-                          <h4 className="text-xs font-black uppercase tracking-wider">Lý do từ chối hồ sơ</h4>
+                          <h4 className="text-xs font-bold uppercase tracking-wider">Lý do từ chối hồ sơ</h4>
                         </div>
-                        <p className="text-sm text-rose-900 leading-relaxed font-medium">
+                        <p className="text-xs text-rose-900 leading-relaxed font-medium">
                           {place.rejectionReason}
                         </p>
                       </div>

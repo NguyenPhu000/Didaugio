@@ -62,8 +62,8 @@ export const createMomentSchema = z.object({
   imageUrl: z
     .string({ required_error: "Duong dan anh la bat buoc" })
     .min(1, "Duong dan anh khong duoc de trong")
+    .startsWith("data:image/", "Anh khoanh khac phai duoc tai len qua server")
     .max(5000000),
-  imagePublicId: z.string().max(200).optional().nullable(),
 });
 
 export const updateBroadcastSchema = z.object({

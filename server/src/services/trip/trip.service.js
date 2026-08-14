@@ -5,6 +5,11 @@ import { BCRYPT_SALT_ROUNDS } from "../../config/constants.js";
 import { uploadPlaceImage } from "../media/media.service.js";
 import { generateAndSaveTrip } from "./tripAiPlanner.service.js";
 import { assertTripAccess, CAPABILITIES } from "./tripAccessPolicy.service.js";
+import { stageTripCover } from "./tripCoverLifecycle.service.js";
+import {
+  enqueueCloudinaryAssetCleanup,
+  enqueueCloudinaryAssetRollback,
+} from "../media/cloudinaryCleanupJob.service.js";
 
 export { generateAndSaveTrip };
 
@@ -13,12 +18,28 @@ const int = (value, fallback = null) => {
   return Number.isNaN(result) ? fallback : result;
 };
 
-const normalizeCover = async (value) => {
-  if (value == null || value === "") return value;
-  if (typeof value === "string" && value.startsWith("data:image/")) {
-    return (await uploadPlaceImage(value, "didaugio/trips")).secureUrl;
-  }
-  return value;
+const uploadTripCover = (value) => uploadPlaceImage(value, "didaugio/trips");
+
+const enqueueRemovedTripCover = async (tx, trip) => {
+  if (!trip?.coverImagePublicId) return;
+  const remainingReferences = await tx.tripPlan.count({
+    where: { coverImage: trip.coverImage || null },
+  });
+  if (remainingReferences > 0) return;
+  await enqueueCloudinaryAssetCleanup(tx, {
+    aggregate: "TripPlan",
+    aggregateId: trip.id,
+    publicIds: [trip.coverImagePublicId],
+  });
+};
+
+const discardStagedTripCover = async (publicId) => {
+  if (!publicId) return;
+  await enqueueCloudinaryAssetRollback(prisma, {
+    aggregate: "TripPlan",
+    aggregateId: 0,
+    publicIds: [publicId],
+  });
 };
 
 const requestHash = (data) => crypto.createHash("sha256").update(JSON.stringify({
@@ -125,7 +146,27 @@ export const getMyTrips = (userId, query) => makeTripListService().getMyTrips(us
 export async function createTrip(userId, data) {
   const clientRequestId = data.clientRequestId || null;
   const hash = clientRequestId ? requestHash(data) : null;
-  const normalizedCover = await normalizeCover(data.thumbnail);
+
+  const findReplay = async () =>
+    prisma.tripPlan.findUnique({
+      where: { userId_clientRequestId: { userId, clientRequestId } },
+      include: planInclude,
+    });
+
+  if (clientRequestId) {
+    const replay = await findReplay();
+    if (replay) {
+      if (replay.clientRequestHash !== hash) {
+        const error = new Error("Idempotency key Ä‘Ã£ Ä‘Æ°á»£c dÃ¹ng cho ná»™i dung khÃ¡c");
+        error.statusCode = 409;
+        error.errorCode = "TRIP_CREATE_IDEMPOTENCY_CONFLICT";
+        throw error;
+      }
+      return serializeTripPlan(replay);
+    }
+  }
+
+  const stagedCover = await stageTripCover(data.thumbnail, uploadTripCover);
   const execute = async () => prisma.$transaction(async (tx) => {
     if (clientRequestId) {
       const replay = await tx.tripPlan.findUnique({
@@ -150,7 +191,8 @@ export async function createTrip(userId, data) {
         userId,
         title: data.title || "Chuyến đi mới",
         description: data.description || null,
-        coverImage: normalizedCover,
+        coverImage: stagedCover.coverImage,
+        coverImagePublicId: stagedCover.coverImagePublicId,
         startDate,
         endDate,
         totalDays,
@@ -177,24 +219,31 @@ export async function createTrip(userId, data) {
   try {
     return await execute();
   } catch (error) {
-    if (error?.code !== "P2002" || !clientRequestId) throw error;
-    const replay = await prisma.tripPlan.findUnique({
-      where: { userId_clientRequestId: { userId, clientRequestId } },
-      include: planInclude,
-    });
-    if (!replay || replay.clientRequestHash !== hash) {
+    if (error?.code === "P2002" && clientRequestId) {
+      const replay = await findReplay();
+      await discardStagedTripCover(stagedCover.uploadedPublicId);
+      if (replay && replay.clientRequestHash === hash) {
+        return serializeTripPlan(replay);
+      }
+
       const conflict = new Error("Idempotency key conflict");
       conflict.statusCode = 409;
       conflict.errorCode = "TRIP_CREATE_IDEMPOTENCY_CONFLICT";
       throw conflict;
     }
-    return serializeTripPlan(replay);
+
+    await discardStagedTripCover(stagedCover.uploadedPublicId);
+    throw error;
   }
 }
 
 export async function updateTrip(id, userId, data) {
   const plan = await prisma.tripPlan.findUnique({ where: { id } });
   assertTripAccess(userId, plan, CAPABILITIES.EDIT);
+  const stagedCover =
+    data.thumbnail === undefined
+      ? null
+      : await stageTripCover(data.thumbnail, uploadTripCover);
   const totalDays = data.totalDays === undefined ? plan.totalDays : int(data.totalDays, 1);
   if (totalDays < plan.totalDays) {
     const overflow = await prisma.tripStop.count({ where: { tripId: id, dayNumber: { gt: totalDays } } });
@@ -212,27 +261,50 @@ export async function updateTrip(id, userId, data) {
     ...(data.isPublic !== undefined && { isPublic: data.isPublic === true }),
   };
   const status = ({ upcoming: "planned", "in-progress": "active", canceled: "cancelled" })[data.status] || data.status;
-  const updated = await prisma.tripPlan.update({
-    where: { id },
-    data: {
-      ...(data.title !== undefined && { title: data.title }),
-      ...(data.description !== undefined && { description: data.description }),
-      ...(data.startDate && { startDate: new Date(data.startDate) }),
-      ...(data.endDate && { endDate: new Date(data.endDate) }),
-      ...(data.totalDays !== undefined && { totalDays }),
-      ...(status && { status }),
-      ...(data.thumbnail !== undefined && { coverImage: (await normalizeCover(data.thumbnail)) || null }),
-      metadata,
-    },
-    include: planInclude,
-  });
+  const hasCoverChanged = stagedCover && stagedCover.coverImage !== plan.coverImage;
+  const coverImagePublicId =
+    stagedCover?.uploadedPublicId || hasCoverChanged
+      ? stagedCover?.coverImagePublicId || null
+      : plan.coverImagePublicId;
+
+  let updated;
+  try {
+    updated = await prisma.$transaction(async (tx) => {
+      const saved = await tx.tripPlan.update({
+        where: { id },
+        data: {
+          ...(data.title !== undefined && { title: data.title }),
+          ...(data.description !== undefined && { description: data.description }),
+          ...(data.startDate && { startDate: new Date(data.startDate) }),
+          ...(data.endDate && { endDate: new Date(data.endDate) }),
+          ...(data.totalDays !== undefined && { totalDays }),
+          ...(status && { status }),
+          ...(stagedCover && {
+            coverImage: stagedCover.coverImage,
+            coverImagePublicId,
+          }),
+          metadata,
+        },
+        include: planInclude,
+      });
+      if (hasCoverChanged) await enqueueRemovedTripCover(tx, plan);
+      return saved;
+    });
+  } catch (error) {
+    await discardStagedTripCover(stagedCover?.uploadedPublicId);
+    throw error;
+  }
+
   return serializeTripPlan(updated);
 }
 
 export async function deleteTrip(id, userId) {
   const plan = await prisma.tripPlan.findUnique({ where: { id } });
   assertTripAccess(userId, plan, CAPABILITIES.DELETE);
-  await prisma.tripPlan.delete({ where: { id } });
+  await prisma.$transaction(async (tx) => {
+    await tx.tripPlan.delete({ where: { id } });
+    await enqueueRemovedTripCover(tx, plan);
+  });
   return { success: true };
 }
 
@@ -246,6 +318,7 @@ export async function duplicateTrip(id, userId) {
         title: `${source.title} (Bản sao)`,
         description: source.description,
         coverImage: source.coverImage,
+        coverImagePublicId: source.coverImagePublicId,
         startDate: source.startDate,
         endDate: source.endDate,
         totalDays: source.totalDays,

@@ -2,12 +2,17 @@ import prisma from "../../config/prismaClient.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
 import tripService, { TRIP_PLACE_SELECT } from "../trip/trip.service.js";
-import { deletePlaceImage, uploadPlaceImage } from "../media/media.service.js";
+import { uploadPlaceImage } from "../media/media.service.js";
 import { anonymousAiUserRef } from "../adminAi/aiLog.service.js";
 import { RATEABLE_AI_FEATURES } from "../ai/aiFeedbackPolicy.js";
 import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import { applyPlaceBusinessSettings } from "../business/businessSettings.service.js";
 import { toMobileBannerMedia, toMobilePlaceMedia } from "../../utils/mobilePlaceMedia.js";
+import { replaceReviewMediaRecords } from "./reviewMediaLifecycle.service.js";
+import {
+  enqueueCloudinaryAssetCleanup,
+  enqueueCloudinaryAssetRollback,
+} from "../media/cloudinaryCleanupJob.service.js";
 
 const toInt = (value, fallback = null) => {
   const number = parseInt(value, 10);
@@ -580,9 +585,10 @@ export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
     : REVIEW_STATUS.VISIBLE;
 
   let media = [];
+  let transactionResult;
   try {
     media = await uploadReviewMedia(normalizedMedia);
-    const review = await prisma.$transaction(async (tx) => {
+    transactionResult = await prisma.$transaction(async (tx) => {
     const savedReview = await tx.review.upsert({
       where: {
         placeId_userId: {
@@ -613,18 +619,16 @@ export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
       },
     });
 
-    await tx.reviewMedia.deleteMany({ where: { reviewId: savedReview.id } });
-    if (media.length > 0) {
-      await tx.reviewMedia.createMany({
-        data: media.map((item) => ({
-          reviewId: savedReview.id,
-          mediaData: item.mediaData,
-          mediaType: item.mediaType,
-          caption: item.caption,
-          order: item.order,
-        })),
-      });
-    }
+    const oldMediaPublicIds = await replaceReviewMediaRecords(
+      tx,
+      savedReview.id,
+      media,
+    );
+    await enqueueCloudinaryAssetCleanup(tx, {
+      aggregate: "Review",
+      aggregateId: savedReview.id,
+      publicIds: oldMediaPublicIds,
+    });
 
     const aggregate = await tx.review.aggregate({
       where: {
@@ -644,7 +648,7 @@ export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
       },
     });
 
-    return tx.review.findUnique({
+    const review = await tx.review.findUnique({
       where: { id: savedReview.id },
       include: {
         media: {
@@ -659,26 +663,29 @@ export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
         },
       },
     });
-    });
 
-    eventEmitter.emit(EVENTS.REVIEW.CREATED, {
-      reviewId: review.id,
-      placeId,
-      businessId: place.business?.id,
-      userId,
-      rating,
+    return { review };
     });
-
-    return normalizeReviewMediaResponse(review);
   } catch (error) {
-    await Promise.allSettled(
-      media
-        .map((item) => item.publicId)
-        .filter(Boolean)
-        .map((publicId) => deletePlaceImage(publicId)),
-    );
+    await enqueueCloudinaryAssetRollback(prisma, {
+      aggregate: "Review",
+      aggregateId: 0,
+      publicIds: media.map((item) => item.publicId),
+    });
     throw error;
   }
+
+  const { review } = transactionResult;
+
+  eventEmitter.emit(EVENTS.REVIEW.CREATED, {
+    reviewId: review.id,
+    placeId,
+    businessId: place.business?.id,
+    userId,
+    rating,
+  });
+
+  return normalizeReviewMediaResponse(review);
 };
 
 export const getServices = async (query = {}) => {

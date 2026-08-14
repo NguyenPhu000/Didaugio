@@ -12,7 +12,7 @@
   import Animated, { FadeInDown } from "react-native-reanimated";
   import { useLocalSearchParams, useRouter } from "expo-router";
   import { Image } from "expo-image";
-  import { MaterialCommunityIcons } from "@expo/vector-icons";
+  import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
   import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
   import BottomSheet from "@gorhom/bottom-sheet";
   import { useSafeAreaInsets } from "react-native-safe-area-context";

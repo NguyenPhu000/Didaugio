@@ -154,10 +154,11 @@ const getDashboardStats = async () => {
   };
 };
 
-const getActivityTimeline = async () => {
+const getActivityTimeline = async (days = 30) => {
+  const boundedDays = Math.min(Math.max(parseInt(days, 10) || 30, 7), 90);
   const timeline = [];
 
-  for (let i = TIMELINE_DAYS - 1; i >= 0; i--) {
+  for (let i = boundedDays - 1; i >= 0; i--) {
     const date = new Date();
     date.setDate(date.getDate() - i);
     date.setHours(0, 0, 0, 0);
@@ -167,17 +168,23 @@ const getActivityTimeline = async () => {
 
     const dateRange = { gte: date, lt: nextDate };
 
-    const [sessionTouches, auditLogs] = await Promise.all([
+    const [sessionTouches, auditLogs, newPlaces, newUsers, newBookings] = await Promise.all([
       prisma.userSession.count({
         where: { lastUsedAt: dateRange },
       }),
       prisma.auditLog.count({ where: { createdAt: dateRange } }),
+      prisma.place.count({ where: { createdAt: dateRange, deletedAt: null } }),
+      prisma.user.count({ where: { createdAt: dateRange, deletedAt: null } }),
+      prisma.booking ? prisma.booking.count({ where: { createdAt: dateRange } }).catch(() => 0) : 0,
     ]);
 
     timeline.push({
       date: date.toISOString().split("T")[0],
       logins: sessionTouches,
       activities: auditLogs,
+      places: newPlaces,
+      users: newUsers,
+      bookings: newBookings,
     });
   }
 

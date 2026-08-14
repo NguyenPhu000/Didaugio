@@ -4,7 +4,7 @@ import { Info, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MapView } from "@/modules/map";
-import * as turf from "@turf/turf";
+import turfCentroid from "@turf/centroid";
 
 const MapBoundaryPicker = ({ onSelect, className }) => {
   const { t } = useTranslation();
@@ -17,7 +17,7 @@ const MapBoundaryPicker = ({ onSelect, className }) => {
       // Calculate centroid client-side using Turf
       // feature is a GeoJSON feature
       try {
-        const centroid = turf.centroid(feature);
+        const centroid = turfCentroid(feature);
         const [longitude, latitude] = centroid.geometry.coordinates;
 
         const info = {

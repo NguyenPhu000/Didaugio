@@ -99,16 +99,13 @@ export const serializeBusiness = (business, options = {}) => {
     // Include bankName (not sensitive)
     bankName: business.bankName || null,
     // Document presence flags — boolean, no URLs exposed
-    hasIdCardFront: docTypes.has("id_card_front") || Boolean(idCardFront),
-    hasIdCardBack: docTypes.has("id_card_back") || Boolean(idCardBack),
-    hasBusinessLicense: docTypes.has("business_license") || Boolean(businessLicense),
+    hasIdCardFront: docTypes.has("id_card_front"),
+    hasIdCardBack: docTypes.has("id_card_back"),
+    hasBusinessLicense: docTypes.has("business_license"),
   };
 
-  // Include document URLs only for authorized contexts (owner viewing own profile)
+  // Authorized responses receive encrypted-storage metadata, never document URLs.
   if (includeDocumentUrls) {
-    result.idCardFront = getDecryptedValue(idCardFront);
-    result.idCardBack = getDecryptedValue(idCardBack);
-    result.businessLicense = getDecryptedValue(businessLicense);
     if (sensitiveDocuments) {
       result.sensitiveDocuments = sensitiveDocuments.map((doc) => ({
         id: doc.id,
@@ -149,8 +146,11 @@ export const mapBusinessDataToPrisma = (data) => {
     taxCode,
     idCardNumber,
     idCardFront,
+    idCardFrontPublicId,
     idCardBack,
+    idCardBackPublicId,
     businessLicense,
+    businessLicensePublicId,
     fullName,
     phone,
     address,
@@ -164,6 +164,12 @@ export const mapBusinessDataToPrisma = (data) => {
   void approvedAt;
   void rejectionReason;
   void status;
+  void idCardFrontPublicId;
+  void idCardBackPublicId;
+  void businessLicensePublicId;
+  void idCardFront;
+  void idCardBack;
+  void businessLicense;
 
   // Helper to encrypt if encryption key is configured
   const encryptIfConfigured = (value) => {
@@ -190,21 +196,6 @@ export const mapBusinessDataToPrisma = (data) => {
     }),
     ...(idCardNumber !== undefined && {
       idCardNumber: encryptIfConfigured(sanitizeDigits(idCardNumber)),
-    }),
-    ...(idCardFront !== undefined && {
-      idCardFront: sanitizeOptionalNullable(idCardFront, {
-        collapseWhitespace: false,
-      }),
-    }),
-    ...(idCardBack !== undefined && {
-      idCardBack: sanitizeOptionalNullable(idCardBack, {
-        collapseWhitespace: false,
-      }),
-    }),
-    ...(businessLicense !== undefined && {
-      businessLicense: sanitizeOptionalNullable(businessLicense, {
-        collapseWhitespace: false,
-      }),
     }),
     ...(bankAccountNumber !== undefined && {
       bankAccount: encryptIfConfigured(sanitizeBankAccount(bankAccountNumber)),

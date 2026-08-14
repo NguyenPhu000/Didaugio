@@ -194,34 +194,14 @@ export async function runMigrationAudit({
   return driftSql;
 }
 
-const ALLOWED_RAW_SQL_DRIFT = new Set([
-  'ALTER TABLE "administrative_ward_boundaries" DROP CONSTRAINT "administrative_ward_boundarie_dataset_release_id_ward_code_fkey"',
-  'ALTER TABLE "province_boundaries" DROP CONSTRAINT "province_boundaries_dataset_release_id_province_code_fkey"',
-  'DROP INDEX "ward_records_search_trgm_idx"',
-  'DROP INDEX "province_records_search_trgm_idx"',
-  'DROP INDEX "idx_places_name_trgm"',
-  'DROP INDEX "idx_places_description_trgm"',
-  'DROP TABLE "administrative_ward_boundaries"',
-  'DROP TABLE "province_boundaries"',
-]);
-
 export function assertOnlyAllowedRawSqlDrift(sql) {
   const statements = String(sql)
     .replace(/^\s*--.*$/gmu, "")
     .split(";")
     .map((value) => value.trim())
     .filter(Boolean);
-  const normalizedStatements = statements.map((statement) => statement.replace(/\s+/gu, " "));
-  for (const [index, normalized] of normalizedStatements.entries()) {
-    if (!ALLOWED_RAW_SQL_DRIFT.has(normalized)) {
-      throw new Error(`Managed schema drift detected: ${statements[index]}`);
-    }
-  }
-  if (normalizedStatements.length !== ALLOWED_RAW_SQL_DRIFT.size
-      || new Set(normalizedStatements).size !== ALLOWED_RAW_SQL_DRIFT.size) {
-    throw new Error(
-      `Managed schema drift detected: expected exactly ${ALLOWED_RAW_SQL_DRIFT.size} unique preserved raw SQL statements`,
-    );
+  if (statements.length > 0) {
+    throw new Error(`Managed schema drift detected: ${statements[0]}`);
   }
   return statements;
 }

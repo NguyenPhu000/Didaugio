@@ -199,105 +199,91 @@ export default function CategoryManagementPage() {
   };
 
   return (
-    <div className="min-h-screen p-8 bg-background relative">
-      {/* Enhanced grid background with dots */}
-      <div className="absolute inset-0 bg-grid-dots opacity-60 pointer-events-none"></div>
-      <div className="absolute inset-0 bg-grid-lines opacity-20 pointer-events-none"></div>
-
-      <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-black pb-8">
-          <div className="flex items-start gap-4">
-            <div className="w-1.5 h-16 bg-yellow-400"></div>
-            <div>
-              <h1 className="text-4xl md:text-5xl uppercase font-black tracking-tight mb-2">
-                {t("categories.title")}
-              </h1>
-              <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-1">
-                <span className="bg-black text-white px-2.5 py-0.5 text-xs font-mono font-bold tracking-widest uppercase">
-                  TAXONOMY // CATEGORIES
-                </span>
-                <span className="text-gray-500 font-mono text-xs font-bold tracking-widest uppercase">
-                  {t("categories.subtitle")}
-                </span>
-              </div>
-            </div>
+    <div className="space-y-6 text-slate-900 antialiased selection:bg-[#F3E600] selection:text-slate-950 max-w-[1560px] mx-auto">
+      {/* Editorial Header */}
+      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-black/[0.04]">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-[#F3E600] shadow-[0_0_6px_#F3E600]" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Phân loại & Danh mục Địa điểm
+            </span>
           </div>
-          <div className="flex gap-4 shrink-0 mt-4 md:mt-0">
-            <button
-              onClick={handleRefresh}
-              className="h-12 w-12 flex items-center justify-center border border-black bg-white hover:bg-gray-100 transition-colors"
-            >
-              <RefreshCw
-                className={`h-5 w-5 text-black ${isLoading ? "animate-spin" : ""}`}
-              />
-            </button>
-            <button
-              onClick={handleAddRoot}
-              className="h-12 px-6 flex items-center gap-2 border border-black bg-black text-white font-mono text-sm font-bold tracking-widest uppercase hover:bg-yellow-400 hover:text-black transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              {t("categories.createRoot")}
-            </button>
-          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
+            {t("categories.title")}
+          </h1>
+          <p className="text-xs text-slate-500 font-medium">
+            {t("categories.subtitle")}
+          </p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-8">
-          <TimStatsCard
-            title={t("categories.stats.total")}
-            value={actualTotalCategories}
-            icon={FolderTree}
-            serial="CAT-001"
-          />
-          <TimStatsCard
-            title={t("categories.stats.active")}
-            value={actualActiveCount}
-            icon={Eye}
-            serial="CAT-002"
-            textColor="text-emerald-500"
-          />
-          <TimStatsCard
-            title={t("categories.stats.hidden")}
-            value={actualHiddenCount}
-            icon={EyeOff}
-            serial="CAT-003"
-            textColor="text-gray-400"
-          />
-          <TimStatsCard
-            title={t("categories.stats.totalPlaces")}
-            value={filteredFlatCategories.reduce(
-              (acc, curr) => acc + (curr._count?.places || 0),
-              0
-            )}
-            icon={MapPin}
-            serial="CAT-004"
-            color="bg-yellow-50"
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className="h-10 w-10 rounded-full bg-white text-slate-900 hover:bg-[#F4F2EC] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/[0.04] transition-all flex items-center justify-center shrink-0 active:scale-95"
+            title="Đồng bộ lại"
+          >
+            <RefreshCw className={`h-4 w-4 text-slate-800 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleAddRoot}
+            className="h-10 px-5 rounded-full bg-slate-950 hover:bg-black text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 active:scale-95"
+          >
+            <Plus className="h-4 w-4 text-[#F3E600]" />
+            <span>{t("categories.createRoot")}</span>
+          </button>
+        </div>
+      </header>
+
+      {/* Stats Cards Strip */}
+      <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <TimStatsCard
+          title={t("categories.stats.total")}
+          value={actualTotalCategories}
+          icon={FolderTree}
+        />
+        <TimStatsCard
+          title={t("categories.stats.active")}
+          value={actualActiveCount}
+          icon={Eye}
+        />
+        <TimStatsCard
+          title={t("categories.stats.hidden")}
+          value={actualHiddenCount}
+          icon={EyeOff}
+        />
+        <TimStatsCard
+          title={t("categories.stats.totalPlaces")}
+          value={filteredFlatCategories.reduce(
+            (acc, curr) => acc + (curr._count?.places || 0),
+            0
+          )}
+          icon={MapPin}
+        />
+      </section>
+
+      {/* Search & Filters */}
+      <section className="bg-white rounded-2xl border border-black/[0.04] p-3 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder={t("categories.searchPlaceholder")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-10 pl-10 pr-4 bg-[#F8F7F3] rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F3E600] placeholder:text-slate-400 transition-all border border-transparent focus:border-[#F3E600]/50"
           />
         </div>
 
-        {/* Search & Filter - Consolidated Bar */}
-        <div className="flex flex-col md:flex-row w-full border border-black bg-white min-h-[56px] shadow-sm mt-8">
-          {/* Search Input */}
-          <div className="flex flex-1 border-b md:border-b-0 md:border-r border-black group">
-            <div className="h-full w-14 bg-black flex items-center justify-center shrink-0">
-              <Search className="h-5 w-5 text-white" />
-            </div>
-            <input
-              type="text"
-              placeholder={t("categories.searchPlaceholder")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 bg-zinc-50 px-4 font-mono text-sm uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400 transition-colors"
-            />
-          </div>
-
-          {/* Root Filter segment */}
-          <div className="flex relative border-b md:border-b-0 md:border-r border-black md:w-64">
+        <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap">
+          <div className="relative w-full md:w-56">
             <select
               value={selectedRootFilter}
               onChange={(e) => setSelectedRootFilter(e.target.value)}
-              className="w-full h-full px-4 appearance-none outline-none font-mono text-xs uppercase cursor-pointer bg-white z-10 hover:bg-gray-50 focus:bg-yellow-50"
+              className="w-full h-10 pl-3 pr-8 bg-[#F8F7F3] rounded-xl text-xs font-semibold text-slate-800 border border-black/[0.05] appearance-none focus:outline-none focus:bg-white"
             >
               <option value="all">{t("categories.filters.allCategories")}</option>
               {(categoryTree || []).map((root) => (
@@ -306,265 +292,241 @@ export default function CategoryManagementPage() {
                 </option>
               ))}
             </select>
-            <div className="absolute right-4 top-0 bottom-0 flex items-center pointer-events-none">
-              <ChevronDown className="h-4 w-4 text-gray-400" />
-            </div>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
           </div>
 
-          {/* Status Filter segment */}
-          <div className="flex relative md:w-56">
+          <div className="relative w-full md:w-44">
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full h-full px-4 appearance-none outline-none font-mono text-xs uppercase cursor-pointer bg-white z-10 hover:bg-gray-50 focus:bg-yellow-50"
+              className="w-full h-10 pl-3 pr-8 bg-[#F8F7F3] rounded-xl text-xs font-semibold text-slate-800 border border-black/[0.05] appearance-none focus:outline-none focus:bg-white"
             >
               <option value="all">{t("categories.filters.allStatuses")}</option>
               <option value="active">{t("categories.filters.active")}</option>
               <option value="hidden">{t("categories.filters.hidden")}</option>
             </select>
-            <div className="absolute right-4 top-0 bottom-0 flex items-center pointer-events-none">
-              <ChevronDown className="h-4 w-4 text-gray-400" />
-            </div>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
           </div>
         </div>
+      </section>
 
-        {/* Table View */}
-        <div className="bg-white border border-black shadow-sm overflow-hidden">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
-              <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
-              <span className="font-mono text-xs uppercase text-gray-500">
-                {t("common.loading")}
-              </span>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-black text-white font-mono text-[11px] md:text-sm font-bold uppercase tracking-widest">
-                    <th className="p-4 border-r border-gray-800 text-left">
-                      {t("categories.table.name")}
-                    </th>
-                    <th className="p-4 border-r border-gray-800 text-center w-[120px]">
-                      {t("categories.table.icon")}
-                    </th>
-                    <th className="p-4 border-r border-gray-800 w-[150px] text-center">
-                      SLUG
-                    </th>
-                    <th className="p-4 border-r border-gray-800 text-center w-[100px]">
-                      {t("categories.table.order")}
-                    </th>
-                    <th className="p-4 border-r border-gray-800 w-[150px] text-center">
-                      {t("categories.table.places")}
-                    </th>
-                    <th className="p-4 border-r border-gray-800 w-[150px] text-center">
-                      {t("categories.table.status")}
-                    </th>
-                    <th className="p-4 text-center w-[100px]">{t("categories.table.actions")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {filteredFlatCategories.map((cat) => (
-                    <tr
-                      key={cat.id}
-                      className="hover:bg-yellow-50 group transition-colors"
-                    >
-                      <td className="p-4 border-r border-gray-100 font-medium">
-                        <div
-                          className="flex items-center"
-                          style={{ paddingLeft: `${cat.level * 24}px` }}
-                        >
-                          <div className="flex items-center mr-2">
-                            {cat.children && cat.children.length > 0 ? (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleExpand(cat.id);
-                                }}
-                                className="h-6 w-6 flex items-center justify-center border border-gray-300 bg-white hover:border-black transition-all z-10"
-                              >
-                                {expandedRows[cat.id] !== false ? (
-                                  <ChevronDown className="h-4 w-4 text-gray-600" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4 text-gray-600" />
-                                )}
-                              </button>
-                            ) : (
-                              <div className="w-5 h-5 flex items-center justify-center opacity-50">
-                                {cat.level > 0 && (
-                                  <div className="w-2 h-px bg-black"></div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          {/* Name */}
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={
-                                cat.level === 0
-                                  ? "font-black uppercase tracking-tight text-[15px]"
-                                  : "text-gray-700 font-bold text-sm"
-                              }
+      {/* Categories Tree Table */}
+      <div className="bg-white rounded-3xl border border-black/[0.04] shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden">
+        {isLoading ? (
+          <div className="py-24 text-center space-y-3">
+            <div className="w-9 h-9 border-3 border-slate-950 border-t-[#F3E600] rounded-full animate-spin mx-auto" />
+            <span className="text-xs font-semibold text-slate-500">{t("common.loading")}</span>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-[#FAF9F5] text-slate-500 font-semibold border-b border-black/[0.04]">
+                  <th className="p-4">{t("categories.table.name")}</th>
+                  <th className="p-4 text-center w-[90px]">{t("categories.table.icon")}</th>
+                  <th className="p-4 text-center w-[140px]">SLUG</th>
+                  <th className="p-4 text-center w-[90px]">{t("categories.table.order")}</th>
+                  <th className="p-4 text-center w-[130px]">{t("categories.table.places")}</th>
+                  <th className="p-4 text-center w-[130px]">{t("categories.table.status")}</th>
+                  <th className="p-4 text-right w-[100px]">{t("categories.table.actions")}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-black/[0.03]">
+                {filteredFlatCategories.map((cat) => (
+                  <tr
+                    key={cat.id}
+                    className="hover:bg-[#FAF9F5] group transition-colors"
+                  >
+                    <td className="p-4 font-medium">
+                      <div
+                        className="flex items-center"
+                        style={{ paddingLeft: `${cat.level * 24}px` }}
+                      >
+                        <div className="flex items-center mr-2">
+                          {cat.children && cat.children.length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpand(cat.id);
+                              }}
+                              className="h-6 w-6 rounded-lg flex items-center justify-center border border-black/[0.08] bg-white hover:bg-[#F5F4F0] transition-all z-10"
                             >
-                              {cat.name}
-                            </span>
-                            {cat.level === 0 && (
-                              <span className="bg-black text-white px-1.5 py-[2px] text-[9px] font-mono tracking-widest ml-1">
-                                ROOT
-                              </span>
-                            )}
-                          </div>
+                              {expandedRows[cat.id] !== false ? (
+                                <ChevronDown className="h-3.5 w-3.5 text-slate-700" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5 text-slate-700" />
+                              )}
+                            </button>
+                          ) : (
+                            <div className="w-6 h-6 flex items-center justify-center opacity-30">
+                              {cat.level > 0 && (
+                                <div className="w-2.5 h-0.5 bg-slate-400 rounded-full" />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {/* Name */}
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={
+                              cat.level === 0
+                                ? "font-bold text-slate-950 text-sm"
+                                : "text-slate-800 font-semibold text-xs"
+                            }
+                          >
+                            {cat.name}
+                          </span>
                           {cat.level === 0 && (
-                            <span className="ml-2 text-[10px] bg-black text-white px-1.5 py-0.5 font-mono">
+                            <span className="bg-[#FFFDE6] text-slate-950 border border-[#F3E600]/80 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold">
                               ROOT
                             </span>
                           )}
                         </div>
-                      </td>
-                      <td className="p-4 border-r border-gray-100 text-center">
-                        <div className="flex justify-center">
-                          {String(cat.icon || "").startsWith("http") ? (
-                            <Avatar className="h-8 w-8 rounded-none border border-gray-200">
-                              <AvatarImage src={cat.icon} />
-                              <AvatarFallback className="rounded-none bg-gray-100 font-mono">
-                                {(cat.name || "?")
-                                  .substring(0, 1)
-                                  .toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                          ) : (
-                            <div className="h-8 w-8 flex items-center justify-center border border-gray-200 bg-gray-50">
-                              <MdiCategoryIcon category={cat} className="h-4 w-4 text-black" />
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-4 border-r border-gray-100 font-mono text-xs text-gray-500 lowercase max-w-[140px] truncate text-center mx-auto">
-                        {cat.slug}
-                      </td>
-                      <td className="p-4 border-r border-gray-100 font-mono font-bold text-[13px] text-center">
-                        {" "}
-                        {cat.order || 0}{" "}
-                      </td>
-                      <td className="p-4 border-r border-gray-100 text-center">
-                        <span className="border border-gray-300 px-2 py-0.5 text-xs text-gray-600 font-mono inline-block">
-                          {" "}
-                          {cat._count?.places || 0} Places{" "}
-                        </span>
-                      </td>
-                      <td className="p-4 border-r border-gray-100">
-                        {!cat.isActive ? (
-                          <div className="flex items-center justify-center gap-2 text-xs font-bold text-gray-500 uppercase font-mono">
-                            <EyeOff className="w-3 h-3" /> {t("categories.status.hidden")}
-                          </div>
+                      </div>
+                    </td>
+                    <td className="p-4 text-center">
+                      <div className="flex justify-center">
+                        {String(cat.icon || "").startsWith("http") ? (
+                          <Avatar className="h-8 w-8 rounded-xl border border-black/[0.06]">
+                            <AvatarImage src={cat.icon} />
+                            <AvatarFallback className="rounded-xl bg-slate-100 font-mono text-xs">
+                              {(cat.name || "?").substring(0, 1).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
                         ) : (
-                          <div className="flex items-center justify-center gap-2 text-xs font-bold text-green-600 uppercase font-mono">
-                            <Eye className="w-3 h-3" /> {t("categories.status.active")}
+                          <div className="h-8 w-8 rounded-xl flex items-center justify-center border border-black/[0.06] bg-[#FAF9F5]">
+                            <MdiCategoryIcon category={cat} className="h-4 w-4 text-slate-900" />
                           </div>
                         )}
-                      </td>
-                      <td className="p-4 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="h-8 w-8 text-black bg-transparent hover:bg-gray-100 flex items-center justify-center focus:outline-none m-auto">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="rounded-none border border-black w-56 font-mono text-xs uppercase"
+                      </div>
+                    </td>
+                    <td className="p-4 font-mono text-xs text-slate-400 lowercase max-w-[140px] truncate text-center mx-auto">
+                      {cat.slug}
+                    </td>
+                    <td className="p-4 font-mono font-bold text-xs text-center tabular-nums text-slate-900">
+                      {cat.order || 0}
+                    </td>
+                    <td className="p-4 text-center">
+                      <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full text-[11px] font-mono tabular-nums font-semibold inline-block">
+                        {cat._count?.places || 0} địa điểm
+                      </span>
+                    </td>
+                    <td className="p-4 text-center">
+                      {!cat.isActive ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                          <EyeOff className="w-3 h-3 text-slate-400" /> {t("categories.status.hidden")}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FFFDE6] text-slate-950 border border-[#F3E600]/80">
+                          <Eye className="w-3 h-3 text-slate-900" /> {t("categories.status.active")}
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-4 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="h-8 w-8 rounded-xl border border-black/[0.06] bg-white hover:bg-[#F5F4F0] text-slate-700 flex items-center justify-center transition-all ml-auto"
                           >
-                            <DropdownMenuLabel>{t("categories.management")}</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            {cat.level < 2 && (
-                              <DropdownMenuItem
-                                onClick={() => handleAddChild(cat)}
-                                className="cursor-pointer"
-                              >
-                                <Plus className="mr-2 h-3 w-3" /> {t("categories.actions.addChild")}
-                              </DropdownMenuItem>
-                            )}
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="rounded-2xl border border-black/[0.06] bg-white shadow-lg p-1.5 w-48 text-xs"
+                        >
+                          <DropdownMenuLabel className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">{t("categories.management")}</DropdownMenuLabel>
+                          <DropdownMenuSeparator className="bg-black/[0.04]" />
+                          {cat.level < 2 && (
                             <DropdownMenuItem
-                              onClick={() => handleEdit(cat)}
-                              className="cursor-pointer"
+                              onClick={() => handleAddChild(cat)}
+                              className="rounded-xl cursor-pointer py-2 font-medium"
                             >
-                              <Edit className="mr-2 h-3 w-3" /> {t("categories.actions.edit")}
+                              <Plus className="mr-2 h-3.5 w-3.5 text-slate-700" /> {t("categories.actions.addChild")}
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteClick(cat)}
-                              className="text-red-600 hover:bg-red-50 cursor-pointer"
-                            >
-                              <Trash2 className="mr-2 h-3 w-3" /> {t("categories.actions.delete")}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredFlatCategories.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="p-20 text-center">
-                        <FolderOpen className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                        <div className="font-bold uppercase text-gray-400">
-                          {t("common.noData")}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Forms */}
-        <CategoryFormDialog
-          open={formOpen}
-          onClose={() => {
-            setFormOpen(false);
-            setSelectedCategory(null);
-            setParentCategory(null);
-          }}
-          category={selectedCategory}
-          parentCategory={parentCategory}
-        />
-
-        {/* Delete Confirmation Dialog */}
-        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <DialogContent className="rounded-none border border-black p-0 overflow-hidden sm:max-w-md">
-            <DialogHeader className="p-6 bg-red-600 text-white">
-              <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-                <Activity className="h-6 w-6" /> {t("categories.deleteDialog.title")}
-              </DialogTitle>
-              <DialogDescription className="text-red-100 font-mono text-xs mt-2 uppercase">
-                {t("categories.deleteDialog.description")}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="p-6 bg-white">
-              <p className="font-mono text-sm mb-4">
-                {t("categories.deleteDialog.message", { name: categoryToDelete?.name })}
-              </p>
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button
-                  variant="outline"
-                  onClick={() => setDeleteDialogOpen(false)}
-                  className="rounded-none border-black hover:bg-gray-100"
-                >
-                  {t("common.cancel")}
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDeleteConfirm}
-                  className="rounded-none bg-red-600 hover:bg-red-700 font-bold uppercase"
-                >
-                  {t("common.confirmDelete")}
-                </Button>
-              </DialogFooter>
-            </div>
-          </DialogContent>
-        </Dialog>
+                          )}
+                          <DropdownMenuItem
+                            onClick={() => handleEdit(cat)}
+                            className="rounded-xl cursor-pointer py-2 font-medium"
+                          >
+                            <Edit className="mr-2 h-3.5 w-3.5 text-slate-700" /> {t("categories.actions.edit")}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-black/[0.04]" />
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteClick(cat)}
+                            className="rounded-xl text-rose-600 hover:bg-rose-50 cursor-pointer py-2 font-semibold"
+                          >
+                            <Trash2 className="mr-2 h-3.5 w-3.5 text-rose-500" /> {t("categories.actions.delete")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+                {filteredFlatCategories.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="p-20 text-center">
+                      <FolderOpen className="h-12 w-12 mx-auto mb-3 text-slate-300 stroke-[1.5]" />
+                      <div className="font-bold text-slate-800">
+                        {t("common.noData")}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">Không tìm thấy danh mục nào.</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      {/* Forms */}
+      <CategoryFormDialog
+        open={formOpen}
+        onClose={() => {
+          setFormOpen(false);
+          setSelectedCategory(null);
+          setParentCategory(null);
+        }}
+        category={selectedCategory}
+        parentCategory={parentCategory}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="rounded-3xl border border-black/[0.06] bg-white p-6 shadow-2xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-extrabold text-slate-950 flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-rose-500" /> {t("categories.deleteDialog.title")}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 mt-1">
+              {t("categories.deleteDialog.description")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-3">
+            <p className="text-xs text-slate-700 leading-relaxed">
+              {t("categories.deleteDialog.message", { name: categoryToDelete?.name })}
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-black/[0.04]">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              className="rounded-full text-xs font-semibold h-9 px-4"
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={handleDeleteConfirm}
+              className="rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs h-9 px-5 shadow-sm"
+            >
+              {t("common.confirmDelete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

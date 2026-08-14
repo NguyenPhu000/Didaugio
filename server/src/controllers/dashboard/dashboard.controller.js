@@ -15,7 +15,8 @@ export const getStats = async (req, res, next) => {
 
 export const getTimeline = async (req, res, next) => {
   try {
-    const timeline = await dashboardService.getActivityTimeline();
+    const days = parseInt(req.query.days, 10) || 30;
+    const timeline = await dashboardService.getActivityTimeline(days);
     res.json({
       success: true,
       data: timeline,

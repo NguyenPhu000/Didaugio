@@ -16,7 +16,7 @@ import {
   BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { MAP_TEXT } from "../../constants/mapText.constants";
 
 const FilterPickerModal = memo(

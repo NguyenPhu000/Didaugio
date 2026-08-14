@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Marker } from "../adapters";
-import { centroid as turfCentroid } from "@turf/turf";
+import turfCentroid from "@turf/centroid";
 
 const DistrictLabels = ({ districts }) => {
   const labels = useMemo(() => {

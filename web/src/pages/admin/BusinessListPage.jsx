@@ -4,14 +4,14 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   Briefcase,
+  Store,
+  FileCheck2,
+  FileWarning,
   ClipboardCheck,
   Search,
   Pause,
   RotateCcw,
   MapPin,
-  Layers,
-  Ticket,
-  CalendarCheck,
   RefreshCw,
   Clock,
   CheckCircle2,
@@ -19,10 +19,20 @@ import {
   ChevronRight,
   FileSignature,
   XCircle,
-  AlertTriangle,
-  LayoutGrid,
-  Table2,
   Download,
+  Mail,
+  ArrowUpRight,
+  Phone,
+  ShieldCheck,
+  Building2,
+  Calendar,
+  Layers,
+  Ticket,
+  ExternalLink,
+  ChevronDown,
+  Sparkles,
+  AlertCircle,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,47 +46,65 @@ import {
 import { exportToCsv, slugifyFilename } from "@/utils/csvExport";
 import BusinessReviewApproveModal from "@/components/admin/BusinessReviewApproveModal";
 import BusinessDetailModal from "@/components/admin/BusinessDetailModal";
-import TimStatsCard from "@/components/admin/TimStatsCard";
 import {
   BUSINESS_STATUS,
   BUSINESS_TYPE_LABELS,
 } from "@/constants/businessConstants";
 import { getTableSerialNumber } from "@/utils/tableSerial";
 
-const getBusinessStatusBadge = (status) => {
-  const config = {
-    [BUSINESS_STATUS.PENDING]: {
-      label: "PENDING",
-      className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50 animate-pulse",
-    },
-    [BUSINESS_STATUS.APPROVED]: {
-      label: "APPROVED",
-      className: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50",
-    },
-    [BUSINESS_STATUS.REJECTED]: {
-      label: "REJECTED",
-      className: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50",
-    },
-    [BUSINESS_STATUS.SUSPENDED]: {
-      label: "SUSPENDED",
-      className: "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
-    },
-    [BUSINESS_STATUS.TERMINATED]: {
-      label: "TERMINATED",
-      className: "bg-red-100 text-red-800 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/30",
-    },
-    [BUSINESS_STATUS.SUSPICIOUS]: {
-      label: "SUSPICIOUS",
-      className: "bg-orange-50 text-orange-700 border-orange-200 animate-pulse dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-900/50",
-    },
-  };
-  const c = config[status] || {
-    label: String(status).toUpperCase(),
-    className: "bg-zinc-100 text-zinc-700 border-zinc-200",
+/*
+ * Soft Neumorphic Master-Detail UI (70% White / 20% Black / 10% Yellow)
+ * Inspired by Homely / Warm Minimalist Proptech Dashboard
+ */
+
+const STATUS_CONFIG = {
+  [BUSINESS_STATUS.PENDING]: {
+    label: "Chờ thẩm định",
+    badge: "bg-[#FFFDE6] text-slate-900 border-[#F3E600]/80",
+    dot: "bg-[#F3E600] animate-pulse shadow-[0_0_6px_#F3E600]",
+  },
+  [BUSINESS_STATUS.APPROVED]: {
+    label: "Đang hoạt động",
+    badge: "bg-slate-950 text-white border-slate-950",
+    dot: "bg-[#F3E600]",
+  },
+  [BUSINESS_STATUS.REJECTED]: {
+    label: "Đã từ chối",
+    badge: "bg-[#F4F2EC] text-slate-600 border-black/[0.06]",
+    dot: "bg-slate-400",
+  },
+  [BUSINESS_STATUS.SUSPENDED]: {
+    label: "Tạm ngưng",
+    badge: "bg-[#F4F2EC] text-slate-800 border-black/[0.08]",
+    dot: "bg-slate-500",
+  },
+  [BUSINESS_STATUS.TERMINATED]: {
+    label: "Chấm dứt",
+    badge: "bg-slate-100 text-slate-900 border-slate-300 line-through",
+    dot: "bg-slate-900",
+  },
+  [BUSINESS_STATUS.SUSPICIOUS]: {
+    label: "Đáng ngờ",
+    badge: "bg-[#FFFDE6] text-slate-900 border-[#F3E600]",
+    dot: "bg-[#F3E600] animate-ping",
+  },
+};
+
+const getStatusBadge = (status) => {
+  const conf = STATUS_CONFIG[status] || {
+    label: String(status),
+    badge: "bg-slate-100 text-slate-700 border-slate-200",
+    dot: "bg-slate-400",
   };
   return (
-    <div className={cn("px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider rounded-full border shadow-sm backdrop-blur-sm", c.className)}>
-      {c.label}
+    <div
+      className={cn(
+        "inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-semibold rounded-full border shadow-2xs transition-all",
+        conf.badge
+      )}
+    >
+      <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", conf.dot)} />
+      <span>{conf.label}</span>
     </div>
   );
 };
@@ -84,31 +112,30 @@ const getBusinessStatusBadge = (status) => {
 const BusinessListPage = ({ initialStatus = "all" }) => {
   const { t } = useTranslation();
 
-  const STATUS_OPTIONS = [
-    { value: "all", label: t("admin.business.all") },
-    { value: "pending", label: t("admin.business.pendingApproval") },
-    { value: "approved", label: t("admin.business.approved") },
-    { value: "rejected", label: t("admin.business.rejected") },
-    { value: "suspended", label: t("admin.business.suspended") },
-    { value: "terminated", label: t("admin.business.terminated") },
-    { value: "suspicious", label: t("admin.business.suspicious") },
+  const STATUS_TABS = [
+    { value: "all", label: "Tất cả" },
+    { value: "pending", label: "Chờ thẩm định" },
+    { value: "approved", label: "Đang hoạt động" },
+    { value: "suspended", label: "Tạm ngưng" },
+    { value: "rejected", label: "Đã từ chối" },
+    { value: "terminated", label: "Chấm dứt" },
   ];
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState(initialStatus);
   const [page, setPage] = useState(1);
-  const [viewMode, setViewMode] = useState("card");
+  const [selectedBusinessId, setSelectedBusinessId] = useState(null);
   const [reviewBusinessId, setReviewBusinessId] = useState(null);
   const [detailBusinessId, setDetailBusinessId] = useState(null);
   const searchDebounceRef = useRef(null);
 
   const queryParams = useMemo(
     () => ({ search: debouncedSearch, status, page }),
-    [debouncedSearch, status, page],
+    [debouncedSearch, status, page]
   );
 
-  const { data: queryResult, isLoading, refetch } = useBusinesses(queryParams);
+  const { data: queryResult, isLoading, isFetching, refetch } = useBusinesses(queryParams);
   const approveMutation = useApproveBusiness();
   const rejectMutation = useRejectBusiness();
   const suspendMutation = useSuspendBusiness();
@@ -118,38 +145,23 @@ const BusinessListPage = ({ initialStatus = "all" }) => {
   const businesses = queryResult?.data ?? [];
   const pagination = queryResult?.pagination ?? { page: 1, totalPages: 1, total: 0 };
   const summary = queryResult?.summary ?? null;
-  const loading = isLoading;
 
-const KYCProgress = ({ biz }) => {
-  const items = [
-    { label: "MST", ok: Boolean(biz.taxCode || biz.taxCodeMasked) },
-    { label: "CCCD", ok: Boolean(biz.idCardFront || biz.idCardBack || biz.hasIdCardFront || biz.hasIdCardBack) },
-    { label: "GPL", ok: Boolean(biz.businessLicense || biz.hasBusinessLicense) },
-    { label: "NH", ok: Boolean(biz.bankName && (biz.bankAccountNumber || biz.bankAccountNumberMasked || biz.bankAccount)) },
-    { label: "HĐ", ok: Boolean(biz.contractSigned) },
-    { label: "CK", ok: Boolean(biz.commissionRate != null) },
-  ];
-  const done = items.filter((i) => i.ok).length;
-  const percentage = Math.round((done / items.length) * 100);
-  return (
-    <div className="flex items-center gap-2" title={`KYC: ${done}/6`}>
-      <div className="w-24 h-1.5 bg-zinc-100 rounded-full overflow-hidden dark:bg-zinc-800 border border-zinc-200/50">
-        <div
-          className={cn(
-            "h-full rounded-full transition-all duration-500",
-            done === 6 ? "bg-emerald-500" : done >= 3 ? "bg-amber-500" : "bg-red-500"
-          )}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-      <span className="font-mono text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">{done}/6</span>
-    </div>
-  );
-};
+  // Auto-select first business on load or list change
+  useEffect(() => {
+    if (businesses.length > 0) {
+      if (!selectedBusinessId || !businesses.some((b) => b.id === selectedBusinessId)) {
+        setSelectedBusinessId(businesses[0].id);
+      }
+    } else {
+      setSelectedBusinessId(null);
+    }
+  }, [businesses, selectedBusinessId]);
 
   useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     searchDebounceRef.current = setTimeout(() => {
-      setDebouncedSearch(searchInput);
+      setDebouncedSearch(searchInput.trim());
+      setPage(1);
     }, 350);
     return () => {
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
@@ -157,91 +169,93 @@ const KYCProgress = ({ biz }) => {
   }, [searchInput]);
 
   useEffect(() => {
-    const id = requestAnimationFrame(() => setPage(1));
-    return () => cancelAnimationFrame(id);
-  }, [debouncedSearch, status]);
+    setPage(1);
+  }, [status]);
 
-  const handleRefresh = () => {
-    refetch();
-    toast.success(t("admin.business.refreshList"));
+  const handleRefresh = async () => {
+    await refetch();
+    toast.success("Đã đồng bộ danh sách đối tác");
   };
 
-  const handleSuspend = async (id) => {
-    const reason = window.prompt(t("admin.business.suspendPrompt"));
+  const handleSuspend = async (businessId) => {
+    const reason = window.prompt(
+      "Nhập lý do tạm khóa doanh nghiệp (tối thiểu 10 ký tự):\n\nLưu ý: Tất cả địa điểm sẽ bị ẩn, các đặt chỗ chưa hoàn thành sẽ tự động hủy và hoàn tiền."
+    );
     if (!reason || reason.trim().length < 10) {
-      if (reason !== null) toast.error(t("admin.business.reasonMinLength"));
+      if (reason !== null) toast.error("Lý do phải có ít nhất 10 ký tự");
       return;
     }
     try {
-      await suspendMutation.mutateAsync({ id, reason: reason.trim() });
-      toast.success(t("admin.business.businessSuspended"));
+      await suspendMutation.mutateAsync({ id: businessId, reason: reason.trim() });
+      toast.success("Đã tạm khóa đối tác kinh doanh");
     } catch (error) {
-      toast.error(error.message || t("admin.business.suspendFailed"));
+      toast.error(error.message || "Không thể tạm khóa");
     }
   };
 
-  const handleReactivate = async (id) => {
-    if (!window.confirm(t("admin.business.reactivateConfirm"))) {
+  const handleReactivate = async (businessId) => {
+    if (!window.confirm("Kích hoạt lại doanh nghiệp này? Các địa điểm và dịch vụ sẽ được khôi phục.")) {
       return;
     }
     try {
-      await reactivateMutation.mutateAsync(id);
-      toast.success(t("admin.business.businessReactivated"));
+      await reactivateMutation.mutateAsync(businessId);
+      toast.success("Đã khôi phục hoạt động doanh nghiệp");
     } catch (error) {
-      toast.error(error.message || t("admin.business.reactivateFailed"));
+      toast.error(error.message || "Không thể kích hoạt");
     }
   };
 
-  const handleTerminate = async (id) => {
-    const step1 = window.confirm(t("admin.business.terminateStep1Confirm"));
+  const handleTerminate = async (businessId) => {
+    const step1 = window.confirm(
+      "Bạn có chắc muốn CHẤM DỨT HỢP ĐỒNG doanh nghiệp này?\n\nHành động này sẽ:\n- Ẩn toàn bộ địa điểm vĩnh viễn\n- Hủy tất cả đặt chỗ đang hoạt động và hoàn tiền\n- Vô hiệu hóa voucher & dịch vụ liên quan\n- Hạ phân quyền tài khoản chủ sở hữu\n\nNhấn OK để tiếp tục."
+    );
     if (!step1) return;
 
-    const confirmText = window.prompt(t("admin.business.terminateStep2Prompt"));
+    const confirmText = window.prompt("Gõ \"CONFIRM\" để xác nhận chấm dứt hợp đồng vĩnh viễn:");
     if (confirmText !== "CONFIRM") {
-      toast.error(t("admin.business.confirmMismatch"));
+      toast.error("Xác nhận không khớp. Thao tác bị hủy bỏ.");
       return;
     }
 
-    const reason = window.prompt(t("admin.business.terminateReasonPrompt"));
+    const reason = window.prompt("Nhập lý do chấm dứt hợp đồng (tối thiểu 10 ký tự):");
     if (!reason || reason.trim().length < 10) {
-      if (reason !== null) toast.error(t("admin.business.reasonMinLength"));
+      if (reason !== null) toast.error("Lý do phải có ít nhất 10 ký tự");
       return;
     }
 
     try {
-      await terminateMutation.mutateAsync({ id, reason: reason.trim() });
-      toast.success(t("admin.business.businessTerminated"));
+      await terminateMutation.mutateAsync({ id: businessId, reason: reason.trim() });
+      toast.success("Đã chấm dứt hợp đồng đối tác");
     } catch (error) {
-      toast.error(error.message || t("admin.business.terminateFailed"));
+      toast.error(error.message || "Không thể chấm dứt hợp đồng");
     }
   };
 
   const handleExportCsv = () => {
-    if (!businesses || businesses.length === 0) {
-      toast.error(t("admin.business.noDataToExport"));
+    if (!businesses.length) {
+      toast.error("Không có dữ liệu đối tác để xuất");
       return;
     }
 
     exportToCsv({
       columns: [
-        { key: "id", label: "ID" },
-        { key: "businessName", label: t("admin.business.csvColumns.businessName") },
-        { key: (row) => BUSINESS_TYPE_LABELS[row.businessType] || row.businessType, label: t("admin.business.csvColumns.type") },
-        { key: "status", label: t("admin.business.status") },
-        { key: (row) => row.owner?.email || "", label: t("admin.business.ownerEmail") },
-        { key: (row) => row.owner?.profile?.fullName || "", label: t("admin.business.csvColumns.ownerName") },
-        { key: (row) => row.taxCode || "", label: t("admin.business.csvColumns.taxCode") },
-        { key: (row) => (row.contractSigned ? t("admin.business.csvColumns.signed") : t("admin.business.csvColumns.unsigned")), label: t("admin.business.contract") },
-        { key: (row) => row._count?.places ?? 0, label: t("admin.business.places") },
-        { key: (row) => row._count?.services ?? 0, label: t("admin.business.services") },
-        { key: (row) => row._count?.vouchers ?? 0, label: t("admin.business.vouchers") },
-        { key: (row) => row._count?.bookings ?? 0, label: t("admin.business.bookings") },
+        { key: "businessName", label: "Tên doanh nghiệp" },
+        { key: (row) => BUSINESS_TYPE_LABELS[row.businessType] || row.businessType, label: "Loại hình" },
+        { key: "status", label: "Trạng thái" },
+        { key: (row) => row.owner?.email || "", label: "Email chủ sở hữu" },
+        { key: (row) => row.owner?.profile?.fullName || "", label: "Họ tên người đại diện" },
+        { key: (row) => row.taxCode || "", label: "Mã số thuế" },
+        { key: (row) => (row.contractSigned ? "Đã ký" : "Chưa ký"), label: "Hợp đồng pháp lý" },
+        { key: (row) => row._count?.places ?? 0, label: "Số địa điểm" },
+        { key: (row) => row._count?.services ?? 0, label: "Số dịch vụ" },
+        { key: (row) => row._count?.vouchers ?? 0, label: "Voucher phát hành" },
+        { key: (row) => row._count?.bookings ?? 0, label: "Lượt đặt chỗ" },
       ],
       data: businesses,
-      filename: slugifyFilename("danh_sach_doanh_nghiep"),
+      filename: slugifyFilename("danh_sach_doi_tac_doanh_nghiep"),
     });
 
-    toast.success(t("admin.business.exportSuccess", { count: businesses.length }));
+    toast.success(`Đã xuất ${businesses.length} đối tác ra tệp CSV`);
   };
 
   const s = summary || {
@@ -252,462 +266,511 @@ const KYCProgress = ({ biz }) => {
     totalPlaces: 0,
   };
 
-  return (
-    <div className="min-h-screen p-8 bg-[#F4F4F4] relative font-sans">
-      <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none" />
-      <div className="absolute inset-0 bg-grid-dots opacity-40 pointer-events-none" />
+  const getKycDetails = (biz) => {
+    const checks = [
+      { id: "mst", label: "Mã số thuế", ok: Boolean(biz.taxCode || biz.taxCodeMasked) },
+      { id: "cccd", label: "CCCD/Hộ chiếu", ok: Boolean(biz.idCardFront || biz.idCardBack || biz.hasIdCardFront || biz.hasIdCardBack) },
+      { id: "gpl", label: "Giấy phép KD", ok: Boolean(biz.businessLicense || biz.hasBusinessLicense) },
+      { id: "nh", label: "Tài khoản ngân hàng", ok: Boolean(biz.bankName && (biz.bankAccountNumber || biz.bankAccountNumberMasked || biz.bankAccount)) },
+      { id: "hd", label: "Hợp đồng điện tử", ok: Boolean(biz.contractSigned) },
+      { id: "ck", label: "Tỷ lệ chiết khấu", ok: Boolean(biz.commissionRate != null) },
+    ];
+    const completedCount = checks.filter((c) => c.ok).length;
+    return { checks, completedCount, total: checks.length, isComplete: completedCount === checks.length };
+  };
 
-      <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between border-b-2 border-black pb-6 gap-4">
-          <div className="flex items-center gap-6">
-            <div className="accent-bar h-16 shrink-0" />
-            <div>
-              <h1 className="tim-title">{t("admin.business.title")}</h1>
-              <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1 shrink-0">
-                  {t("admin.business.system")}
-                </span>
-                <p className="tim-meta">{t("admin.business.subtitle")}</p>
-              </div>
+  const selectedBusiness = businesses.find((b) => b.id === selectedBusinessId) || businesses[0] || null;
+  const selectedKyc = selectedBusiness ? getKycDetails(selectedBusiness) : null;
+
+  return (
+    <div className="min-h-screen bg-[#ECEAE4] p-3 sm:p-6 lg:p-8 font-sans text-slate-900 antialiased selection:bg-[#F3E600] selection:text-slate-950">
+      {/* Outer Floating Canvas (70% White / Warm Minimalist Shell) */}
+      <div className="max-w-[1560px] mx-auto bg-[#FAF9F6] rounded-[32px] shadow-[0_24px_70px_rgba(0,0,0,0.06)] border border-black/[0.04] p-5 sm:p-8 space-y-6">
+        {/* Top App Header */}
+        <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-black/[0.04]">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-[#F3E600] shadow-[0_0_6px_#F3E600]" />
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Hệ thống Quản trị Đối tác
+              </span>
             </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
+              Đối tác doanh nghiệp
+            </h1>
+            <p className="text-xs text-slate-500 font-medium">
+              Thẩm định hồ sơ pháp lý, giám sát quy mô điểm kinh doanh và quản lý hợp đồng liên kết.
+            </p>
           </div>
-          <div className="flex flex-wrap gap-2 w-full md:w-auto">
+
+          <div className="flex items-center gap-3">
+            {/* Search Pill */}
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Tìm doanh nghiệp, email..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="w-full h-10 pl-10 pr-4 bg-white rounded-full text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#F3E600] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/[0.04] placeholder:text-slate-400 transition-all"
+              />
+            </div>
+
             <button
               type="button"
               onClick={handleExportCsv}
-              className="flex-1 md:flex-initial h-12 px-4 flex items-center justify-center border border-black bg-white hover:bg-black hover:text-white transition-colors shrink-0 font-mono text-xs uppercase font-bold gap-2"
-              title={t("admin.business.csvExport")}
+              className="h-10 px-4 rounded-full text-xs font-semibold bg-white text-slate-900 hover:bg-[#F4F2EC] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/[0.04] transition-all flex items-center gap-2 shrink-0 active:scale-95"
             >
-              <Download className="h-4 w-4" />
-              CSV
+              <Download className="h-3.5 w-3.5 text-slate-700" />
+              <span className="hidden sm:inline">Xuất CSV</span>
             </button>
+
             <button
               type="button"
               onClick={handleRefresh}
-              className="h-12 w-12 flex items-center justify-center border border-black bg-white hover:bg-gray-100 transition-colors shrink-0"
-              title={t("common.refresh")}
+              className="h-10 w-10 rounded-full bg-white text-slate-900 hover:bg-[#F4F2EC] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/[0.04] transition-all flex items-center justify-center shrink-0 active:scale-95"
+              title="Đồng bộ lại"
             >
-              <RefreshCw
-                className={`h-5 w-5 text-black ${loading ? "animate-spin" : ""}`}
-              />
+              <RefreshCw className={cn("h-4 w-4 text-slate-800", (isLoading || isFetching) && "animate-spin")} />
             </button>
           </div>
-        </div>
+        </header>
 
-        {/* Stats — cùng kiểu danh mục */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <TimStatsCard
-            title={t("admin.business.totalProfiles")}
-            value={s.totalBusinesses}
-            icon={Briefcase}
-            serial="BIZ-001"
-          />
-          <TimStatsCard
-            title={t("admin.business.pendingApproval")}
-            value={s.pending}
-            icon={Clock}
-            serial="BIZ-002"
-            textColor="text-amber-600"
-          />
-          <TimStatsCard
-            title={t("admin.business.approved")}
-            value={s.approved}
-            icon={CheckCircle2}
-            serial="BIZ-003"
-            textColor="text-emerald-600"
-          />
-          <TimStatsCard
-            title={t("admin.business.totalPartnerPlaces")}
-            value={s.totalPlaces}
-            icon={MapPin}
-            serial="BIZ-004"
-            color="bg-yellow-50"
-          />
-          <TimStatsCard
-            title={t("admin.business.approvedNoContract")}
-            value={s.approvedWithoutContract}
-            icon={FileSignature}
-            serial="BIZ-005"
-            color="bg-red-50"
-            textColor="text-red-700"
-          />
-        </div>
+        {/* Filter Pills Bar */}
+        <section className="flex items-center justify-between gap-3 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex items-center gap-2 shrink-0">
+            {STATUS_TABS.map((tab) => {
+              const active = status === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => setStatus(tab.value)}
+                  className={cn(
+                    "px-4 py-2 rounded-full text-xs font-semibold transition-all duration-200 shadow-2xs border",
+                    active
+                      ? "bg-slate-950 text-white border-slate-950 shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
+                      : "bg-white text-slate-700 border-black/[0.04] hover:bg-[#F4F2EC] hover:text-slate-950"
+                  )}
+                >
+                  {tab.label}
+                  {tab.value === "pending" && s.pending > 0 && (
+                    <span className="ml-1.5 px-1.5 py-0.2 rounded-full bg-[#F3E600] text-slate-950 text-[10px] font-bold font-mono tabular-nums">
+                      {s.pending}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
-        {/* Filter bar */}
-        <div className="flex flex-col md:flex-row w-full border border-black bg-white min-h-[56px] shadow-sm">
-          <div className="flex flex-1 border-b md:border-b-0 md:border-r border-black">
-            <div className="h-full min-h-[56px] w-14 bg-black flex items-center justify-center shrink-0">
-              <Search className="h-5 w-5 text-white" />
-            </div>
-            <input
-              type="text"
-              placeholder={t("admin.business.searchPlaceholder")}
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="flex-1 bg-zinc-50 px-4 font-mono text-sm uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400 transition-colors"
-            />
+          <div className="text-xs font-medium text-slate-500 shrink-0 hidden md:block">
+            Hiển thị <span className="font-bold text-slate-950 font-mono tabular-nums">{pagination.total}</span> doanh nghiệp
           </div>
-          <div className="hidden lg:flex flex-wrap gap-0">
-            {STATUS_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setStatus(opt.value)}
-                className={`flex-1 min-w-[100px] px-3 py-3 font-mono text-[11px] font-bold uppercase tracking-wider border-b lg:border-b-0 lg:border-r border-black last:border-r-0 transition-colors ${
-                  status === opt.value
-                    ? "bg-black text-white"
-                    : "bg-white hover:bg-muted/60 text-foreground"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          {/* Mobile Status Selector */}
-          <div className="flex lg:hidden border-b lg:border-b-0 border-black w-full bg-white">
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="w-full h-12 px-4 font-mono text-xs uppercase focus:outline-none bg-white"
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          {/* View toggle */}
-          <div className="flex border-l border-black ml-auto lg:ml-0">
-            <button
-              type="button"
-              onClick={() => setViewMode("card")}
-              className={cn(
-                "px-3 py-3 transition-colors",
-                viewMode === "card" ? "bg-black text-white" : "bg-white hover:bg-muted/60 text-foreground",
-              )}
-              title="Card view"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("table")}
-              className={cn(
-                "px-3 py-3 border-l border-black transition-colors",
-                viewMode === "table" ? "bg-black text-white" : "bg-white hover:bg-muted/60 text-foreground",
-              )}
-              title="Table view"
-            >
-              <Table2 className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+        </section>
 
-        {/* Content */}
+        {/* Master-Detail 2-Column Dashboard View */}
         {(() => {
-          if (loading) {
+          if (isLoading) {
             return (
-              <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                <div className="w-12 h-12 border-4 border-black border-t-primary rounded-full animate-spin" />
-                <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                  {t("admin.business.loading")}
-                </div>
+              <div className="py-32 text-center space-y-3">
+                <div className="w-10 h-10 border-3 border-slate-950 border-t-[#F3E600] rounded-full animate-spin mx-auto" />
+                <p className="text-xs font-semibold text-slate-500">Đang tải dữ liệu đối tác...</p>
               </div>
             );
           }
 
-          if (!businesses || businesses.length === 0) {
+          if (!businesses.length) {
             return (
-              <div className="border-2 border-dashed border-black bg-white/80 p-16 text-center">
-                <Briefcase className="h-14 w-14 mx-auto text-muted-foreground mb-4" />
-                <p className="font-semibold text-lg uppercase tracking-tight">
-                  {t("admin.business.noBusinesses")}
-                </p>
-                <p className="text-sm text-muted-foreground mt-2 font-mono">
-                  {t("admin.business.noBusinessesHint")}
+              <div className="rounded-3xl bg-white border border-black/[0.04] p-20 text-center shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
+                <Store className="h-12 w-12 mx-auto text-slate-300 mb-3 stroke-[1.5]" />
+                <h3 className="font-bold text-base text-slate-900">
+                  Không tìm thấy hồ sơ đối tác nào
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Hãy thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc trạng thái.
                 </p>
               </div>
             );
           }
 
           return (
-            <>
-              {viewMode === "card" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {(businesses || []).map((biz, index) => (
-                  <div
-                    key={biz.id}
-                    className="relative group bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-1 overflow-hidden flex flex-col"
-                  >
-                    <div className="absolute inset-0 bg-grid-dots opacity-25 pointer-events-none" />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Left Column (Master List - 5 cols, Independent Scroll Container) */}
+              <div className="lg:col-span-5 space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Danh sách (<span className="font-mono tabular-nums">{businesses.length}</span>)
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-500">
+                    Trang <span className="font-mono tabular-nums">{page}</span>/<span className="font-mono tabular-nums">{pagination.totalPages}</span>
+                  </span>
+                </div>
 
-                    <div className="h-32 bg-gradient-to-br from-zinc-800 to-zinc-950 relative border-b border-zinc-100 dark:border-zinc-800 overflow-hidden shrink-0 rounded-t-2xl">
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <Briefcase className="h-10 w-10 text-white/20 group-hover:text-[#F3E600]/80 transition-colors" />
-                        <span className="font-sans text-[10px] text-white/40 uppercase tracking-widest font-semibold mt-2">
-                          PARTNER
-                        </span>
+                {/* Independent Scrollable List View (Does not scroll page) */}
+                <div className="space-y-3 h-[calc(100vh-290px)] min-h-[580px] max-h-[820px] overflow-y-auto pr-1.5 scrollbar-thin">
+                  {businesses.map((biz, idx) => {
+                    const isSelected = selectedBusiness?.id === biz.id;
+                    return (
+                      <article
+                        key={biz.id}
+                        onClick={() => setSelectedBusinessId(biz.id)}
+                        className={cn(
+                          "p-4 rounded-2xl cursor-pointer transition-all duration-300 flex items-center gap-3.5 border relative overflow-hidden group",
+                          isSelected
+                            ? "bg-white border-slate-950 shadow-[0_8px_30px_rgba(0,0,0,0.06)] ring-1 ring-slate-950/10 -translate-y-0.5"
+                            : "bg-white/80 hover:bg-white border-black/[0.04] shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.04)]"
+                        )}
+                      >
+                        {/* Selected Indicator Pill */}
+                        {isSelected && (
+                          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-slate-950" />
+                        )}
+
+                        {/* Thumbnail / Monogram */}
+                        <div className="w-16 h-16 rounded-xl bg-slate-950 text-[#F3E600] flex items-center justify-center font-extrabold text-xl shadow-xs shrink-0 border border-slate-800">
+                          {biz.businessName ? biz.businessName.charAt(0).toUpperCase() : <Store className="h-6 w-6" />}
+                        </div>
+
+                        {/* Business Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1 mb-0.5">
+                            <span className="text-[11px] font-medium text-slate-500 truncate">
+                              {BUSINESS_TYPE_LABELS[biz.businessType] || biz.businessType}
+                            </span>
+                            {getStatusBadge(biz.status)}
+                          </div>
+
+                          <h3
+                            className="font-bold text-sm text-slate-950 truncate group-hover:text-slate-800 transition-colors"
+                            title={biz.businessName}
+                          >
+                            {biz.businessName}
+                          </h3>
+
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 font-mono tabular-nums">
+                            <span>{biz._count?.places ?? 0} địa điểm</span>
+                            <span>•</span>
+                            <span>{biz._count?.services ?? 0} dịch vụ</span>
+                            <span>•</span>
+                            <span>{biz._count?.bookings ?? 0} đặt chỗ</span>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                {/* Pagination Controls */}
+                {pagination.totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-2 px-1 text-xs">
+                    <button
+                      type="button"
+                      disabled={page <= 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      className="px-3 py-1.5 rounded-full bg-white border border-black/[0.05] shadow-2xs font-semibold text-slate-800 disabled:opacity-40 hover:bg-[#F4F2EC]"
+                    >
+                      ← Trước
+                    </button>
+                    <span className="text-slate-500 font-medium">
+                      Trang <span className="font-mono tabular-nums">{page}</span> / <span className="font-mono tabular-nums">{pagination.totalPages}</span>
+                    </span>
+                    <button
+                      type="button"
+                      disabled={page >= pagination.totalPages}
+                      onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+                      className="px-3 py-1.5 rounded-full bg-white border border-black/[0.05] shadow-2xs font-semibold text-slate-800 disabled:opacity-40 hover:bg-[#F4F2EC]"
+                    >
+                      Sau →
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column (Detail Inspector - 7 cols, Sticky) */}
+              {selectedBusiness ? (
+                <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 shadow-[0_12px_40px_rgba(0,0,0,0.04)] border border-black/[0.04] space-y-6 lg:sticky lg:top-6">
+                  {/* Inspection Header & Action */}
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-5 border-b border-black/[0.04]">
+                    <div className="flex items-start gap-4 min-w-0">
+                      <div className="w-16 h-16 rounded-2xl bg-slate-950 text-[#F3E600] flex items-center justify-center font-black text-2xl shadow-sm shrink-0 border border-slate-800">
+                        {selectedBusiness.businessName ? selectedBusiness.businessName.charAt(0).toUpperCase() : <Store className="h-7 w-7" />}
                       </div>
-                      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-0.5 rounded-full">
-                        <span className="font-mono text-[10px] text-white font-semibold">
-                          {getTableSerialNumber(
-                            pagination.total || businesses.length,
-                            index,
-                            page,
-                            pagination.limit || businesses.length,
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#F4F2EC] text-slate-800">
+                            {BUSINESS_TYPE_LABELS[selectedBusiness.businessType] || selectedBusiness.businessType}
+                          </span>
+                          {getStatusBadge(selectedBusiness.status)}
+                        </div>
+                        <h2 className="text-xl sm:text-2xl font-extrabold text-slate-950 tracking-tight leading-tight">
+                          {selectedBusiness.businessName}
+                        </h2>
+                        <div className="flex items-center gap-2 text-xs text-slate-500 font-mono mt-1">
+                          <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <span>{selectedBusiness.owner?.email || "Chưa có email"}</span>
+                          {selectedBusiness.taxCode && (
+                            <>
+                              <span>•</span>
+                              <span className="tabular-nums">MST: {selectedBusiness.taxCode}</span>
+                            </>
                           )}
-                        </span>
+                        </div>
                       </div>
-                      <div className="absolute top-3 right-3">
-                        {getBusinessStatusBadge(biz.status)}
-                      </div>
-                      <div className="absolute bottom-0 left-0 w-1 h-full bg-[#F3E600] group-hover:w-1.5 transition-all" />
                     </div>
 
-                    <div className="p-5 relative bg-white dark:bg-zinc-900 flex-1 flex flex-col">
-                      <h3
-                        className="font-bold text-base text-zinc-900 dark:text-zinc-100 leading-tight uppercase mb-2 tracking-tight line-clamp-2 min-h-[2.5rem]"
-                        title={biz.businessName}
-                      >
-                        {biz.businessName}
-                      </h3>
-
-                      <div className="flex items-center gap-2 text-[10px] text-zinc-500 dark:text-zinc-400 mb-4 flex-wrap">
-                        <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full font-medium">
-                          {BUSINESS_TYPE_LABELS[biz.businessType] ||
-                            biz.businessType}
-                        </span>
-                        <span
-                          className={cn(
-                            "px-2 py-0.5 rounded-full font-medium border",
-                            biz.contractSigned
-                              ? "bg-emerald-50/50 border-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400"
-                              : "bg-red-50/50 border-red-100 text-red-700 dark:bg-red-950/20 dark:border-red-900/30 dark:text-red-400"
-                          )}
-                        >
-                          {biz.contractSigned ? t("admin.business.contractSigned") : t("admin.business.contractUnsigned")}
-                        </span>
-                        <span className="text-zinc-300 dark:text-zinc-700">•</span>
-                        <span
-                          className="truncate max-w-[150px] font-mono text-zinc-400"
-                          title={biz.owner?.email}
-                        >
-                          {biz.owner?.email || "—"}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2.5 border-t border-zinc-100 dark:border-zinc-800 pt-4 mb-4">
-                        <div className="text-center bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl p-2.5 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                          <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-zinc-400" /> {t("admin.business.places")}
-                          </div>
-                          <div className="font-bold text-lg text-zinc-800 dark:text-zinc-200">
-                            {biz._count?.places ?? 0}
-                          </div>
-                        </div>
-                        <div className="text-center bg-amber-50/30 dark:bg-amber-950/10 border border-amber-100/50 dark:border-amber-950/30 rounded-xl p-2.5 transition-all hover:bg-amber-50/50">
-                          <div className="text-[10px] text-amber-600/80 dark:text-amber-500 font-semibold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
-                            <Layers className="w-3.5 h-3.5 text-amber-500" /> {t("admin.business.services")}
-                          </div>
-                          <div className="font-bold text-lg text-amber-700 dark:text-amber-400">
-                            {biz._count?.services ?? 0}
-                          </div>
-                        </div>
-                        <div className="text-center bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl p-2.5 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                          <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
-                            <Ticket className="w-3.5 h-3.5 text-zinc-400" /> {t("admin.business.vouchers")}
-                          </div>
-                          <div className="font-bold text-lg text-zinc-800 dark:text-zinc-200">
-                            {biz._count?.vouchers ?? 0}
-                          </div>
-                        </div>
-                        <div className="text-center bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl p-2.5 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                          <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
-                            <CalendarCheck className="w-3.5 h-3.5 text-zinc-400" /> {t("admin.business.bookings")}
-                          </div>
-                          <div className="font-bold text-lg text-zinc-800 dark:text-zinc-200">
-                            {biz._count?.bookings ?? 0}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-3 pb-4">
-                        <KYCProgress biz={biz} />
-                        <span className={cn("text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border", biz.contractSigned ? "bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400" : "bg-red-50 border-red-100 text-red-700 dark:bg-red-950/20 dark:border-red-900/30 dark:text-red-400")}>
-                          {biz.contractSigned ? t("admin.business.contractSigned") : t("admin.business.contractUnsigned")}
-                        </span>
-                      </div>
-
-                      <div className="mt-auto flex flex-wrap gap-2 justify-end pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                        <Button
-                          size="sm"
-                          variant="outline"
+                    {/* Quick Primary Top Action */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {selectedBusiness.status === BUSINESS_STATUS.PENDING ? (
+                        <button
                           type="button"
-                          onClick={() => setDetailBusinessId(biz.id)}
-                          className="rounded-xl border-zinc-200 dark:border-zinc-800 font-semibold text-[11px] gap-1.5 h-9"
+                          onClick={() => setReviewBusinessId(selectedBusiness.id)}
+                          className="h-10 px-5 rounded-full bg-slate-950 hover:bg-black text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 active:scale-95"
                         >
-                          <MapPin className="h-4 w-4" />
-                          {t("admin.business.detailsAndPlaces")}
-                        </Button>
-                        {biz.status === BUSINESS_STATUS.PENDING && (
-                          <Button
-                            size="sm"
-                            onClick={() => setReviewBusinessId(biz.id)}
-                            className="rounded-xl bg-zinc-950 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 dark:text-zinc-950 text-white font-semibold text-[11px] gap-1.5 h-9 shadow-sm"
-                          >
-                            <ClipboardCheck className="h-4 w-4" />
-                            {t("admin.business.crossCheckApprove")}
-                          </Button>
-                        )}
-                        {biz.status === BUSINESS_STATUS.APPROVED && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleSuspend(biz.id)}
-                            className="rounded-xl border-amber-200 text-amber-700 dark:border-amber-900/30 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 font-semibold text-[11px] h-9 gap-1.5"
-                          >
-                            <Pause className="h-4 w-4" />
-                            {t("admin.business.suspend")}
-                          </Button>
-                        )}
-                        {biz.status === BUSINESS_STATUS.SUSPENDED && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleReactivate(biz.id)}
-                            className="rounded-xl border-emerald-200 text-emerald-700 dark:border-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 font-semibold text-[11px] h-9 gap-1.5"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                            {t("admin.business.reactivate")}
-                          </Button>
-                        )}
-                        {(biz.status === BUSINESS_STATUS.APPROVED || biz.status === BUSINESS_STATUS.SUSPENDED) && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleTerminate(biz.id)}
-                            className="rounded-xl border-red-200 text-red-700 dark:border-red-900/30 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 font-semibold text-[11px] h-9 gap-1.5"
-                          >
-                            <XCircle className="h-4 w-4" />
-                            {t("admin.business.terminateContract")}
-                          </Button>
-                        )}
+                          <ClipboardCheck className="h-4 w-4 text-[#F3E600]" />
+                          Thẩm định hồ sơ
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setDetailBusinessId(selectedBusiness.id)}
+                          className="h-10 px-5 rounded-full bg-white hover:bg-[#F4F2EC] text-slate-900 font-bold text-xs border border-black/[0.08] shadow-2xs transition-all flex items-center gap-2 active:scale-95"
+                        >
+                          <Eye className="h-3.5 w-3.5 text-slate-700" />
+                          Xem chi tiết địa điểm
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 4 Soft Metric Attributes (Homely Style, tabular-nums) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3.5 rounded-2xl bg-[#F8F7F3] border border-black/[0.03] text-center">
+                      <div className="flex items-center justify-center gap-1 text-[11px] font-semibold text-slate-500 mb-1">
+                        <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                        <span>Địa điểm</span>
+                      </div>
+                      <div className="text-2xl font-black text-slate-950 font-mono tabular-nums">
+                        {selectedBusiness._count?.places ?? 0}
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-[#F8F7F3] border border-black/[0.03] text-center">
+                      <div className="flex items-center justify-center gap-1 text-[11px] font-semibold text-slate-500 mb-1">
+                        <Layers className="h-3.5 w-3.5 text-slate-400" />
+                        <span>Dịch vụ</span>
+                      </div>
+                      <div className="text-2xl font-black text-slate-950 font-mono tabular-nums">
+                        {selectedBusiness._count?.services ?? 0}
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-[#F8F7F3] border border-black/[0.03] text-center">
+                      <div className="flex items-center justify-center gap-1 text-[11px] font-semibold text-slate-500 mb-1">
+                        <Ticket className="h-3.5 w-3.5 text-slate-400" />
+                        <span>Voucher</span>
+                      </div>
+                      <div className="text-2xl font-black text-slate-950 font-mono tabular-nums">
+                        {selectedBusiness._count?.vouchers ?? 0}
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-[#F8F7F3] border border-black/[0.03] text-center">
+                      <div className="flex items-center justify-center gap-1 text-[11px] font-semibold text-slate-500 mb-1">
+                        <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                        <span>Đặt chỗ</span>
+                      </div>
+                      <div className="text-2xl font-black text-slate-950 font-mono tabular-nums">
+                        {selectedBusiness._count?.bookings ?? 0}
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-              ) : (
-              <div className="border-2 border-black bg-white overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-black text-white font-mono text-[10px] uppercase tracking-wider">
-                      <th className="px-3 py-3 text-left border-r border-white/20 hidden sm:table-cell">STT</th>
-                      <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.businessName")}</th>
-                      <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.type")}</th>
-                      <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.status")}</th>
-                      <th className="px-3 py-3 text-left border-r border-white/20 hidden md:table-cell">{t("admin.business.kyc")}</th>
-                      <th className="px-3 py-3 text-left border-r border-white/20">{t("admin.business.contract")}</th>
-                      <th className="px-3 py-3 text-left border-r border-white/20 hidden lg:table-cell">{t("admin.business.ownerEmail")}</th>
-                      <th className="px-3 py-3 text-center border-r border-white/20 hidden md:table-cell">{t("admin.business.places")}</th>
-                      <th className="px-3 py-3 text-center border-r border-white/20 hidden md:table-cell">{t("admin.business.services")}</th>
-                      <th className="px-3 py-3 text-center border-r border-white/20 hidden md:table-cell">{t("admin.business.vouchers")}</th>
-                      <th className="px-3 py-3 text-center border-r border-white/20 hidden md:table-cell">{t("admin.business.bookings")}</th>
-                      <th className="px-3 py-3 text-right">{t("admin.business.actions")}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-black/10">
-                    {(businesses || []).map((biz, index) => (
-                      <tr key={biz.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground hidden sm:table-cell">
-                          {getTableSerialNumber(
-                            pagination.total || businesses.length,
-                            index,
-                            page,
-                            pagination.limit || businesses.length,
-                          )}
-                        </td>
-                        <td className="px-3 py-2 font-semibold text-xs uppercase max-w-[200px] truncate" title={biz.businessName}>
-                          {biz.businessName}
-                          <div className="lg:hidden text-[10px] text-muted-foreground font-mono font-normal mt-1 truncate max-w-[160px]" title={biz.owner?.email}>
-                            {biz.owner?.email || "—"}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-[11px]">{BUSINESS_TYPE_LABELS[biz.businessType] || biz.businessType}</td>
-                        <td className="px-3 py-2">{getBusinessStatusBadge(biz.status)}</td>
-                        <td className="px-3 py-2 hidden md:table-cell"><KYCProgress biz={biz} /></td>
-                        <td className="px-3 py-2">
-                          <span className={cn("font-mono text-[10px] uppercase px-1.5 py-0.5 border", biz.contractSigned ? "bg-emerald-50 border-emerald-400 text-emerald-700" : "bg-red-50 border-red-400 text-red-700")}>
-                            {biz.contractSigned ? t("admin.business.contractSignedShort") : t("admin.business.contractUnsignedShort")}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-[11px] text-muted-foreground truncate max-w-[160px] hidden lg:table-cell" title={biz.owner?.email}>{biz.owner?.email || "—"}</td>
-                        <td className="px-3 py-2 text-center font-mono text-xs hidden md:table-cell">{biz._count?.places ?? 0}</td>
-                        <td className="px-3 py-2 text-center font-mono text-xs hidden md:table-cell">{biz._count?.services ?? 0}</td>
-                        <td className="px-3 py-2 text-center font-mono text-xs hidden md:table-cell">{biz._count?.vouchers ?? 0}</td>
-                        <td className="px-3 py-2 text-center font-mono text-xs hidden md:table-cell">{biz._count?.bookings ?? 0}</td>
-                        <td className="px-3 py-2 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button size="sm" variant="outline" onClick={() => setDetailBusinessId(biz.id)} className="rounded-none border-black font-mono text-[10px] uppercase h-7 px-2">{t("admin.business.details")}</Button>
-                            {biz.status === BUSINESS_STATUS.PENDING && (
-                              <Button size="sm" onClick={() => setReviewBusinessId(biz.id)} className="rounded-none bg-black text-white hover:bg-[#F3E600] hover:text-black font-mono text-[10px] uppercase h-7 px-2">{t("admin.business.approve")}</Button>
-                            )}
-                            {biz.status === BUSINESS_STATUS.APPROVED && (
-                              <Button size="sm" variant="outline" onClick={() => handleSuspend(biz.id)} className="rounded-none border-amber-600 text-amber-900 hover:bg-amber-50 font-mono text-[10px] uppercase h-7 px-2">{t("admin.business.lock")}</Button>
-                            )}
-                            {biz.status === BUSINESS_STATUS.SUSPENDED && (
-                              <Button size="sm" variant="outline" onClick={() => handleReactivate(biz.id)} className="rounded-none border-emerald-600 text-emerald-900 hover:bg-emerald-50 font-mono text-[10px] uppercase h-7 px-2">{t("admin.business.reactivate")}</Button>
-                            )}
-                            {(biz.status === BUSINESS_STATUS.APPROVED || biz.status === BUSINESS_STATUS.SUSPENDED) && (
-                              <Button size="sm" variant="outline" onClick={() => handleTerminate(biz.id)} className="rounded-none border-red-700 text-red-800 hover:bg-red-50 font-mono text-[10px] uppercase h-7 px-2">{t("admin.business.terminateContract")}</Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              )}
 
-              {pagination.totalPages > 1 && (
-                <div className="flex flex-wrap items-center justify-center gap-3 pt-4 border-t-2 border-black">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="rounded-none border-black font-mono text-xs uppercase"
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    {t("admin.business.prevPage")}
-                  </Button>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {t("admin.business.pagination", { page, totalPages: pagination.totalPages, total: pagination.total })}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={page >= pagination.totalPages}
-                    onClick={() =>
-                      setPage((p) => Math.min(pagination.totalPages, p + 1))
-                    }
-                    className="rounded-none border-black font-mono text-xs uppercase"
-                  >
-                    {t("admin.business.nextPage")}
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
+                  {/* KYC Compliance Checklist & Legal Status Card */}
+                  {selectedKyc && (
+                    <div className="p-5 rounded-2xl bg-[#F8F7F3] border border-black/[0.03] space-y-3.5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                            Tiến độ thẩm định hồ sơ (KYC)
+                          </h4>
+                          <p className="text-xs text-slate-800 font-semibold mt-0.5">
+                            Hoàn thành <span className="font-mono tabular-nums">{selectedKyc.completedCount}</span> / <span className="font-mono tabular-nums">{selectedKyc.total}</span> hạng mục
+                          </p>
+                        </div>
+
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full border shadow-2xs",
+                            selectedBusiness.contractSigned
+                              ? "bg-white text-slate-950 border-black/[0.08]"
+                              : "bg-[#FFFDE6] text-slate-900 border-[#F3E600]"
+                          )}
+                        >
+                          {selectedBusiness.contractSigned ? (
+                            <>
+                              <FileCheck2 className="h-3.5 w-3.5 text-slate-950" />
+                              <span>Hợp đồng: Đã ký</span>
+                            </>
+                          ) : (
+                            <>
+                              <FileWarning className="h-3.5 w-3.5 text-slate-800" />
+                              <span>Hợp đồng: Chưa ký</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="w-full h-2 bg-white rounded-full overflow-hidden border border-black/[0.03]">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all duration-500",
+                            selectedKyc.isComplete
+                              ? "bg-slate-950"
+                              : selectedKyc.completedCount >= 3
+                              ? "bg-[#F3E600]"
+                              : "bg-slate-300"
+                          )}
+                          style={{ width: `${(selectedKyc.completedCount / selectedKyc.total) * 100}%` }}
+                        />
+                      </div>
+
+                      {/* 6 Micro Badges */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                        {selectedKyc.checks.map((item) => (
+                          <div
+                            key={item.id}
+                            className={cn(
+                              "p-2 rounded-xl text-[11px] font-medium flex items-center gap-2 border",
+                              item.ok
+                                ? "bg-white text-slate-900 border-black/[0.04]"
+                                : "bg-white/50 text-slate-400 border-dashed border-black/[0.08]"
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "h-2 w-2 rounded-full",
+                                item.ok ? "bg-[#F3E600] shadow-[0_0_4px_#F3E600]" : "bg-slate-300"
+                              )}
+                            />
+                            <span className="truncate">{item.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Representative Info */}
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Người đại diện pháp luật
+                    </h4>
+                    <div className="p-4 rounded-2xl bg-white border border-black/[0.04] flex items-center justify-between text-xs">
+                      <div>
+                        <div className="font-bold text-slate-900">
+                          {selectedBusiness.owner?.profile?.fullName || "Chưa cập nhật họ tên"}
+                        </div>
+                        <div className="text-slate-500 font-mono mt-0.5">
+                          {selectedBusiness.owner?.email || "—"}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setDetailBusinessId(selectedBusiness.id)}
+                        className="px-3.5 py-1.5 rounded-full bg-[#F4F2EC] hover:bg-slate-200 text-slate-900 font-semibold text-xs transition-all"
+                      >
+                        Xem hồ sơ
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Operational Controls Bottom Strip (Full Text Labels & Hierarchy) */}
+                  <div className="pt-4 border-t border-black/[0.04] flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      {selectedBusiness.status === BUSINESS_STATUS.PENDING && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setReviewBusinessId(selectedBusiness.id)}
+                            className="px-4 py-2.5 rounded-full bg-slate-950 hover:bg-black text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-xs"
+                          >
+                            <ClipboardCheck className="h-3.5 w-3.5 text-[#F3E600]" />
+                            Bắt đầu đối chiếu & Thẩm định
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDetailBusinessId(selectedBusiness.id)}
+                            className="px-4 py-2.5 rounded-full bg-white hover:bg-[#F4F2EC] text-slate-800 font-semibold text-xs transition-all flex items-center gap-1.5 border border-black/[0.06]"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            Xem hồ sơ gốc
+                          </button>
+                        </>
+                      )}
+
+                      {selectedBusiness.status === BUSINESS_STATUS.APPROVED && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleSuspend(selectedBusiness.id)}
+                            className="px-4 py-2.5 rounded-full bg-[#F4F2EC] hover:bg-amber-50 hover:text-amber-900 text-slate-800 font-semibold text-xs transition-all flex items-center gap-1.5 border border-black/[0.04]"
+                          >
+                            <Pause className="h-3.5 w-3.5 text-amber-600" />
+                            Tạm ngưng hoạt động
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleTerminate(selectedBusiness.id)}
+                            className="px-4 py-2.5 rounded-full bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 font-semibold text-xs transition-all flex items-center gap-1.5 border border-black/[0.06]"
+                          >
+                            <XCircle className="h-3.5 w-3.5 text-rose-500" />
+                            Chấm dứt hợp đồng
+                          </button>
+                        </>
+                      )}
+
+                      {selectedBusiness.status === BUSINESS_STATUS.SUSPENDED && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleReactivate(selectedBusiness.id)}
+                            className="px-4 py-2.5 rounded-full bg-slate-950 hover:bg-black text-white font-semibold text-xs transition-all flex items-center gap-1.5 shadow-sm"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5 text-[#F3E600]" />
+                            Kích hoạt lại đối tác
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleTerminate(selectedBusiness.id)}
+                            className="px-4 py-2.5 rounded-full bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 font-semibold text-xs transition-all flex items-center gap-1.5 border border-black/[0.06]"
+                          >
+                            <XCircle className="h-3.5 w-3.5 text-rose-500" />
+                            Chấm dứt hợp đồng
+                          </button>
+                        </>
+                      )}
+
+                      {selectedBusiness.status === BUSINESS_STATUS.TERMINATED && (
+                        <div className="inline-flex items-center gap-1.5 text-xs text-rose-600 font-semibold bg-rose-50 px-3 py-1.5 rounded-full">
+                          <AlertCircle className="h-3.5 w-3.5" />
+                          Hợp đồng đối tác đã bị chấm dứt
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="text-[11px] font-mono text-slate-400 tabular-nums">
+                      Mã đối tác: #{selectedBusiness.id}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </>
+              ) : null}
+            </div>
           );
         })()}
       </div>
 
+      {/* Modals */}
       <BusinessDetailModal
         open={detailBusinessId != null}
         onOpenChange={(open) => {

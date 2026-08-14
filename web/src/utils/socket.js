@@ -5,6 +5,37 @@ import { API_BASE_URL } from "@/constants/constants";
 let socket = null;
 let socketIdentity = null;
 
+const STALE_SESSION_ERROR_MARKERS = [
+  "user not found",
+  "invalid token",
+  "session revoked",
+  "account is banned",
+  "account is inactive",
+  "account banned",
+  "account inactive",
+];
+
+export const isStaleSocketSessionError = (message) => {
+  const normalizedMessage = String(message || "").toLowerCase();
+  return STALE_SESSION_ERROR_MARKERS.some((marker) =>
+    normalizedMessage.includes(marker),
+  );
+};
+
+export const shouldInvalidateAuthForSocketError = ({
+  isCurrentSocket,
+  socketAccessToken,
+  currentAccessToken,
+  socketUserId,
+  currentUserId,
+}) =>
+  Boolean(
+    isCurrentSocket &&
+      socketAccessToken &&
+      socketAccessToken === currentAccessToken &&
+      String(socketUserId) === String(currentUserId),
+  );
+
 const resolveUserId = (user) => user?.userId || user?.id;
 
 /**
@@ -28,34 +59,54 @@ export const connectSocket = () => {
 
   const socketUrl = API_BASE_URL.replace("/api", "");
 
-  socket = io(socketUrl, {
+  const socketInstance = io(socketUrl, {
     auth: { token: accessToken },
     transports: ["websocket", "polling"],
     reconnection: true,
     reconnectionAttempts: 10,
     reconnectionDelay: 3000,
   });
+  socket = socketInstance;
   socketIdentity = identity;
 
-  socket.on("connect", () => {
-    console.log("[Socket] Connected:", socket.id);
+  socketInstance.on("connect", () => {
+    console.log("[Socket] Connected:", socketInstance.id);
   });
 
-  socket.on("disconnect", () => {
+  socketInstance.on("disconnect", () => {
     console.log("[Socket] Disconnected");
   });
 
-  socket.on("connect_error", (err) => {
+  socketInstance.on("connect_error", (err) => {
     console.warn("[Socket] Connection error:", err.message);
-    if (String(err?.message || "").toLowerCase().includes("user not found")) {
-      socket.removeAllListeners();
-      socket.disconnect();
+    const currentAuth = useAuthStore.getState();
+    const isCurrentSocket = socketIdentity === identity && socket === socketInstance;
+    if (
+      isStaleSocketSessionError(err?.message) &&
+      shouldInvalidateAuthForSocketError({
+        isCurrentSocket,
+        socketAccessToken: accessToken,
+        currentAccessToken: currentAuth.accessToken,
+        socketUserId: userId,
+        currentUserId: resolveUserId(currentAuth.user),
+      })
+    ) {
+      socketInstance.removeAllListeners();
+      socketInstance.disconnect();
       socket = null;
       socketIdentity = null;
+      currentAuth.logout();
+    } else if (isStaleSocketSessionError(err?.message)) {
+      socketInstance.removeAllListeners();
+      socketInstance.disconnect();
+      if (socket === socketInstance) {
+        socket = null;
+        socketIdentity = null;
+      }
     }
   });
 
-  return socket;
+  return socketInstance;
 };
 
 /**

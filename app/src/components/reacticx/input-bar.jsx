@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from "react";
 import { View, TextInput, StyleSheet, Pressable, Platform } from "react-native";
-import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import Feather from "@expo/vector-icons/Feather";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 const MAX_LINES = 5;
 const LINE_HEIGHT = 22;

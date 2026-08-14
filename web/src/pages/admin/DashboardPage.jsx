@@ -19,6 +19,10 @@ import RecentErrorsCard from "@/components/admin/RecentErrorsCard";
 // Legacy sub-components
 import { DashboardDataStatus, DashboardCategories } from "@/components/admin/dashboard";
 
+/**
+ * DASHBOARD PAGE
+ * Soft Neumorphic-Minimal SaaS (70% Trắng ngà, 20% Đen, 10% Vàng)
+ */
 const DashboardPage = () => {
   const { user } = useAuthStore();
   const { t } = useTranslation();
@@ -68,81 +72,79 @@ const DashboardPage = () => {
 
   if (loading) {
     return (
-      <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <div className="h-8 w-48 animate-pulse rounded bg-muted" />
-            <div className="h-4 w-64 animate-pulse rounded bg-muted" />
-          </div>
+      <div className="space-y-6 max-w-[1560px] mx-auto py-6">
+        <div className="py-28 text-center space-y-3">
+          <div className="w-10 h-10 border-3 border-slate-950 border-t-[#F3E600] rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-semibold text-slate-500">Đang tải dữ liệu tổng quan...</p>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-[180px] animate-pulse rounded-lg bg-muted" />
-          ))}
-        </div>
-        <div className="h-[350px] animate-pulse rounded-lg bg-muted" />
-        <div className="h-[400px] animate-pulse rounded-lg bg-muted" />
       </div>
     );
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
+    <div className="space-y-7 max-w-[1560px] mx-auto text-slate-900 antialiased selection:bg-[#F3E600] selection:text-slate-950">
+      {/* Editorial Header */}
+      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-black/[0.04]">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-[#F3E600] shadow-[0_0_6px_#F3E600]" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Tổng quan Hệ thống
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
             {t("dashboard.greeting", { name: user?.fullName || user?.username || "Admin" })}
-          </h2>
-          <p className="text-muted-foreground">
+          </h1>
+          <p className="text-xs text-slate-500 font-medium">
             {t("dashboard.subtitle")}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center rounded-lg border shadow-sm">
-            <div className="flex h-9 items-center pl-3">
-              <Search className="h-4 w-4 text-muted-foreground" />
-            </div>
+
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <input
               type="text"
               placeholder={t("dashboard.searchPlaceholder")}
-              className="h-9 w-40 bg-transparent px-3 text-sm focus:outline-none sm:w-64"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleSearch}
+              className="w-full h-10 pl-10 pr-4 bg-white rounded-full text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#F3E600] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/[0.04] placeholder:text-slate-400 transition-all"
             />
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Stats Cards */}
+      {/* Stats Cards Strip */}
       <SectionCards stats={stats} userCount={userCount} />
 
       {/* Interactive Chart */}
-      <ChartAreaInteractive />
+      <div className="rounded-3xl bg-white border border-black/[0.04] shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-6 overflow-hidden">
+        <ChartAreaInteractive />
+      </div>
 
       {/* Monitoring Section */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <OnlineUsersCard />
         <ServerHealthCard />
         <RecentErrorsCard />
       </div>
 
-      {/* Data Status + Categories (legacy sections) */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      {/* Data Status + Categories */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <DashboardDataStatus stats={stats} />
         <DashboardCategories categories={categories} places={places} />
       </div>
 
       {/* Recent Places Table */}
-      <div className="rounded-lg border bg-card">
-        <div className="border-b px-6 py-4">
-          <h3 className="text-lg font-semibold">{t("dashboard.recentPlaces.title")}</h3>
-          <p className="text-sm text-muted-foreground">
+      <div className="rounded-3xl border border-black/[0.04] bg-white shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden">
+        <div className="border-b border-black/[0.04] px-6 py-5 bg-[#FAF9F5]">
+          <h3 className="text-base font-extrabold text-slate-950">{t("dashboard.recentPlaces.title")}</h3>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
             {t("dashboard.latestPlaces")}
           </p>
         </div>
-        <div className="p-6 pt-0">
+        <div className="p-6">
           <RecentPlacesTable places={places} />
         </div>
       </div>

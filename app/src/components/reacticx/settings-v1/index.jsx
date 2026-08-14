@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { Platform, ScrollView } from "react-native";
 import * as Settings from "./components";
 import { COLOR_SCHEME } from "./const";
-import { FontAwesome6, Ionicons } from "@expo/vector-icons";
+import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Stack } from "expo-router";
 
 export function SettingsV1() {

@@ -1,6 +1,4 @@
 import { useState, useMemo } from "react";
-import { Doughnut, Line } from "react-chartjs-2";
-import "@/lib/chartSetup";
 import {
   DollarSign,
   Clock,
@@ -22,6 +20,19 @@ import {
   usePayoutStats,
   useTransferPayout,
 } from "@/hooks/queries/usePayoutQueries";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,33 +88,24 @@ const STATUS_BADGE_MAP = {
 };
 
 const StatCard = ({ title, value, icon: Icon, tone = "default", subtitle }) => {
-  const toneMap = {
-    danger: { iconBg: "bg-rose-50 dark:bg-rose-950/30 text-rose-500" },
-    warning: { iconBg: "bg-amber-50 dark:bg-amber-950/30 text-amber-500" },
-    success: { iconBg: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500" },
-    default: { iconBg: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400" },
-  };
-  const config = toneMap[tone] || toneMap.default;
-
   return (
-    <Card className="relative overflow-hidden">
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-1.5 min-w-0">
-            <p className="text-xs font-medium text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold tracking-tight text-foreground">{value}</p>
-            {subtitle && (
-              <p className="text-xs text-muted-foreground">{subtitle}</p>
-            )}
-          </div>
-          {Icon && (
-            <div className={cn("p-3 rounded-xl shrink-0", config.iconBg)}>
-              <Icon className="h-5 w-5" />
-            </div>
+    <div className="bg-white rounded-2xl p-5 border border-black/[0.04] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_28px_rgba(0,0,0,0.06)] transition-all duration-300 relative group overflow-hidden">
+      <div className="h-0.5 w-0 group-hover:w-full bg-[#F3E600] absolute top-0 left-0 transition-all duration-300" />
+      <div className="flex items-center justify-between gap-3">
+        <div className="space-y-1 min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">{title}</p>
+          <p className="text-2xl font-black tracking-tight text-slate-950 font-mono tabular-nums">{value ?? 0}</p>
+          {subtitle && (
+            <p className="text-[11px] text-slate-400 font-medium">{subtitle}</p>
           )}
         </div>
-      </CardContent>
-    </Card>
+        {Icon && (
+          <div className="p-2.5 rounded-xl bg-[#FAF9F5] border border-black/[0.04] text-slate-800 shrink-0 group-hover:bg-[#FFFDE6] group-hover:text-slate-950 transition-colors">
+            <Icon className="h-4 w-4" />
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -202,11 +204,13 @@ export default function AdminPayoutManagementPage() {
   const lineChartData = useMemo(() => {
     const groups = {};
     payouts.forEach((p) => {
-      const dateStr = new Date(p.requestedAt || p.createdAt).toLocaleDateString("vi-VN", {
+      const dateStr = new Date(
+        p.requestedAt || p.createdAt || Date.now(),
+      ).toLocaleDateString("vi-VN", {
         day: "2-digit",
         month: "2-digit",
       });
-      groups[dateStr] = (groups[dateStr] || 0) + Number(p.amount);
+      groups[dateStr] = (groups[dateStr] || 0) + Number(p.amount || 0);
     });
 
     const sortedLabels = Object.keys(groups).sort((a, b) => {
@@ -215,54 +219,36 @@ export default function AdminPayoutManagementPage() {
       return am !== bm ? am - bm : ad - bd;
     });
 
-    const data = sortedLabels.map((label) => groups[label]);
-
     if (sortedLabels.length === 0) {
-      return {
-        labels: ["Chưa có dữ liệu"],
-        datasets: [
-          {
-            label: "Số tiền rút (VND)",
-            data: [0],
-            borderColor: "hsl(var(--primary))",
-            backgroundColor: "rgba(243, 230, 0, 0.1)",
-            tension: 0.4,
-            fill: true,
-          },
-        ],
-      };
+      return [{ date: "Hôm nay", amount: 0 }];
     }
 
-    return {
-      labels: sortedLabels,
-      datasets: [
-        {
-          label: "Số tiền rút (VND)",
-          data,
-          borderColor: "hsl(var(--primary))",
-          backgroundColor: "rgba(243, 230, 0, 0.1)",
-          tension: 0.4,
-          fill: true,
-        },
-      ],
-    };
+    return sortedLabels.map((date) => ({
+      date,
+      amount: groups[date],
+    }));
   }, [payouts]);
 
-  const doughnutChartData = useMemo(() => {
-    const pending = stats.pendingCount || payouts.filter((p) => p.status === "pending").length || 0;
-    const approved = payouts.filter((p) => p.status === "approved").length || 0;
-    const transferred = payouts.filter((p) => p.status === "transferred").length || 0;
-    const rejected = stats.failedCount || payouts.filter((p) => p.status === "rejected").length || 0;
+  const statusDistributionData = useMemo(() => {
+    const pending =
+      stats.pendingCount ||
+      payouts.filter((p) => p.status === "pending").length ||
+      0;
+    const approved =
+      payouts.filter((p) => p.status === "approved").length || 0;
+    const transferred =
+      payouts.filter((p) => p.status === "transferred").length || 0;
+    const rejected =
+      stats.failedCount ||
+      payouts.filter((p) => p.status === "rejected").length ||
+      0;
 
-    return {
-      labels: ["Chờ duyệt", "Đang xử lý", "Hoàn thành", "Từ chối"],
-      datasets: [
-        {
-          data: [pending, approved, transferred, rejected],
-          backgroundColor: ["#f59e0b", "#3b82f6", "#10b981", "#ef4444"],
-        },
-      ],
-    };
+    return [
+      { name: "Chờ duyệt", value: pending, color: "#f59e0b" },
+      { name: "Đang xử lý", value: approved, color: "#3b82f6" },
+      { name: "Hoàn thành", value: transferred, color: "#10b981" },
+      { name: "Từ chối", value: rejected, color: "#ef4444" },
+    ];
   }, [stats, payouts]);
 
   const statCards = [
@@ -297,39 +283,55 @@ export default function AdminPayoutManagementPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-100">
-            Quản lý rút tiền
+    <div className="space-y-6 text-slate-900 antialiased selection:bg-[#F3E600] selection:text-slate-950 max-w-[1560px] mx-auto">
+      {/* Editorial Header */}
+      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-black/[0.04]">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-[#F3E600] shadow-[0_0_6px_#F3E600]" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Tài chính & Thanh toán Đối tác
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
+            Quản lý Rút tiền (Payout)
           </h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Duyệt và xử lý yêu cầu rút tiền từ đối tác
+          <p className="text-xs text-slate-500 font-medium">
+            Phê duyệt và giải ngân doanh thu cho các đối tác kinh doanh du lịch.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
           {activeTab === "pending" && selectedIds.size > 0 && (
-            <Button onClick={handleBulkApprove} className="gap-1.5">
-              <CheckCircle2 className="h-4 w-4" />
+            <button
+              type="button"
+              onClick={handleBulkApprove}
+              disabled={reviewPayout.isPending}
+              className="h-10 px-4 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
+            >
+              <CheckCircle2 className="h-4 w-4 text-white" />
               Duyệt ({selectedIds.size})
-            </Button>
+            </button>
           )}
-          <Button variant="outline" onClick={() => refetch()} className="gap-1.5">
-            <RefreshCw className="h-4 w-4" />
-            Làm mới
-          </Button>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="h-10 w-10 rounded-full bg-white text-slate-900 hover:bg-[#F4F2EC] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/[0.04] transition-all flex items-center justify-center shrink-0 active:scale-95"
+            title="Làm mới"
+          >
+            <RefreshCw className={`h-4 w-4 text-slate-800 ${payoutsLoading ? "animate-spin" : ""}`} />
+          </button>
         </div>
-      </div>
+      </header>
 
       {/* Stats Row */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statsLoading
           ? Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="relative overflow-hidden rounded-xl border border-zinc-200/80 bg-white p-5 shadow-sm flex items-center justify-between gap-4">
+              <div key={i} className="rounded-2xl border border-black/[0.04] bg-white p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center justify-between gap-4">
                 <div className="space-y-1.5 min-w-0 flex-1">
-                  <Skeleton className="h-3 w-24" />
-                  <Skeleton className="h-8 w-32" />
+                  <Skeleton className="h-3 w-24 rounded-lg" />
+                  <Skeleton className="h-8 w-32 rounded-lg" />
                 </div>
                 <Skeleton className="h-10 w-10 rounded-xl" />
               </div>
@@ -349,66 +351,94 @@ export default function AdminPayoutManagementPage() {
       {/* Charts Row */}
       {!statsLoading && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2">
-            <CardHeader className="pb-4 border-b">
-              <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <DollarSign className="h-4 w-4" /> Xu hướng yêu cầu rút tiền theo ngày
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="h-64 pt-4">
-              <Line
-                data={lineChartData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { display: false },
-                  },
-                  scales: {
-                    y: { beginAtZero: true, grid: { color: "rgba(0,0,0,0.05)" } },
-                    x: { grid: { display: false } },
-                  },
-                }}
-              />
-            </CardContent>
-          </Card>
+          <div className="lg:col-span-2 rounded-3xl bg-white border border-black/[0.04] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
+            <div className="pb-4 border-b border-black/[0.04] flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-[#F3E600]" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                Xu hướng yêu cầu rút tiền theo ngày
+              </h3>
+            </div>
+            <div className="h-64 pt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={lineChartData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="date" tickLine={false} tick={{ fontSize: 11, fill: "#64748b" }} />
+                  <YAxis
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: "#64748b" }}
+                    tickFormatter={(val) =>
+                      val >= 1000000
+                        ? `${(val / 1000000).toFixed(1)}M`
+                        : val >= 1000
+                          ? `${(val / 1000).toFixed(0)}k`
+                          : val
+                    }
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
+                    formatter={(value) => [
+                      `${Number(value).toLocaleString("vi-VN")} đ`,
+                      "Số tiền",
+                    ]}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="amount"
+                    stroke="#0f172a"
+                    strokeWidth={2.5}
+                    dot={{ r: 3.5, fill: "#0f172a" }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader className="pb-4 border-b">
-              <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Clock className="h-4 w-4" /> Cơ cấu trạng thái rút tiền
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="h-64 pt-4 flex items-center justify-center">
-              <Doughnut
-                data={doughnutChartData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: "bottom",
-                      labels: { usePointStyle: true, padding: 15 },
-                    },
-                  },
-                }}
-              />
-            </CardContent>
-          </Card>
+          <div className="rounded-3xl bg-white border border-black/[0.04] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
+            <div className="pb-4 border-b border-black/[0.04] flex items-center gap-2">
+              <Clock className="h-4 w-4 text-slate-800" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                Cơ cấu trạng thái rút tiền
+              </h3>
+            </div>
+            <div className="h-64 pt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={statusDistributionData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={75}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {statusDistributionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)' }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Tabs & Payout Queue */}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setPage(1); setSelectedIds(new Set()); }}>
         <div className="flex items-center justify-between">
-          <TabsList className="rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-800 dark:bg-zinc-900">
+          <TabsList className="rounded-full bg-white border border-black/[0.04] p-1 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
             {STATUS_TABS.map((tab) => {
               const TabIcon = tab.icon;
               return (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
-                  className="rounded-md px-3 py-1.5 text-xs font-medium gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-zinc-800"
+                  className="rounded-full px-4 py-1.5 text-xs font-bold gap-1.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white transition-all"
                 >
                   <TabIcon className="h-3.5 w-3.5" />
                   {tab.label}
@@ -420,158 +450,157 @@ export default function AdminPayoutManagementPage() {
 
         {STATUS_TABS.map((tab) => (
           <TabsContent key={tab.value} value={tab.value} className="mt-4">
-            <Card className="rounded-xl border border-zinc-200/80 bg-white shadow-sm dark:bg-zinc-950 dark:border-zinc-800">
-              <CardContent className="p-0">
-                {payoutsLoading ? (
-                  <div className="space-y-2 p-4">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Skeleton key={i} className="h-16 w-full rounded-lg" />
-                    ))}
-                  </div>
-                ) : payouts.length === 0 ? (
-                  <div className="flex flex-col items-center gap-2 py-12">
-                    <DollarSign className="h-10 w-10 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      Không có yêu cầu nào trong mục này
-                    </p>
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
+            <div className="rounded-3xl border border-black/[0.04] bg-white shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden">
+              {payoutsLoading ? (
+                <div className="py-24 text-center space-y-3">
+                  <div className="w-9 h-9 border-3 border-slate-950 border-t-[#F3E600] rounded-full animate-spin mx-auto" />
+                  <span className="text-xs font-semibold text-slate-500">Đang tải danh sách rút tiền...</span>
+                </div>
+              ) : payouts.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-16 text-slate-400">
+                  <DollarSign className="h-10 w-10 text-slate-300 stroke-[1.5]" />
+                  <p className="font-bold text-slate-800">
+                    Không có yêu cầu nào trong mục này
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#FAF9F5] text-slate-500 font-semibold border-b border-black/[0.04]">
                         {activeTab === "pending" && (
-                          <TableHead className="w-10">
+                          <th className="p-4 w-10">
                             <Checkbox
                               checked={selectedIds.size === payouts.length && payouts.length > 0}
                               onCheckedChange={toggleSelectAll}
+                              className="rounded-md"
                             />
-                          </TableHead>
+                          </th>
                         )}
-                        <TableHead>Đối tác</TableHead>
-                        <TableHead className="text-right">Số tiền</TableHead>
-                        <TableHead>Ngân hàng</TableHead>
-                        <TableHead>Trạng thái</TableHead>
-                        <TableHead>Ngày yêu cầu</TableHead>
-                        <TableHead className="text-right">Thao tác</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                        <th className="p-4">Đối tác</th>
+                        <th className="p-4 text-right">Số tiền</th>
+                        <th className="p-4">Ngân hàng</th>
+                        <th className="p-4">Trạng thái</th>
+                        <th className="p-4">Ngày yêu cầu</th>
+                        <th className="p-4 text-right">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-black/[0.03]">
                       {payouts.map((p) => {
                         const statusInfo = STATUS_BADGE_MAP[p.status] || STATUS_BADGE_MAP.pending;
                         const isProcessing = reviewPayout.isPending || transferPayout.isPending;
                         return (
-                          <TableRow key={p.id}>
+                          <tr key={p.id} className="hover:bg-[#FAF9F5] transition-colors">
                             {activeTab === "pending" && (
-                              <TableCell>
+                              <td className="p-4">
                                 <Checkbox
                                   checked={selectedIds.has(p.id)}
                                   onCheckedChange={() => toggleSelect(p.id)}
+                                  className="rounded-md"
                                 />
-                              </TableCell>
+                              </td>
                             )}
-                            <TableCell>
+                            <td className="p-4">
                               <div>
-                                <div className="font-medium">
+                                <div className="font-bold text-slate-950">
                                   {p.business?.businessName || "—"}
                                 </div>
-                                <div className="text-xs text-muted-foreground">
+                                <div className="text-[11px] text-slate-400 font-mono">
                                   {p.business?.owner?.email || ""}
                                 </div>
                               </div>
-                            </TableCell>
-                            <TableCell className="text-right font-mono font-medium">
+                            </td>
+                            <td className="p-4 text-right font-mono font-bold text-slate-950 tabular-nums">
                               {formatVND(p.amount)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-sm">
-                                <div className="font-medium">{p.bankName || "—"}</div>
-                                <div className="text-xs text-muted-foreground">
+                            </td>
+                            <td className="p-4">
+                              <div className="text-xs">
+                                <div className="font-semibold text-slate-900">{p.bankName || "—"}</div>
+                                <div className="text-[11px] text-slate-400 font-mono">
                                   {p.bankAccountNumber || p.bankAccount || ""} — {p.bankAccountName || p.bankOwner || ""}
                                 </div>
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className={statusInfo.className}>
+                            </td>
+                            <td className="p-4">
+                              <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border", statusInfo.className)}>
                                 {statusInfo.label}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
+                              </span>
+                            </td>
+                            <td className="p-4 text-slate-400 font-mono text-[11px]">
                               {new Date(p.requestedAt || p.createdAt).toLocaleDateString("vi-VN")}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1">
+                            </td>
+                            <td className="p-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
                                 {p.status === "pending" && (
                                   <>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-7 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                                    <button
+                                      type="button"
                                       disabled={isProcessing}
                                       onClick={() => handleApprove(p.id)}
+                                      className="h-8 px-3 rounded-full text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-all flex items-center gap-1 active:scale-95"
                                     >
-                                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                      <CheckCircle2 className="h-3.5 w-3.5 mr-0.5" />
                                       Duyệt
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-7 text-xs text-rose-600 border-rose-200 hover:bg-rose-50"
+                                    </button>
+                                    <button
+                                      type="button"
                                       disabled={isProcessing}
                                       onClick={() =>
                                         setRejectDialog({ open: true, payoutId: p.id })
                                       }
+                                      className="h-8 px-3 rounded-full text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all flex items-center gap-1 active:scale-95"
                                     >
-                                      <XCircle className="h-3.5 w-3.5 mr-1" />
+                                      <XCircle className="h-3.5 w-3.5 mr-0.5" />
                                       Từ chối
-                                    </Button>
+                                    </button>
                                   </>
                                 )}
                                 {p.status === "approved" && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-xs text-blue-600 border-blue-200 hover:bg-blue-50"
+                                  <button
+                                    type="button"
                                     disabled={isProcessing}
                                     onClick={() => handleTransfer(p.id)}
+                                    className="h-8 px-3 rounded-full text-xs font-semibold bg-slate-950 hover:bg-black text-white transition-all flex items-center gap-1 active:scale-95"
                                   >
-                                    <Send className="h-3.5 w-3.5 mr-1" />
+                                    <Send className="h-3.5 w-3.5 mr-0.5 text-[#F3E600]" />
                                     Xác nhận chuyển
-                                  </Button>
+                                  </button>
                                 )}
                               </div>
-                            </TableCell>
-                          </TableRow>
+                            </td>
+                          </tr>
                         );
                       })}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
 
             {/* Pagination */}
             {pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between mt-4">
-                <p className="text-sm text-muted-foreground">
-                  Trang {pagination.page} / {pagination.totalPages} ({pagination.total} yêu cầu)
+              <div className="flex items-center justify-between p-4 bg-[#FAF9F5] rounded-2xl mt-4 border border-black/[0.04] text-xs">
+                <p className="text-slate-500 font-medium">
+                  Trang <span className="font-bold text-slate-900 font-mono tabular-nums">{pagination.page}</span> / <span className="font-mono tabular-nums">{pagination.totalPages}</span> ({pagination.total} yêu cầu)
                 </p>
                 <div className="flex gap-2">
-                  <Button
+                  <button
+                    type="button"
                     variant="outline"
-                    size="sm"
                     disabled={pagination.page <= 1}
-                    onClick={() => setPage((p) => p - 1)}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="rounded-full text-xs font-semibold h-8 px-3.5 bg-white border border-black/[0.05] shadow-2xs hover:bg-[#F5F4F0] disabled:opacity-40 transition-all text-slate-900"
                   >
-                    Trước
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                    ← Trước
+                  </button>
+                  <button
+                    type="button"
                     disabled={pagination.page >= pagination.totalPages}
                     onClick={() => setPage((p) => p + 1)}
+                    className="rounded-full text-xs font-semibold h-8 px-3.5 bg-white border border-black/[0.05] shadow-2xs hover:bg-[#F5F4F0] disabled:opacity-40 transition-all text-slate-900"
                   >
-                    Sau
-                  </Button>
+                    Sau →
+                  </button>
                 </div>
               </div>
             )}
@@ -589,29 +618,34 @@ export default function AdminPayoutManagementPage() {
           }
         }}
       >
-        <DialogContent>
+        <DialogContent className="rounded-3xl border border-black/[0.06] bg-white p-6 shadow-2xl sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Từ chối yêu cầu rút tiền</DialogTitle>
-            <DialogDescription>
-              Vui lòng nhập lý do từ chối yêu cầu này.
+            <DialogTitle className="text-lg font-extrabold text-slate-950 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-rose-500" />
+              Từ chối yêu cầu rút tiền
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 mt-1">
+              Vui lòng nhập lý do từ chối để thông báo cho đối tác.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="reject-reason">Lý do từ chối</Label>
+          <div className="space-y-2 py-3">
+            <Label htmlFor="reject-reason" className="text-xs font-bold text-slate-700">Lý do từ chối</Label>
             <Input
               id="reject-reason"
-              placeholder="Nhập lý do từ chối..."
+              placeholder="VD: Thông tin tài khoản ngân hàng không chính xác..."
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
+              className="rounded-xl border border-black/[0.06] bg-[#F8F7F3] text-xs h-10"
             />
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-black/[0.04]">
             <Button
               variant="outline"
               onClick={() => {
                 setRejectDialog({ open: false, payoutId: null });
                 setRejectReason("");
               }}
+              className="rounded-full text-xs font-semibold h-9 px-4"
             >
               Hủy
             </Button>
@@ -619,8 +653,9 @@ export default function AdminPayoutManagementPage() {
               variant="destructive"
               onClick={handleReject}
               disabled={reviewPayout.isPending}
+              className="rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs h-9 px-5 shadow-sm"
             >
-              {reviewPayout.isPending ? "Đang xử lý..." : "Từ chối"}
+              Xác nhận từ chối
             </Button>
           </DialogFooter>
         </DialogContent>

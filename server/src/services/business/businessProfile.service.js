@@ -12,32 +12,18 @@ import {
   serializeBusiness,
   mapBusinessDataToPrisma,
 } from "./business.serializer.js";
-import { uploadImage } from "../../utils/cloudinaryService.js";
 import { buildSubscriptionEntitlements } from "../subscription/subscriptionEntitlement.service.js";
 import { getPublicBusinessSettings } from "./businessSettings.service.js";
+import {
+  removeBusinessSensitiveDocuments,
+  storeBusinessSensitiveDocuments,
+  withoutBusinessSensitiveDocumentFields,
+} from "./businessSensitiveDocument.service.js";
 
 const BUSINESS_REGISTRATION_ROLE_IDS = new Set([
   ROLES.USER,
   ROLES.BUSINESS,
 ]);
-
-const uploadLegalDocument = async (fileData) => {
-  if (!fileData) return null;
-  if (fileData.startsWith("http")) return fileData;
-  try {
-    const file = fileData.startsWith("data:") ? fileData : `data:image/jpeg;base64,${fileData}`;
-    const result = await uploadImage(file, { 
-      upload_preset: "Didaugio_Secure",
-      folder: "didaugio/legal" 
-    });
-    return result.url;
-  } catch (error) {
-    console.error("Cloudinary upload error:", error);
-    const err = new Error("Lỗi tải lên tài liệu pháp lý");
-    err.statusCode = 500;
-    throw err;
-  }
-};
 
 const defaultInclude = {
   owner: {
@@ -54,6 +40,16 @@ const defaultInclude = {
           address: true,
         },
       },
+    },
+  },
+  sensitiveDocuments: {
+    select: {
+      id: true,
+      type: true,
+      mimeType: true,
+      originalName: true,
+      fileSize: true,
+      createdAt: true,
     },
   },
 };
@@ -162,9 +158,6 @@ const mapProfileResponse = async (business) => {
       businessType: serialized.businessType,
       taxCode: serialized.taxCode,
       idCardNumber: serialized.idCardNumberMasked,
-      idCardFront: serialized.idCardFront,
-      idCardBack: serialized.idCardBack,
-      businessLicense: serialized.businessLicense,
       bankName: serialized.bankName,
       bankAccountNumber: serialized.bankAccountNumberMasked,
       bankAccountOwner: serialized.bankAccountOwnerMasked,
@@ -210,7 +203,7 @@ export const getProfile = async (userId) => {
   return mapProfileResponse(business);
 };
 
-export const register = async (data, userId) => {
+export const register = async (data, userId, sensitiveDocuments = []) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -263,17 +256,9 @@ export const register = async (data, userId) => {
     throw error;
   }
 
-  if (data.idCardFront) {
-    data.idCardFront = await uploadLegalDocument(data.idCardFront);
-  }
-  if (data.idCardBack) {
-    data.idCardBack = await uploadLegalDocument(data.idCardBack);
-  }
-  if (data.businessLicense) {
-    data.businessLicense = await uploadLegalDocument(data.businessLicense);
-  }
-
-  const prismaData = mapBusinessDataToPrisma(data);
+  const prismaData = mapBusinessDataToPrisma(
+    withoutBusinessSensitiveDocumentFields(data),
+  );
   const profileData = {
     fullName: data.fullName,
     phone: data.phone,
@@ -283,7 +268,10 @@ export const register = async (data, userId) => {
     (value) => value !== undefined,
   );
 
-  const business = await prisma.$transaction(async (tx) => {
+  let business;
+  let storedDocuments = [];
+  try {
+    business = await prisma.$transaction(async (tx) => {
     if (hasProfileUpdates) {
       await tx.userProfile.upsert({
         where: { userId },
@@ -306,7 +294,28 @@ export const register = async (data, userId) => {
       },
       include: defaultInclude,
     });
-  });
+    });
+    storedDocuments = await storeBusinessSensitiveDocuments({
+      businessId: business.id,
+      documents: sensitiveDocuments,
+    });
+    business.sensitiveDocuments = storedDocuments;
+  } catch (error) {
+    await removeBusinessSensitiveDocuments({
+      businessId: business?.id,
+      documents: storedDocuments,
+    });
+    if (business?.id) {
+      await prisma.business.delete({ where: { id: business.id } }).catch(() => {});
+      if (user.roleId !== ROLES.BUSINESS) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { roleId: user.roleId },
+        }).catch(() => {});
+      }
+    }
+    throw error;
+  }
 
   const serialized = await mapProfileResponse(business);
 
@@ -377,7 +386,7 @@ export const getMyPlaces = async (userId, activeBusinessId = null) => {
   return places;
 };
 
-export const updateProfile = async (data, userId) => {
+export const updateProfile = async (data, userId, sensitiveDocuments = []) => {
   const business = await prisma.business.findUnique({
     where: { ownerId: userId },
   });
@@ -414,23 +423,12 @@ export const updateProfile = async (data, userId) => {
     throw error;
   }
 
-  if (data.idCardFront) {
-    data.idCardFront = await uploadLegalDocument(data.idCardFront);
-  }
-  if (data.idCardBack) {
-    data.idCardBack = await uploadLegalDocument(data.idCardBack);
-  }
-  if (data.businessLicense) {
-    data.businessLicense = await uploadLegalDocument(data.businessLicense);
-  }
-
   // Rate limit: max 3 document uploads per 24h
-  const DOC_UPLOAD_FIELDS = ["idCardFront", "idCardBack", "businessLicense"];
-  const hasNewUploads = DOC_UPLOAD_FIELDS.some(
-    (f) => data[f] && !data[f].startsWith("http"),
-  );
+  const hasNewUploads = sensitiveDocuments.length > 0;
 
-  const prismaData = mapBusinessDataToPrisma(data);
+  const prismaData = mapBusinessDataToPrisma(
+    withoutBusinessSensitiveDocumentFields(data),
+  );
 
   if (hasNewUploads) {
     const now = new Date();
@@ -466,8 +464,7 @@ export const updateProfile = async (data, userId) => {
   // Sensitive fields that trigger re-verification
   const SENSITIVE_FIELDS = [
     "businessName", "businessType", "taxCode",
-    "idCardNumber", "idCardFront", "idCardBack",
-    "businessLicense", "bankAccountNumber", "bankAccountOwner", "bankName",
+    "idCardNumber", "bankAccountNumber", "bankAccountOwner", "bankName",
   ];
 
   // Track which sensitive fields actually changed (diff)
@@ -482,6 +479,7 @@ export const updateProfile = async (data, userId) => {
     return String(oldValue ?? "") !== String(newValue ?? "");
   });
 
+  changedFields.push(...sensitiveDocuments.map((document) => document.type));
   const hasVerificationUpdates = changedFields.length > 0;
 
   // Per-item reset: only reset status if sensitive fields changed, don't reset contract
@@ -497,21 +495,35 @@ export const updateProfile = async (data, userId) => {
     // Contract remains valid unless business itself is rejected
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
-    if (hasProfileUpdates) {
-      await tx.userProfile.upsert({
-        where: { userId },
-        update: profileData,
-        create: { userId, ...profileData },
-      });
-    }
-
-    return tx.business.update({
-      where: { id: business.id },
-      data: prismaData,
-      include: defaultInclude,
+  let updated;
+  let storedDocuments = [];
+  try {
+    storedDocuments = await storeBusinessSensitiveDocuments({
+      businessId: business.id,
+      documents: sensitiveDocuments,
     });
-  });
+    updated = await prisma.$transaction(async (tx) => {
+      if (hasProfileUpdates) {
+        await tx.userProfile.upsert({
+          where: { userId },
+          update: profileData,
+          create: { userId, ...profileData },
+        });
+      }
+
+      return tx.business.update({
+        where: { id: business.id },
+        data: prismaData,
+        include: defaultInclude,
+      });
+    });
+  } catch (error) {
+    await removeBusinessSensitiveDocuments({
+      businessId: business.id,
+      documents: storedDocuments,
+    });
+    throw error;
+  }
 
   // Emit RESUBMITTED if status changed back to PENDING
   if (

@@ -8,13 +8,13 @@ import path from "path";
 import crypto from "crypto";
 import prisma from "../../config/prismaClient.js";
 import { encryptFile, decryptFile, computeChecksum } from "./fileEncryption.service.js";
+import { matchesFileSignature } from "./fileSignature.js";
 import { createAuditLog } from "../../middlewares/auditLogMiddleware.js";
 import logger from "../../config/logger.js";
+import { resolveSensitiveStorageDir } from "./sensitiveStoragePath.service.js";
+import { verifyEncryptedStorageRecord } from "./encryptedStorageIntegrity.service.js";
 
-const STORAGE_DIR = path.resolve(
-  process.cwd(),
-  process.env.SENSITIVE_STORAGE_DIR || "storage/sensitive",
-);
+const STORAGE_DIR = resolveSensitiveStorageDir();
 
 const ALLOWED_TYPES = ["id_card_front", "id_card_back", "business_license", "certificate"];
 const ALLOWED_MIME = [
@@ -43,6 +43,61 @@ function generateFilename(businessId, type) {
   return `${businessId}_${type}_${random}.enc`;
 }
 
+export const buildEncryptedTempFilename = (filename) =>
+  `.${filename}.${crypto.randomUUID()}.tmp`;
+
+export const finalizeEncryptedWrite = async ({
+  tempPath,
+  finalPath,
+  publishRecord,
+  renameFile = fs.rename,
+  removeFile = fs.unlink,
+}) => {
+  let published = false;
+  try {
+    await renameFile(tempPath, finalPath);
+    published = true;
+    const record = await publishRecord();
+    return record;
+  } catch (error) {
+    await removeFile(published ? finalPath : tempPath).catch((removeError) => {
+      if (removeError?.code !== "ENOENT") throw removeError;
+    });
+    throw error;
+  }
+};
+
+export const buildEncryptedDeleteFilename = (filename) =>
+  `.${filename}.${crypto.randomUUID()}.deleting`;
+
+export const finalizeEncryptedDelete = async ({
+  filePath,
+  pendingDeletePath,
+  deleteRecord,
+  renameFile = fs.rename,
+  removeFile = fs.unlink,
+}) => {
+  let movedToPendingDelete = false;
+  let recordDeleted = false;
+
+  try {
+    await renameFile(filePath, pendingDeletePath);
+    movedToPendingDelete = true;
+    await deleteRecord();
+    recordDeleted = true;
+    await removeFile(pendingDeletePath).catch((removeError) => {
+      if (removeError?.code !== "ENOENT") throw removeError;
+    });
+  } catch (error) {
+    if (movedToPendingDelete && !recordDeleted) {
+      await renameFile(pendingDeletePath, filePath).catch((restoreError) => {
+        if (restoreError?.code !== "ENOENT") throw restoreError;
+      });
+    }
+    throw error;
+  }
+};
+
 /**
  * Upload và encrypt tài liệu nhạy cảm
  * Hỗ trợ nhiều file cùng loại (CCCD, giấy phép, chứng nhận,...)
@@ -66,6 +121,12 @@ export const uploadDocument = async ({
     err.statusCode = 400;
     throw err;
   }
+  if (!matchesFileSignature(buffer, mimeType)) {
+    const err = new Error("File content does not match its declared format");
+    err.statusCode = 400;
+    err.errorCode = "VALIDATION_ERROR";
+    throw err;
+  }
   if (buffer.length > MAX_FILE_SIZE) {
     const err = new Error("Tệp vượt quá 10MB");
     err.statusCode = 413;
@@ -79,7 +140,8 @@ export const uploadDocument = async ({
 
   const filename = generateFilename(businessId, type);
   const filePath = path.join(STORAGE_DIR, filename);
-  await fs.writeFile(filePath, encrypted);
+  const tempPath = path.join(STORAGE_DIR, buildEncryptedTempFilename(filename));
+  await fs.writeFile(tempPath, encrypted, { flag: "wx" });
 
   // Tính sortOrder tiếp theo cho loại tài liệu này
   const lastDoc = await prisma.sensitiveDocument.findFirst({
@@ -89,19 +151,24 @@ export const uploadDocument = async ({
   });
   const nextSortOrder = (lastDoc?.sortOrder ?? -1) + 1;
 
-  const record = await prisma.sensitiveDocument.create({
-    data: {
-      businessId,
-      type,
-      sortOrder: nextSortOrder,
-      encryptedPath: filename,
-      iv,
-      authTag,
-      mimeType,
-      originalName,
-      fileSize: buffer.length,
-      checksum,
-    },
+  const record = await finalizeEncryptedWrite({
+    tempPath,
+    finalPath: filePath,
+    publishRecord: () =>
+      prisma.sensitiveDocument.create({
+        data: {
+          businessId,
+          type,
+          sortOrder: nextSortOrder,
+          encryptedPath: filename,
+          iv,
+          authTag,
+          mimeType,
+          originalName,
+          fileSize: buffer.length,
+          checksum,
+        },
+      }),
   });
 
   logger.info(`Document uploaded: business=${businessId}, type=${type}, sortOrder=${nextSortOrder}, size=${buffer.length}`);
@@ -115,7 +182,14 @@ export const uploadDocument = async ({
     newData: { type, businessId, mimeType, fileSize: buffer.length },
   }).catch(() => {});
 
-  return { id: record.id, type, mimeType, fileSize: buffer.length };
+  return {
+    id: record.id,
+    type,
+    mimeType,
+    originalName: record.originalName,
+    fileSize: buffer.length,
+    createdAt: record.createdAt,
+  };
 };
 
 /**
@@ -147,20 +221,22 @@ export const downloadDocument = async ({
     throw err;
   }
 
-  const encryptedBuffer = await fs.readFile(
-    path.join(STORAGE_DIR, record.encryptedPath),
-  );
-  const buffer = decryptFile(encryptedBuffer, record.iv, record.authTag);
-
-  const checksum = computeChecksum(buffer);
-  if (checksum !== record.checksum) {
+  const integrity = await verifyEncryptedStorageRecord(record, {
+    storageDirectory: STORAGE_DIR,
+  });
+  if (!integrity.ok) {
     logger.error(
-      `Document integrity check failed: business=${record.businessId}, type=${record.type}, documentId=${documentId}`,
+      `Document integrity check failed: business=${record.businessId}, type=${record.type}, documentId=${documentId}, reason=${integrity.reason}`,
     );
     const err = new Error("Tài liệu bị lỗi hoặc bị thay đổi");
     err.statusCode = 500;
     throw err;
   }
+
+  const encryptedBuffer = await fs.readFile(
+    path.join(STORAGE_DIR, record.encryptedPath),
+  );
+  const buffer = decryptFile(encryptedBuffer, record.iv, record.authTag);
 
   logger.info(
     `Document accessed: business=${record.businessId}, type=${record.type}, user=${requesterId}`,
@@ -199,13 +275,23 @@ export const deleteDocument = async ({ documentId, businessId }) => {
   }
 
   const filePath = path.join(STORAGE_DIR, record.encryptedPath);
+  const pendingDeletePath = path.join(
+    STORAGE_DIR,
+    buildEncryptedDeleteFilename(record.encryptedPath),
+  );
   try {
-    await fs.unlink(filePath);
+    await finalizeEncryptedDelete({
+      filePath,
+      pendingDeletePath,
+      deleteRecord: () => prisma.sensitiveDocument.delete({ where: { id: record.id } }),
+    });
   } catch (err) {
-    if (err.code !== "ENOENT") throw err;
+    if (err.code === "ENOENT") {
+      await prisma.sensitiveDocument.delete({ where: { id: record.id } });
+    } else {
+      throw err;
+    }
   }
-
-  await prisma.sensitiveDocument.delete({ where: { id: record.id } });
 
   logger.info(`Document deleted: business=${businessId}, type=${record.type}`);
 

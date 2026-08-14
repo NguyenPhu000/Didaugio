@@ -400,582 +400,513 @@ const PlaceListPage = ({
   const getStatusBadge = (status) => {
     const statusConfig = {
       draft: {
-        label: "DRAFT",
-        className: "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
+        label: "Bản nháp",
+        className: "bg-[#F4F2EC] text-slate-600 border-black/[0.04]",
+        dot: "bg-slate-400",
       },
       pending: {
-        label: "PENDING",
-        className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50 animate-pulse",
+        label: "Chờ duyệt",
+        className: "bg-[#FFFDE6] text-slate-900 border-[#F3E600]/80",
+        dot: "bg-[#F3E600] animate-pulse shadow-[0_0_6px_#F3E600]",
       },
       approved: {
-        label: "APPROVED",
-        className: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50",
+        label: "Đã duyệt",
+        className: "bg-slate-950 text-white border-slate-950",
+        dot: "bg-[#F3E600]",
       },
       rejected: {
-        label: "REJECTED",
-        className: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50",
+        label: "Từ chối",
+        className: "bg-[#F4F2EC] text-slate-600 border-black/[0.04]",
+        dot: "bg-slate-400",
       },
       hidden: {
-        label: "HIDDEN",
-        className: "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
+        label: "Tạm ẩn",
+        className: "bg-slate-100 text-slate-600 border-slate-200",
+        dot: "bg-slate-400",
       },
     };
 
     const config = statusConfig[status] || statusConfig.draft;
     return (
       <div
-        className={cn("px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider rounded-full border shadow-sm backdrop-blur-sm", config.className)}
+        className={cn(
+          "inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-full border shadow-2xs transition-all",
+          config.className
+        )}
       >
-        {config.label}
+        <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", config.dot)} />
+        <span>{config.label}</span>
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen p-8 bg-[#F4F4F4] relative font-sans">
-      <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none"></div>
-
-      <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
-        {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b-2 border-black pb-6">
-          <div className="flex items-center gap-6">
-            <div className="accent-bar h-16 shrink-0"></div>
-            <div>
-              <h1 className="tim-title">{resolvedPageTitle}</h1>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1 shrink-0">
-                  DATABASE // PLACES
-                </span>
-                <p className="tim-meta">{resolvedPageMeta}</p>
-              </div>
-            </div>
+    <div className="space-y-6 text-slate-900 antialiased selection:bg-[#F3E600] selection:text-slate-950 max-w-[1560px] mx-auto">
+      {/* Editorial Header */}
+      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-black/[0.04]">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-[#F3E600] shadow-[0_0_6px_#F3E600]" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Hệ thống Dữ liệu Địa điểm
+            </span>
           </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
+            {resolvedPageTitle}
+          </h1>
+          <p className="text-xs text-slate-500 font-medium">
+            {resolvedPageMeta}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5 shrink-0">
           {allowCreate && hasPermission("places.create") && (
-            <Button
+            <button
+              type="button"
               onClick={handleCreate}
-              className="w-full sm:w-auto h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6 shrink-0"
+              className="h-10 px-5 rounded-full bg-slate-950 hover:bg-black text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 active:scale-95"
             >
-              <Plus className="mr-2 h-4 w-4" />
-              {t("places.createPlace")}
-            </Button>
+              <Plus className="h-4 w-4 text-[#F3E600]" />
+              <span>{t("places.createPlace")}</span>
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* Thống kê nhanh (theo dữ liệu trang / bộ lọc hiện tại) */}
+      {!isLoading && (
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <TimStatsCard
+            title={t("places.stats.total")}
+            value={placeStats.total}
+            icon={MapPin}
+          />
+          <TimStatsCard
+            title={t("places.stats.approved")}
+            value={placeStats.approved}
+            icon={CheckCircle}
+          />
+          <TimStatsCard
+            title={t("places.stats.pending")}
+            value={placeStats.pending}
+            icon={Activity}
+          />
+          <TimStatsCard
+            title={t("places.stats.featured")}
+            value={placeStats.featured}
+            icon={Star}
+          />
+        </section>
+      )}
+
+      {/* Soft Filter Bar */}
+      <section className="bg-white rounded-2xl border border-black/[0.04] p-3 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col md:flex-row items-center justify-between gap-3">
+        {/* Search */}
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          <input
+            placeholder={t("places.searchPlaceholder")}
+            value={localSearch}
+            onChange={handleSearch}
+            onKeyDown={onSearchKey}
+            className="w-full h-10 pl-10 pr-8 bg-[#F8F7F3] rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F3E600] placeholder:text-slate-400 transition-all border border-transparent focus:border-[#F3E600]/50"
+          />
+          {localSearch && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-800 text-xs font-bold"
+              aria-label="Xóa tìm kiếm"
+            >
+              ✕
+            </button>
           )}
         </div>
 
-        {/* Thống kê nhanh (theo dữ liệu trang / bộ lọc hiện tại) */}
-        {!isLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <TimStatsCard
-              title={t("places.stats.total")}
-              value={placeStats.total}
-              icon={MapPin}
-              serial="PLC-001"
-            />
-            <TimStatsCard
-              title={t("places.stats.approved")}
-              value={placeStats.approved}
-              icon={CheckCircle}
-              serial="PLC-002"
-              textColor="text-emerald-600"
-            />
-            <TimStatsCard
-              title={t("places.stats.pending")}
-              value={placeStats.pending}
-              icon={Activity}
-              serial="PLC-003"
-              textColor="text-amber-600"
-            />
-            <TimStatsCard
-              title={t("places.stats.featured")}
-              value={placeStats.featured}
-              icon={Star}
-              serial="PLC-004"
-              color="bg-yellow-50"
-            />
-          </div>
-        )}
+        {/* Filter Dropdowns */}
+        <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap">
+          <Select
+            value={filters.status || "all"}
+            onValueChange={(val) => handleFilterChange("status", val)}
+            disabled={lockStatusFilter}
+          >
+            <SelectTrigger className="h-10 px-4 rounded-xl border border-black/[0.05] bg-[#F8F7F3] text-xs font-semibold text-slate-800 w-[140px]">
+              <SelectValue placeholder={t("places.statusFilters.placeholder")} />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border border-black/[0.06] shadow-md">
+              <SelectItem value="all">{t("places.statusFilters.all")}</SelectItem>
+              <SelectItem value="pending">{t("places.statusFilters.pending")}</SelectItem>
+              <SelectItem value="approved">{t("places.statusFilters.approved")}</SelectItem>
+              <SelectItem value="draft">{t("places.statusFilters.draft")}</SelectItem>
+              <SelectItem value="rejected">{t("places.statusFilters.rejected")}</SelectItem>
+            </SelectContent>
+          </Select>
 
-        {/* Filter Bar */}
-        <div className="bg-white border border-black p-4 flex flex-col md:flex-row gap-4 shadow-sm">
-          {/* Search */}
-          <div className="flex-1 flex shadow-sm relative">
-            <div className="h-10 w-10 bg-black flex items-center justify-center text-white shrink-0">
-              <Search className="h-4 w-4" />
-            </div>
-            <input
-              placeholder={t("places.searchPlaceholder")}
-              value={localSearch}
-              onChange={handleSearch}
-              onKeyDown={onSearchKey}
-              className="flex-1 h-10 px-4 pr-10 border-y border-r border-black font-mono text-sm uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400"
-            />
-            {localSearch && (
-              <button
-                type="button"
-                onClick={handleClearSearch}
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors"
-                aria-label="Xóa tìm kiếm"
-              >
-                <XCircle className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+          <Select
+            value={filters.categoryId || "all"}
+            onValueChange={(val) => handleFilterChange("categoryId", val)}
+          >
+            <SelectTrigger className="h-10 px-4 rounded-xl border border-black/[0.05] bg-[#F8F7F3] text-xs font-semibold text-slate-800 w-[160px]">
+              <SelectValue placeholder={t("places.categoryFilter.placeholder")} />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border border-black/[0.06] shadow-md">
+              <SelectItem value="all">{t("places.categoryFilter.all")}</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id.toString()}>
+                  {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          {/* Filters */}
-          <div className="grid grid-cols-2 sm:flex sm:items-center gap-4 w-full md:w-auto">
-            <Select
-              value={filters.status || "all"}
-              onValueChange={(val) => handleFilterChange("status", val)}
-              disabled={lockStatusFilter}
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-1 bg-[#F5F4F0] p-1 rounded-xl shrink-0">
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              className={cn(
+                "p-2 rounded-lg text-xs transition-all",
+                viewMode === "grid"
+                  ? "bg-white text-slate-950 shadow-[0_2px_8px_rgba(0,0,0,0.06)]"
+                  : "text-slate-500 hover:text-slate-950"
+              )}
+              title="Dạng lưới thẻ"
             >
-              <SelectTrigger className="w-full sm:w-[150px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white">
-                <SelectValue placeholder={t("places.statusFilters.placeholder")} />
-              </SelectTrigger>
-              <SelectContent className="rounded-none border-black">
-                <SelectItem value="all">{t("places.statusFilters.all")}</SelectItem>
-                <SelectItem value="pending">{t("places.statusFilters.pending")}</SelectItem>
-                <SelectItem value="approved">{t("places.statusFilters.approved")}</SelectItem>
-                <SelectItem value="draft">{t("places.statusFilters.draft")}</SelectItem>
-                <SelectItem value="rejected">{t("places.statusFilters.rejected")}</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={filters.categoryId || "all"}
-              onValueChange={(val) => handleFilterChange("categoryId", val)}
+              <GridIcon className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "p-2 rounded-lg text-xs transition-all",
+                viewMode === "list"
+                  ? "bg-white text-slate-950 shadow-[0_2px_8px_rgba(0,0,0,0.06)]"
+                  : "text-slate-500 hover:text-slate-950"
+              )}
+              title="Dạng danh sách"
             >
-              <SelectTrigger className="w-full sm:w-[180px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white">
-                <SelectValue placeholder={t("places.categoryFilter.placeholder")} />
-              </SelectTrigger>
-              <SelectContent className="rounded-none border-black">
-                <SelectItem value="all">{t("places.categoryFilter.all")}</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id.toString()}>
-                    {cat.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <div className="col-span-2 sm:col-span-1 border-t sm:border-t-0 sm:border-l border-black pt-4 sm:pt-0 sm:pl-4 flex gap-2 justify-end">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setViewMode("grid")}
-                className={`h-10 w-10 rounded-none border border-black ${viewMode === "grid" ? "bg-primary text-black" : "text-gray-400 hover:text-black"}`}
-              >
-                <GridIcon className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setViewMode("list")}
-                className={`h-10 w-10 rounded-none border border-black ${viewMode === "list" ? "bg-primary text-black" : "text-gray-400 hover:text-black"}`}
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
+              <List className="h-4 w-4" />
+            </button>
           </div>
         </div>
+      </section>
 
-        {/* Content Grid */}
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <div className="w-12 h-12 border-4 border-black border-t-primary rounded-full animate-spin"></div>
-            <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-              {t("common.loading")}
-            </div>
-          </div>
-        ) : (
-          <div
-            className={
-              viewMode === "grid"
-                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-                : "space-y-2"
-            }
-          >
-            {places.map((place, index) =>
-              viewMode === "grid" ? (
-                // GRID VIEW CARD - ENHANCED T.I.M STYLE
-                <div
-                  key={place.id}
-                  className="relative group bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-1 overflow-hidden flex flex-col"
-                >
-                  {/* Grid Background Overlay */}
-                  <div className="absolute inset-0 bg-grid-dots opacity-30 pointer-events-none"></div>
+      {/* Content Grid */}
+      {isLoading ? (
+        <div className="py-28 text-center space-y-3">
+          <div className="w-10 h-10 border-3 border-slate-950 border-t-[#F3E600] rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-semibold text-slate-500">{t("common.loading")}</p>
+        </div>
+      ) : places.length === 0 ? (
+        <div className="rounded-3xl bg-white border border-black/[0.04] p-16 text-center shadow-[0_8px_30px_rgba(0,0,0,0.02)]">
+          <MapPin className="h-12 w-12 mx-auto text-slate-300 mb-3 stroke-[1.5]" />
+          <h3 className="font-bold text-base text-slate-900">
+            Không tìm thấy địa điểm nào
+          </h3>
+          <p className="text-xs text-slate-500 mt-1">
+            Hãy thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc trạng thái.
+          </p>
+        </div>
+      ) : (
+        <div
+          className={
+            viewMode === "grid"
+              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+              : "space-y-3"
+          }
+        >
+          {places.map((place, index) =>
+            viewMode === "grid" ? (
+              /* GRID VIEW CARD (Homely Soft UI) */
+              <article
+                key={place.id}
+                className="group bg-white rounded-2xl border border-black/[0.04] shadow-[0_4px_24px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_36px_rgba(0,0,0,0.07)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col overflow-hidden relative"
+              >
+                {/* Top Subtle Yellow Accent Bar on Hover */}
+                <div className="h-1 w-full bg-transparent group-hover:bg-[#F3E600] transition-colors" />
 
-                  {/* Image Container */}
-                  <div className="h-52 bg-zinc-900 relative overflow-hidden border-b border-zinc-100 dark:border-zinc-800 rounded-t-2xl shrink-0">
-                    {getPlaceCardImageSrc(place) ? (
-                      <>
-                        <img
-                          src={getPlaceCardImageSrc(place)}
-                          className="w-full h-full object-cover grayscale-[0.7] group-hover:grayscale-0 group-hover:scale-110 transition-all duration-700"
-                          alt={place.name}
-                        />
-                        {/* Accent Bar on Image */}
-                        <div className="absolute bottom-0 left-0 w-1 h-full bg-[#F3E600] group-hover:w-1.5 transition-all"></div>
-                      </>
-                    ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                        <MapPin className="h-12 w-12 text-gray-600 mb-2" />
-                        <span className="font-mono text-xs text-gray-500 uppercase tracking-wider">
-                          NO_IMAGE_DATA
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Status & Featured Badges */}
-                    <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
-                      {getStatusBadge(place.status)}
-                      {place.isFeatured && (
-                        <div className="bg-[#F3E600] text-black px-2.5 py-1 text-[10px] uppercase font-bold flex items-center gap-1 rounded-full shadow-sm">
-                          <Star className="w-3 h-3 fill-black" /> FEATURED
-                        </div>
-                      )}
-                    </div>
-
-                    {/* ID Badge */}
-                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-0.5 rounded-full">
-                      <span className="font-mono text-[10px] text-white font-semibold">
-                        {getTableSerialNumber(
-                          pagination.total || places.length,
-                          index,
-                          pagination.page || filters.page,
-                          pagination.limit || filters.limit,
-                        )}
+                {/* Photo Thumbnail Container */}
+                <div className="h-48 bg-[#F4F2EC] relative overflow-hidden shrink-0">
+                  {getPlaceCardImageSrc(place) ? (
+                    <img
+                      src={getPlaceCardImageSrc(place)}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500"
+                      alt={place.name}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#FAF9F6]">
+                      <MapPin className="h-8 w-8 text-slate-300 mb-1" />
+                      <span className="font-mono text-[10px] text-slate-400">
+                        Chưa có hình ảnh
                       </span>
                     </div>
+                  )}
+
+                  {/* Status & Featured Badges */}
+                  <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5">
+                    {getStatusBadge(place.status)}
+                    {place.isFeatured && (
+                      <div className="bg-[#F3E600] text-slate-950 px-2.5 py-0.5 text-[10px] font-bold flex items-center gap-1 rounded-full shadow-xs">
+                        <Star className="w-3 h-3 fill-slate-950" /> Nổi bật
+                      </div>
+                    )}
                   </div>
 
-                  {/* Content Section */}
-                  <div className="p-5 relative bg-white dark:bg-zinc-900 flex-1 flex flex-col">
-                    {/* Title */}
+                  {/* Serial Number */}
+                  <div className="absolute top-3 left-3 bg-slate-950/70 backdrop-blur-md px-2.5 py-0.5 rounded-full">
+                    <span className="font-mono text-[10px] text-[#F3E600] font-bold tabular-nums">
+                      #{getTableSerialNumber(
+                        pagination.total || places.length,
+                        index,
+                        pagination.page || filters.page,
+                        pagination.limit || filters.limit,
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Content Section */}
+                <div className="p-4 flex-1 flex flex-col space-y-3">
+                  <div>
                     <h3
-                      className="font-bold text-base text-zinc-900 dark:text-zinc-100 leading-tight uppercase mb-2 tracking-tight hover:text-[#F3E600] transition-colors cursor-pointer line-clamp-2 min-h-[2.5rem]"
+                      className="font-bold text-[15px] text-slate-950 leading-snug truncate group-hover:text-slate-800 transition-colors cursor-pointer"
                       title={place.name}
                       onClick={() => handleViewDetails(place)}
                     >
                       {place.name}
                     </h3>
 
-                    {/* Meta Info */}
-                    <div className="flex items-center gap-2 text-[10px] text-zinc-500 dark:text-zinc-400 mb-4 flex-wrap">
-                      <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full font-medium">
-                        {place.category?.name || "UNCATEGORIZED"}
+                    <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#F5F4F0] text-slate-800">
+                        {place.category?.name || "Chưa phân loại"}
                       </span>
-                      <span className="text-zinc-300 dark:text-zinc-700">•</span>
-                      <span
-                        className="truncate max-w-[120px] font-medium"
-                        title={place.district?.name}
-                      >
-                        {place.district?.name || "NO_DISTRICT"}
+                      <span>•</span>
+                      <span className="truncate text-[11px]" title={place.district?.name}>
+                        {place.district?.name || "Cần Thơ"}
                       </span>
                     </div>
+                  </div>
 
-                    {/* Stats Grid - Enhanced */}
-                    <div className="grid grid-cols-2 gap-2.5 border-t border-zinc-100 dark:border-zinc-800 pt-4 mb-4">
-                      <div className="text-center bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl p-2.5 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                        <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
-                          <Eye className="w-3.5 h-3.5 text-zinc-400" /> VIEWS
-                        </div>
-                        <div className="font-bold text-lg text-zinc-800 dark:text-zinc-200">
-                          {place.viewCount || 0}
-                        </div>
+                  {/* 2-Col Metric Strip */}
+                  <div className="grid grid-cols-2 divide-x divide-black/[0.04] bg-[#FAF9F5] rounded-xl py-2 px-1 border border-black/[0.03] text-center">
+                    <div className="px-1">
+                      <div className="text-[10px] font-medium text-slate-500 flex items-center justify-center gap-1">
+                        <Eye className="w-3 h-3 text-slate-400" /> Lượt xem
                       </div>
-                      <div className="text-center bg-amber-50/30 dark:bg-amber-950/10 border border-amber-100/50 dark:border-amber-950/30 rounded-xl p-2.5 transition-all hover:bg-amber-50/50">
-                        <div className="text-[10px] text-amber-600/80 dark:text-amber-500 font-semibold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
-                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> RATING
-                        </div>
-                        <div className="font-bold text-lg text-amber-700 dark:text-amber-400">
-                          {place.ratingAvg
-                            ? parseFloat(place.ratingAvg).toFixed(1)
-                            : "N/A"}
-                        </div>
+                      <div className="font-extrabold text-sm text-slate-950 font-mono tabular-nums mt-0.5">
+                        {place.viewCount || 0}
                       </div>
                     </div>
+                    <div className="px-1">
+                      <div className="text-[10px] font-medium text-slate-500 flex items-center justify-center gap-1">
+                        <Star className="w-3 h-3 text-[#F3E600] fill-[#F3E600]" /> Đánh giá
+                      </div>
+                      <div className="font-extrabold text-sm text-slate-950 font-mono tabular-nums mt-0.5">
+                        {place.ratingAvg ? parseFloat(place.ratingAvg).toFixed(1) : "—"}
+                      </div>
+                    </div>
+                  </div>
 
-                    {/* Action Buttons - Tactical Style */}
-                    <div className="flex gap-2 mt-auto pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                      <Button
-                        size="sm"
-                        className="flex-1 rounded-xl bg-zinc-950 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 dark:text-zinc-950 text-white font-semibold text-[11px] gap-1.5 h-10 shadow-sm"
-                        onClick={() => handleEdit(place)}
-                      >
-                        <Edit className="w-4 h-4" /> EDIT
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="icon"
-                            className="h-10 w-10 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
-                          >
-                            <MoreHorizontal className="w-5 h-5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-950 w-48 font-sans text-xs [--accent:transparent]"
+                  {/* Card Actions */}
+                  <div className="mt-auto pt-2 border-t border-black/[0.04] flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleViewDetails(place)}
+                      className="flex-1 h-8 rounded-xl font-semibold text-xs bg-white text-slate-900 hover:bg-[#F5F4F0] border border-black/[0.06] shadow-2xs transition-all flex items-center justify-center gap-1 active:scale-98"
+                    >
+                      <Info className="h-3.5 w-3.5 text-slate-500" />
+                      Chi tiết
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleEdit(place)}
+                      className="flex-1 h-8 rounded-xl bg-slate-950 hover:bg-black text-white font-semibold text-xs transition-all flex items-center justify-center gap-1 shadow-2xs active:scale-98"
+                    >
+                      <Edit className="h-3.5 w-3.5 text-[#F3E600]" />
+                      Chỉnh sửa
+                    </button>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="h-8 w-8 rounded-xl border border-black/[0.06] bg-white hover:bg-[#F5F4F0] text-slate-700 flex items-center justify-center transition-all shrink-0 active:scale-98"
                         >
-                          <DropdownMenuLabel>{t("places.card.actions")}</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="rounded-2xl border border-black/[0.06] bg-white shadow-lg p-1.5 w-48 text-xs"
+                      >
+                        <DropdownMenuLabel className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                          Thao tác địa điểm
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator className="bg-black/[0.04]" />
+                        {canFeaturePlaces && (
                           <DropdownMenuItem
-                            onClick={() => handleViewDetails(place)}
-                            className="cursor-pointer hover:bg-gray-100"
+                            onClick={() => handleToggleFeature(place)}
+                            className="rounded-xl cursor-pointer py-2 font-medium"
                           >
-                            <Info className="mr-2 h-3 w-3" /> {t("places.card.detail")}
+                            <Star className="mr-2 h-3.5 w-3.5 text-[#F3E600]" />
+                            {place.isFeatured ? "Bỏ đánh dấu nổi bật" : "Đánh dấu nổi bật"}
                           </DropdownMenuItem>
-                          {canFeaturePlaces && (
-                            <DropdownMenuItem
-                              onClick={() => handleToggleFeature(place)}
-                              className="cursor-pointer hover:bg-gray-100"
-                            >
-                              <Star className="mr-2 h-3 w-3" />{" "}
-                              {place.isFeatured ? t("places.card.unfeature") : t("places.card.feature")}
-                            </DropdownMenuItem>
-                          )}
+                        )}
 
-                          {place.status === "pending" && canModeratePlaces && (
-                            <>
-                              <DropdownMenuSeparator />
-                              {hasPermission("places.approve") && (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    moderationMode
-                                      ? openModerationDialog(place, "approved")
-                                      : handleStatusChange(place, "approved")
-                                  }
-                                  className="text-green-600 hover:bg-green-50 cursor-pointer text-bold"
-                                >
-                                  <CheckCircle className="mr-2 h-3 w-3" /> {t("places.card.quickApprove")}
-                                </DropdownMenuItem>
-                              )}
-                              {hasPermission("places.reject") && (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    moderationMode
-                                      ? openModerationDialog(place, "rejected")
-                                      : handleStatusChange(place, "rejected")
-                                  }
-                                  className="text-red-600 hover:bg-red-50 cursor-pointer text-bold"
-                                >
-                                  <XCircle className="mr-2 h-3 w-3" /> {t("places.card.reject")}
-                                </DropdownMenuItem>
-                              )}
-                            </>
-                          )}
-
-                          {hasPermission("places.delete") && (
-                            <>
-                              <DropdownMenuSeparator />
+                        {place.status === "pending" && canModeratePlaces && (
+                          <>
+                            <DropdownMenuSeparator className="bg-black/[0.04]" />
+                            {hasPermission("places.approve") && (
                               <DropdownMenuItem
-                                onClick={() => handleDelete(place)}
-                                className="text-red-600 hover:bg-red-50 cursor-pointer"
+                                onClick={() =>
+                                  moderationMode
+                                    ? openModerationDialog(place, "approved")
+                                    : handleStatusChange(place, "approved")
+                                }
+                                className="rounded-xl text-slate-900 hover:bg-[#FFFDE6] cursor-pointer py-2 font-semibold"
                               >
-                                <Trash2 className="mr-2 h-3 w-3" /> {t("places.card.delete")}
+                                <CheckCircle className="mr-2 h-3.5 w-3.5 text-[#F3E600]" />
+                                Phê duyệt nhanh
                               </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                            )}
+                            {hasPermission("places.reject") && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  moderationMode
+                                    ? openModerationDialog(place, "rejected")
+                                    : handleStatusChange(place, "rejected")
+                                }
+                                className="rounded-xl text-rose-600 hover:bg-rose-50 cursor-pointer py-2 font-semibold"
+                              >
+                                <XCircle className="mr-2 h-3.5 w-3.5 text-rose-500" />
+                                Từ chối địa điểm
+                              </DropdownMenuItem>
+                            )}
+                          </>
+                        )}
+
+                        {hasPermission("places.delete") && (
+                          <>
+                            <DropdownMenuSeparator className="bg-black/[0.04]" />
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(place)}
+                              className="rounded-xl text-rose-600 hover:bg-rose-50 cursor-pointer py-2 font-semibold"
+                            >
+                              <Trash2 className="mr-2 h-3.5 w-3.5 text-rose-500" />
+                              Xóa địa điểm
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
-              ) : (
-                // LIST VIEW ROW
-                <div
-                  key={place.id}
-                  className="flex flex-col sm:flex-row sm:items-center bg-white border border-black p-3 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all group gap-3 sm:gap-0"
-                >
-                  <div className="w-full sm:w-16 sm:h-16 h-36 bg-gray-200 sm:mr-4 shrink-0 relative border border-black">
-                    {getPlaceCardImageSrc(place) ? (
-                      <img
-                        src={getPlaceCardImageSrc(place)}
-                        className="w-full h-full object-cover"
-                        alt={place.name}
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <MapPin className="h-6 w-6 text-gray-400" />
-                      </div>
-                    )}
+              </article>
+            ) : (
+              /* LIST VIEW ROW */
+              <div
+                key={place.id}
+                className="flex flex-col sm:flex-row sm:items-center bg-white rounded-2xl border border-black/[0.04] p-3.5 shadow-[0_2px_12px_rgba(0,0,0,0.02)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 transition-all gap-3"
+              >
+                <div className="w-full sm:w-16 sm:h-16 h-36 bg-[#F4F2EC] rounded-xl overflow-hidden shrink-0 relative border border-black/[0.04]">
+                  {getPlaceCardImageSrc(place) ? (
+                    <img
+                      src={getPlaceCardImageSrc(place)}
+                      className="w-full h-full object-cover"
+                      alt={place.name}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <MapPin className="h-5 w-5 text-slate-300" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0 flex flex-col md:grid md:grid-cols-12 md:items-center gap-2 md:gap-4">
+                  <div className="md:col-span-5 min-w-0">
+                    <h4
+                      className="font-bold text-sm text-slate-950 truncate cursor-pointer hover:text-slate-800"
+                      onClick={() => handleViewDetails(place)}
+                    >
+                      {place.name}
+                    </h4>
+                    <div className="text-[11px] text-slate-400 truncate" title={place.address}>
+                      {place.address || "Chưa có địa chỉ"}
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0 flex flex-col md:grid md:grid-cols-12 md:items-center gap-2 md:gap-4">
-                    <div className="md:col-span-5 min-w-0">
-                      <div
-                        className="font-bold text-sm uppercase truncate cursor-pointer hover:text-yellow-600"
-                        onClick={() => handleViewDetails(place)}
-                      >
-                        {place.name}
-                      </div>
-                      <div className="text-[10px] text-gray-500 font-mono truncate" title={place.address}>
-                        {place.address || "NO_ADDRESS"}
-                      </div>
-                    </div>
-                    <div className="md:col-span-3 flex items-center gap-2">
-                      <span className="text-[10px] font-mono uppercase bg-gray-100 px-2 py-0.5 border border-gray-300">
-                        {place.category?.name || "UNCATEGORIZED"}
-                      </span>
-                    </div>
-                    <div className="md:col-span-2">
-                      {getStatusBadge(place.status)}
-                    </div>
-                    <div className="md:col-span-2 flex justify-end gap-2 mt-2 md:mt-0">
-                      <Button
-                        size="sm"
-                        className="flex-1 md:flex-initial h-8 rounded-none border border-black bg-white text-black hover:bg-[#F3E600] hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-mono text-[10px] uppercase font-bold"
-                        onClick={() => handleEdit(place)}
-                      >
-                        {t("common.edit")}
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-8 w-8 rounded-none border-2 border-black bg-black text-[#F3E600] hover:bg-[#F3E600] hover:text-black transition-all"
-                          >
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="rounded-none border border-black w-48 font-mono text-xs uppercase"
-                        >
-                          <DropdownMenuLabel>{t("places.card.actions")}</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleViewDetails(place)}
-                            className="cursor-pointer"
-                          >
-                            <Info className="mr-2 h-3 w-3" /> {t("places.card.detail")}
-                          </DropdownMenuItem>
-                          {canFeaturePlaces && (
-                            <DropdownMenuItem
-                              onClick={() => handleToggleFeature(place)}
-                              className="cursor-pointer"
-                            >
-                              <Star className="mr-2 h-3 w-3" />{" "}
-                              {place.isFeatured ? t("places.card.unfeature") : t("places.card.feature")}
-                            </DropdownMenuItem>
-                          )}
-                          {place.status === "pending" && canModeratePlaces && (
-                            <>
-                              <DropdownMenuSeparator />
-                              {hasPermission("places.approve") && (
-                                <DropdownMenuItem
-                                  onClick={() => handleStatusChange(place, "approved")}
-                                  className="text-green-600"
-                                >
-                                  <CheckCircle className="mr-2 h-3 w-3" /> {t("places.card.quickApprove")}
-                                </DropdownMenuItem>
-                              )}
-                              {hasPermission("places.reject") && (
-                                <DropdownMenuItem
-                                  onClick={() => handleStatusChange(place, "rejected")}
-                                  className="text-red-600"
-                                >
-                                  <XCircle className="mr-2 h-3 w-3" /> {t("places.card.reject")}
-                                </DropdownMenuItem>
-                              )}
-                            </>
-                          )}
-                          {hasPermission("places.delete") && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(place)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="mr-2 h-3 w-3" /> {t("places.card.delete")}
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+
+                  <div className="md:col-span-3 flex items-center gap-2">
+                    <span className="text-[11px] font-semibold bg-[#F5F4F0] px-2.5 py-0.5 rounded-full text-slate-800">
+                      {place.category?.name || "Chưa phân loại"}
+                    </span>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    {getStatusBadge(place.status)}
+                  </div>
+
+                  <div className="md:col-span-2 flex justify-end gap-2 mt-2 md:mt-0">
+                    <button
+                      type="button"
+                      onClick={() => handleEdit(place)}
+                      className="h-8 px-3 rounded-xl bg-slate-950 hover:bg-black text-white text-xs font-semibold shadow-2xs transition-all"
+                    >
+                      Sửa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleViewDetails(place)}
+                      className="h-8 px-3 rounded-xl bg-white hover:bg-[#F5F4F0] text-slate-900 border border-black/[0.06] text-xs font-semibold transition-all"
+                    >
+                      Chi tiết
+                    </button>
                   </div>
                 </div>
-              ),
-            )}
+              </div>
+            )
+          )}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between pt-5 border-t border-black/[0.04] text-xs">
+          <div className="text-slate-500 font-medium">
+            Hiển thị trang <span className="font-bold text-slate-900 font-mono tabular-nums">{filters.page}</span> / <span className="font-mono tabular-nums">{pagination.totalPages}</span> (Tổng <span className="font-mono tabular-nums">{pagination.total}</span> địa điểm)
           </div>
-        )}
-
-        {/* Empty State */}
-        {!isLoading && places.length === 0 && (
-          <div className="text-center py-20 border border-dashed border-black bg-white/50">
-            <MapPin className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <h3 className="font-black text-xl uppercase mb-2">
-              {t("places.empty.title")}
-            </h3>
-            <p className="font-mono text-xs text-muted-foreground mb-6 uppercase">
-              {t("places.empty.description")}
-            </p>
-            <Button
-              onClick={handleCreate}
-              className="rounded-none bg-black text-white px-8 font-bold uppercase hover:bg-primary hover:text-black"
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={filters.page <= 1}
+              onClick={() => handlePageChange(filters.page - 1)}
+              className="rounded-full text-xs font-semibold h-8 px-3.5 bg-white border border-black/[0.05] shadow-2xs hover:bg-[#F5F4F0] disabled:opacity-40 transition-all flex items-center gap-1 text-slate-900"
             >
-              {t("places.empty.createNew")}
-            </Button>
+              ← Trước
+            </button>
+            <button
+              type="button"
+              disabled={filters.page >= pagination.totalPages}
+              onClick={() => handlePageChange(filters.page + 1)}
+              className="rounded-full text-xs font-semibold h-8 px-3.5 bg-white border border-black/[0.05] shadow-2xs hover:bg-[#F5F4F0] disabled:opacity-40 transition-all flex items-center gap-1 text-slate-900"
+            >
+              Sau →
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Pagination */}
-        {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-black pt-4 font-mono text-xs uppercase">
-            <div>
-              {t("places.pagination.page", { page: pagination.page, totalPages: pagination.totalPages })}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                disabled={pagination.page <= 1}
-                onClick={() => handlePageChange(pagination.page - 1)}
-                className="rounded-none border-black h-8 hover:bg-black hover:text-white"
-              >
-                {t("common.previous")}
-              </Button>
-              <Button
-                variant="outline"
-                disabled={pagination.page >= pagination.totalPages}
-                onClick={() => handlePageChange(pagination.page + 1)}
-                className="rounded-none border-black h-8 hover:bg-black hover:text-white"
-              >
-                {t("common.next")}
-              </Button>
-            </div>
-          </div>
+      {/* Modals */}
+      <Suspense fallback={null}>
+        {detailDialogOpen && selectedPlace && (
+          <PlaceDetailDialog
+            open={detailDialogOpen}
+            onOpenChange={setDetailDialogOpen}
+            place={selectedPlace}
+            onEdit={() => handleEdit(selectedPlace)}
+            onViewBusiness={(bizId) => setViewBusinessId(bizId)}
+          />
         )}
-      </div>
-
-      {/* Detail Dialog */}
-      <Suspense
-        fallback={
-          <div className="flex items-center justify-center p-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        }
-      >
-        <PlaceDetailDialog
-          place={selectedPlace}
-          open={detailDialogOpen}
-          onOpenChange={setDetailDialogOpen}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onApprove={
-            hasPermission("places.approve")
-              ? (place) => approveMutation.mutateAsync(place.id)
-              : undefined
-          }
-          onReject={
-            hasPermission("places.reject")
-              ? (place) => openModerationDialog(place, "rejected")
-              : undefined
-          }
-          onViewBusinessDetails={(id) => {
-            setDetailDialogOpen(false);
-            setViewBusinessId(id);
-          }}
-        />
       </Suspense>
 
       <BusinessDetailModal
@@ -986,29 +917,29 @@ const PlaceListPage = ({
         businessId={viewBusinessId}
       />
 
+      {/* Dialog Duyệt / Từ chối kèm lý do */}
       <Dialog
         open={moderationDialog.open}
         onOpenChange={(open) =>
           setModerationDialog((prev) => ({ ...prev, open }))
         }
       >
-        <DialogContent className="rounded-none border border-black bg-white sm:max-w-[560px]">
-          <DialogHeader className="space-y-2">
-            <DialogTitle className="font-black uppercase tracking-wide text-base">
+        <DialogContent className="sm:max-w-md rounded-2xl bg-white border border-black/[0.06] p-6 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-950">
               {moderationDialog.action === "approved"
-                ? t("places.moderation.confirmApprove")
-                : t("places.moderation.confirmReject")}
+                ? "Duyệt địa điểm"
+                : "Từ chối địa điểm"}
             </DialogTitle>
-            <DialogDescription className="font-mono text-xs uppercase text-gray-500">
-              {moderationDialog.place?.name || t("places.moderation.placeLabel")}
+            <DialogDescription className="text-xs text-slate-500">
+              {moderationDialog.place?.name}
             </DialogDescription>
           </DialogHeader>
-
-          <div className="space-y-2">
-            <label className="font-mono text-[11px] uppercase text-gray-600">
+          <div className="space-y-3 py-2">
+            <label className="text-xs font-semibold text-slate-700">
               {moderationDialog.action === "approved"
-                ? t("places.moderation.noteOptional")
-                : t("places.moderation.rejectReasonRequired")}
+                ? "Ghi chú duyệt (tùy chọn):"
+                : "Lý do từ chối (bắt buộc, gửi thông báo cho đối tác):"}
             </label>
             <Textarea
               value={moderationDialog.comment}
@@ -1018,44 +949,35 @@ const PlaceListPage = ({
                   comment: e.target.value,
                 }))
               }
-              rows={4}
               placeholder={
                 moderationDialog.action === "approved"
-                  ? t("places.moderation.approvePlaceholder")
-                  : t("places.moderation.rejectPlaceholder")
+                  ? "Nhập ghi chú cho quản trị viên..."
+                  : "Nêu rõ lý do từ chối (thiếu thông tin, hình ảnh không đạt chuẩn...)"
               }
-              className="rounded-none border-black focus-visible:ring-0 font-mono text-sm"
+              rows={3}
+              className="rounded-xl border border-black/[0.06] bg-[#F8F7F3] text-xs"
             />
           </div>
-
           <div className="flex justify-end gap-2 pt-2">
             <Button
-              type="button"
               variant="outline"
-              className="rounded-none border-black font-bold uppercase text-xs"
               onClick={() =>
-                setModerationDialog({
-                  open: false,
-                  place: null,
-                  action: "approved",
-                  comment: "",
-                })
+                setModerationDialog((prev) => ({ ...prev, open: false }))
               }
+              className="rounded-full text-xs font-semibold h-9 px-4"
             >
-              {t("common.cancel")}
+              Hủy
             </Button>
             <Button
-              type="button"
-              className={`rounded-none border border-black font-bold uppercase text-xs ${
-                moderationDialog.action === "approved"
-                  ? "bg-green-600 hover:bg-green-700 text-white"
-                  : "bg-red-600 hover:bg-red-700 text-white"
-              }`}
               onClick={handleModerationConfirm}
+              className={cn(
+                "rounded-full text-xs font-semibold h-9 px-5 shadow-sm",
+                moderationDialog.action === "approved"
+                  ? "bg-slate-950 text-white hover:bg-black"
+                  : "bg-rose-600 text-white hover:bg-rose-700"
+              )}
             >
-              {moderationDialog.action === "approved"
-                ? t("places.moderation.confirmApproveBtn")
-                : t("places.moderation.confirmRejectBtn")}
+              Xác nhận
             </Button>
           </div>
         </DialogContent>

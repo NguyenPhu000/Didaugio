@@ -43,9 +43,13 @@ const storage = hasCloudinaryConfig
     })
   : multer.memoryStorage();
 
-const createUpload = ({ maxFiles = 1, maxFields = MAX_UPLOAD_FIELDS } = {}) =>
+const createUpload = ({
+  storage: uploadStorage = storage,
+  maxFiles = 1,
+  maxFields = MAX_UPLOAD_FIELDS,
+} = {}) =>
   multer({
-  storage,
+  storage: uploadStorage,
   limits: {
     fileSize: MAX_UPLOAD_FILE_SIZE_BYTES,
     fieldSize: MAX_UPLOAD_FIELD_SIZE_BYTES,
@@ -78,12 +82,20 @@ export const uploadFields = (fields) =>
     maxFiles: fields.reduce((total, field) => total + (field.maxCount ?? 1), 0),
   }).fields(fields);
 
-export const businessDocUpload = uploadFields([
+const businessDocumentFields = [
   { name: "idCardFront", maxCount: 1 },
   { name: "idCardBack", maxCount: 1 },
   { name: "businessLicense", maxCount: 1 },
-  { name: "thumbnail", maxCount: 1 },
-]);
+  { name: "certificate", maxCount: 5 },
+];
+
+export const businessDocUpload = createUpload({
+  storage: multer.memoryStorage(),
+  maxFiles: businessDocumentFields.reduce(
+    (total, field) => total + field.maxCount,
+    0,
+  ),
+}).fields(businessDocumentFields);
 
 export const deleteFromCloudinary = async (publicId) => {
   if (!hasCloudinaryConfig) {

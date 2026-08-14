@@ -231,5 +231,6 @@ app/contract/
 **/*.spec.jsx
 **/*.spec.ts
 **/*.spec.tsx
+
 .github/workflows/quality.yml
 server/docker-compose.high-load.yml

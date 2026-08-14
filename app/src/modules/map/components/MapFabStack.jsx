@@ -66,9 +66,10 @@ const MapFabStack = memo(function MapFabStack({
           {layerModalVisible ? (
             <View className="flex-row items-center gap-1 rounded-full border border-black/[0.04] bg-white/95 p-1 shadow-lg shadow-slate-900/5">
               {[
-                { style: mapStyles.OSM, label: t("mapScreen.map") },
-                { style: mapStyles.HYBRID, label: t("mapScreen.satellite") },
-              ].map((item) => {
+                { style: mapStyles.ISLAND, label: "Đảo Cần Thơ" },
+                { style: mapStyles.OSM, label: t("mapScreen.map", { defaultValue: "Tiêu chuẩn" }) },
+                { style: mapStyles.HYBRID, label: t("mapScreen.satellite", { defaultValue: "Vệ tinh" }) },
+              ].filter((item) => Boolean(item.style)).map((item) => {
                 const active = mapStyle.key === item.style.key;
                 return (
                   <Pressable

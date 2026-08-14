@@ -3,6 +3,7 @@ import ServiceError from "../../utils/serviceError.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import { deleteImage } from "../../utils/cloudinaryService.js";
 import { uploadPlaceImage } from "../media/media.service.js";
+import { enqueueCloudinaryAssetCleanup } from "../media/cloudinaryCleanupJob.service.js";
 
 const EVENT_TRIP_PLACE_SELECT = {
   id: true,
@@ -40,239 +41,120 @@ const toInt = (value, fallback = null) => {
   return Number.isNaN(number) ? fallback : number;
 };
 
-// 1. Tạo sự kiện (chỉ dành cho Admin/Superadmin/Staff)
-export const createEvent = async (userId, data) => {
-  const {
-    title,
-    description,
-    thumbnail,
-    thumbnailPublicId,
-    startDate,
-    endDate,
-    location,
-    maxParticipants,
-    isFeaturedBanner,
-    tripId,
-    broadcastNotice,
-    status,
-  } = data;
+const isInlineImage = (value) =>
+  typeof value === "string" && value.startsWith("data:image/");
 
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  if (start > end) {
-    throw new ServiceError(
-      ERROR_CODES.VALIDATION_ERROR,
-      "Ngày bắt đầu không được lớn hơn ngày kết thúc",
-      400
-    );
-  }
-
-  // Nếu có tripId, kiểm tra sự tồn tại của Trip
-  if (tripId) {
-    const existingTrip = await prisma.tripPlan.findUnique({
-      where: { id: tripId },
-    });
-    if (!existingTrip) {
-      throw new ServiceError(
-        ERROR_CODES.NOT_FOUND,
-        "Lịch trình chuyến đi mẫu không tồn tại",
-        404
-      );
-    }
-  }
-
-  // Tự động upload thumbnail nếu gửi base64 từ client
-  let finalThumbnail = thumbnail;
-  let finalThumbnailPublicId = thumbnailPublicId;
-
-  if (thumbnail && thumbnail.startsWith("data:image/")) {
-    try {
-      const uploadResult = await uploadPlaceImage(thumbnail, "didaugio/events");
-      finalThumbnail = uploadResult.secureUrl;
-      finalThumbnailPublicId = uploadResult.publicId;
-    } catch (err) {
-      console.warn("Lỗi upload thumbnail lên Cloudinary (sử dụng fallback base64):", err.message);
-      finalThumbnail = thumbnail;
-      finalThumbnailPublicId = null;
-    }
-  }
-
-  const event = await prisma.event.create({
-    data: {
-      title,
-      description,
-      thumbnail: finalThumbnail,
-      thumbnailPublicId: finalThumbnailPublicId,
-      startDate: start,
-      endDate: end,
-      location: location || "Cần Thơ",
-      maxParticipants,
-      isFeaturedBanner: isFeaturedBanner || false,
-      tripId,
-      broadcastNotice: broadcastNotice || null,
-      status: status || "active",
-      createdBy: userId,
-    },
-  });
-
-  return event;
+const stageEventImage = async (image, folder) => {
+  if (!isInlineImage(image)) return { url: image || null, publicId: null };
+  const uploaded = await uploadPlaceImage(image, folder);
+  return { url: uploaded.secureUrl, publicId: uploaded.publicId };
 };
 
-// 2. Cập nhật sự kiện
-export const updateEvent = async (eventId, data) => {
-  const existingEvent = await prisma.event.findUnique({
-    where: { id: eventId },
-  });
-
-  if (!existingEvent) {
-    throw new ServiceError(
-      ERROR_CODES.NOT_FOUND,
-      "Không tìm thấy sự kiện",
-      404
-    );
+export const createEvent = async (userId, data) => {
+  const startDate = new Date(data.startDate);
+  const endDate = new Date(data.endDate);
+  if (startDate > endDate) {
+    throw new ServiceError("Start date cannot be after end date", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+  if (data.tripId) {
+    const trip = await prisma.tripPlan.findUnique({ where: { id: data.tripId }, select: { id: true } });
+    if (!trip) throw new ServiceError("Trip does not exist", 404, ERROR_CODES.NOT_FOUND);
   }
 
-  const {
-    title,
-    description,
-    thumbnail,
-    thumbnailPublicId,
-    startDate,
-    endDate,
-    location,
-    maxParticipants,
-    isFeaturedBanner,
-    status,
-    tripId,
-    broadcastNotice,
-  } = data;
+  const staged = await stageEventImage(data.thumbnail, "didaugio/events");
+  try {
+    return await prisma.event.create({
+      data: {
+        title: data.title,
+        description: data.description,
+        thumbnail: staged.url,
+        thumbnailPublicId: staged.publicId || data.thumbnailPublicId || null,
+        startDate,
+        endDate,
+        location: data.location || "Cần Thơ",
+        maxParticipants: data.maxParticipants,
+        isFeaturedBanner: data.isFeaturedBanner || false,
+        tripId: data.tripId,
+        broadcastNotice: data.broadcastNotice || null,
+        status: data.status || "active",
+        createdBy: userId,
+      },
+    });
+  } catch (error) {
+    if (staged.publicId) await deleteImage(staged.publicId).catch(() => {});
+    throw error;
+  }
+};
+
+export const updateEvent = async (eventId, data) => {
+  const existingEvent = await prisma.event.findUnique({ where: { id: eventId } });
+  if (!existingEvent) throw new ServiceError("Event does not exist", 404, ERROR_CODES.NOT_FOUND);
 
   const updateData = {};
-  if (title !== undefined) updateData.title = title;
-  if (description !== undefined) updateData.description = description;
-  if (location !== undefined) updateData.location = location;
-  if (maxParticipants !== undefined) updateData.maxParticipants = maxParticipants;
-  if (isFeaturedBanner !== undefined) updateData.isFeaturedBanner = isFeaturedBanner;
-  if (status !== undefined) updateData.status = status;
-  if (broadcastNotice !== undefined) updateData.broadcastNotice = broadcastNotice || null;
-
-  if (thumbnail !== undefined) {
-    let finalThumbnail = thumbnail;
-    let finalThumbnailPublicId = thumbnailPublicId;
-
-    if (thumbnail && thumbnail.startsWith("data:image/")) {
-      try {
-        const uploadResult = await uploadPlaceImage(thumbnail, "didaugio/events");
-        finalThumbnail = uploadResult.secureUrl;
-        finalThumbnailPublicId = uploadResult.publicId;
-      } catch (err) {
-        console.warn("Lỗi upload thumbnail lên Cloudinary khi update (sử dụng fallback base64):", err.message);
-        finalThumbnail = thumbnail;
-        finalThumbnailPublicId = null;
-      }
+  for (const field of ["title", "description", "location", "maxParticipants", "isFeaturedBanner", "status"]) {
+    if (data[field] !== undefined) updateData[field] = data[field];
+  }
+  if (data.broadcastNotice !== undefined) updateData.broadcastNotice = data.broadcastNotice || null;
+  if (data.startDate !== undefined || data.endDate !== undefined) {
+    const startDate = new Date(data.startDate || existingEvent.startDate);
+    const endDate = new Date(data.endDate || existingEvent.endDate);
+    if (startDate > endDate) {
+      throw new ServiceError("Start date cannot be after end date", 400, ERROR_CODES.VALIDATION_ERROR);
     }
-
-    // Nếu cập nhật thumbnail mới, hãy dọn dẹp thumbnail cũ trên Cloudinary
-    if (existingEvent.thumbnailPublicId && existingEvent.thumbnailPublicId !== finalThumbnailPublicId) {
-      try {
-        await deleteImage(existingEvent.thumbnailPublicId);
-      } catch (err) {
-        console.error("Lỗi xóa thumbnail cũ khi update event:", err);
-      }
+    if (data.startDate !== undefined) updateData.startDate = startDate;
+    if (data.endDate !== undefined) updateData.endDate = endDate;
+  }
+  if (data.tripId !== undefined) {
+    if (data.tripId) {
+      const trip = await prisma.tripPlan.findUnique({ where: { id: data.tripId }, select: { id: true } });
+      if (!trip) throw new ServiceError("Trip does not exist", 404, ERROR_CODES.NOT_FOUND);
     }
-    updateData.thumbnail = finalThumbnail;
-    updateData.thumbnailPublicId = finalThumbnailPublicId;
+    updateData.tripId = data.tripId;
   }
 
-  if (startDate !== undefined || endDate !== undefined) {
-    const start = new Date(startDate || existingEvent.startDate);
-    const end = new Date(endDate || existingEvent.endDate);
-    if (start > end) {
-      throw new ServiceError(
-        ERROR_CODES.VALIDATION_ERROR,
-        "Ngày bắt đầu không được lớn hơn ngày kết thúc",
-        400
-      );
-    }
-    if (startDate !== undefined) updateData.startDate = start;
-    if (endDate !== undefined) updateData.endDate = end;
+  let staged = null;
+  if (data.thumbnail !== undefined && data.thumbnail !== existingEvent.thumbnail) {
+    staged = await stageEventImage(data.thumbnail, "didaugio/events");
+    updateData.thumbnail = staged.url;
+    updateData.thumbnailPublicId = staged.publicId || data.thumbnailPublicId || null;
   }
 
-  if (tripId !== undefined) {
-    if (tripId) {
-      const existingTrip = await prisma.tripPlan.findUnique({
-        where: { id: tripId },
-      });
-      if (!existingTrip) {
-        throw new ServiceError(
-          ERROR_CODES.NOT_FOUND,
-          "Lịch trình chuyến đi mẫu không tồn tại",
-          404
-        );
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const updated = await tx.event.update({ where: { id: eventId }, data: updateData });
+      if (existingEvent.thumbnailPublicId && existingEvent.thumbnailPublicId !== updated.thumbnailPublicId) {
+        await enqueueCloudinaryAssetCleanup(tx, {
+          aggregate: "Event",
+          aggregateId: eventId,
+          publicIds: [existingEvent.thumbnailPublicId],
+        });
       }
-    }
-    updateData.tripId = tripId;
+      return updated;
+    });
+  } catch (error) {
+    if (staged?.publicId) await deleteImage(staged.publicId).catch(() => {});
+    throw error;
   }
-
-  const updatedEvent = await prisma.event.update({
-    where: { id: eventId },
-    data: updateData,
-  });
-
-  return updatedEvent;
 };
 
-// 3. Xóa sự kiện (dọn dẹp ảnh mồ côi trên Cloudinary)
 export const deleteEvent = async (eventId) => {
   const event = await prisma.event.findUnique({
     where: { id: eventId },
-    include: {
-      moments: {
-        select: { imagePublicId: true },
-      },
-    },
+    include: { moments: { select: { imagePublicId: true } } },
   });
+  if (!event) throw new ServiceError("Event does not exist", 404, ERROR_CODES.NOT_FOUND);
 
-  if (!event) {
-    throw new ServiceError(
-      ERROR_CODES.NOT_FOUND,
-      "Không tìm thấy sự kiện",
-      404
-    );
-  }
-
-  // Dọn dẹp ảnh mồ côi trên Cloudinary
-  const publicIdsToDelete = [];
-  if (event.thumbnailPublicId) {
-    publicIdsToDelete.push(event.thumbnailPublicId);
-  }
-  if (event.moments && event.moments.length > 0) {
-    event.moments.forEach((moment) => {
-      if (moment.imagePublicId) {
-        publicIdsToDelete.push(moment.imagePublicId);
-      }
+  await prisma.$transaction(async (tx) => {
+    await tx.event.delete({ where: { id: eventId } });
+    await enqueueCloudinaryAssetCleanup(tx, {
+      aggregate: "Event",
+      aggregateId: eventId,
+      publicIds: [event.thumbnailPublicId, ...event.moments.map((moment) => moment.imagePublicId)],
     });
-  }
-
-  // Gọi Cloudinary xóa song song
-  if (publicIdsToDelete.length > 0) {
-    try {
-      await Promise.all(publicIdsToDelete.map((id) => deleteImage(id)));
-    } catch (err) {
-      console.error("Lỗi dọn dẹp ảnh trên Cloudinary khi xóa event:", err);
-    }
-  }
-
-  // Xóa trong database (Cascade delete tự động xóa EventParticipant, EventMoment, ActiveSession)
-  await prisma.event.delete({
-    where: { id: eventId },
   });
-
   return { success: true };
 };
 
-// 4. Lấy danh sách sự kiện
 export const getEvents = async (filters = {}) => {
   const {
     status,
@@ -854,7 +736,15 @@ export const pingEvent = async (eventId, placeId, userId, location = {}) => {
 
 // 8. Tải ảnh khoảnh khắc 1:1 check-in (Viễn cảnh 1)
 export const createMoment = async (eventId, userId, data) => {
-  const { placeId, imageUrl, imagePublicId, latitude, longitude } = data;
+  const { placeId, imageUrl, latitude, longitude } = data;
+
+  if (!isInlineImage(imageUrl)) {
+    throw new ServiceError(
+      "Anh khoanh khac phai duoc tai len qua server",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
 
   // Kiểm tra tham gia sự kiện
   const participant = await prisma.eventParticipant.findUnique({
@@ -899,13 +789,15 @@ export const createMoment = async (eventId, userId, data) => {
   });
 
   let finalImageUrl = imageUrl;
-  let finalImagePublicId = imagePublicId;
+  let finalImagePublicId = null;
+  let uploadedMomentPublicId = null;
 
   if (imageUrl && imageUrl.startsWith("data:image/")) {
     try {
       const uploadResult = await uploadPlaceImage(imageUrl, "didaugio/event_moments");
       finalImageUrl = uploadResult.secureUrl;
       finalImagePublicId = uploadResult.publicId;
+      uploadedMomentPublicId = uploadResult.publicId;
     } catch (err) {
       console.error("Lỗi upload moment lên Cloudinary:", err);
       throw new ServiceError(
@@ -927,19 +819,10 @@ export const createMoment = async (eventId, userId, data) => {
     },
   });
 
-  if (existingMoment) {
-    // Nếu đã đăng, xóa ảnh cũ trên Cloudinary trước khi ghi đè
-    if (existingMoment.imagePublicId && existingMoment.imagePublicId !== finalImagePublicId) {
-      try {
-        await deleteImage(existingMoment.imagePublicId);
-      } catch (err) {
-        console.error("Lỗi xóa moment cũ trên Cloudinary:", err);
-      }
-    }
-  }
-
-  // Bắt đầu transaction để tạo moment và tăng tiến trình check-in cộng đồng (Viễn cảnh 2)
-  const moment = await prisma.$transaction(async (tx) => {
+  const previousMomentPublicId = existingMoment?.imagePublicId || null;
+  let moment;
+  try {
+    moment = await prisma.$transaction(async (tx) => {
     // 1. Kiểm tra moment đã tồn tại chưa
     const existingMoment = await tx.eventMoment.findUnique({
       where: {
@@ -985,8 +868,20 @@ export const createMoment = async (eventId, userId, data) => {
       });
     }
 
+    if (previousMomentPublicId && previousMomentPublicId !== finalImagePublicId) {
+      await enqueueCloudinaryAssetCleanup(tx, {
+        aggregate: "EventMoment",
+        aggregateId: newMoment.id,
+        publicIds: [previousMomentPublicId],
+      });
+    }
+
     return newMoment;
-  });
+    });
+  } catch (error) {
+    if (uploadedMomentPublicId) await deleteImage(uploadedMomentPublicId).catch(() => {});
+    throw error;
+  }
 
   return moment;
 };
@@ -1055,17 +950,13 @@ export const deleteMoment = async (momentId, userId, isAdmin = false) => {
   }
 
   // Xóa ảnh vật lý trên Cloudinary
-  if (moment.imagePublicId) {
-    try {
-      await deleteImage(moment.imagePublicId);
-    } catch (err) {
-      console.error("Lỗi xóa moment trên Cloudinary:", err);
-    }
-  }
-
-  // Xóa trong database
-  await prisma.eventMoment.delete({
-    where: { id: momentId },
+  await prisma.$transaction(async (tx) => {
+    await tx.eventMoment.delete({ where: { id: momentId } });
+    await enqueueCloudinaryAssetCleanup(tx, {
+      aggregate: "EventMoment",
+      aggregateId: momentId,
+      publicIds: [moment.imagePublicId],
+    });
   });
 
   return { success: true };

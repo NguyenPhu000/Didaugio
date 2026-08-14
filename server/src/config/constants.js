@@ -220,6 +220,7 @@ export const DOMAIN_JOB_STATUS = {
 
 export const DOMAIN_JOB_TYPES = {
   REBUILD_ROUTE_METRICS: "RebuildRouteMetrics",
+  DELETE_CLOUDINARY_ASSET: "DeleteCloudinaryAsset",
 };
 
 export const BUSINESS_STATUS = {

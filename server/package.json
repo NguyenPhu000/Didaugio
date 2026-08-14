@@ -33,7 +33,11 @@
     "audit:booking:orphans": "node src/scripts/verifyBookingAuditCleanup.js",
     "generate": "prisma generate --schema=prisma/schema.prisma",
     "trip:backfill": "node src/scripts/backfillTripPlans.js",
-    "media:backfill-place-urls": "node src/scripts/backfillPlaceImageUrls.js"
+    "media:backfill-place-urls": "node src/scripts/backfillPlaceImageUrls.js",
+    "media:remove-broken-place-images": "node src/scripts/removeBrokenPlaceImageReferences.js",
+    "storage:remove-orphans": "node src/scripts/removeOrphanSensitiveFiles.js",
+    "media:migrate-legacy-business-documents": "node src/scripts/migrateLegacyBusinessDocuments.js",
+    "storage:audit": "node src/scripts/auditSensitiveStorage.js"
   },
   "dependencies": {
     "@pdf-lib/fontkit": "^1.1.1",

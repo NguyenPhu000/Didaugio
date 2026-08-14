@@ -1,7 +1,9 @@
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIcons, FontAwesome, AntDesign } from "@expo/vector-icons";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import AntDesign from "@expo/vector-icons/AntDesign";
 
 export function ChatHeader({ title = "AI Assistant", onBack, onNewChat, onMenu }) {
   const insets = useSafeAreaInsets();

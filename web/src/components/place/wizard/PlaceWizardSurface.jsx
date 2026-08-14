@@ -1,5 +1,4 @@
-import { useGSAP } from "@gsap/react";
-import gsap from "gsap";
+import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 export const WizardPanel = ({ className, children, ...props }) => (
@@ -42,22 +41,27 @@ export const WizardActions = ({ className, children }) => (
 );
 
 export const useWizardEntrance = (scopeRef, dependency) => {
-  useGSAP(
-    () => {
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-      gsap.fromTo(
-        "[data-wizard-reveal]",
-        { autoAlpha: 0, y: 18 },
-        {
-          autoAlpha: 1,
-          y: 0,
-          duration: 0.55,
-          stagger: 0.07,
-          ease: "power3.out",
-        },
-      );
-    },
-    { scope: scopeRef, dependencies: [dependency] },
-  );
+    const root = scopeRef?.current || document;
+    const elements = root.querySelectorAll("[data-wizard-reveal]");
+    if (!elements.length) return;
+
+    elements.forEach((el, index) => {
+      el.style.opacity = "0";
+      el.style.transform = "translateY(18px)";
+      el.style.transition = `opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.07}s, transform 0.55s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.07}s`;
+    });
+
+    const raf = requestAnimationFrame(() => {
+      elements.forEach((el) => {
+        el.style.opacity = "1";
+        el.style.transform = "translateY(0)";
+      });
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [scopeRef, dependency]);
 };

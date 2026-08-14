@@ -111,10 +111,10 @@ export default function PermissionManagePage() {
   const modules = Object.keys(permissions || {});
 
   return (
-    <div className="min-h-screen p-8 bg-background relative">
+    <div className="min-h-screen p-8 bg-transparent relative font-sans">
       {/* Grid background */}
-      <div className="absolute inset-0 bg-grid-dots opacity-60 pointer-events-none"></div>
-      <div className="absolute inset-0 bg-grid-lines opacity-20 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none" />
+      <div className="absolute inset-0 bg-grid-dots opacity-40 pointer-events-none" />
 
       <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
         {/* Header */}

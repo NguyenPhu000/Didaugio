@@ -1,0 +1,42 @@
+-- This migration enables the extensions required by high-load public place reads.
+-- The deploy role must be permitted to CREATE EXTENSION. Provision these extensions
+-- with the managed database administrator before `prisma migrate deploy` if it is not.
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- IMPORTANT: Prisma applies PostgreSQL migrations in a transaction. `CREATE INDEX
+-- CONCURRENTLY` is intentionally documented below instead of executed here because
+-- PostgreSQL rejects it inside a transaction. After this migration is deployed, run
+-- each statement once with a migration operator using psql (not inside a transaction),
+-- monitor `pg_stat_progress_create_index`, then record the deployment in the release
+-- checklist. These indexes are safe to rerun because of IF NOT EXISTS.
+--
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS "places_public_geography_gist_idx"
+--   ON "places" USING GIST (
+--     (ST_SetSRID(ST_MakePoint("longitude"::double precision, "latitude"::double precision), 4326)::geography)
+--   )
+--   WHERE "deleted_at" IS NULL AND "status" = 'approved';
+--
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS "places_public_newest_cursor_idx"
+--   ON "places" ("created_at" DESC, "id" DESC)
+--   WHERE "deleted_at" IS NULL AND "status" = 'approved';
+--
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS "places_public_rating_cursor_idx"
+--   ON "places" ("rating_avg" DESC, "id" DESC)
+--   WHERE "deleted_at" IS NULL AND "status" = 'approved';
+--
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS "places_public_category_district_idx"
+--   ON "places" ("category_id", "district_id", "id" DESC)
+--   WHERE "deleted_at" IS NULL AND "status" = 'approved';
+--
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS "places_name_trgm_idx"
+--   ON "places" USING GIN ("name" gin_trgm_ops)
+--   WHERE "deleted_at" IS NULL;
+--
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS "reviews_title_trgm_idx"
+--   ON "reviews" USING GIN ("title" gin_trgm_ops)
+--   WHERE "deleted_at" IS NULL;
+--
+-- CREATE INDEX CONCURRENTLY IF NOT EXISTS "reviews_content_trgm_idx"
+--   ON "reviews" USING GIN ("content" gin_trgm_ops)
+--   WHERE "deleted_at" IS NULL;

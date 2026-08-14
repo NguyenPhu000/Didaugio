@@ -15,19 +15,15 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
-import {
-  useFonts,
-  BeVietnamPro_400Regular,
-  BeVietnamPro_500Medium,
-  BeVietnamPro_600SemiBold,
-  BeVietnamPro_700Bold,
-} from "@expo-google-fonts/be-vietnam-pro";
-import {
-  Afacad_400Regular,
-  Afacad_500Medium,
-  Afacad_600SemiBold,
-  Afacad_700Bold,
-} from "@expo-google-fonts/afacad";
+import { useFonts } from "expo-font";
+import { BeVietnamPro_400Regular } from "@expo-google-fonts/be-vietnam-pro/400Regular";
+import { BeVietnamPro_500Medium } from "@expo-google-fonts/be-vietnam-pro/500Medium";
+import { BeVietnamPro_600SemiBold } from "@expo-google-fonts/be-vietnam-pro/600SemiBold";
+import { BeVietnamPro_700Bold } from "@expo-google-fonts/be-vietnam-pro/700Bold";
+import { Afacad_400Regular } from "@expo-google-fonts/afacad/400Regular";
+import { Afacad_500Medium } from "@expo-google-fonts/afacad/500Medium";
+import { Afacad_600SemiBold } from "@expo-google-fonts/afacad/600SemiBold";
+import { Afacad_700Bold } from "@expo-google-fonts/afacad/700Bold";
 import { AppProvider } from "../src/providers/AppProvider";
 import { I18nInitializer } from "../src/providers/I18nInitializer";
 import { OfflineToast } from "../src/components/composed/OfflineToast";

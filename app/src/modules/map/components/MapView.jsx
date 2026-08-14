@@ -11,7 +11,7 @@ import {
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import ClusteredMapView from "react-native-map-clustering";
 import { Marker, PROVIDER_DEFAULT, UrlTile } from "react-native-maps";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import {
   CATEGORY_MARKER_STYLES,
   DEFAULT_MAP_STYLE,
@@ -49,25 +49,25 @@ const TILE_ERROR_RESET_DELAY_MS = 0;
 
 const CLUSTER_COLORS = {
   low: {
-    halo: "rgba(56, 189, 248, 0.22)",
-    shell: "rgba(255,255,255,0.95)",
-    core: "#38BDF8",
-    accent: "#E0F2FE",
-    text: "#0F172A",
+    halo: "rgba(30, 41, 59, 0.25)",
+    shell: "rgba(255,255,255,0.96)",
+    core: "#1E293B",
+    accent: "#334155",
+    text: "#FFFFFF",
   },
   medium: {
-    halo: "rgba(59, 130, 246, 0.24)",
+    halo: "rgba(37, 99, 235, 0.28)",
     shell: "rgba(255,255,255,0.96)",
-    core: "#3B82F6",
-    accent: "#DBEAFE",
-    text: "#0F172A",
+    core: "#2563EB",
+    accent: "#60A5FA",
+    text: "#FFFFFF",
   },
   high: {
-    halo: "rgba(14, 116, 144, 0.26)",
-    shell: "rgba(255,255,255,0.97)",
-    core: "#0F766E",
-    accent: "#CCFBF1",
-    text: "#06202A",
+    halo: "rgba(29, 78, 216, 0.32)",
+    shell: "rgba(255,255,255,0.98)",
+    core: "#1D4ED8",
+    accent: "#93C5FD",
+    text: "#FFFFFF",
   },
 };
 
@@ -183,102 +183,75 @@ const PlaceMarker = memo(
       : place?.isFeatured
         ? "#F59E0B"
         : place?.category?.color || categoryStyle?.color || "#ef4444";
-    const markerBackground =
-      categoryStyle?.bg || "#FFFFFF";
+    const markerBackground = categoryStyle?.bg || "#FFFFFF";
     const markerIcon = getCategoryIconName(place?.category);
     const coordinate = {
       latitude: place.latitude,
       longitude: place.longitude,
     };
     const isDetail = density === MARKER_DENSITY.DETAIL;
-    const markerSize = isDetail ? 44 : 32;
-    const markerImage = place.markerImageUri
-      ? { uri: place.markerImageUri }
-      : undefined;
-    const showNativeImage = isDetail && Boolean(markerImage);
+    const markerSize = isDetail ? 40 : 30;
 
     useEffect(() => {
       setShouldTrackDetail(true);
       const timerId = setTimeout(() => setShouldTrackDetail(false), 260);
       return () => clearTimeout(timerId);
-    }, [density, place.markerImageUri]);
+    }, [density, isActive]);
 
     return (
       <Marker
         coordinate={coordinate}
         onPress={handlePress}
         onLongPress={handleLongPress}
-        anchor={showNativeImage ? { x: 0.5, y: 1 } : { x: 0.5, y: 0.5 }}
-        image={showNativeImage ? markerImage : undefined}
-        pinColor={markerColor}
-        // The native image remains the stable image transport. Keep tracking
-        // briefly when its label is mounted so Android snapshots both layers.
-        tracksViewChanges={!showNativeImage || shouldTrackDetail}
+        anchor={{ x: 0.5, y: 0.5 }}
+        tracksViewChanges={shouldTrackDetail}
       >
-        {showNativeImage ? (
-          place?.name ? (
+        <View className="flex-row items-center" pointerEvents="none">
+          <View
+            className="items-center justify-center overflow-hidden border-2 border-white"
+            style={{
+              width: markerSize,
+              height: markerSize,
+              borderRadius: isDetail ? 12 : markerSize / 2,
+              backgroundColor: isDetail ? "#FFFFFF" : markerBackground,
+              shadowColor: markerColor,
+              shadowOffset: { width: 0, height: 3 },
+              shadowOpacity: isActive ? 0.35 : 0.2,
+              shadowRadius: isActive ? 8 : 5,
+              elevation: isActive ? 6 : 3,
+            }}
+          >
+            <MaterialCommunityIcons
+              name={markerIcon}
+              size={isDetail ? 19 : 16}
+              color={markerColor}
+            />
+            {isActive ? (
+              <View
+                className="absolute inset-0 border-2"
+                style={{
+                  borderColor: "#0F766E",
+                  borderRadius: isDetail ? 10 : markerSize / 2,
+                }}
+              />
+            ) : null}
+          </View>
+
+          {isDetail && place?.name ? (
             <View
-              className="rounded-full bg-white px-3 py-1.5"
-              pointerEvents="none"
-              style={[styles.markerLabel, styles.nativeMarkerLabel]}
+              className="ml-2 max-w-[154px] rounded-full bg-white px-3 py-1.5 shadow-sm border border-black/[0.06]"
+              style={styles.markerLabel}
             >
               <Text
-                className="max-w-[154px] text-[11px] font-semibold tracking-[0.1px] text-slate-950"
+                className="text-[11px] font-semibold tracking-[0.1px] text-slate-950"
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
                 {place.name}
               </Text>
             </View>
-          ) : null
-        ) : (
-          <View className="flex-row items-center" pointerEvents="none">
-            <View
-              className="items-center justify-center overflow-hidden border-2 border-white"
-              style={{
-                width: markerSize,
-                height: markerSize,
-                borderRadius: isDetail ? 12 : markerSize / 2,
-                backgroundColor: isDetail ? "#FFFFFF" : markerBackground,
-                shadowColor: markerColor,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: isActive ? 0.32 : 0.2,
-                shadowRadius: isActive ? 10 : 7,
-                elevation: isActive ? 7 : 4,
-              }}
-            >
-              <MaterialCommunityIcons
-                name={markerIcon}
-                size={isDetail ? 20 : 17}
-                color={markerColor}
-              />
-              {isActive ? (
-                <View
-                  className="absolute inset-0 border-2"
-                  style={{
-                    borderColor: "#0F766E",
-                    borderRadius: isDetail ? 10 : markerSize / 2,
-                  }}
-                />
-              ) : null}
-            </View>
-
-            {isDetail && place?.name ? (
-              <View
-                className="ml-2 max-w-[154px] rounded-full bg-white px-3 py-1.5"
-                style={styles.markerLabel}
-              >
-                <Text
-                  className="text-[11px] font-semibold tracking-[0.1px] text-slate-950"
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {place.name}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        )}
+          ) : null}
+        </View>
       </Marker>
     );
   },

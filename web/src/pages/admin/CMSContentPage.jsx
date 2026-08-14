@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Bar, Doughnut } from "react-chartjs-2";
-import "@/lib/chartSetup";
+
 import {
   FileText,
   Image as ImageIcon,
@@ -412,17 +411,10 @@ const CMSContentPage = () => {
 
     if (topEvents.length === 0) return null;
 
-    return {
-      labels: topEvents.map((e) => e.title.substring(0, 15) + (e.title.length > 15 ? "..." : "")),
-      datasets: [
-        {
-          label: "Lượt check-in",
-          data: topEvents.map((e) => e.totalCheckIns || 0),
-          backgroundColor: "hsl(var(--primary))",
-          borderRadius: 6,
-        },
-      ],
-    };
+    return topEvents.map((e) => ({
+      name: e.title.substring(0, 15) + (e.title.length > 15 ? "..." : ""),
+      value: e.totalCheckIns || 0,
+    }));
   }, [items, activeTab]);
 
   const tripsChartData = useMemo(() => {
@@ -433,17 +425,10 @@ const CMSContentPage = () => {
 
     if (topTrips.length === 0) return null;
 
-    return {
-      labels: topTrips.map((t) => t.title.substring(0, 15) + (t.title.length > 15 ? "..." : "")),
-      datasets: [
-        {
-          label: "Lượt clone",
-          data: topTrips.map((t) => t.cloneCount || 0),
-          backgroundColor: "#a855f7",
-          borderRadius: 6,
-        },
-      ],
-    };
+    return topTrips.map((t) => ({
+      name: t.title.substring(0, 15) + (t.title.length > 15 ? "..." : ""),
+      value: t.cloneCount || 0,
+    }));
   }, [items, activeTab]);
 
   const bannersChartData = useMemo(() => {
@@ -454,17 +439,15 @@ const CMSContentPage = () => {
       positions[pos] = (positions[pos] || 0) + 1;
     });
 
-    if (Object.keys(positions).length === 0) return null;
+    const keys = Object.keys(positions);
+    if (keys.length === 0) return null;
 
-    return {
-      labels: Object.keys(positions),
-      datasets: [
-        {
-          data: Object.values(positions),
-          backgroundColor: ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6"],
-        },
-      ],
-    };
+    const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6"];
+    return keys.map((key, index) => ({
+      name: key,
+      value: positions[key],
+      color: colors[index % colors.length],
+    }));
   }, [items, activeTab]);
 
   const announcementsChartData = useMemo(() => {
@@ -474,15 +457,10 @@ const CMSContentPage = () => {
 
     if (items.length === 0) return null;
 
-    return {
-      labels: ["Có ảnh minh họa", "Không có ảnh"],
-      datasets: [
-        {
-          data: [withImage, noImage],
-          backgroundColor: ["#10b981", "#ef4444"],
-        },
-      ],
-    };
+    return [
+      { name: "Có ảnh minh họa", value: withImage, color: "#10b981" },
+      { name: "Không có ảnh", value: noImage, color: "#ef4444" },
+    ];
   }, [items, activeTab]);
 
   const featuredChartData = useMemo(() => {
@@ -493,17 +471,10 @@ const CMSContentPage = () => {
 
     if (topItems.length === 0) return null;
 
-    return {
-      labels: topItems.map((i) => i.title.substring(0, 15) + (i.title.length > 15 ? "..." : "")),
-      datasets: [
-        {
-          label: "Lượt xem",
-          data: topItems.map((i) => i.views || i.viewCount || 0),
-          backgroundColor: "#10b981",
-          borderRadius: 6,
-        },
-      ],
-    };
+    return topItems.map((i) => ({
+      name: i.title.substring(0, 15) + (i.title.length > 15 ? "..." : ""),
+      value: i.views || i.viewCount || 0,
+    }));
   }, [items, activeTab]);
 
   return <CmsContentLayout t={t} activeTab={activeTab} loading={loading} items={items} activeEventCount={activeEventCount} featuredBannerCount={featuredBannerCount} totalTrips={totalTrips} totalClones={totalClones} eventsChartData={eventsChartData} tripsChartData={tripsChartData} bannersChartData={bannersChartData} announcementsChartData={announcementsChartData} featuredChartData={featuredChartData} allowedContentTypes={allowedContentTypes} getContentCount={getContentCount} setActiveTab={setActiveTab} setSearch={setSearch} setStatusFilter={setStatusFilter} search={search} selectedType={selectedType} statusFilter={statusFilter} filteredItems={filteredItems} handleEdit={handleEdit} handleToggle={handleToggle} handleDelete={handleDelete} handleTripDetail={handleTripDetail} editModal={editModal} setEditModal={setEditModal} handleSave={handleSave} isLoading={isLoading} fetchItems={fetchItems} />;

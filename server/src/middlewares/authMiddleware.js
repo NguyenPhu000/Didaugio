@@ -1,5 +1,4 @@
 import jwt from "jsonwebtoken";
-import { ROLES } from "../config/constants.js";
 import { setOnline } from "../utils/onlineManager.js";
 import prisma from "../config/prismaClient.js";
 import { getUserStatusCached } from "../utils/userStatusCache.js";
@@ -8,24 +7,9 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 const fetchUserRecordFromDb = (userId) =>
   prisma.user.findUnique({
-    where: { id: userId },
+    where: { id: userId, deletedAt: null },
     select: { roleId: true, status: true, role: { select: { name: true } } },
   });
-
-const ROLE_NAME_TO_ID = {
-  super_admin: ROLES.SUPER_ADMIN,
-  admin: ROLES.ADMIN,
-  business: ROLES.BUSINESS,
-  staff: ROLES.STAFF,
-  user: ROLES.USER,
-  guest: ROLES.GUEST,
-};
-
-const resolveRoleId = (decoded = {}) => {
-  if (decoded.roleId) return decoded.roleId;
-  const roleKey = String(decoded.roleName || decoded.role || "").toLowerCase();
-  return ROLE_NAME_TO_ID[roleKey] || null;
-};
 
 export const authenticate = async (req, res, next) => {
   try {
@@ -144,23 +128,30 @@ export const authenticateOptional = async (req, res, next) => {
     // Fetch user status with Redis cache (TTL 30s)
     const userRecord = await getUserStatusCached(userId, () => fetchUserRecordFromDb(userId));
 
-    if (userRecord) {
-      if (userRecord.status === "banned" || userRecord.status === "inactive") {
-        return res.status(403).json({
-          success: false,
-          data: null,
-          message: "Tài khoản không hợp lệ",
-          errorCode: "ACCOUNT_INVALID",
-        });
-      }
+    if (!userRecord) {
+      return res.status(401).json({
+        success: false,
+        data: null,
+        message: "Tài khoản người dùng không tồn tại",
+        errorCode: "USER_NOT_FOUND",
+      });
+    }
+
+    if (userRecord.status === "banned" || userRecord.status === "inactive") {
+      return res.status(403).json({
+        success: false,
+        data: null,
+        message: "Tài khoản không hợp lệ",
+        errorCode: "ACCOUNT_INVALID",
+      });
     }
 
     req.user = {
       ...decoded,
       userId: userId,
       id: userId,
-      roleId: userRecord ? userRecord.roleId : resolveRoleId(decoded),
-      roleName: userRecord ? userRecord.role.name : decoded.roleName,
+      roleId: userRecord.roleId,
+      roleName: userRecord.role.name,
     };
 
     setOnline(req.user.userId);

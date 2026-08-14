@@ -104,13 +104,12 @@ function mutationErrorMessage(error) {
 
 function ConfigLoading() {
   return (
-    <div
-      role="status"
+    <output
       aria-label="Đang tải cấu hình AI"
       className="flex min-h-64 items-center justify-center border border-black/20 font-mono text-xs uppercase tracking-wide dark:border-white/20"
     >
       Đang tải cấu hình AI…
-    </div>
+    </output>
   );
 }
 
@@ -189,9 +188,10 @@ function ConfigurationWorkspace({ permissions }) {
       if (newerRevision !== null) {
         setConflict(newerRevision);
         closeDialog?.();
+      } else if (setDialogError) {
+        setDialogError(error);
       } else {
-        if (setDialogError) setDialogError(error);
-        else setOperationError(error);
+        setOperationError(error);
       }
     }
   };
@@ -330,8 +330,11 @@ function SafetyWorkspace({ permissions, runtime }) {
       await saveDraftMutation.mutateAsync(payload);
     } catch (error) {
       const newerRevision = conflictRevision(error);
-      if (newerRevision !== null) setConflict(newerRevision);
-      else setOperationError(error);
+      if (newerRevision !== null) {
+        setConflict(newerRevision);
+      } else {
+        setOperationError(error);
+      }
     }
   };
 
@@ -446,15 +449,15 @@ function AdminAiCockpit({ hasPermission }) {
   const overview = unwrapResponse(overviewQuery.data);
 
   const canAccess = (tab) =>
-    tab.permissions.some((permission) => hasPermission(permission));
+    Boolean(tab?.permissions?.some((permission) => hasPermission(permission)));
 
   const firstAvailableTab =
-    TAB_DEFINITIONS.find((tab) => canAccess(tab))?.value || "overview";
+    TAB_DEFINITIONS.find(canAccess)?.value || "overview";
 
   const [activeTab, setActiveTab] = useState(firstAvailableTab);
 
   const safeActiveTab = canAccess(
-    TAB_DEFINITIONS.find((tab) => tab.value === activeTab) || {},
+    TAB_DEFINITIONS.find((tab) => tab.value === activeTab)
   )
     ? activeTab
     : firstAvailableTab;

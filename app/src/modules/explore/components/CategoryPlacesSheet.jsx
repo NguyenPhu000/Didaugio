@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { FlatList, Modal, Pressable, Text, View } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { Image } from "expo-image";
 import { useTranslation } from "react-i18next";

@@ -15,6 +15,18 @@ import {
 } from "lucide-react";
 import { exportToCsv, formatCsvDate, slugifyFilename } from "@/utils/csvExport";
 import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+} from "recharts";
+import {
   getAdminReviewStats,
   getAdminReviews,
   moderateAdminReview,
@@ -32,9 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Doughnut, Bar } from "react-chartjs-2";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import "@/lib/chartSetup";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { cn } from "@/lib/utils";
 
@@ -85,33 +95,24 @@ const StarRating = ({ rating }) => (
 );
 
 const StatCard = ({ title, value, icon: Icon, tone = "default", subtitle }) => {
-  const toneMap = {
-    danger: { iconBg: "bg-rose-50 dark:bg-rose-950/30 text-rose-500" },
-    warning: { iconBg: "bg-amber-50 dark:bg-amber-950/30 text-amber-500" },
-    success: { iconBg: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500" },
-    default: { iconBg: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400" },
-  };
-  const config = toneMap[tone] || toneMap.default;
-
   return (
-    <Card className="relative overflow-hidden">
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-1.5 min-w-0">
-            <p className="text-xs font-medium text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold tracking-tight text-foreground">{value}</p>
-            {subtitle && (
-              <p className="text-xs text-muted-foreground">{subtitle}</p>
-            )}
-          </div>
-          {Icon && (
-            <div className={cn("p-3 rounded-xl shrink-0", config.iconBg)}>
-              <Icon className="h-5 w-5" />
-            </div>
+    <div className="bg-white rounded-2xl p-5 border border-black/[0.04] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_28px_rgba(0,0,0,0.06)] transition-all duration-300 relative group overflow-hidden">
+      <div className="h-0.5 w-0 group-hover:w-full bg-[#F3E600] absolute top-0 left-0 transition-all duration-300" />
+      <div className="flex items-center justify-between gap-3">
+        <div className="space-y-1 min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">{title}</p>
+          <p className="text-2xl font-black tracking-tight text-slate-950 font-mono tabular-nums">{value ?? 0}</p>
+          {subtitle && (
+            <p className="text-[11px] text-slate-400 font-medium">{subtitle}</p>
           )}
         </div>
-      </CardContent>
-    </Card>
+        {Icon && (
+          <div className="p-2.5 rounded-xl bg-[#FAF9F5] border border-black/[0.04] text-slate-800 shrink-0 group-hover:bg-[#FFFDE6] group-hover:text-slate-950 transition-colors">
+            <Icon className="h-4 w-4" />
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -434,6 +435,42 @@ const AdminReviewModerationPage = () => {
     }
   }, [queue, sort]);
 
+  const ratingDistributionData = useMemo(() => {
+    if (!stats) return [];
+    const total = stats.total || 0;
+    const avg = stats.avgRating || 0;
+    return [
+      {
+        star: "5 Sao",
+        count: Math.round(total * (avg >= 4.5 ? 0.6 : avg >= 4.0 ? 0.45 : 0.3)),
+      },
+      {
+        star: "4 Sao",
+        count: Math.round(total * (avg >= 4.5 ? 0.25 : avg >= 4.0 ? 0.35 : 0.3)),
+      },
+      { star: "3 Sao", count: Math.round(total * 0.12) },
+      { star: "2 Sao", count: Math.round(total * 0.05) },
+      { star: "1 Sao", count: Math.round(total * 0.03) },
+    ];
+  }, [stats]);
+
+  const moderationStatusData = useMemo(() => {
+    if (!stats) return [];
+    const visible = Math.max(
+      0,
+      (stats.total || 0) -
+        (stats.reported || 0) -
+        (stats.pending || 0) -
+        (stats.hidden || 0),
+    );
+    return [
+      { name: "Đang hiển thị", value: visible, color: "#10b981" },
+      { name: "Chờ duyệt", value: stats.pending || 0, color: "#f59e0b" },
+      { name: "Bị báo cáo", value: stats.reported || 0, color: "#ef4444" },
+      { name: "Đã ẩn", value: stats.hidden || 0, color: "#6b7280" },
+    ];
+  }, [stats]);
+
   const handleNoteChange = (reviewId, value) => {
     setNotesByReview((current) => ({ ...current, [reviewId]: value }));
   };
@@ -512,28 +549,35 @@ const AdminReviewModerationPage = () => {
   };
 
   return (
-    <div className="min-h-screen space-y-6 p-6 lg:p-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+    <div className="space-y-6 text-slate-900 antialiased selection:bg-[#F3E600] selection:text-slate-950 max-w-[1560px] mx-auto">
+      {/* Editorial Header */}
+      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-black/[0.04]">
+        <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <ShieldAlert className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground">
-              {t("admin.reviewModeration.title")}
-            </h1>
+            <span className="h-2 w-2 rounded-full bg-[#F3E600] shadow-[0_0_6px_#F3E600]" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Kiểm duyệt Nội dung & Tương tác
+            </span>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
+            {t("admin.reviewModeration.title")}
+          </h1>
+          <p className="text-xs text-slate-500 font-medium">
             {t("admin.reviewModeration.subtitle")}
           </p>
         </div>
-        <Button
-          onClick={handleExportCsv}
-          variant="outline"
-          className="gap-2 shrink-0"
-        >
-          <Download className="h-4 w-4" />
-          CSV
-        </Button>
-      </div>
+
+        <div className="flex items-center gap-2.5 shrink-0">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="h-10 px-4 rounded-full text-xs font-semibold bg-white text-slate-900 hover:bg-[#F4F2EC] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/[0.04] transition-all flex items-center gap-2 shrink-0 active:scale-95"
+          >
+            <Download className="h-3.5 w-3.5 text-slate-700" />
+            <span>Xuất CSV</span>
+          </button>
+        </div>
+      </header>
 
       {stats && (
         <div className="space-y-6">
@@ -561,130 +605,107 @@ const AdminReviewModerationPage = () => {
 
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2">
-              <CardHeader className="pb-4 border-b">
-                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Star className="h-4 w-4" /> Phân phối số sao đánh giá (Ước tính)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="h-64 pt-4">
-                <Bar
-                  data={{
-                    labels: ["5 Sao", "4 Sao", "3 Sao", "2 Sao", "1 Sao"],
-                    datasets: [
-                      {
-                        label: "Số lượng đánh giá",
-                        data: [
-                          Math.round(stats.total * (stats.avgRating >= 4.5 ? 0.6 : stats.avgRating >= 4.0 ? 0.45 : 0.3)),
-                          Math.round(stats.total * (stats.avgRating >= 4.5 ? 0.25 : stats.avgRating >= 4.0 ? 0.35 : 0.3)),
-                          Math.round(stats.total * 0.12),
-                          Math.round(stats.total * 0.05),
-                          Math.round(stats.total * 0.03),
-                        ],
-                        backgroundColor: "hsl(var(--primary))",
-                        borderRadius: 6,
-                      },
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { display: false },
-                    },
-                    scales: {
-                      y: { beginAtZero: true, grid: { color: "rgba(0,0,0,0.05)" } },
-                      x: { grid: { display: false } },
-                    },
-                  }}
-                />
-              </CardContent>
-            </Card>
+            <div className="lg:col-span-2 rounded-3xl bg-white border border-black/[0.04] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
+              <div className="pb-4 border-b border-black/[0.04] flex items-center gap-2">
+                <Star className="h-4 w-4 text-[#F3E600]" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                  Phân phối số sao đánh giá (Ước tính)
+                </h3>
+              </div>
+              <div className="h-64 pt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={ratingDistributionData}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <XAxis dataKey="star" tickLine={false} tick={{ fontSize: 11, fill: "#64748b" }} />
+                    <YAxis tickLine={false} tick={{ fontSize: 11, fill: "#64748b" }} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }} />
+                    <Bar dataKey="count" name="Số lượng đánh giá" fill="#0f172a" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader className="pb-4 border-b">
-                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <ShieldAlert className="h-4 w-4" /> Cơ cấu trạng thái duyệt
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="h-64 pt-4 flex items-center justify-center">
-                <Doughnut
-                  data={{
-                    labels: ["Đang hiển thị", "Chờ duyệt", "Bị báo cáo", "Đã ẩn"],
-                    datasets: [
-                      {
-                        data: [
-                          Math.max(0, stats.total - stats.reported - stats.pending - stats.hidden),
-                          stats.pending || 0,
-                          stats.reported || 0,
-                          stats.hidden || 0,
-                        ],
-                        backgroundColor: ["#10b981", "#f59e0b", "#ef4444", "#6b7280"],
-                      },
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: {
-                        position: "bottom",
-                        labels: { usePointStyle: true, padding: 15 },
-                      },
-                    },
-                  }}
-                />
-              </CardContent>
-            </Card>
+            <div className="rounded-3xl bg-white border border-black/[0.04] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
+              <div className="pb-4 border-b border-black/[0.04] flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4 text-slate-800" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                  Cơ cấu trạng thái duyệt
+                </h3>
+              </div>
+              <div className="h-64 pt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={moderationStatusData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={45}
+                      outerRadius={75}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {moderationStatusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)' }} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      {/* Filter Bar */}
+      <div className="rounded-2xl border border-black/[0.04] bg-white p-3 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1 w-full">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Tìm nội dung, địa điểm, người dùng, note..."
-              className="pl-9 w-full"
+              className="w-full h-10 pl-10 pr-4 bg-[#F8F7F3] rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F3E600] placeholder:text-slate-400 transition-all border border-transparent focus:border-[#F3E600]/50"
             />
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap lg:items-center gap-3 w-full lg:w-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap lg:items-center gap-2.5 w-full lg:w-auto">
             <Select value={queue} onValueChange={setQueue}>
-              <SelectTrigger className="w-full lg:w-48">
+              <SelectTrigger className="h-10 px-3.5 rounded-xl border border-black/[0.05] bg-[#F8F7F3] text-xs font-semibold text-slate-800 w-full lg:w-44">
                 <SelectValue placeholder="Hàng đợi" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-xl border border-black/[0.06] shadow-md">
                 <SelectItem value="all">Tất cả review</SelectItem>
                 <SelectItem value="needs_action">Cần xử lý (chờ/report)</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sort} onValueChange={setSort}>
-              <SelectTrigger className="w-full lg:w-48">
+              <SelectTrigger className="h-10 px-3.5 rounded-xl border border-black/[0.05] bg-[#F8F7F3] text-xs font-semibold text-slate-800 w-full lg:w-44">
                 <SelectValue placeholder="Sắp xếp" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-xl border border-black/[0.06] shadow-md">
                 <SelectItem value="created_desc">Mới nhất trước</SelectItem>
                 <SelectItem value="priority">Ưu tiên (report → chờ)</SelectItem>
               </SelectContent>
             </Select>
             <Select value={isSeededFilter} onValueChange={setIsSeededFilter}>
-              <SelectTrigger className="w-full lg:w-40">
+              <SelectTrigger className="h-10 px-3.5 rounded-xl border border-black/[0.05] bg-[#F8F7F3] text-xs font-semibold text-slate-800 w-full lg:w-36">
                 <SelectValue placeholder="Nguồn" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-xl border border-black/[0.06] shadow-md">
                 <SelectItem value="all">Mọi nguồn</SelectItem>
                 <SelectItem value="seeded">Chỉ seed</SelectItem>
                 <SelectItem value="not-seeded">Không seed</SelectItem>
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={setStatus} disabled={queue === "needs_action"}>
-              <SelectTrigger className="w-full lg:w-44">
+              <SelectTrigger className="h-10 px-3.5 rounded-xl border border-black/[0.05] bg-[#F8F7F3] text-xs font-semibold text-slate-800 w-full lg:w-40">
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-xl border border-black/[0.06] shadow-md">
                 {STATUS_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
@@ -693,10 +714,10 @@ const AdminReviewModerationPage = () => {
               </SelectContent>
             </Select>
             <Select value={rating} onValueChange={setRating}>
-              <SelectTrigger className="w-full lg:w-36">
+              <SelectTrigger className="h-10 px-3.5 rounded-xl border border-black/[0.05] bg-[#F8F7F3] text-xs font-semibold text-slate-800 w-full lg:w-32">
                 <SelectValue placeholder="Số sao" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-xl border border-black/[0.06] shadow-md">
                 <SelectItem value="all">Tất cả sao</SelectItem>
                 {[5, 4, 3, 2, 1].map((value) => (
                   <SelectItem key={value} value={String(value)}>
@@ -706,10 +727,10 @@ const AdminReviewModerationPage = () => {
               </SelectContent>
             </Select>
             <Select value={hasMedia} onValueChange={setHasMedia}>
-              <SelectTrigger className="w-full lg:w-40">
+              <SelectTrigger className="h-10 px-3.5 rounded-xl border border-black/[0.05] bg-[#F8F7F3] text-xs font-semibold text-slate-800 w-full lg:w-36">
                 <SelectValue placeholder="Ảnh" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-xl border border-black/[0.06] shadow-md">
                 <SelectItem value="all">Tất cả ảnh</SelectItem>
                 <SelectItem value="with-media">Có ảnh</SelectItem>
               </SelectContent>
@@ -718,21 +739,24 @@ const AdminReviewModerationPage = () => {
         </div>
       </div>
 
+      {/* Review Cards List */}
       <div className="space-y-4">
         {loading ? (
           Array.from({ length: 4 }).map((_, index) => (
             <div
               key={index}
-              className="space-y-3 rounded-2xl border border-border bg-card p-5"
+              className="space-y-3 rounded-3xl border border-black/[0.04] bg-white p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)]"
             >
-              <Skeleton className="h-5 w-56" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-5 w-56 rounded-lg" />
+              <Skeleton className="h-4 w-full rounded-lg" />
+              <Skeleton className="h-4 w-2/3 rounded-lg" />
             </div>
           ))
         ) : reviews.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border p-10 text-center text-muted-foreground">
-            Không có đánh giá phù hợp.
+          <div className="rounded-3xl border border-black/[0.04] bg-white p-16 text-center text-slate-400">
+            <MessageSquare className="h-12 w-12 mx-auto mb-3 text-slate-300 stroke-[1.5]" />
+            <p className="font-bold text-slate-800">Không có đánh giá phù hợp.</p>
+            <p className="text-xs text-slate-500 mt-1">Thử thay đổi bộ lọc hoặc điều kiện tìm kiếm.</p>
           </div>
         ) : (
           reviews.map((review) => (

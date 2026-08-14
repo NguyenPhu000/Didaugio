@@ -13,7 +13,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { Link, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import Feather from "@expo/vector-icons/Feather";
 import { useRegister } from "../../src/modules/auth/hooks/useRegister";
 import i18n from "../../src/i18n";
 import { useTranslation } from "react-i18next";

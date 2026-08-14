@@ -1,6 +1,6 @@
 import { memo, useMemo } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { TOKENS } from "../../src/constants/design-tokens";

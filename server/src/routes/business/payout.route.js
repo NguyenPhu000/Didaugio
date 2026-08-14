@@ -9,20 +9,31 @@ import * as payoutController from "../../controllers/business/payout.controller.
 const router = Router();
 
 router.use(authenticate);
-router.use(requireBusinessOwner);
 
 const activeBiz = requireActiveBusiness({ requireContractSigned: true });
 
 // GET /api/business/earnings - Earnings summary
-router.get("/earnings", activeBiz, payoutController.getEarnings);
+router.get("/earnings", requireBusinessOwner, activeBiz, payoutController.getEarnings);
 
 // GET /api/business/payouts - Payout history
-router.get("/payouts", activeBiz, payoutController.getPayouts);
+router.get("/payouts", requireBusinessOwner, activeBiz, payoutController.getPayouts);
 
 // POST /api/business/payouts - Request payout
-router.post("/payouts", activeBiz, validateBody(createPayoutSchema), payoutController.requestPayout);
+router.post(
+  "/payouts",
+  requireBusinessOwner,
+  activeBiz,
+  validateBody(createPayoutSchema),
+  payoutController.requestPayout,
+);
 
 // POST /api/business/payouts/:id/cancel - Cancel pending payout
-router.post("/payouts/:id/cancel", activeBiz, validateParams(payoutIdParamSchema), payoutController.cancelPayout);
+router.post(
+  "/payouts/:id/cancel",
+  requireBusinessOwner,
+  activeBiz,
+  validateParams(payoutIdParamSchema),
+  payoutController.cancelPayout,
+);
 
 export default router;

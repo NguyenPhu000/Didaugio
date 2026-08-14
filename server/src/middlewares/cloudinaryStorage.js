@@ -3,6 +3,28 @@
  * Keeping this adapter local avoids the unmaintained Cloudinary peer range of
  * multer-storage-cloudinary while preserving Multer's file contract.
  */
+import { matchesFileSignature } from "../services/document/fileSignature.js";
+
+const normalizeMimeType = (mimeType) =>
+  mimeType === "image/jpg" ? "image/jpeg" : mimeType;
+
+const readStreamToBuffer = (stream) =>
+  new Promise((resolve, reject) => {
+    const chunks = [];
+    stream.on("data", (chunk) => {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    });
+    stream.once("error", reject);
+    stream.once("end", () => resolve(Buffer.concat(chunks)));
+  });
+
+const createValidationError = (message, statusCode = 400) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  error.errorCode = "VALIDATION_ERROR";
+  return error;
+};
+
 export function createCloudinaryStorage({ cloudinary, params = {} } = {}) {
   if (!cloudinary?.uploader?.upload_stream) {
     throw new Error("A configured Cloudinary client is required");
@@ -23,20 +45,30 @@ export function createCloudinaryStorage({ cloudinary, params = {} } = {}) {
 
   return {
     _handleFile(req, file, callback) {
-      resolveParams(req, file)
-        .then(
-          (uploadOptions) =>
-            new Promise((resolve, reject) => {
-              const uploadStream = cloudinary.uploader.upload_stream(
-                uploadOptions,
-                (error, response) => (error ? reject(error) : resolve(response)),
-              );
+      readStreamToBuffer(file.stream)
+        .then((buffer) => {
+          if (file.truncated) {
+            throw createValidationError("Uploaded file exceeds the size limit", 413);
+          }
 
-              file.stream.once("error", reject);
-              uploadStream.once("error", reject);
-              file.stream.pipe(uploadStream);
-            }),
-        )
+          const mimeType = normalizeMimeType(file.mimetype);
+          if (!matchesFileSignature(buffer, mimeType)) {
+            throw createValidationError("File content does not match its declared format");
+          }
+
+          return resolveParams(req, file).then(
+            (uploadOptions) =>
+              new Promise((resolve, reject) => {
+                const uploadStream = cloudinary.uploader.upload_stream(
+                  uploadOptions,
+                  (error, response) => (error ? reject(error) : resolve(response)),
+                );
+
+                uploadStream.once("error", reject);
+                uploadStream.end(buffer);
+              }),
+          );
+        })
         .then((response) => {
           callback(undefined, {
             path: response.secure_url,

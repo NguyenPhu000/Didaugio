@@ -53,6 +53,11 @@ export function initContractGenerationListener() {
         return;
       }
 
+      if (rawBusiness.contractSigned) {
+        logger.info(`${LOG_PREFIX} Bỏ qua hợp đồng đã ký của business ${id}`);
+        return;
+      }
+
       const getDecrypted = (val) => {
         if (!val) return "";
         if (isEncrypted(val)) {

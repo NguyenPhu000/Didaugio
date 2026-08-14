@@ -27,6 +27,9 @@ import { generateUniqueUsername } from "../../utils/username.js";
 import { OAuth2Client } from "google-auth-library";
 import { invalidateUserCache } from "../../utils/permissionCache.js";
 import { getStaffOperationPermissions } from "../../utils/staffPermissions.js";
+import {
+  isGoogleVerificationInfrastructureError,
+} from "./googleTokenErrors.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -321,7 +324,7 @@ export const login = async (data, clientInfo = {}) => {
     });
   }
 
-  if (!user) {
+  if (!user || user.deletedAt) {
     throw new ServiceError(
       ERROR_MESSAGES.UNAUTHORIZED,
       401,
@@ -505,6 +508,17 @@ export const refreshAccessToken = async (data) => {
       ERROR_MESSAGES.UNAUTHORIZED,
       401,
       "SESSION_INACTIVE",
+    );
+  }
+
+  if (session.user.deletedAt) {
+    await prisma.userSession.deleteMany({
+      where: { userId: session.user.id },
+    });
+    throw new ServiceError(
+      "Tài khoản đã bị xóa",
+      401,
+      "ACCOUNT_DELETED",
     );
   }
 
@@ -881,6 +895,14 @@ export const loginWithGoogle = async (
     });
     tokenInfo = ticket.getPayload();
   } catch (error) {
+    if (isGoogleVerificationInfrastructureError(error)) {
+      throw new ServiceError(
+        "Dịch vụ xác minh Google đang tạm thời không khả dụng. Vui lòng thử lại sau.",
+        503,
+        "GOOGLE_VERIFICATION_UNAVAILABLE",
+      );
+    }
+
     throw new ServiceError(
       `Google token error: ${error.message}`,
       401,
@@ -929,7 +951,9 @@ export const loginWithGoogle = async (
     );
   }
 
-  const { email, email_verified, name, picture } = tokenInfo;
+  const rawEmail = tokenInfo.email;
+  const email = String(rawEmail || "").trim().toLowerCase();
+  const { email_verified, name, picture } = tokenInfo;
 
   if (!email) {
     throw new ServiceError("Không lấy được email từ Google", 401, "NO_EMAIL");
@@ -945,11 +969,27 @@ export const loginWithGoogle = async (
 
   const isBusinessContext = options.context === "web_business";
 
-  // Tìm hoặc tạo user
-  let user = await prisma.user.findUnique({
-    where: { email },
+  // Tìm user theo email (case-insensitive)
+  let user = await prisma.user.findFirst({
+    where: {
+      email: {
+        equals: email,
+        mode: "insensitive",
+      },
+    },
     include: { role: true, profile: true },
   });
+
+  if (user?.deletedAt) {
+    await prisma.userSession.deleteMany({
+      where: { userId: user.id },
+    });
+    throw new ServiceError(
+      "Tài khoản đã bị xóa. Vui lòng liên hệ quản trị viên.",
+      403,
+      "ACCOUNT_DELETED",
+    );
+  }
 
   if (!user) {
     const generatedUsername = await generateUniqueUsername({

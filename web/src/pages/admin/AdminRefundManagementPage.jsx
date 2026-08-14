@@ -1,16 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Doughnut } from "react-chartjs-2";
-import "@/lib/chartSetup";
-import {
-  IconCheck,
-  IconClock,
-  IconEye,
-  IconLoader2,
-  IconRefresh,
-  IconSearch,
-  IconWallet,
-} from "@tabler/icons-react";
 import paymentService from "@/apis/paymentService";
 import {
   Sheet,
@@ -49,6 +38,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Loader2 as IconLoader2,
+  RefreshCw as IconRefresh,
+  Clock as IconClock,
+  Check as IconCheck,
+  Wallet as IconWallet,
+  Eye as IconEye,
+  Search as IconSearch,
+  AlertTriangle as IconAlertTriangle,
+  X as IconX,
+} from "lucide-react";
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+} from "recharts";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -581,7 +589,15 @@ export default function AdminRefundManagementPage() {
       }
 
       const response = await paymentService.getAdminPayments(params);
-      const allPayments = response?.data?.data || [];
+      const allPayments = Array.isArray(response?.data)
+        ? response.data
+        : Array.isArray(response?.data?.items)
+          ? response.data.items
+          : Array.isArray(response?.data?.data)
+            ? response.data.data
+            : Array.isArray(response)
+              ? response
+              : [];
 
       // Frontend filter for pending tab: exclude REJECTED: prefix
       const normalized = isPending
@@ -643,15 +659,13 @@ export default function AdminRefundManagementPage() {
       }
     });
 
-    return {
-      labels: ["VNPAY", "MoMo", "SePay", "Thủ công"],
-      datasets: [
-        {
-          data: [counts.VNPAY, counts.MOMO, counts.SEPAY, counts.manual],
-          backgroundColor: ["#3b82f6", "#ec4899", "#6366f1", "#6b7280"],
-        },
-      ],
-    };
+    const data = [
+      { name: "VNPAY", value: counts.VNPAY, color: "#3b82f6" },
+      { name: "MoMo", value: counts.MOMO, color: "#ec4899" },
+      { name: "SePay", value: counts.SEPAY, color: "#6366f1" },
+      { name: "Thủ công", value: counts.manual, color: "#6b7280" },
+    ];
+    return data.some((d) => d.value > 0) ? data : [{ name: "Chưa có", value: 1, color: "#e2e8f0" }];
   }, [payments]);
 
   const statusChartData = useMemo(() => {
@@ -663,15 +677,13 @@ export default function AdminRefundManagementPage() {
       }
     });
 
-    return {
-      labels: ["Chờ xử lý", "Hoàn một phần", "Đã hoàn tiền", "Đã từ chối"],
-      datasets: [
-        {
-          data: [counts.paid, counts.partially_refunded, counts.fully_refunded, counts.rejected],
-          backgroundColor: ["#f59e0b", "#0ea5e9", "#10b981", "#f43f5e"],
-        },
-      ],
-    };
+    const data = [
+      { name: "Chờ xử lý", value: counts.paid, color: "#f59e0b" },
+      { name: "Hoàn một phần", value: counts.partially_refunded, color: "#0ea5e9" },
+      { name: "Đã hoàn tiền", value: counts.fully_refunded, color: "#10b981" },
+      { name: "Đã từ chối", value: counts.rejected, color: "#f43f5e" },
+    ];
+    return data.some((d) => d.value > 0) ? data : [{ name: "Chưa có", value: 1, color: "#e2e8f0" }];
   }, [payments]);
 
   // -- reset refundReason when dialogTab changes --
@@ -983,20 +995,26 @@ export default function AdminRefundManagementPage() {
                 <IconWallet className="h-4 w-4" /> Tỷ lệ cổng thanh toán sử dụng
               </CardTitle>
             </CardHeader>
-            <CardContent className="h-64 pt-4 flex items-center justify-center">
-              <Doughnut
-                data={gatewayChartData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: "bottom",
-                      labels: { usePointStyle: true, padding: 15 },
-                    },
-                  },
-                }}
-              />
+            <CardContent className="h-64 pt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={gatewayChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={75}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {gatewayChartData.map((entry, index) => (
+                      <Cell key={`cell-gw-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
 
@@ -1006,20 +1024,26 @@ export default function AdminRefundManagementPage() {
                 <IconClock className="h-4 w-4" /> Cơ cấu trạng thái hoàn tiền
               </CardTitle>
             </CardHeader>
-            <CardContent className="h-64 pt-4 flex items-center justify-center">
-              <Doughnut
-                data={statusChartData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: "bottom",
-                      labels: { usePointStyle: true, padding: 15 },
-                    },
-                  },
-                }}
-              />
+            <CardContent className="h-64 pt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={statusChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={75}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {statusChartData.map((entry, index) => (
+                      <Cell key={`cell-st-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         </div>

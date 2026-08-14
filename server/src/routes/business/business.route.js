@@ -129,20 +129,40 @@ router.put(
 router.get("/:id/contract", authenticate, downloadContract);
 
 // ========== Admin (business.view, business.approve) ==========
+const businessAdminViewPermissions = [
+  "business.view",
+  "businesses.view",
+  "business.view_detail",
+  "business.manage",
+  "business.approve",
+  "system.view_analytics",
+];
+
+const businessAdminApprovePermissions = [
+  "business.approve",
+  "businesses.approve",
+  "business.manage",
+];
+
 router.get(
   "/",
   requireBackOfficeRole,
-  hasPermission("business.view"),
+  hasPermission(businessAdminViewPermissions),
   validateQuery(getBusinessesQuerySchema),
   getAll,
 );
 
-router.get("/:id", requireBackOfficeRole, hasPermission("business.view"), getById);
+router.get(
+  "/:id",
+  requireBackOfficeRole,
+  hasPermission(businessAdminViewPermissions),
+  getById,
+);
 
 router.put(
   "/:id/approve",
   requireBackOfficeRole,
-  hasPermission("business.approve"),
+  hasPermission(businessAdminApprovePermissions),
   validateBody(approveBusinessSchema),
   auditLog({
     action: "APPROVE",
@@ -155,7 +175,7 @@ router.put(
 router.put(
   "/:id/reject",
   requireBackOfficeRole,
-  hasPermission("business.approve"),
+  hasPermission(businessAdminApprovePermissions),
   sanitizeBody(["rejectionReason"]),
   validateBody(rejectBusinessSchema),
   auditLog({
@@ -172,7 +192,7 @@ router.put(
 router.put(
   "/:id/suspend",
   requireBackOfficeRole,
-  hasPermission("business.approve"),
+  hasPermission(businessAdminApprovePermissions),
   sanitizeBody(["suspensionReason"]),
   validateBody(suspendBusinessSchema),
   auditLog({
@@ -189,7 +209,7 @@ router.put(
 router.put(
   "/:id/reactivate",
   requireBackOfficeRole,
-  hasPermission("business.approve"),
+  hasPermission(businessAdminApprovePermissions),
   auditLog({
     action: "REACTIVATE",
     tableName: "businesses",
@@ -201,7 +221,7 @@ router.put(
 router.put(
   "/:id/terminate",
   requireBackOfficeRole,
-  hasPermission("business.approve"),
+  hasPermission(businessAdminApprovePermissions),
   sanitizeBody(["terminationReason"]),
   validateBody(terminateBusinessSchema),
   auditLog({

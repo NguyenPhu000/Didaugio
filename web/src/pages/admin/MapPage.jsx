@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useDeferredValue, lazy, Suspense, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { centroid as turfCentroid } from "@turf/turf";
+import turfCentroid from "@turf/centroid";
 import { usePlaces } from "@/hooks/queries/usePlaceQueries";
 import { useCategories } from "@/hooks/queries/useCategoryQueries";
 import {
@@ -47,7 +46,6 @@ const FETCH_LIMIT = 500;
 
 const MapPageContent = () => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const {
     flyTo,
     selectArea,
@@ -207,21 +205,25 @@ const MapPageContent = () => {
     <>
       <div
         ref={containerRef}
-        className={`bg-gray-100 font-sans flex flex-col ${fullscreen ? "fixed inset-0 z-[9999]" : "h-screen"}`}
+        className={`font-sans flex flex-col ${
+          fullscreen
+            ? "fixed inset-0 z-[9999] bg-white"
+            : "h-[calc(100vh-140px)] min-h-[640px] rounded-3xl overflow-hidden border border-black/[0.04] bg-white shadow-[0_4px_30px_rgba(0,0,0,0.03)]"
+        }`}
       >
-        {/* Header */}
-        <div className="h-12 bg-white border-b border-gray-200 flex items-center justify-between px-4 flex-shrink-0 shadow-sm">
+        {/* Header ToolBar */}
+        <div className="h-14 bg-[#FAF9F5] border-b border-black/[0.04] flex items-center justify-between px-5 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gray-900 text-white flex items-center justify-center rounded-lg">
+            <div className="w-8 h-8 bg-slate-950 text-[#F3E600] flex items-center justify-center rounded-xl shadow-2xs">
               <MapIcon className="h-4 w-4" />
             </div>
             <div>
-              <div className="text-sm font-black uppercase tracking-tight text-gray-900">
+              <div className="text-xs font-black uppercase tracking-tight text-slate-950">
                 {t("admin.map.title")}
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-[9px] font-mono text-gray-400 uppercase tracking-widest">
+                <span className="w-1.5 h-1.5 bg-[#F3E600] rounded-full shadow-[0_0_6px_#F3E600]" />
+                <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider">
                   {t("admin.map.cityDistricts", { count: districtList.length || 9 })}
                 </span>
               </div>
@@ -230,17 +232,18 @@ const MapPageContent = () => {
 
           <div className="flex-1 max-w-md mx-6">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t("admin.map.searchPlaceholder")}
-                className="w-full h-9 border border-gray-200 rounded-lg pl-9 pr-8 text-sm focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-200 bg-gray-50"
+                className="w-full h-9 pl-9 pr-8 bg-white rounded-xl text-xs font-medium text-slate-900 border border-black/[0.06] focus:outline-none focus:ring-2 focus:ring-[#F3E600] placeholder:text-slate-400 transition-all shadow-2xs"
               />
               {searchQuery && (
                 <button
+                  type="button"
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
                   aria-label={t("admin.map.ariaLabels.clearSearch")}
                 >
                   <X className="h-3.5 w-3.5" />
@@ -252,51 +255,64 @@ const MapPageContent = () => {
           <div className="flex items-center gap-1.5">
             {hasActiveFilters && (
               <button
+                type="button"
                 onClick={resetFilters}
-                className="flex items-center gap-1.5 h-8 px-3 text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                className="flex items-center gap-1.5 h-8 px-3 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-full hover:bg-rose-100 transition-colors mr-1"
               >
                 <RefreshCw className="h-3 w-3" /> {t("admin.map.clearFilters")}
               </button>
             )}
             <button
+              type="button"
               onClick={() => setRoutingMode((v) => !v)}
-              className={`h-8 w-8 rounded-lg flex items-center justify-center border transition-colors ${
+              className={`h-8 w-8 rounded-full flex items-center justify-center transition-all shadow-2xs ${
                 routingMode
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "border-gray-200 hover:bg-gray-100"
+                  ? "bg-slate-950 text-[#F3E600]"
+                  : "bg-white border border-black/[0.05] text-slate-700 hover:bg-[#F4F2EC]"
               }`}
               title={t("admin.map.routing")}
               aria-label={t("admin.map.ariaLabels.routingMode")}
             >
-              <Route className="h-4 w-4" />
+              <Route className="h-3.5 w-3.5" />
             </button>
             <button
+              type="button"
               onClick={() => setViewMode(viewMode === "map" ? "list" : "map")}
-              className={`h-8 w-8 rounded-lg flex items-center justify-center border transition-colors ${viewMode === "list" ? "bg-gray-900 text-white border-gray-900" : "border-gray-200 hover:bg-gray-100"}`}
+              className={`h-8 w-8 rounded-full flex items-center justify-center transition-all shadow-2xs ${
+                viewMode === "list"
+                  ? "bg-slate-950 text-white"
+                  : "bg-white border border-black/[0.05] text-slate-700 hover:bg-[#F4F2EC]"
+              }`}
               aria-label={viewMode === "map" ? t("admin.map.ariaLabels.toList") : t("admin.map.ariaLabels.toMap")}
             >
               {viewMode === "map" ? (
-                <List className="h-4 w-4" />
+                <List className="h-3.5 w-3.5" />
               ) : (
-                <MapIcon className="h-4 w-4" />
+                <MapIcon className="h-3.5 w-3.5" />
               )}
             </button>
             <button
+              type="button"
               onClick={() => setSidebarOpen((v) => !v)}
-              className="h-8 w-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors"
+              className={`h-8 w-8 rounded-full flex items-center justify-center transition-all shadow-2xs ${
+                sidebarOpen
+                  ? "bg-slate-950 text-white"
+                  : "bg-white border border-black/[0.05] text-slate-700 hover:bg-[#F4F2EC]"
+              }`}
               aria-label={t("admin.map.ariaLabels.toggleSidebar")}
             >
-              <Layers className="h-4 w-4" />
+              <Layers className="h-3.5 w-3.5" />
             </button>
             <button
+              type="button"
               onClick={toggleFullscreen}
-              className="h-8 w-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors"
+              className="h-8 w-8 rounded-full bg-white border border-black/[0.05] text-slate-700 flex items-center justify-center hover:bg-[#F4F2EC] transition-all shadow-2xs"
               aria-label={fullscreen ? t("admin.map.ariaLabels.exitFullscreen") : t("admin.map.ariaLabels.enterFullscreen")}
             >
               {fullscreen ? (
-                <Minimize2 className="h-4 w-4" />
+                <Minimize2 className="h-3.5 w-3.5" />
               ) : (
-                <Maximize2 className="h-4 w-4" />
+                <Maximize2 className="h-3.5 w-3.5" />
               )}
             </button>
           </div>
@@ -304,29 +320,29 @@ const MapPageContent = () => {
 
         {/* Routing bar */}
         {routingMode && (
-          <div className="flex items-center gap-3 px-4 py-2 bg-blue-950 border-b border-blue-800 flex-shrink-0">
+          <div className="flex items-center gap-3 px-5 py-2.5 bg-slate-950 border-b border-white/[0.08] flex-shrink-0">
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center shrink-0">
-                <Navigation2 className="w-3 h-3 text-white fill-white" />
+              <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                <Navigation2 className="w-2.5 h-2.5 text-white fill-white" />
               </div>
-              <span className="text-[12px] text-blue-100 font-medium truncate">
+              <span className="text-xs text-slate-200 font-medium truncate">
                 {routing.origin?.name ?? (
-                  <span className="text-blue-400 italic">
+                  <span className="text-slate-400 italic">
                     {t("admin.map.selectOrigin")}
                   </span>
                 )}
               </span>
             </div>
 
-            <span className="text-blue-500 shrink-0">→</span>
+            <span className="text-[#F3E600] font-mono shrink-0">→</span>
 
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center shrink-0">
-                <Flag className="w-3 h-3 text-white fill-white" />
+              <div className="w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center shrink-0">
+                <Flag className="w-2.5 h-2.5 text-white fill-white" />
               </div>
-              <span className="text-[12px] text-blue-100 font-medium truncate">
+              <span className="text-xs text-slate-200 font-medium truncate">
                 {routing.destination?.name ?? (
-                  <span className="text-blue-400 italic">
+                  <span className="text-slate-400 italic">
                     {t("admin.map.selectDestination")}
                   </span>
                 )}
@@ -334,33 +350,34 @@ const MapPageContent = () => {
             </div>
 
             {routing.routeInfo && (
-              <div className="flex items-center gap-3 shrink-0 bg-blue-900/60 rounded-lg px-3 py-1">
-                <span className="text-[12px] font-black text-white">
+              <div className="flex items-center gap-2.5 shrink-0 bg-white/[0.1] rounded-full px-3 py-1 border border-white/[0.1]">
+                <span className="text-xs font-mono font-bold text-[#F3E600] tabular-nums">
                   {routing.routeInfo.distanceLabel}
                 </span>
-                <span className="text-[10px] text-blue-300">
+                <span className="text-[10px] text-slate-300 font-mono">
                   {routing.routeInfo.durationLabel}
                 </span>
               </div>
             )}
 
             {routing.loading && (
-              <span className="text-[11px] text-blue-300 italic shrink-0">
+              <span className="text-xs text-[#F3E600] italic shrink-0">
                 {t("admin.map.findingRoute")}
               </span>
             )}
             {routing.error && (
-              <span className="text-[11px] text-red-400 shrink-0">
+              <span className="text-xs text-rose-400 shrink-0">
                 {routing.error}
               </span>
             )}
 
             <button
+              type="button"
               onClick={() => {
                 routing.clearRoute();
                 setRoutingMode(false);
               }}
-              className="shrink-0 text-blue-400 hover:text-white transition-colors"
+              className="shrink-0 text-slate-400 hover:text-white transition-colors"
               aria-label={t("admin.map.closeRouting")}
             >
               <X className="w-4 h-4" />
@@ -372,8 +389,9 @@ const MapPageContent = () => {
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar */}
           {sidebarOpen && (
-            <div className="w-72 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 overflow-hidden shadow-sm">
-              <div className="grid grid-cols-3 border-b border-gray-100">
+            <div className="w-80 bg-white border-r border-black/[0.04] flex flex-col flex-shrink-0 overflow-hidden shadow-2xs">
+              {/* Stat Tiles Strip */}
+              <div className="grid grid-cols-3 border-b border-black/[0.04] bg-[#FAF9F5]">
                 {[
                   { label: t("admin.map.places"), value: places.length, icon: MapPin },
                   {
@@ -389,37 +407,39 @@ const MapPageContent = () => {
                 ].map(({ label, value }) => (
                   <div
                     key={label}
-                    className="py-3 text-center border-r border-gray-100 last:border-r-0"
+                    className="py-3 text-center border-r border-black/[0.04] last:border-r-0"
                   >
-                    <div className="text-xl font-black text-gray-900">
+                    <div className="text-base font-black text-slate-950 font-mono tabular-nums">
                       {value}
                     </div>
-                    <div className="text-[9px] font-mono uppercase text-gray-400 tracking-wider">
+                    <div className="text-[9px] font-mono uppercase text-slate-400 font-bold tracking-wider">
                       {label}
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="flex border-b border-gray-200 bg-gray-50">
+              {/* Panel Tabs */}
+              <div className="flex border-b border-black/[0.04] bg-[#F8F7F3] p-1 gap-1">
                 {[
                   { id: "places", label: t("admin.map.places"), icon: MapPin },
                   { id: "districts", label: t("admin.map.districts"), icon: BarChart3 },
                   { id: "filters", label: t("admin.map.filters"), icon: Filter },
                 ].map(({ id, label, icon: _Icon }) => (
                   <button
+                    type="button"
                     key={id}
                     onClick={() => setPanelTab(id)}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold uppercase tracking-wide transition-colors border-b-2 ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
                       panelTab === id
-                        ? "border-gray-900 text-gray-900 bg-white"
-                        : "border-transparent text-gray-400 hover:text-gray-600"
+                        ? "bg-white text-slate-950 shadow-2xs"
+                        : "text-slate-500 hover:text-slate-900"
                     }`}
                   >
-                    <_Icon className="h-3.5 w-3.5" />
+                    <_Icon className="h-3 w-3" />
                     {label}
                     {id === "filters" && hasActiveFilters && (
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full" aria-label={t("admin.map.ariaLabels.filterActive")} />
+                      <span className="w-1.5 h-1.5 bg-[#F3E600] rounded-full shadow-[0_0_4px_#F3E600]" aria-label={t("admin.map.ariaLabels.filterActive")} />
                     )}
                   </button>
                 ))}
@@ -428,20 +448,21 @@ const MapPageContent = () => {
               {/* Places panel */}
               {panelTab === "places" && (
                 <div className="flex flex-col flex-1 overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                    <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+                  <div className="px-4 py-2 bg-[#FAF9F5] border-b border-black/[0.04] flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide truncate">
                       {selectedDistrictId
                         ? selectedDistrict?.properties?.name
                         : t("admin.map.allPlaces")}
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-gray-400">
+                      <span className="text-xs font-mono font-bold text-slate-400 tabular-nums">
                         {displayPlaces.length}
                       </span>
                       {selectedDistrictId && (
                         <button
+                          type="button"
                           onClick={resetSelection}
-                          className="text-[10px] text-red-500 hover:text-red-700 font-bold"
+                          className="text-[10px] text-rose-500 hover:text-rose-700 font-bold"
                           aria-label={t("admin.map.deselectArea")}
                         >
                           <X className="h-3 w-3" />
@@ -452,8 +473,8 @@ const MapPageContent = () => {
                   <div className="flex-1 overflow-y-auto">
                     {displayPlaces.length === 0 ? (
                       <div className="py-12 text-center">
-                        <MapPin className="h-8 w-8 text-gray-200 mx-auto mb-2" />
-                        <p className="text-xs text-gray-400 font-medium">
+                        <MapPin className="h-8 w-8 text-slate-300 mx-auto mb-2 stroke-[1.5]" />
+                        <p className="text-xs text-slate-400 font-medium">
                           {t("admin.map.noPlaces")}
                         </p>
                       </div>
@@ -473,14 +494,15 @@ const MapPageContent = () => {
               {/* Districts panel */}
               {panelTab === "districts" && (
                 <div className="flex flex-col flex-1 overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                    <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+                  <div className="px-4 py-2 bg-[#FAF9F5] border-b border-black/[0.04] flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
                       {districtList.length} {t("admin.map.districts")}
                     </span>
                     {selectedDistrictId && (
                       <button
+                        type="button"
                         onClick={resetSelection}
-                        className="text-[10px] text-red-500 font-bold flex items-center gap-1 hover:text-red-700"
+                        className="text-[10px] text-rose-500 font-bold flex items-center gap-1 hover:text-rose-700"
                       >
                         <X className="h-3 w-3" /> {t("admin.map.deselect")}
                       </button>
@@ -501,8 +523,8 @@ const MapPageContent = () => {
                         onClick={() => handleDistrictClick(d)}
                       />
                     ))}
-                    <div className="mt-2 mx-4 mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                      <p className="text-[11px] font-bold text-gray-500 uppercase mb-2">
+                    <div className="mt-3 mx-4 mb-4 p-3 bg-[#FAF9F5] rounded-2xl border border-black/[0.04]">
+                      <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                         {t("admin.map.placeDistribution")}
                       </p>
                       {districtList
@@ -513,10 +535,10 @@ const MapPageContent = () => {
                             key={d.id}
                             className="flex items-center gap-2 mb-1.5"
                           >
-                            <span className="text-[11px] text-gray-600 w-24 truncate">
+                            <span className="text-xs font-semibold text-slate-700 w-24 truncate">
                               {d.name}
                             </span>
-                            <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="flex-1 h-1.5 bg-[#F4F2EC] rounded-full overflow-hidden">
                               <div
                                 className="h-full rounded-full"
                                 style={{
@@ -528,7 +550,7 @@ const MapPageContent = () => {
                                 }}
                               />
                             </div>
-                            <span className="text-[10px] font-mono text-gray-400 w-4 text-right">
+                            <span className="text-[11px] font-mono font-bold text-slate-400 w-4 text-right tabular-nums">
                               {d.count}
                             </span>
                           </div>
@@ -558,28 +580,29 @@ const MapPageContent = () => {
 
           {/* Map / List area */}
           {viewMode === "map" ? (
-            <div className="flex-1 relative overflow-hidden">
+            <div className="flex-1 relative overflow-hidden bg-[#F4F2EC]">
               {loading && (
-                <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                  <div className="text-center">
-                    <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                    <p className="text-sm font-medium text-gray-500">
+                <div className="w-full h-full flex items-center justify-center bg-[#FAF9F5]">
+                  <div className="text-center space-y-2">
+                    <div className="w-8 h-8 border-3 border-slate-950 border-t-[#F3E600] rounded-full animate-spin mx-auto" />
+                    <p className="text-xs font-semibold text-slate-500">
                       {t("admin.map.loading")}
                     </p>
                   </div>
                 </div>
               )}
               {!loading && error && (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 gap-3">
-                  <AlertTriangle className="h-10 w-10 text-red-400" />
-                  <p className="text-sm font-medium text-gray-600">
+                <div className="w-full h-full flex flex-col items-center justify-center bg-[#FAF9F5] gap-3">
+                  <AlertTriangle className="h-10 w-10 text-rose-400 stroke-[1.5]" />
+                  <p className="text-xs font-bold text-slate-700">
                     {t("admin.map.loadError")}
                   </p>
                   <button
+                    type="button"
                     onClick={retry}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-slate-950 rounded-full hover:bg-black transition-colors shadow-2xs"
                   >
-                    <RefreshCw className="h-4 w-4" />
+                    <RefreshCw className="h-3.5 w-3.5" />
                     {t("admin.map.retry")}
                   </button>
                 </div>
@@ -601,18 +624,19 @@ const MapPageContent = () => {
                 </MapBase>
               )}
 
-              <div className="absolute bottom-10 left-4 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full px-3 py-1.5 flex items-center gap-2 text-[11px] font-medium text-gray-600 shadow-sm pointer-events-none">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              {/* Floating Pill on Map */}
+              <div className="absolute bottom-6 left-6 bg-white/90 backdrop-blur-md border border-black/[0.06] rounded-full px-3.5 py-2 flex items-center gap-2 text-xs font-semibold text-slate-700 shadow-[0_4px_20px_rgba(0,0,0,0.08)] pointer-events-none">
+                <span className="w-2 h-2 bg-[#F3E600] rounded-full shadow-[0_0_6px_#F3E600] animate-pulse" />
                 <span>
-                  <strong className="text-gray-900">
+                  <strong className="text-slate-950 font-bold font-mono tabular-nums">
                     {filteredPlaces.length}
                   </strong>{" "}
                   {t("admin.map.places").toLowerCase()}
                 </span>
                 {selectedDistrictId && (
                   <>
-                    <span className="text-gray-300">•</span>
-                    <span className="text-gray-700 font-bold">
+                    <span className="text-slate-300">•</span>
+                    <span className="text-slate-950 font-bold">
                       {selectedDistrict?.properties?.name}
                     </span>
                   </>
@@ -625,21 +649,21 @@ const MapPageContent = () => {
         </div>
 
         {/* Status bar */}
-        <div className="h-7 bg-gray-900 flex items-center justify-between px-4 flex-shrink-0">
-          <div className="flex items-center gap-4 text-[10px] font-mono text-gray-400">
+        <div className="h-7 bg-slate-950 flex items-center justify-between px-5 flex-shrink-0">
+          <div className="flex items-center gap-4 text-[10.5px] font-mono text-slate-400">
             <span>
               {t("admin.map.statusBar.showing", { shown: filteredPlaces.length, total: places.length })}
             </span>
             {hasActiveFilters && (
-              <span className="text-yellow-400">{t("admin.map.statusBar.filtersActive")}</span>
+              <span className="text-[#F3E600] font-bold">{t("admin.map.statusBar.filtersActive")}</span>
             )}
             {selectedDistrictId && (
-              <span className="text-yellow-400">
+              <span className="text-[#F3E600] font-bold">
                 ◈ {selectedDistrict?.properties?.name}
               </span>
             )}
           </div>
-          <span className="text-[10px] font-mono text-gray-500">
+          <span className="text-[10.5px] font-mono text-slate-400">
             {t("admin.map.statusBar.canTho", { count: districtList.length || 9 })}
           </span>
         </div>

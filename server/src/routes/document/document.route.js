@@ -21,6 +21,28 @@ import {
   ALLOWED_UPLOAD_MIME_TYPES,
   MAX_UPLOAD_FILE_SIZE_BYTES,
 } from "../../middlewares/uploadMiddleware.js";
+import { canAccessBusinessDocuments } from "../../services/document/documentAccess.service.js";
+
+const canAccessDocument = async (req, res, next) => {
+  try {
+    const allowed = await canAccessBusinessDocuments({
+      businessId: req.params.businessId,
+      userId: req.user.userId,
+      roleId: req.user.roleId,
+    });
+
+    if (allowed) return next();
+
+    return res.status(403).json({
+      success: false,
+      data: null,
+      message: "Bạn không có quyền truy cập tài liệu của doanh nghiệp này",
+      errorCode: "FORBIDDEN_NOT_OWNER",
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
 
 const canDeleteDocument = async (req, res, next) => {
   try {
@@ -86,6 +108,7 @@ router.use(authenticate);
 // Business owner upload document
 router.post(
   "/:businessId/upload",
+  canAccessDocument,
   documentUploadLimiter,
   verifyCsrfToken,
   uploadHandler.single("file"),
@@ -104,7 +127,7 @@ router.post(
 router.get("/download/:documentId", download);
 
 // Check document status (không expose URLs)
-router.get("/:businessId/status", getStatus);
+router.get("/:businessId/status", canAccessDocument, getStatus);
 
 // Delete document (admin only)
 router.delete(

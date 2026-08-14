@@ -28,7 +28,11 @@ RUN apk add --no-cache dumb-init openssl
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+    adduser -S nodejs -u 1001 && \
+    install -d -o nodejs -g nodejs /var/lib/didaugio/sensitive
+
+ENV SENSITIVE_STORAGE_DIR=/var/lib/didaugio/sensitive
+VOLUME ["/var/lib/didaugio/sensitive"]
 
 # Copy node_modules and prisma from builder
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
