@@ -85,8 +85,8 @@
     "reviewing": "Reviewing",
     "invalidImageFormat": "Only PNG/JPG/JPEG/WEBP images are supported",
     "invalidFileFormat": "Only PNG/JPG/JPEG/WEBP images or PDF files are supported",
-    "imageTooLarge": "Image exceeds 10MB, please choose a smaller image",
-    "fileTooLarge": "File exceeds 10MB, please choose a smaller file"
+    "imageTooLarge": "Image exceeds 8MB, please choose a smaller image",
+    "fileTooLarge": "File exceeds 8MB, please choose a smaller file"
   },
   "nav": {
     "dashboard": "Dashboard",

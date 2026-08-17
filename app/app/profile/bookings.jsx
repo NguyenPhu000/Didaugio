@@ -1,3 +1,7 @@
+// MAP: MyBookingsScreen
+// ├── UI: @/modules/booking/components/BookingTicketCard, @/components/composed/NotificationBell
+// └── API: @/modules/booking/hooks/useBooking
+
 import { useMemo } from "react";
 import {
   ActivityIndicator,

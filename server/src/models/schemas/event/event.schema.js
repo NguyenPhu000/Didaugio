@@ -13,7 +13,6 @@ export const createEventSchema = z.object({
     .max(200, "Tieu de su kien toi da 200 ky tu"),
   description: z.string().max(2000, "Mo ta toi da 2000 ky tu").optional().nullable(),
   thumbnail: z.string().max(5000000).optional().nullable(),
-  thumbnailPublicId: z.string().max(200).optional().nullable(),
   broadcastNotice: z.string().max(255).optional().nullable(),
   startDate: z
     .string({ required_error: "Ngay bat dau khong duoc de trong" })
@@ -32,7 +31,6 @@ export const updateEventSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(2000).optional().nullable(),
   thumbnail: z.string().max(5000000).optional().nullable(),
-  thumbnailPublicId: z.string().max(200).optional().nullable(),
   broadcastNotice: z.string().max(255).optional().nullable(),
   startDate: z
     .string()

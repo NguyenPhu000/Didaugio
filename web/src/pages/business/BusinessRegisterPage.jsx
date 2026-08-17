@@ -1,3 +1,7 @@
+// MAP: BusinessRegisterPage
+// ├── UI: @/components/business/register/{StepIndicator, BusinessInfoStep, BankInfoStep, DocumentUploadStep, ContractSignStep}
+// └── API: @/hooks/queries/useBusinessQueries, @/apis/businessApi
+
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -14,18 +18,8 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
-  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   useBusinessProfile,
   useRegisterBusiness,
@@ -39,10 +33,14 @@ import {
   BusinessPageHeader,
   BusinessSectionCard,
 } from "@/components/business/ui";
-import DocumentImageUploadField from "@/components/business/DocumentImageUploadField";
 import ContractSignModal from "@/components/business/ContractSignModal";
-import { DOCUMENT_SAMPLE_IMAGES } from "@/components/business/documentImageConstants";
-import { cn } from "@/lib/utils";
+
+// Extracted Sub-Components
+import StepIndicator from "@/components/business/register/StepIndicator";
+import BusinessInfoStep from "@/components/business/register/BusinessInfoStep";
+import BankInfoStep from "@/components/business/register/BankInfoStep";
+import DocumentUploadStep from "@/components/business/register/DocumentUploadStep";
+import ContractSignStep from "@/components/business/register/ContractSignStep";
 
 const registerSchema = z.object({
   businessName: z.string().min(2),
@@ -54,68 +52,12 @@ const registerSchema = z.object({
   bankAccountOwner: z.string().optional(),
 });
 
-const FormField = ({ label, required, error, children }) => (
-  <div className="space-y-1.5">
-    <Label className="flex items-center gap-1">
-      {label}
-      {required && <span className="text-destructive">*</span>}
-    </Label>
-    {children}
-    {error && <p className="text-[11px] text-destructive">{error}</p>}
-  </div>
-);
-
 const STEPS = [
   { key: "info", icon: Store, labelKey: "business.register.stepInfo" },
   { key: "bank", icon: CreditCard, labelKey: "business.register.stepBank" },
   { key: "docs", icon: FileText, labelKey: "business.register.stepDocs" },
   { key: "contract", icon: FileSignature, labelKey: "Ký hợp đồng" },
 ];
-
-function StepIndicator({ currentStep, steps }) {
-  const { t } = useTranslation();
-
-  return (
-    <div className="flex items-center justify-center gap-2 mb-6">
-      {steps.map((step, idx) => {
-        const Icon = step.icon;
-        const isActive = idx === currentStep;
-        const isCompleted = idx < currentStep;
-        const stepClassName = isActive
-          ? "bg-primary text-primary-foreground shadow-md"
-          : "";
-        const completedClassName = isCompleted
-          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-          : "bg-muted text-muted-foreground";
-
-        return (
-          <div key={step.key} className="flex items-center">
-            <div
-              className={`
-                flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all
-                ${stepClassName || completedClassName}
-              `}
-            >
-              {isCompleted ? (
-                <Check className="h-4 w-4" />
-              ) : (
-                <Icon className="h-4 w-4" />
-              )}
-              <span className="hidden sm:inline">{t(step.labelKey)}</span>
-            </div>
-            {idx < steps.length - 1 && (
-              <div
-                className={`mx-2 h-px w-8 ${
-                  idx < currentStep ? "bg-emerald-300" : "bg-border"
-                }`}
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 const BusinessRegisterPage = () => {
   const { t } = useTranslation();
@@ -131,17 +73,9 @@ const BusinessRegisterPage = () => {
   });
   const [documentErrors, setDocumentErrors] = useState({});
   const [signOpen, setSignOpen] = useState(false);
-  // Payload ký hợp đồng do ContractSignModal trả về (OTP, chữ ký, thông tin Bên A).
-  // Được gửi lên server ngay sau khi tạo doanh nghiệp thành công.
   const [contractPayload, setContractPayload] = useState(null);
   const signedContract = Boolean(contractPayload);
   const authUser = useAuthStore((state) => state.user);
-
-  const BUSINESS_TYPES = [
-    { value: "individual", label: t("business.register.businessTypeIndividual") },
-    { value: "household", label: t("business.register.businessTypeHousehold") },
-    { value: "company", label: t("business.register.businessTypeCompany") },
-  ];
 
   const {
     register,
@@ -218,7 +152,9 @@ const BusinessRegisterPage = () => {
 
   const onSubmit = async (data) => {
     if (!contractPayload) {
-      toast.error("Vui lòng thực hiện ký hợp đồng điện tử trước khi gửi đăng ký!");
+      toast.error(
+        "Vui lòng thực hiện ký hợp đồng điện tử trước khi gửi đăng ký!"
+      );
       return;
     }
 
@@ -240,13 +176,12 @@ const BusinessRegisterPage = () => {
         });
       }
 
-      // Doanh nghiệp đã tồn tại -> gửi chữ ký điện tử để server sinh & ký PDF hợp đồng.
       try {
         await businessApi.contractSign(contractPayload);
       } catch (signError) {
         console.error("Business contract signing error:", signError);
         toast.warning(
-          "Đăng ký thành công nhưng chưa lưu được hợp đồng điện tử. Vui lòng ký lại trong mục Hồ sơ doanh nghiệp.",
+          "Đăng ký thành công nhưng chưa lưu được hợp đồng điện tử. Vui lòng ký lại trong mục Hồ sơ doanh nghiệp."
         );
       }
 
@@ -256,15 +191,6 @@ const BusinessRegisterPage = () => {
         error?.response?.data?.message ||
         error?.message ||
         t("common.operationFailed");
-      const errorCode = error?.errorCode || error?.response?.data?.errorCode;
-
-      console.error("Business registration error:", {
-        message: errorMessage,
-        errorCode,
-        status: error?.status || error?.response?.status,
-        data: error?.data || error?.response?.data,
-      });
-
       toastApiErrorIfNeeded(error, errorMessage);
     }
   };
@@ -277,233 +203,92 @@ const BusinessRegisterPage = () => {
         </div>
       ) : (
         <>
-      <BusinessPageHeader
-        title={t("business.register.title")}
-        description={t("business.register.description")}
-      />
+          <BusinessPageHeader
+            title={t("business.register.title")}
+            description={t("business.register.description")}
+          />
 
-      <StepIndicator currentStep={currentStep} steps={STEPS} />
+          <StepIndicator currentStep={currentStep} steps={STEPS} />
 
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <BusinessSectionCard
-          title={t(STEPS[currentStep].labelKey)}
-          titleIcon={STEPS[currentStep].icon}
-        >
-          <input type="hidden" {...register("businessType")} />
-
-          {/* Step 1: Business Info */}
-          {currentStep === 0 && (
-            <div className="space-y-4">
-              <FormField
-                label={t("business.register.businessName")}
-                required
-                error={errors.businessName?.message}
-              >
-                <Input
-                  {...register("businessName")}
-                  placeholder={t("business.register.businessNamePlaceholder")}
-                />
-              </FormField>
-
-              <FormField label={t("business.register.businessType")} required>
-                <Select
-                  value={selectedBusinessType}
-                  onValueChange={(v) =>
-                    setValue("businessType", v, { shouldDirty: true })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BUSINESS_TYPES.map((bt) => (
-                      <SelectItem key={bt.value} value={bt.value}>
-                        {bt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  label={t("business.register.idCard")}
-                  required
-                  error={errors.idCardNumber?.message}
-                >
-                  <Input
-                    {...register("idCardNumber")}
-                    placeholder={t("business.register.idCardPlaceholder")}
-                  />
-                </FormField>
-                <FormField
-                  label={t("business.register.taxCode")}
-                  error={errors.taxCode?.message}
-                >
-                  <Input
-                    {...register("taxCode")}
-                    placeholder={t("business.register.taxCodePlaceholder")}
-                  />
-                </FormField>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Bank Info */}
-          {currentStep === 1 && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {t("business.register.bankInfoDesc")}
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField label={t("business.register.bankName")}>
-                  <Input
-                    {...register("bankName")}
-                    placeholder={t("business.register.bankNamePlaceholder")}
-                  />
-                </FormField>
-                <FormField label={t("business.register.bankAccount")}>
-                  <Input {...register("bankAccountNumber")} />
-                </FormField>
-                <FormField label={t("business.register.accountHolder")}>
-                  <Input {...register("bankAccountOwner")} />
-                </FormField>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Documents */}
-          {currentStep === 2 && (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
-                <h4 className="text-sm font-semibold text-foreground">
-                  {t("business.register.documentsTitle")}
-                </h4>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("business.register.documentsDesc")}
-                </p>
-
-                <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
-                  <DocumentImageUploadField
-                    label={t("business.register.businessLicense")}
-                    required
-                    value={documents.businessLicense}
-                    onChange={(files) => {
-                      setDocuments((prev) => ({
-                        ...prev,
-                        businessLicense: files,
-                      }));
-                      setDocumentErrors((prev) => ({
-                        ...prev,
-                        businessLicense: "",
-                      }));
-                    }}
-                    hint={t("business.register.licenseHint")}
-                    fallbackPreview={DOCUMENT_SAMPLE_IMAGES.portrait}
-                    previewAlt={t("business.register.altBusinessLicense")}
-                    previewClassName="h-[300px] sm:h-[360px]"
-                    error={documentErrors.businessLicense}
-                    disabled={isLoading}
-                  />
-
-                  <DocumentImageUploadField
-                    label={t("business.register.idFront")}
-                    required
-                    value={documents.idCardFront}
-                    onChange={(files) => {
-                      setDocuments((prev) => ({ ...prev, idCardFront: files }));
-                      setDocumentErrors((prev) => ({ ...prev, idCardFront: "" }));
-                    }}
-                    hint={t("business.register.idFrontHint")}
-                    fallbackPreview={DOCUMENT_SAMPLE_IMAGES.idCardFront}
-                    previewAlt={t("business.register.altIdFront")}
-                    previewClassName="h-[220px] sm:h-[260px]"
-                    error={documentErrors.idCardFront}
-                    disabled={isLoading}
-                  />
-
-                  <DocumentImageUploadField
-                    label={t("business.register.idBack")}
-                    required
-                    value={documents.idCardBack}
-                    onChange={(files) => {
-                      setDocuments((prev) => ({ ...prev, idCardBack: files }));
-                      setDocumentErrors((prev) => ({ ...prev, idCardBack: "" }));
-                    }}
-                    hint={t("business.register.idBackHint")}
-                    fallbackPreview={DOCUMENT_SAMPLE_IMAGES.idCardBack}
-                    previewAlt={t("business.register.altIdBack")}
-                    previewClassName="h-[220px] sm:h-[260px]"
-                    error={documentErrors.idCardBack}
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 4: Contract */}
-          {currentStep === 3 && (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-border/70 bg-muted/20 p-5 space-y-4">
-                <div className="flex items-center gap-2 text-foreground font-bold text-base">
-                  <FileSignature className="h-5 w-5 text-amber-500" />
-                  <h4>Hợp đồng hợp tác Doanh nghiệp</h4>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Vui lòng thực hiện ký hợp đồng hợp tác dịch vụ trực tuyến. Hợp đồng mã hóa PDF kèm chữ ký điện tử sẽ được sinh tự động ngay sau khi bạn hoàn tất.
-                </p>
-
-                <div className="p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div>
-                    <span className="text-xs text-muted-foreground block">Trạng thái hợp đồng:</span>
-                    <span className={cn("text-sm font-bold mt-0.5 block", signedContract ? "text-emerald-600" : "text-amber-600")}>
-                      {signedContract ? "Đã ký thành công" : "Chưa ký"}
-                    </span>
-                  </div>
-
-                  <Button
-                    type="button"
-                    onClick={() => setSignOpen(true)}
-                    className="bg-[#F3E600] text-black font-black uppercase tracking-wide hover:bg-black hover:text-[#F3E600] border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all px-6 py-2.5"
-                  >
-                    {signedContract ? "Xem / Ký lại hợp đồng" : "Ký hợp đồng ngay"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </BusinessSectionCard>
-
-        {/* Navigation Buttons */}
-        <div className="mt-6 flex items-center justify-between gap-4">
-          {currentStep > 0 ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleBack}
-              className="gap-2"
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <BusinessSectionCard
+              title={t(STEPS[currentStep].labelKey)}
+              titleIcon={STEPS[currentStep].icon}
             >
-              <ArrowLeft className="h-4 w-4" />
-              {t("common.back")}
-            </Button>
-          ) : (
-            <div />
-          )}
+              <input type="hidden" {...register("businessType")} />
 
-          {currentStep < STEPS.length - 1 ? (
-            <Button type="button" onClick={handleNext} className="gap-2">
-              {t("common.next")}
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          ) : (
-            <Button type="submit" disabled={isLoading} className="gap-2 bg-[#F3E600] text-black font-bold border border-black hover:bg-black hover:text-[#F3E600]">
-              {isLoading ? t("business.register.submitting") : "Tạo & Hoàn tất đăng ký"}
-              {!isLoading && <Check className="h-4 w-4" />}
-            </Button>
-          )}
-        </div>
-      </form>
+              {/* Step 1: Business Info */}
+              {currentStep === 0 && (
+                <BusinessInfoStep
+                  register={register}
+                  errors={errors}
+                  selectedBusinessType={selectedBusinessType}
+                  setValue={setValue}
+                />
+              )}
+
+              {/* Step 2: Bank Info */}
+              {currentStep === 1 && <BankInfoStep register={register} />}
+
+              {/* Step 3: Documents */}
+              {currentStep === 2 && (
+                <DocumentUploadStep
+                  documents={documents}
+                  setDocuments={setDocuments}
+                  documentErrors={documentErrors}
+                  setDocumentErrors={setDocumentErrors}
+                  isLoading={isLoading}
+                />
+              )}
+
+              {/* Step 4: Contract */}
+              {currentStep === 3 && (
+                <ContractSignStep
+                  signedContract={signedContract}
+                  setSignOpen={setSignOpen}
+                />
+              )}
+            </BusinessSectionCard>
+
+            {/* Navigation Buttons */}
+            <div className="mt-6 flex items-center justify-between gap-4">
+              {currentStep > 0 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleBack}
+                  className="gap-2 cursor-pointer"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  {t("common.back")}
+                </Button>
+              ) : (
+                <div />
+              )}
+
+              {currentStep < STEPS.length - 1 ? (
+                <Button
+                  type="button"
+                  onClick={handleNext}
+                  className="gap-2 cursor-pointer"
+                >
+                  {t("common.next")}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="gap-2 bg-[#F3E600] text-black font-bold border border-black hover:bg-black hover:text-[#F3E600] cursor-pointer"
+                >
+                  {isLoading
+                    ? t("business.register.submitting")
+                    : "Tạo & Hoàn tất đăng ký"}
+                  {!isLoading && <Check className="h-4 w-4" />}
+                </Button>
+              )}
+            </div>
+          </form>
         </>
       )}
 

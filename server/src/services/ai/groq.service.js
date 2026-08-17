@@ -191,6 +191,62 @@ function formatPriceRange(from, to) {
   return f || t || "Chưa cập nhật";
 }
 
+const appendLocationContext = (parts, context) => {
+  if (context.locationContext) {
+    const { district, ward, coords } = context.locationContext;
+    const location = ["Ngu canh vi tri hien tai cua nguoi dung:", ward && `Phuong/Xa ${ward},`, district && `Quan/Huyen ${district},`, "Can Tho."].filter(Boolean);
+    parts.push(`\n${location.join(" ")}`);
+    if (coords) parts.push(`Toa do GPS hien tai: ${coords.latitude}, ${coords.longitude}`);
+    return;
+  }
+  if (context.currentCity) parts.push(`\nNgu canh vi tri: Tinh/Thanh pho — ${context.currentCity}`);
+  if (context.currentCoords?.latitude && context.currentCoords?.longitude) {
+    parts.push(`Toa do GPS: ${context.currentCoords.latitude}, ${context.currentCoords.longitude}`);
+  }
+};
+
+const appendPreferenceContext = (parts, context) => {
+  if (context.travelPreferences) {
+    const { travelStyles, budget, notes } = context.travelPreferences;
+    const preferences = [travelStyles?.length && `Gu du lich: ${travelStyles.join(", ")}`, budget && `Ngan sach du tinh: ${budget}`, notes && `Ghi chu ca nhan: ${notes}`].filter(Boolean);
+    if (preferences.length) parts.push(`\nThong tin so thich cua nguoi dung de ca nhan hoa goi y:\n${preferences.join("\n")}`);
+  } else if (context.preferences?.travelStyles?.length) {
+    parts.push(`So thich: ${context.preferences.travelStyles.join(", ")}`);
+  }
+  if (context.visitedPlaceIds?.length) parts.push(`Da xem: ${context.visitedPlaceIds.slice(-5).join(", ")}`);
+};
+
+const formatPlaceLine = (place) => {
+  const category = place.categoryName || place.category?.name || "Dia diem";
+  const price = formatPriceRange(place.priceFrom, place.priceTo);
+  const details = [place.address && `Dia chi: ${place.address}`, price && `Gia: ${price}`, place.ratingAvg && `Danh gia: ${place.ratingAvg}/5`, place.shortDescription && `Mo ta: ${place.shortDescription.substring(0, 80)}`].filter(Boolean);
+  return `- ID ${place.id}: "${place.name}" (Danh muc: ${category}${details.length ? `, ${details.join(", ")}` : ""})`;
+};
+
+const appendPlacesContext = (parts, context) => {
+  if (!Array.isArray(context.systemPlaces) || context.systemPlaces.length === 0) {
+    parts.push(`\nQUY TAC CHONG BIA DAT: Hien tai CSDL chua co dia diem nao phu hop. Ban KHONG DUOC BIA NOI bat ky ten quan/dia diem nao. Hay thong bao: "Genie chua tim thay dia diem phu hop trong CSDL ne" va hoi lai nhu cau cua nguoi dung.`);
+    return;
+  }
+  const allowedNames = context.systemPlaces.map((place) => `"${place.name}"`).join(", ");
+  const formattedPlaceLines = context.systemPlaces.map(formatPlaceLine).join("\n");
+  parts.push(
+    `\nQUY TAC CHONG BIA DAT KHAC NGHIET (ZERO HALLUCINATION):`,
+    `DANH SACH TEN DIA DIEM DUY NHAT DUOC PHEP NHAC TOI: [ ${allowedNames} ]`,
+    `TUYET DOI KHONG TU NOI HOAC BIA BAT KY TEN QUAN/DIA DIEM NAO KHAC BEN NGOAI DANH SACH TREN.`,
+    `Neu nguoi dung hoi mon an/quan ma trong CSDL khong co, hay tra loi thang than: "Hien tai Genie chua co thong tin quan nay trong he thong Can Tho ne" va goi y 1 trong cac quan co san trong danh sach CSDL duoi day.`,
+    `\nDANH SACH CHI TIET DIA DIEM CSDL:\n${formattedPlaceLines}`,
+    `\nQUY TAC [PLACES:...] TAG — BAT BUOC TUAN THU:`,
+    `1. TUYET DOI CAM viet bat ky ma ID nao (nhu (PLACES:254), [PLACES:254], ID 240, (ID 240), ma 240...) VAO TRONG NOI DUNG VAN BAN TRA LOI.`,
+    `2. O CUOI CUNG cua toan bo cau tra loi, DINH KEM DUY NHAT 1 dong he thong chua TAT CA ID dia diem duoc goi y.`,
+    `3. FORMAT CHINH XAC: [PLACES: id1, id2, id3, id4, id5]`,
+    `4. SO LUONG ID phai KHOP CHINH XAC voi so luong dia diem duoc nhac trong van ban. Van ban nhac 5 dia diem = phai co 5 ID. Van ban nhac 3 = phai co 3 ID.`,
+    `5. VI DU DUNG: Neu goi y 5 dia diem co ID 10, 25, 37, 42, 56 thi dong cuoi la: [PLACES: 10, 25, 37, 42, 56]`,
+    `6. NGHIEM CAM viet nhieu dong [PLACES:...] rieng le. Chi duy nhat 1 block.`,
+    `7. Neu KHONG goi y dia diem nao, KHONG can dong [PLACES:...]`,
+  );
+};
+
 /**
  * Build system prompt for the travel assistant persona with user context.
  */
@@ -223,91 +279,16 @@ function buildGroqSystemPrompt(context = {}, configuredPrompt = "") {
     `- NGHIEM CAM su dung bat ky emoji hoac bieu tuong nao trong van ban tra ve. Chi tra ve van ban chu thuan tuy.`,
   ];
 
-  // 1. Vi tri dia ly (Spatial Context)
-  if (context.locationContext) {
-    const { district, ward, coords } = context.locationContext;
-    const locParts = ["Ngu canh vi tri hien tai cua nguoi dung:"];
-    if (ward) locParts.push(`Phuong/Xa ${ward},`);
-    if (district) locParts.push(`Quan/Huyen ${district},`);
-    locParts.push("Can Tho.");
-    
-    parts.push(`\n${locParts.join(" ")}`);
-    if (coords) {
-      parts.push(`Toa do GPS hien tai: ${coords.latitude}, ${coords.longitude}`);
-    }
-  } else {
-    if (context.currentCity) {
-      parts.push(`\nNgu canh vi tri: Tinh/Thanh pho — ${context.currentCity}`);
-    }
-    if (context.currentCoords?.latitude && context.currentCoords?.longitude) {
-      parts.push(`Toa do GPS: ${context.currentCoords.latitude}, ${context.currentCoords.longitude}`);
-    }
-  }
+  appendLocationContext(parts, context);
 
   // 2. Thoi gian (Time-aware Context)
-  let timeOfDay = context.timeOfDay;
-  if (!timeOfDay) {
-    const hour = new Date().getHours();
-    timeOfDay = hour < 5 ? "Buoi toi" : hour < 11 ? "Buoi sang" : hour < 14 ? "Buoi trua" : hour < 18 ? "Buoi chieu" : "Buoi toi";
-  }
+  const hour = new Date().getHours();
+  const timeOfDay = context.timeOfDay || (hour < 5 ? "Buoi toi" : hour < 11 ? "Buoi sang" : hour < 14 ? "Buoi trua" : hour < 18 ? "Buoi chieu" : "Buoi toi");
   parts.push(`Thoi diem hien tai: ${timeOfDay}`);
 
-  // 3. So thich (Travel Preferences Context)
-  if (context.travelPreferences) {
-    const { travelStyles, budget, notes } = context.travelPreferences;
-    const prefParts = [];
-    
-    if (travelStyles?.length) prefParts.push(`Gu du lich: ${travelStyles.join(", ")}`);
-    if (budget) prefParts.push(`Ngan sach du tinh: ${budget}`);
-    if (notes) prefParts.push(`Ghi chu ca nhan: ${notes}`);
-    
-    if (prefParts.length) {
-      parts.push(`\nThong tin so thich cua nguoi dung de ca nhan hoa goi y:\n${prefParts.join("\n")}`);
-    }
-  } else if (context.preferences?.travelStyles?.length) {
-    parts.push(`So thich: ${context.preferences.travelStyles.join(", ")}`);
-  }
+  appendPreferenceContext(parts, context);
 
-  if (context.visitedPlaceIds?.length) {
-    parts.push(`Da xem: ${context.visitedPlaceIds.slice(-5).join(", ")}`);
-  }
-
-  // 4. RAG Places Context tu DB
-  if (Array.isArray(context.systemPlaces) && context.systemPlaces.length > 0) {
-    const allowedNames = context.systemPlaces.map((p) => `"${p.name}"`).join(", ");
-    const formattedPlaceLines = context.systemPlaces.map((p) => {
-      const category = p.categoryName || p.category?.name || "Dia diem";
-      let line = `- ID ${p.id}: "${p.name}" (Danh muc: ${category}`;
-      if (p.address) line += `, Dia chi: ${p.address}`;
-      
-      const priceStr = formatPriceRange(p.priceFrom, p.priceTo);
-      if (priceStr) line += `, Gia: ${priceStr}`;
-      if (p.ratingAvg) line += `, Danh gia: ${p.ratingAvg}/5`;
-      if (p.shortDescription) line += `, Mo ta: ${p.shortDescription.substring(0, 80)}`;
-      
-      return line + `)`;
-    }).join("\n");
-
-    parts.push(
-      `\nQUY TAC CHONG BIA DAT KHAC NGHIET (ZERO HALLUCINATION):`,
-      `DANH SACH TEN DIA DIEM DUY NHAT DUOC PHEP NHAC TOI: [ ${allowedNames} ]`,
-      `TUYET DOI KHONG TU NOI HOAC BIA BAT KY TEN QUAN/DIA DIEM NAO KHAC BEN NGOAI DANH SACH TREN.`,
-      `Neu nguoi dung hoi mon an/quan ma trong CSDL khong co, hay tra loi thang than: "Hien tai Genie chua co thong tin quan nay trong he thong Can Tho ne" va goi y 1 trong cac quan co san trong danh sach CSDL duoi day.`,
-      `\nDANH SACH CHI TIET DIA DIEM CSDL:\n${formattedPlaceLines}`,
-      `\nQUY TAC [PLACES:...] TAG — BAT BUOC TUAN THU:`,
-      `1. TUYET DOI CAM viet bat ky ma ID nao (nhu (PLACES:254), [PLACES:254], ID 240, (ID 240), ma 240...) VAO TRONG NOI DUNG VAN BAN TRA LOI.`,
-      `2. O CUOI CUNG cua toan bo cau tra loi, DINH KEM DUY NHAT 1 dong he thong chua TAT CA ID dia diem duoc goi y.`,
-      `3. FORMAT CHINH XAC: [PLACES: id1, id2, id3, id4, id5]`,
-      `4. SO LUONG ID phai KHOP CHINH XAC voi so luong dia diem duoc nhac trong van ban. Van ban nhac 5 dia diem = phai co 5 ID. Van ban nhac 3 = phai co 3 ID.`,
-      `5. VI DU DUNG: Neu goi y 5 dia diem co ID 10, 25, 37, 42, 56 thi dong cuoi la: [PLACES: 10, 25, 37, 42, 56]`,
-      `6. NGHIEM CAM viet nhieu dong [PLACES:...] rieng le. Chi duy nhat 1 block.`,
-      `7. Neu KHONG goi y dia diem nao, KHONG can dong [PLACES:...].`
-    );
-  } else {
-    parts.push(
-      `\nQUY TAC CHONG BIA DAT: Hien tai CSDL chua co dia diem nao phu hop. Ban KHONG DUOC BIA NOI bat ky ten quan/dia diem nao. Hay thong bao: "Genie chua tim thay dia diem phu hop trong CSDL ne" va hoi lai nhu cau cua nguoi dung.`
-    );
-  }
+  appendPlacesContext(parts, context);
 
   parts.push(`\nLUU Y BAT BUOC CUOI CUNG: Khong bao gio nhac den bat ky ten dia diem nao nam ngoai danh sach CSDL tren.`);
 

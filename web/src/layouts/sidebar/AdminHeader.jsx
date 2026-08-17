@@ -171,18 +171,18 @@ function AdminHeader() {
   })();
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border bg-sidebar px-6 shadow-sm">
+    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border bg-sidebar px-4 sm:px-6 shadow-sm">
       {/* Left: trigger + breadcrumb */}
-      <div className="flex items-center gap-4 flex-1">
-        <SidebarTrigger className="-ml-2 h-9 w-9 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
+      <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+        <SidebarTrigger className="-ml-2 h-9 w-9 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground shrink-0" />
 
         {/* Breadcrumb */}
-        <div className="hidden md:flex items-center gap-1.5 text-xs font-mono">
+        <div className="hidden md:flex items-center gap-1.5 text-xs font-mono truncate">
           <span className="text-sidebar-foreground/40 uppercase tracking-wider">
             {roleLabel}
           </span>
           <span className="text-sidebar-foreground/30">/</span>
-          <span className="text-sidebar-foreground font-semibold uppercase tracking-wider">
+          <span className="text-sidebar-foreground font-semibold uppercase tracking-wider truncate">
             {pageLabel}
           </span>
         </div>
@@ -200,7 +200,7 @@ function AdminHeader() {
       </div>
 
       {/* Right: date, bell, profile */}
-      <div className="flex items-center gap-2 md:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         {/* Date */}
         <div className="hidden lg:flex items-center gap-1.5 text-[11px] font-mono text-sidebar-foreground/50 mr-1">
           <Calendar className="h-3.5 w-3.5" />
@@ -230,7 +230,7 @@ function AdminHeader() {
           <PopoverContent
             align="end"
             sideOffset={8}
-            className="w-[360px] p-0 overflow-hidden !bg-white border border-gray-200 shadow-xl rounded-2xl"
+            className="w-[calc(100vw-32px)] sm:w-[360px] p-0 overflow-hidden !bg-white border border-gray-200 shadow-xl rounded-2xl"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -344,7 +344,7 @@ function AdminHeader() {
         {/* Profile */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <div className="flex items-center gap-2.5 cursor-pointer rounded-full py-1 px-2 hover:bg-sidebar-accent transition-all border border-transparent hover:border-sidebar-border">
+            <div className="flex items-center gap-2 cursor-pointer rounded-full py-1 px-1.5 sm:px-2 hover:bg-sidebar-accent transition-all border border-transparent hover:border-sidebar-border">
               <Avatar className="h-8 w-8 border border-sidebar-border">
                 <AvatarImage src={avatarSrc || undefined} />
                 <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground font-bold text-xs">

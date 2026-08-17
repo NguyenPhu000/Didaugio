@@ -1,3 +1,7 @@
+// MAP: CreateTripScreen
+// ├── UI: @/modules/trips/components/create-trip/{HeroSection, SavedPlacesGrid}, @/components/ui/CustomDatePicker
+// └── API: @/modules/trips/hooks/useTrips, @/modules/saved/hooks/useSavedOffline
+
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   ActivityIndicator,

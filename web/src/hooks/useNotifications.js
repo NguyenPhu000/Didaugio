@@ -49,6 +49,35 @@ const updateCachedList = (queryClient, updater) => {
   });
 };
 
+const handleSocketNotification = (queryClient, rawNotification) => {
+  const notification = normalizeNotification(rawNotification);
+  updateCachedList(queryClient, ({ notifications, unreadCount }) => {
+    const withoutDuplicate = notifications.filter((item) => item.id !== notification.id);
+    return {
+      notifications: [notification, ...withoutDuplicate].slice(0, NOTIFICATION_LIMIT),
+      unreadCount: unreadCount + (notification.readAt ? 0 : 1),
+    };
+  });
+
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.notifications.all(),
+  });
+
+  sonnerToast(notification.title || "Thông báo mới", {
+    description: notification.message || notification.body || "",
+    duration: 5000,
+  });
+};
+
+const createNotificationHandler = (queryClient) => (rawNotification) =>
+  handleSocketNotification(queryClient, rawNotification);
+
+const createAnnouncementHandler = (queryClient) => (rawAnnouncement) =>
+  handleSocketNotification(queryClient, {
+    ...rawAnnouncement,
+    metadata: { type: "announcement", ...(rawAnnouncement?.metadata || {}) },
+  });
+
 export const useNotifications = () => {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
@@ -89,38 +118,8 @@ export const useNotifications = () => {
       socket.connect();
     }
 
-    const handleNotification = (rawNotification) => {
-      const notification = normalizeNotification(rawNotification);
-      updateCachedList(queryClient, ({ notifications, unreadCount }) => {
-        const withoutDuplicate = notifications.filter(
-          (item) => item.id !== notification.id,
-        );
-        return {
-          notifications: [notification, ...withoutDuplicate].slice(
-            0,
-            NOTIFICATION_LIMIT,
-          ),
-          unreadCount:
-            unreadCount + (notification.readAt ? 0 : 1),
-        };
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.notifications.all(),
-      });
-
-      sonnerToast(notification.title || "Thông báo mới", {
-        description: notification.message || notification.body || "",
-        duration: 5000,
-      });
-    };
-
-    const handleAnnouncement = (rawAnnouncement) => {
-      handleNotification({
-        ...rawAnnouncement,
-        metadata: { type: "announcement", ...(rawAnnouncement?.metadata || {}) },
-      });
-    };
+    const handleNotification = createNotificationHandler(queryClient);
+    const handleAnnouncement = createAnnouncementHandler(queryClient);
 
     socket.off("notification", handleNotification);
     socket.off("announcement", handleAnnouncement);

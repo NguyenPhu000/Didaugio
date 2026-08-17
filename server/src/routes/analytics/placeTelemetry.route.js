@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import {
   getAdminPlaceHeatmap,
   getBusinessPlaceHeatmap,
+  getBusinessTrafficSummaryController,
   trackPlaceTelemetry,
 } from "../../controllers/analytics/placeTelemetry.controller.js";
 import { authenticate, authenticateOptional } from "../../middlewares/authMiddleware.js";
@@ -20,6 +21,13 @@ router.get(
   requireBusinessOwner,
   requireActiveBusiness(),
   getBusinessPlaceHeatmap,
+);
+router.get(
+  "/business/traffic-summary",
+  authenticate,
+  requireBusinessOwner,
+  requireActiveBusiness(),
+  getBusinessTrafficSummaryController,
 );
 router.get("/admin/heatmap", authenticate, hasPermission("places.view"), getAdminPlaceHeatmap);
 

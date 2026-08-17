@@ -1,9 +1,11 @@
 import prisma from "../../config/prismaClient.js";
 import ServiceError from "../../utils/serviceError.js";
 import { ERROR_CODES } from "../../config/messages.js";
-import { deleteImage } from "../../utils/cloudinaryService.js";
 import { uploadPlaceImage } from "../media/media.service.js";
-import { enqueueCloudinaryAssetCleanup } from "../media/cloudinaryCleanupJob.service.js";
+import {
+  enqueueCloudinaryAssetCleanup,
+  enqueueCloudinaryAssetRollback,
+} from "../media/cloudinaryCleanupJob.service.js";
 
 const toInt = (value, fallback = null) => {
   const number = parseInt(value, 10);
@@ -17,6 +19,35 @@ const stageBannerImage = async (image) => {
   if (!isInlineImage(image)) return { imageUrl: image || null, imagePublicId: null };
   const uploaded = await uploadPlaceImage(image, "didaugio/banners");
   return { imageUrl: uploaded.secureUrl, imagePublicId: uploaded.publicId };
+};
+
+const buildBannerListOptions = (filters = {}) => {
+  const { isActive, position, page = 1, limit = 20 } = filters;
+  const where = {};
+  if (isActive !== undefined) where.isActive = isActive === "true" || isActive === true;
+  if (position) where.position = position;
+  const pageNum = Math.max(toInt(page, 1), 1);
+  const limitNum = Math.min(Math.max(toInt(limit, 20), 1), 50);
+  return { where, pageNum, limitNum, skip: (pageNum - 1) * limitNum };
+};
+
+const buildBannerUpdateData = (data, existing) => {
+  const updateData = {};
+  for (const field of ["title", "linkType", "position", "priority", "isActive"]) {
+    if (data[field] !== undefined) updateData[field] = data[field];
+  }
+  if (data.description !== undefined) updateData.description = data.description || null;
+  if (data.linkValue !== undefined) updateData.linkValue = data.linkValue || null;
+  if (data.startDate === undefined && data.endDate === undefined) return updateData;
+
+  const startDate = new Date(data.startDate || existing.startDate);
+  const endDate = new Date(data.endDate || existing.endDate);
+  if (startDate > endDate) {
+    throw new ServiceError("Start date cannot be after end date", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+  if (data.startDate !== undefined) updateData.startDate = startDate;
+  if (data.endDate !== undefined) updateData.endDate = endDate;
+  return updateData;
 };
 
 export const createBanner = async (userId, data) => {
@@ -46,7 +77,11 @@ export const createBanner = async (userId, data) => {
       },
     });
   } catch (error) {
-    if (staged.imagePublicId) await deleteImage(staged.imagePublicId).catch(() => {});
+    await enqueueCloudinaryAssetRollback(prisma, {
+      aggregate: "BannerMarketing",
+      aggregateId: 0,
+      publicIds: [staged.imagePublicId],
+    });
     throw error;
   }
 };
@@ -55,21 +90,7 @@ export const updateBanner = async (bannerId, data) => {
   const existing = await prisma.bannerMarketing.findUnique({ where: { id: bannerId } });
   if (!existing) throw new ServiceError("Banner does not exist", 404, ERROR_CODES.NOT_FOUND);
 
-  const updateData = {};
-  for (const field of ["title", "linkType", "position", "priority", "isActive"]) {
-    if (data[field] !== undefined) updateData[field] = data[field];
-  }
-  if (data.description !== undefined) updateData.description = data.description || null;
-  if (data.linkValue !== undefined) updateData.linkValue = data.linkValue || null;
-  if (data.startDate !== undefined || data.endDate !== undefined) {
-    const startDate = new Date(data.startDate || existing.startDate);
-    const endDate = new Date(data.endDate || existing.endDate);
-    if (startDate > endDate) {
-      throw new ServiceError("Start date cannot be after end date", 400, ERROR_CODES.VALIDATION_ERROR);
-    }
-    if (data.startDate !== undefined) updateData.startDate = startDate;
-    if (data.endDate !== undefined) updateData.endDate = endDate;
-  }
+  const updateData = buildBannerUpdateData(data, existing);
 
   let staged = null;
   if (data.image !== undefined && data.image !== existing.imageUrl) {
@@ -92,7 +113,11 @@ export const updateBanner = async (bannerId, data) => {
       return updated;
     });
   } catch (error) {
-    if (staged?.imagePublicId) await deleteImage(staged.imagePublicId).catch(() => {});
+    await enqueueCloudinaryAssetRollback(prisma, {
+      aggregate: "BannerMarketing",
+      aggregateId: bannerId,
+      publicIds: [staged?.imagePublicId],
+    });
     throw error;
   }
 };
@@ -116,19 +141,7 @@ export const deleteBanner = async (bannerId) => {
  * Tạo banner marketing mới (admin only).
  */
 export const getBanners = async (filters = {}) => {
-  const { isActive, position, page = 1, limit = 20 } = filters;
-
-  const where = {};
-  if (isActive !== undefined) {
-    where.isActive = isActive === "true" || isActive === true;
-  }
-  if (position) {
-    where.position = position;
-  }
-
-  const pageNum = Math.max(toInt(page, 1), 1);
-  const limitNum = Math.min(Math.max(toInt(limit, 20), 1), 50);
-  const skip = (pageNum - 1) * limitNum;
+  const { where, pageNum, limitNum, skip } = buildBannerListOptions(filters);
 
   const [banners, total] = await Promise.all([
     prisma.bannerMarketing.findMany({

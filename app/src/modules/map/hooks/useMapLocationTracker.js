@@ -10,6 +10,14 @@ const WATCH_STATE_PUBLISH_INTERVAL_MS = 3500;
 const WATCH_STATE_PUBLISH_DISTANCE_M = 18;
 const HEADING_FREEZE_SPEED_KMH = 3;
 
+const mergeLocationHeading = (location, heading, headingAccuracy) => {
+  if (!location) return location;
+  if (location.heading === heading && location.headingAccuracy === headingAccuracy) {
+    return location;
+  }
+  return { ...location, heading, headingAccuracy };
+};
+
 export function useMapLocationTracker({
   watchEnabled = false,
   watchHeadingEnabled = watchEnabled,
@@ -122,23 +130,11 @@ export function useMapLocationTracker({
           headingAccuracyRef.current = rawAcc;
           setHeading(raw);
           if (currentLocationRef.current) {
-            const updated = { 
-              ...currentLocationRef.current, 
-              heading: raw, 
-              headingAccuracy: rawAcc 
-            };
+            const updated = mergeLocationHeading(currentLocationRef.current, raw, rawAcc);
             currentLocationRef.current = updated;
             currentLocationSharedValue.value = updated;
+            setCurrentLocation(updated);
           }
-          setCurrentLocation((prevLoc) => {
-            if (!prevLoc) return prevLoc;
-            if (prevLoc.heading === raw && prevLoc.headingAccuracy === rawAcc) return prevLoc;
-            return { 
-              ...prevLoc, 
-              heading: raw, 
-              headingAccuracy: rawAcc 
-            };
-          });
         });
 
         if (!active) {

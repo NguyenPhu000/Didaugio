@@ -1,4 +1,8 @@
-  import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// MAP: PlaceDetailScreen
+// ├── UI: @/modules/place/components/{PlaceHeroGallery, PlaceHeaderInfo, PlaceBookingCtaBar, PlaceOpeningHoursSheet, ReviewComposerSheet, AllReviewsSheet, TripSelectorSheet}
+// └── API: @/modules/place/hooks/usePlaceDetail, @/modules/saved/hooks/useSaved
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
   import {
     FlatList,
     Linking,

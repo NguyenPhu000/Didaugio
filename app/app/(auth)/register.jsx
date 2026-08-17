@@ -1,3 +1,7 @@
+// MAP: RegisterScreen
+// ├── UI: @/components/ui/GridBackground, @/components/primitives/PasswordValidationBar
+// └── API: @/modules/auth/hooks/useRegister
+
 import { useRef, useState, useCallback, useMemo, forwardRef } from "react";
 import {
   ActivityIndicator,

@@ -1,3 +1,7 @@
+// MAP: ExploreDistrictsScreen
+// ├── UI: @/modules/explore/components/ExploreListScaffold
+// └── API: @/modules/map/hooks/useBoundaryData
+
 import { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";

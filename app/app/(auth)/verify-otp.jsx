@@ -1,3 +1,7 @@
+// MAP: VerifyOtpScreen
+// ├── UI: @/modules/auth/components/OtpInput, @/components/ui/GridBackground
+// └── API: @/modules/auth/api/authApi
+
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,

@@ -25,6 +25,7 @@ import {
   User,
   BrainCircuit,
   ArrowUpRight,
+  Layers,
 } from "lucide-react";
 import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/constants";
@@ -243,7 +244,6 @@ export function getMenuData() {
       },
     ],
 
-    // ─── Business: Kinh doanh ──────────────────────────────────
     business: [
       {
         key: "my-places",
@@ -254,13 +254,6 @@ export function getMenuData() {
           { key: "manage-places", title: t("nav.business.managePlaces"), url: BUSINESS_ROUTES.PLACES },
           { key: "add-place", title: t("nav.business.addPlace"), url: BUSINESS_ROUTES.PLACES_NEW },
         ],
-      },
-      {
-        key: "services",
-        title: t("nav.business.services"),
-        icon: Ticket,
-        url: BUSINESS_ROUTES.SERVICES,
-        roles: [R.BUSINESS],
       },
       {
         key: "bookings",
@@ -275,10 +268,10 @@ export function getMenuData() {
         ],
       },
       {
-        key: "staff",
-        title: t("nav.business.staff"),
-        icon: Users,
-        url: BUSINESS_ROUTES.STAFF,
+        key: "services",
+        title: t("nav.business.services"),
+        icon: Layers,
+        url: BUSINESS_ROUTES.SERVICES,
         roles: [R.BUSINESS],
       },
       {
@@ -286,6 +279,13 @@ export function getMenuData() {
         title: t("nav.business.promotions"),
         icon: Ticket,
         url: BUSINESS_ROUTES.VOUCHERS,
+        roles: [R.BUSINESS],
+      },
+      {
+        key: "staff",
+        title: t("nav.business.staff"),
+        icon: Users,
+        url: BUSINESS_ROUTES.STAFF,
         roles: [R.BUSINESS],
       },
     ],

@@ -1,3 +1,7 @@
+// MAP: EditProfileScreen
+// ├── UI: @/components/ui/{AvatarPicker, FormField, DatePickerModal}
+// └── API: @/modules/profile/hooks/useProfile, @/modules/profile/hooks/useUpdateProfile
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,

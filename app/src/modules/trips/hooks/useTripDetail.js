@@ -16,6 +16,50 @@ import { getTripCacheDestinations, mapTripCacheValue } from "../utils/tripCache"
 
 const getDestinationClientId = (dest) => dest?.stopId ?? dest?.id;
 
+const findDestinationByClientId = (destinations, id) =>
+  destinations.find((dest) => String(getDestinationClientId(dest)) === String(id));
+
+const createRemoveDestinationUpdater = (destId) => (old) =>
+  mapTripCacheValue(old, (trip) => ({
+    ...trip,
+    destinations: getTripCacheDestinations(trip).filter(
+      (dest) => String(dest.id) !== String(destId),
+    ),
+  }));
+
+const createReorderDestinationsUpdater = (dayNumber, orderedIds) => (old) =>
+  mapTripCacheValue(old, (trip) => {
+    const destinations = getTripCacheDestinations(trip);
+    const dayDests = destinations.filter((dest) => dest.dayNumber === dayNumber);
+    const otherDests = destinations.filter((dest) => dest.dayNumber !== dayNumber);
+    const reordered = orderedIds
+      .map((id) => findDestinationByClientId(dayDests, id))
+      .filter(Boolean);
+    return { ...trip, destinations: [...otherDests, ...reordered] };
+  });
+
+const createUpdateDestinationUpdater = (destId, data) => (old) =>
+  mapTripCacheValue(old, (trip) => ({
+    ...trip,
+    destinations: getTripCacheDestinations(trip).map((dest) =>
+      String(dest.id) === String(destId) ? { ...dest, ...data } : dest,
+    ),
+  }));
+
+const createMoveDestinationUpdater = (destId, newDayNumber, newOrder) => (old) =>
+  mapTripCacheValue(old, (trip) => {
+    const destinations = getTripCacheDestinations(trip);
+    const destination = destinations.find(
+      (dest) => String(getDestinationClientId(dest)) === String(destId),
+    );
+    if (!destination) return trip;
+    const filtered = destinations.filter(
+      (dest) => String(getDestinationClientId(dest)) !== String(destId),
+    );
+    const moved = { ...destination, dayNumber: newDayNumber, order: newOrder };
+    return { ...trip, destinations: [...filtered, moved] };
+  });
+
 const isNetworkError = (error) =>
   !(error?.status || error?.response?.status) &&
   (error?.message === "Network Error" || error?.code === "ERR_NETWORK" || !error?.response);
@@ -96,14 +140,7 @@ export function useRemoveDestination(tripId) {
       const previousTrip = queryClient.getQueryData(queryKey);
 
       // Optimistically remove the destination
-      queryClient.setQueryData(queryKey, (old) => {
-        return mapTripCacheValue(old, (trip) => ({
-          ...trip,
-          destinations: getTripCacheDestinations(trip).filter(
-            (dest) => String(dest.id) !== String(destId),
-          ),
-        }));
-      });
+      queryClient.setQueryData(queryKey, createRemoveDestinationUpdater(destId));
 
       return { previousTrip };
     },
@@ -145,17 +182,10 @@ export function useReorderDestinations(tripId) {
       const queryKey = QUERY_KEYS.trips.detail(tripId);
       await queryClient.cancelQueries({ queryKey });
       const previousTrip = queryClient.getQueryData(queryKey);
-      queryClient.setQueryData(queryKey, (old) => {
-        return mapTripCacheValue(old, (trip) => {
-          const destinations = getTripCacheDestinations(trip);
-          const dayDests = destinations.filter((d) => d.dayNumber === dayNumber);
-          const otherDests = destinations.filter((d) => d.dayNumber !== dayNumber);
-          const reordered = orderedIds
-            .map((id) => dayDests.find((d) => String(getDestinationClientId(d)) === String(id)))
-            .filter(Boolean);
-          return { ...trip, destinations: [...otherDests, ...reordered] };
-        });
-      });
+      queryClient.setQueryData(
+        queryKey,
+        createReorderDestinationsUpdater(dayNumber, orderedIds),
+      );
       return { previousTrip };
     },
     onError: (_err, _vars, context) => {
@@ -183,14 +213,7 @@ export function useUpdateDestination(tripId) {
       const queryKey = QUERY_KEYS.trips.detail(tripId);
       await queryClient.cancelQueries({ queryKey });
       const previousTrip = queryClient.getQueryData(queryKey);
-      queryClient.setQueryData(queryKey, (old) => {
-        return mapTripCacheValue(old, (trip) => ({
-          ...trip,
-          destinations: getTripCacheDestinations(trip).map((d) =>
-            String(d.id) === String(destId) ? { ...d, ...data } : d,
-          ),
-        }));
-      });
+      queryClient.setQueryData(queryKey, createUpdateDestinationUpdater(destId, data));
       return { previousTrip };
     },
     onError: (_err, _vars, context) => {
@@ -225,16 +248,10 @@ export function useMoveDestination(tripId) {
       const queryKey = QUERY_KEYS.trips.detail(tripId);
       await queryClient.cancelQueries({ queryKey });
       const previousTrip = queryClient.getQueryData(queryKey);
-      queryClient.setQueryData(queryKey, (old) => {
-        return mapTripCacheValue(old, (trip) => {
-          const destinations = getTripCacheDestinations(trip);
-          const dest = destinations.find((d) => String(getDestinationClientId(d)) === String(destId));
-          if (!dest) return trip;
-          const filtered = destinations.filter((d) => String(getDestinationClientId(d)) !== String(destId));
-          const moved = { ...dest, dayNumber: newDayNumber, order: newOrder };
-          return { ...trip, destinations: [...filtered, moved] };
-        });
-      });
+      queryClient.setQueryData(
+        queryKey,
+        createMoveDestinationUpdater(destId, newDayNumber, newOrder),
+      );
       return { previousTrip };
     },
     onError: (_err, _vars, context) => {

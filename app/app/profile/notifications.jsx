@@ -1,3 +1,7 @@
+// MAP: NotificationsScreen
+// ├── UI: @/modules/notifications/components/{NotificationCard, NotificationFilterTabs}
+// └── API: @/modules/notifications/hooks/useNotifications
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,

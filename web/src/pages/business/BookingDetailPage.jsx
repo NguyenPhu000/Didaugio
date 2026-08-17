@@ -1,518 +1,79 @@
+// MAP: BookingDetailPage
+// ├── UI: @/components/business/bookings/{BookingStatusHero, BookingCustomerInfo, BookingServiceDetails, BookingAuditTimeline, BookingActionDialogs}
+// └── API: @/apis/bookingService
+
 import { memo, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { toastApiErrorIfNeeded } from "@/utils/businessApiErrorUx";
-import {
-  ArrowLeft,
-  Check,
-  X,
-  CheckCircle,
-  AlertTriangle,
-  QrCode,
-  User,
-  Ticket,
-  DollarSign,
-  Tag,
-  Wallet,
-  RotateCcw,
-  Clock3,
-  CreditCard,
-  Clock,
-  CheckCircle2,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Loader2, Copy, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import * as bookingApi from "@/apis/bookingService";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { BOOKING_STATUS } from "@/constants/constants";
 import { usePermission } from "@/hooks/usePermission";
-import {
-  StatusBadge,
-} from "@/components/business/DashboardWidgets";
-import {
-  BusinessSectionCard,
-} from "@/components/business/ui";
-import {
-  formatDate,
-  formatDateTime,
-  formatVND,
-} from "@/components/business/dashboardWidgetHelpers";
+import { StatusBadge, PaymentMethodBadge, getTimeOfDay } from "@/components/booking/BookingCard";
+import { formatDateTime } from "@/components/business/dashboardWidgetHelpers";
+import { cn } from "@/lib/utils";
 
-// ─── OnlinePaymentInfo ─────────────────────────────────────────────────────────
-
-const formatPaymentDateTime = (isoString) => {
-  if (!isoString) return "—";
-  try {
-    const date = new Date(isoString);
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${day}/${month}/${year} ${hours}:${minutes}`;
-  } catch {
-    return "—";
-  }
-};
-
-const getPaymentStatusConfig = (t) => ({
-  paid: {
-    label: t("business.bookingDetail.paid"),
-    bg: "bg-green-50",
-    text: "text-green-700",
-    border: "border-green-200",
-    dot: "bg-green-500",
-  },
-  unpaid: {
-    label: t("business.bookingDetail.unpaid"),
-    bg: "bg-yellow-50",
-    text: "text-yellow-700",
-    border: "border-yellow-200",
-    dot: "bg-yellow-500",
-  },
-  fully_refunded: {
-    label: t("business.bookingDetail.refunded"),
-    bg: "bg-red-50",
-    text: "text-red-700",
-    border: "border-red-200",
-    dot: "bg-red-500",
-  },
-  partially_refunded: {
-    label: t("business.bookingDetail.partialRefundLabel"),
-    bg: "bg-orange-50",
-    text: "text-orange-700",
-    border: "border-orange-200",
-    dot: "bg-orange-500",
-  },
-});
-
-const OnlinePaymentInfo = memo(({ payment }) => {
-  const { t } = useTranslation();
-  const status = payment?.status || "unpaid";
-  const config = getPaymentStatusConfig(t)[status] || getPaymentStatusConfig(t).unpaid;
-  const isPaid = status === "paid";
-
-  return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-      <div className="flex items-center gap-2 pb-2 border-b border-border/60">
-        <CreditCard className="h-4 w-4 text-primary" />
-        <span className="text-sm font-semibold">{t("business.bookingDetail.onlinePayment")}</span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-        <div className="flex items-start justify-between gap-3 py-1.5">
-          <span className="text-xs text-muted-foreground shrink-0">{t("business.bookingDetail.paymentMethod")}</span>
-          <div className="flex items-center gap-1.5">
-            {payment?.paymentMethod === "VNPAY" && (
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs font-medium px-2 py-0.5">
-                VNPAY
-              </Badge>
-            )}
-            {payment?.paymentMethod === "MOMO" && (
-              <Badge variant="outline" className="bg-pink-50 text-pink-700 border-pink-200 text-xs font-medium px-2 py-0.5">
-                MOMO
-              </Badge>
-            )}
-            {payment?.paymentMethod === "SEPAY" && (
-              <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs font-medium px-2 py-0.5">
-                SePay
-              </Badge>
-            )}
-            {!payment?.paymentMethod && (
-              <span className="text-sm text-muted-foreground">—</span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-start justify-between gap-3 py-1.5">
-          <span className="text-xs text-muted-foreground shrink-0">{t("business.bookingDetail.transactionRef")}</span>
-          <span className="text-xs font-mono font-medium text-foreground">
-            {payment?.transactionRef || "—"}
-          </span>
-        </div>
-
-        {isPaid && payment?.transactionId && (
-          <div className="flex items-start justify-between gap-3 py-1.5">
-            <span className="text-xs text-muted-foreground shrink-0">{t("business.bookingDetail.paymentGatewayCode")}</span>
-            <span className="text-xs font-mono text-foreground">
-              {payment.transactionId}
-            </span>
-          </div>
-        )}
-
-        {isPaid && payment?.bankCode && (
-          <div className="flex items-start justify-between gap-3 py-1.5">
-            <span className="text-xs text-muted-foreground shrink-0">{t("business.bookingDetail.bank")}</span>
-            <span className="text-xs font-medium text-foreground uppercase">
-              {payment.bankCode}
-            </span>
-          </div>
-        )}
-
-        <div className="flex items-start justify-between gap-3 py-1.5">
-          <span className="text-xs text-muted-foreground shrink-0">{t("business.bookingDetail.time")}</span>
-          <span className="text-xs text-foreground">
-            {formatPaymentDateTime(payment?.paidAt)}
-          </span>
-        </div>
-
-        <div className="flex items-start justify-between gap-3 py-1.5 col-span-2">
-          <span className="text-xs text-muted-foreground shrink-0">{t("business.bookingDetail.statusLabel")}</span>
-          <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${config.bg} ${config.text} ${config.border}`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
-            {config.label}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-});
-OnlinePaymentInfo.displayName = "OnlinePaymentInfo";
-
-const InfoRow = memo(({ label, value, className }) => (
-  <div className="flex items-start justify-between gap-4 py-2.5 border-b border-border/50 last:border-0">
-    <span className="text-xs text-muted-foreground shrink-0 w-32">{label}</span>
-    <span
-      className={`text-sm text-right font-medium text-foreground ${className || ""}`}
-    >
-      {value || "—"}
-    </span>
-  </div>
-));
-InfoRow.displayName = "InfoRow";
-
-// ─── Loading Skeleton ─────────────────────────────────────────────────────────
-
-const BookingDetailSkeleton = () => (
-  <div className="space-y-6 p-6 lg:p-8">
-    <div className="flex items-center gap-3">
-      <Skeleton className="h-9 w-9 rounded-md" />
-      <Skeleton className="h-8 w-60" />
-    </div>
-    <div className="grid gap-4 lg:grid-cols-3">
-      <div className="lg:col-span-2 space-y-4">
-        <Skeleton className="h-40 rounded-xl" />
-        <Skeleton className="h-40 rounded-xl" />
-      </div>
-      <Skeleton className="h-64 rounded-xl" />
-    </div>
-  </div>
-);
-
-// ─── Cancel Dialog ─────────────────────────────────────────────────────────────
-
-const CancelDialog = ({ open, onClose, onConfirm }) => {
-  const { t } = useTranslation();
-  const [reason, setReason] = useState("");
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-destructive">{t("business.bookingDetail.confirmDialogTitle")}</DialogTitle>
-          <DialogDescription>
-            {t("business.bookingDetail.confirmDialogDesc")}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-1.5">
-          <Label>{t("business.bookingDetail.cancelReason")}</Label>
-          <Textarea
-            autoFocus
-            placeholder={t("business.bookingDetail.cancelReasonPlaceholder")}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            className="min-h-[80px]"
-          />
-        </div>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose}>
-            {t("business.bookingDetail.back")}
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => {
-              if (reason.trim().length < 5) {
-                toast.error(t("business.bookingDetail.reasonMinLength"));
-                return;
-              }
-              onConfirm(reason.trim());
-            }}
-          >
-            {t("business.bookingDetail.confirmCancel")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-const MarkPaidDialog = ({ open, onClose, onConfirm, loading }) => {
-  const { t } = useTranslation();
-  const [note, setNote] = useState("");
-
-  useEffect(() => {
-    if (open) {
-      const id = requestAnimationFrame(() => setNote(""));
-      return () => cancelAnimationFrame(id);
-    }
-  }, [open]);
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t("business.bookingDetail.confirmPaymentTitle")}</DialogTitle>
-          <DialogDescription>
-            {t("business.bookingDetail.confirmPaymentDesc")}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-1.5">
-          <Label>{t("business.bookingDetail.paymentNoteLabel")}</Label>
-          <Textarea
-            placeholder={t("business.bookingDetail.paymentNotePlaceholder")}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            className="min-h-[80px]"
-          />
-        </div>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose} disabled={loading}>
-            {t("business.bookingDetail.back")}
-          </Button>
-          <Button onClick={() => onConfirm(note.trim())} loading={loading}>
-            {t("business.bookingDetail.confirmPaidBtn")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-const RefundDialog = ({ open, onClose, onConfirm, loading, maxAmount }) => {
-  const { t } = useTranslation();
-  const [reason, setReason] = useState("");
-  const [amount, setAmount] = useState(maxAmount || 0);
-
-  useEffect(() => {
-    if (open) {
-      const id = requestAnimationFrame(() => {
-        setReason("");
-        setAmount(maxAmount || 0);
-      });
-      return () => cancelAnimationFrame(id);
-    }
-  }, [open, maxAmount]);
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-destructive">{t("business.bookingDetail.refundTitle")}</DialogTitle>
-          <DialogDescription>
-            {t("business.bookingDetail.refundDesc")}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-1.5">
-          <Label>{t("business.bookingDetail.refundAmountLabel")}</Label>
-          <input
-            type="number"
-            min={1}
-            max={maxAmount || undefined}
-            value={amount}
-            onChange={(e) => setAmount(Number(e.target.value || 0))}
-            className="h-10 w-full rounded-md border border-border px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          <p className="text-[11px] text-muted-foreground">
-            {t("business.bookingDetail.maxAmount")} {formatVND(maxAmount || 0)}
-          </p>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>{t("business.bookingDetail.refundReason")}</Label>
-          <Textarea
-            placeholder={t("business.bookingDetail.cancelReasonPlaceholder")}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            className="min-h-[90px]"
-          />
-        </div>
-
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose} disabled={loading}>
-            {t("business.bookingDetail.back")}
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => {
-              if (reason.trim().length < 5) {
-                toast.error(t("business.bookingDetail.refundReasonMinLength"));
-                return;
-              }
-              if (!amount || amount <= 0) {
-                toast.error(t("business.bookingDetail.refundAmountZero"));
-                return;
-              }
-              if (maxAmount && amount > maxAmount) {
-                toast.error(t("business.bookingDetail.refundExceedsPayment"));
-                return;
-              }
-              onConfirm({ reason: reason.trim(), amount });
-            }}
-            loading={loading}
-          >
-            {t("business.bookingDetail.confirmRefundBtn")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-const PaymentTimeline = memo(({ booking }) => {
-  const { t } = useTranslation();
-  const paymentStatus = String(
-    booking?.paymentStatus || "unpaid",
-  ).toLowerCase();
-  const paidAt = booking?.paidAt || booking?.payment?.paidAt;
-  const refundedAt = booking?.refundedAt || booking?.payment?.refundedAt;
-  const refundAmount =
-    Number(booking?.refundAmount || booking?.payment?.refundAmount || 0) || 0;
-  const totalAmount = Number(booking?.finalPrice || 0) || 0;
-  const isPartialRefund =
-    paymentStatus.includes("partial") ||
-    (refundAmount > 0 && totalAmount > 0 && refundAmount < totalAmount);
-
-  const events = [
-    {
-      key: "created",
-      title: t("business.bookingDetail.timeline.created"),
-      subtitle: t("business.bookingDetail.timelineSubtitle"),
-      at: booking?.createdAt,
-    },
-  ];
-
-  if (paidAt || paymentStatus === "paid") {
-    events.push({
-      key: "paid",
-      title: t("business.bookingDetail.timeline.paid"),
-      subtitle: t("business.bookingDetail.manualConfirmSubtitle"),
-      at: paidAt,
-    });
-  }
-
-  if (refundedAt || paymentStatus.includes("refund") || refundAmount > 0) {
-    events.push({
-      key: "refund",
-      title: isPartialRefund ? t("business.bookingDetail.partialRefundLabel") : t("business.bookingDetail.timeline.refunded"),
-      subtitle:
-        refundAmount > 0 ? t("business.bookingDetail.refundValue", { amount: formatVND(refundAmount) }) : "",
-      at: refundedAt,
-    });
-  }
-
-  return (
-    <div className="space-y-3">
-      {events.map((event, index) => (
-        <div key={event.key} className="flex items-start gap-3">
-          <div className="flex flex-col items-center">
-            <div className="h-2.5 w-2.5 rounded-full bg-primary mt-1" />
-            {index < events.length - 1 && (
-              <div className="mt-1 h-7 w-px bg-border" />
-            )}
-          </div>
-          <div className="space-y-0.5 pb-2">
-            <p className="text-sm font-medium text-foreground">{event.title}</p>
-            {event.subtitle && (
-              <p className="text-xs text-muted-foreground">{event.subtitle}</p>
-            )}
-            <p className="text-xs text-muted-foreground/80">
-              {event.at ? formatDateTime(event.at) : t("business.bookingDetail.noTime")}
-            </p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-});
-PaymentTimeline.displayName = "PaymentTimeline";
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// Extracted Sub-Components
+import BookingCustomerSummaryCard from "@/components/business/booking-detail/BookingCustomerSummaryCard";
+import BookingQrCheckInCard from "@/components/business/booking-detail/BookingQrCheckInCard";
+import BookingDetailModals from "@/components/business/booking-detail/BookingDetailModals";
 
 const BookingDetailPage = memo(() => {
   const { t } = useTranslation();
-  const { hasPermission, isStaff } = usePermission();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isStaff, hasPermission } = usePermission();
+
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [qrCode, setQrCode] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState(null);
+
+  // Modals
   const [cancelOpen, setCancelOpen] = useState(false);
   const [markPaidOpen, setMarkPaidOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [markPaidNote, setMarkPaidNote] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refundAmount, setRefundAmount] = useState("");
 
   const loadBooking = useCallback(async () => {
+    if (!id) return;
     setLoading(true);
     try {
-      const response = await bookingApi.getById(id);
-      setBooking(response.data);
-    } catch (error) {
-      toastApiErrorIfNeeded(error, t("business.bookings.loadFailed"));
+      const res = await bookingApi.getById(id);
+      setBooking(res.data || res);
+      try {
+        const qrRes = await bookingApi.getQR(id);
+        setQrCodeUrl(qrRes.data?.qrCodeUrl || qrRes.qrCodeUrl || null);
+      } catch {
+        // QR fallback
+      }
+    } catch {
+      toast.error(t("business.bookings.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [id]);
-
-  const loadQR = useCallback(async () => {
-    try {
-      const response = await bookingApi.getQR(id);
-      setQrCode(response.data?.qrCode);
-    } catch {
-      // QR may be unavailable for some booking states.
-    }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     loadBooking();
-    loadQR();
-  }, [loadBooking, loadQR]);
+  }, [loadBooking]);
 
   const handleConfirm = async () => {
     setActionLoading(true);
     try {
       await bookingApi.confirm(id);
       toast.success(t("business.bookings.confirmedSuccess"));
-      await Promise.all([loadBooking(), loadQR()]);
-    } catch (error) {
-      toastApiErrorIfNeeded(error, t("business.bookings.cannotConfirm"));
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleCancel = async (reason) => {
-    setActionLoading(true);
-    try {
-      await bookingApi.cancel(id, reason);
-      toast.success(t("business.bookings.cancelledSuccess"));
-      setCancelOpen(false);
       await loadBooking();
     } catch (error) {
-      toastApiErrorIfNeeded(error, t("business.bookings.cannotCancel"));
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotConfirm"));
     } finally {
       setActionLoading(false);
     }
@@ -544,318 +105,277 @@ const BookingDetailPage = memo(() => {
     }
   };
 
-  const handleMarkPaid = async (note) => {
+  const handleCancel = async () => {
     setActionLoading(true);
     try {
-      await bookingApi.markPaid(id, {
-        note,
-        paidAt: new Date().toISOString(),
-      });
-      toast.success(t("business.bookings.confirmedSuccess"));
-      setMarkPaidOpen(false);
+      await bookingApi.cancel(id, cancelReason);
+      toast.success(t("business.bookings.cancelledSuccess"));
+      setCancelOpen(false);
+      setCancelReason("");
       await loadBooking();
     } catch (error) {
-      toastApiErrorIfNeeded(error, t("business.bookings.cannotConfirm"));
+      toastApiErrorIfNeeded(error, t("business.bookings.cannotCancel"));
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleRefund = async ({ reason, amount }) => {
+  const handleMarkPaid = async () => {
+    setActionLoading(true);
+    try {
+      await bookingApi.markPaid(id, { note: markPaidNote, paidAt: new Date().toISOString() });
+      toast.success("Đã ghi nhận thanh toán tại quầy");
+      setMarkPaidOpen(false);
+      setMarkPaidNote("");
+      await loadBooking();
+    } catch (error) {
+      toastApiErrorIfNeeded(error, "Không thể ghi nhận thanh toán");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRefund = async () => {
     setActionLoading(true);
     try {
       await bookingApi.refund(id, {
-        refundReason: reason,
-        refundAmount: amount,
+        refundReason,
+        refundAmount: Number(refundAmount),
         refundedAt: new Date().toISOString(),
       });
-      toast.success(t("business.bookings.completedSuccess"));
+      toast.success("Đã xử lý hoàn tiền thành công");
       setRefundOpen(false);
+      setRefundReason("");
+      setRefundAmount("");
       await loadBooking();
     } catch (error) {
-      toastApiErrorIfNeeded(error, t("business.bookings.cannotComplete"));
+      toastApiErrorIfNeeded(error, "Không thể hoàn tiền đơn này");
     } finally {
       setActionLoading(false);
     }
   };
 
-  if (loading) return <BookingDetailSkeleton />;
+  const handleCopyCode = () => {
+    if (!booking?.bookingCode) return;
+    navigator.clipboard.writeText(booking.bookingCode);
+    toast.success("Đã sao chép mã đơn đặt chỗ");
+  };
 
-  if (!booking)
+  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <AlertTriangle className="h-10 w-10 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
+      <div className="p-6 space-y-6 max-w-[1200px] mx-auto">
+        <Skeleton className="h-10 w-48 rounded-2xl" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Skeleton className="lg:col-span-2 h-96 rounded-[32px]" />
+          <Skeleton className="h-96 rounded-[32px]" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <div className="p-12 text-center space-y-3">
+        <p className="text-sm font-bold text-slate-600 dark:text-slate-400">
           {t("business.bookings.notFound")}
         </p>
         <Button
           variant="outline"
           onClick={() => navigate(BUSINESS_ROUTES.BOOKINGS)}
+          className="rounded-2xl"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" /> {t("common.back")}
+          {t("common.back")}
         </Button>
       </div>
     );
+  }
 
   const isPending = booking.status === BOOKING_STATUS.PENDING;
   const isConfirmed = booking.status === BOOKING_STATUS.CONFIRMED;
-  const canConfirm = hasPermission("bookings.confirm");
-  const canCancel = hasPermission("bookings.cancel");
-  const canComplete = hasPermission("bookings.complete");
-  const paymentStatus = String(
-    booking?.paymentStatus || "unpaid",
-  ).toLowerCase();
-  let paymentStatusLabel = t("business.bookingDetail.unpaid");
-  if (paymentStatus === "paid") {
-    paymentStatusLabel = t("business.bookingDetail.paid");
-  } else if (paymentStatus.includes("refund")) {
-    paymentStatusLabel = t("business.bookingDetail.refunded");
-  }
-  const canMarkPaid =
-    !isStaff() && paymentStatus !== "paid" && !paymentStatus.includes("refund");
-  const canRefund = !isStaff() && paymentStatus === "paid";
+  const canConfirm = !isStaff || hasPermission("canConfirmBookings");
+  const canCancel = !isStaff || hasPermission("canCancelBookings");
+  const canComplete = !isStaff || hasPermission("canCompleteBookings");
+  const canMarkPaid = (isPending || isConfirmed) && booking.paymentStatus !== "paid";
+  const canRefund = isConfirmed && booking.paymentStatus === "paid";
+
+  const timeOfDay = getTimeOfDay(booking.useTime, booking.useDate || booking.bookingDate);
+  const placeName = booking.service?.place?.name || booking.place?.name;
 
   return (
-    <div className="space-y-4 p-4 md:space-y-6 md:p-6 lg:p-8 min-h-screen">
-      {/* Header */}
+    <div className="min-h-screen bg-[#FAFAF8] dark:bg-background text-foreground p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1400px] mx-auto font-sans transition-colors duration-200">
+      {/* ── Top Navigation & Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9 w-9 p-0"
+          <button
+            type="button"
             onClick={() => navigate(BUSINESS_ROUTES.BOOKINGS)}
+            className="w-10 h-10 rounded-2xl border border-slate-200 dark:border-border/80 bg-white dark:bg-card flex items-center justify-center text-slate-600 hover:text-slate-950 transition-colors shadow-xs shrink-0"
           >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+            <ArrowLeft className="w-4 h-4" />
+          </button>
           <div>
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl font-bold text-foreground">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-950 dark:text-white tracking-tight">
                 #{booking.bookingCode}
               </h1>
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-muted text-slate-400 hover:text-slate-700 transition-colors"
+                title="Sao chép mã"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </button>
               <StatusBadge status={booking.status} />
+
+              {timeOfDay && (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border",
+                    timeOfDay.badgeClass
+                  )}
+                >
+                  <span className={cn("w-1.5 h-1.5 rounded-full", timeOfDay.dotClass)} />
+                  {timeOfDay.label}
+                </span>
+              )}
+
+              {placeName && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-muted text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-border/60">
+                  <MapPin className="w-3 h-3 text-slate-400" />
+                  <span className="truncate max-w-[150px]">{placeName}</span>
+                </span>
+              )}
+
+              <PaymentMethodBadge payment={booking.payment} />
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {t("business.bookingDetail.createdAt", { time: formatDateTime(booking.createdAt) })}
+            <p className="text-xs text-slate-500 mt-0.5">
+              Thời gian khởi tạo: {formatDateTime(booking.createdAt)}
             </p>
           </div>
         </div>
 
-        <div className="flex gap-2 shrink-0 flex-wrap">
+        {/* Action Buttons Bar */}
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
           {isPending && (
             <>
-              {canConfirm && <Button
-                onClick={handleConfirm}
-                className="gap-2"
-                disabled={actionLoading}
-              >
-                <Check className="h-4 w-4" />{" "}
-                {actionLoading ? t("business.bookingDetail.processing") : t("business.bookingDetail.confirm")}
-              </Button>}
-              {canCancel && <Button
-                variant="destructive"
-                onClick={() => setCancelOpen(true)}
-                className="gap-2"
-                disabled={actionLoading}
-              >
-                <X className="h-4 w-4" /> {t("business.bookingDetail.cancel")}
-              </Button>}
-            </>
-          )}
-          {isConfirmed && (
-            <>
-              {canComplete && <Button
-                onClick={handleComplete}
-                className="gap-2"
-                disabled={actionLoading}
-              >
-                <CheckCircle className="h-4 w-4" />{" "}
-                {actionLoading ? t("business.bookingDetail.processing") : t("business.bookingDetail.complete")}
-              </Button>}
-              {canComplete && <Button
-                variant="outline"
-                onClick={handleNoShow}
-                className="gap-2"
-                disabled={actionLoading}
-              >
-                <AlertTriangle className="h-4 w-4" /> {t("business.bookingDetail.noShow")}
-              </Button>}
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Layout 2 cột */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Left: info columns */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Customer Info */}
-          <BusinessSectionCard title={t("business.bookingDetail.customerInfo")} titleIcon={User}>
-            <InfoRow
-              label={t("business.bookingDetail.customerName")}
-              value={booking.user?.fullName || booking.guestName}
-            />
-            <InfoRow
-              label={t("business.bookingDetail.customerEmail")}
-              value={booking.user?.email || booking.guestEmail}
-            />
-            <InfoRow
-              label={t("business.bookingDetail.customerPhone")}
-              value={booking.user?.phone || booking.guestPhone}
-            />
-          </BusinessSectionCard>
-
-          {/* Service & Booking Info */}
-          <BusinessSectionCard title={t("business.bookingDetail.bookingDetails")} titleIcon={Ticket}>
-            <InfoRow label={t("business.bookingDetail.service")} value={booking.service?.name} />
-            <InfoRow label={t("business.bookingDetail.place")} value={booking.service?.place?.name} />
-            <InfoRow
-              label={t("business.bookingDetail.usageDate")}
-              value={formatDate(booking.useDate || booking.bookingDate)}
-            />
-            <InfoRow label={t("business.bookingDetail.quantity")} value={booking.quantity || 1} />
-            {booking.note && <InfoRow label={t("business.bookingDetail.notes")} value={booking.note} />}
-          </BusinessSectionCard>
-
-          {/* Payment */}
-          {booking.payment ? (
-            <OnlinePaymentInfo payment={booking.payment} />
-          ) : (
-            <BusinessSectionCard title={t("business.bookingDetail.payment")} titleIcon={DollarSign}>
-              <InfoRow label={t("business.bookingDetail.originalPrice")} value={formatVND(booking.originalPrice)} />
-              {booking.discountAmount > 0 && (
-                <InfoRow
-                  label={t("business.bookingDetail.discount")}
-                  value={`-${formatVND(booking.discountAmount)}`}
-                  className="text-emerald-600"
-                />
-              )}
-              <InfoRow
-                label={t("business.bookingDetail.finalAmount")}
-                value={formatVND(booking.finalPrice)}
-                className="text-lg font-bold"
-              />
-              {booking.commissionAmount > 0 && (
-                <InfoRow
-                  label={t("business.bookingDetail.systemCommission")}
-                  value={`-${formatVND(booking.commissionAmount)}`}
-                  className="text-rose-600"
-                />
-              )}
-              {booking.cancelReason && (
-                <InfoRow
-                  label={t("business.bookingDetail.cancelReasonLabel")}
-                  value={booking.cancelReason}
-                  className="text-destructive"
-                />
-              )}
-            </BusinessSectionCard>
-          )}
-        </div>
-
-        {/* Right: Action panel + QR + Voucher */}
-        <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-          <BusinessSectionCard title={t("business.bookingDetail.manualPayment")} titleIcon={Wallet}>
-            <div className="space-y-3">
-              <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
-                <p className="text-xs text-muted-foreground">
-                  {t("business.bookingDetail.paymentStatus")}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-foreground uppercase">
-                  {paymentStatusLabel}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {canMarkPaid && <Button
+              {canConfirm && (
+                <Button
                   size="sm"
-                  className="gap-1.5"
-                  onClick={() => setMarkPaidOpen(true)}
-                  disabled={!canMarkPaid || actionLoading}
+                  onClick={handleConfirm}
+                  disabled={actionLoading}
+                  className="rounded-2xl px-4 text-xs font-bold bg-slate-950 hover:bg-slate-800 text-white dark:bg-primary dark:text-primary-foreground shadow-xs"
                 >
-                  <CheckCircle className="h-4 w-4" />
-                  {t("business.bookingDetail.confirmPaymentBtn")}
-                </Button>}
-
-                {canRefund && <Button
+                  {actionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
+                  {t("business.bookingDetail.confirm")}
+                </Button>
+              )}
+              {canCancel && (
+                <Button
                   size="sm"
                   variant="destructive"
-                  className="gap-1.5"
-                  onClick={() => setRefundOpen(true)}
-                  disabled={!canRefund || actionLoading}
+                  onClick={() => setCancelOpen(true)}
+                  disabled={actionLoading}
+                  className="rounded-2xl px-4 text-xs font-bold bg-rose-600 text-white"
                 >
-                  <RotateCcw className="h-4 w-4" />
-                  {t("business.bookingDetail.refundBtn")}
-                </Button>}
-              </div>
-            </div>
-          </BusinessSectionCard>
-
-          <BusinessSectionCard title={t("business.bookingDetail.paymentTimeline")} titleIcon={Clock3}>
-            <PaymentTimeline booking={booking} />
-          </BusinessSectionCard>
-
-          {/* QR Code */}
-          {qrCode && (
-            <BusinessSectionCard title={t("business.bookingDetail.qrCode")} titleIcon={QrCode}>
-              <div className="flex justify-center p-2">
-                <img
-                  src={qrCode}
-                  alt="QR Code"
-                  className="w-44 h-44 rounded-lg"
-                />
-              </div>
-              <p className="text-xs text-center text-muted-foreground mt-2">
-                {t("business.bookingDetail.qrCodePresent")}
-              </p>
-            </BusinessSectionCard>
+                  {t("business.bookingDetail.cancel")}
+                </Button>
+              )}
+            </>
           )}
 
-          {/* Voucher */}
-          {booking.voucher && (
-            <BusinessSectionCard title={t("business.bookingDetail.voucherApplied")} titleIcon={Tag}>
-              <div className="text-center py-2">
-                <span className="font-mono font-bold text-lg tracking-widest bg-muted px-3 py-1 rounded-md">
-                  {booking.voucher.code}
-                </span>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {t("business.bookingDetail.voucherDiscount")}{" "}
-                  <span className="font-semibold text-emerald-600">
-                    {booking.voucher.discountType === "percentage"
-                      ? `${booking.voucher.discountValue}%`
-                      : formatVND(booking.voucher.discountValue)}
-                  </span>
-                </p>
-              </div>
-            </BusinessSectionCard>
+          {isConfirmed && (
+            <>
+              {canComplete && (
+                <Button
+                  size="sm"
+                  onClick={handleComplete}
+                  disabled={actionLoading}
+                  className="rounded-2xl px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                >
+                  {actionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
+                  {t("business.bookingDetail.complete")}
+                </Button>
+              )}
+              {canComplete && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleNoShow}
+                  disabled={actionLoading}
+                  className="rounded-2xl px-3 text-xs font-bold border-slate-200"
+                >
+                  {t("business.bookingDetail.noShow")}
+                </Button>
+              )}
+            </>
+          )}
+
+          {canMarkPaid && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setMarkPaidOpen(true)}
+              className="rounded-2xl px-3 text-xs font-bold border-slate-200"
+            >
+              Ghi nhận thanh toán
+            </Button>
+          )}
+
+          {canRefund && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setRefundAmount(String(booking.finalPrice || ""));
+                setRefundOpen(true);
+              }}
+              className="rounded-2xl px-3 text-xs font-bold text-rose-600 hover:bg-rose-50"
+            >
+              Hoàn tiền
+            </Button>
           )}
         </div>
       </div>
 
-      <CancelDialog
-        open={cancelOpen}
-        onClose={() => setCancelOpen(false)}
-        onConfirm={handleCancel}
-      />
+      {/* ── Main 2-Column Bento Layout ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <BookingCustomerSummaryCard
+            booking={booking}
+            timeOfDay={timeOfDay}
+            placeName={placeName}
+          />
+        </div>
+        <div>
+          <BookingQrCheckInCard booking={booking} qrCodeUrl={qrCodeUrl} />
+        </div>
+      </div>
 
-      <MarkPaidDialog
-        open={markPaidOpen}
-        onClose={() => setMarkPaidOpen(false)}
-        onConfirm={handleMarkPaid}
-        loading={actionLoading}
-      />
-
-      <RefundDialog
-        open={refundOpen}
-        onClose={() => setRefundOpen(false)}
-        onConfirm={handleRefund}
-        loading={actionLoading}
-        maxAmount={Number(booking?.finalPrice || 0)}
+      {/* ── Modals ── */}
+      <BookingDetailModals
+        cancelOpen={cancelOpen}
+        setCancelOpen={setCancelOpen}
+        cancelReason={cancelReason}
+        setCancelReason={setCancelReason}
+        onConfirmCancel={handleCancel}
+        markPaidOpen={markPaidOpen}
+        setMarkPaidOpen={setMarkPaidOpen}
+        markPaidNote={markPaidNote}
+        setMarkPaidNote={setMarkPaidNote}
+        onConfirmMarkPaid={handleMarkPaid}
+        refundOpen={refundOpen}
+        setRefundOpen={setRefundOpen}
+        refundReason={refundReason}
+        setRefundReason={setRefundReason}
+        refundAmount={refundAmount}
+        setRefundAmount={setRefundAmount}
+        onConfirmRefund={handleRefund}
+        actionLoading={actionLoading}
       />
     </div>
   );
 });
 
 BookingDetailPage.displayName = "BookingDetailPage";
-
 export default BookingDetailPage;

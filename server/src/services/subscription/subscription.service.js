@@ -458,6 +458,28 @@ export async function getPlans() {
   });
 }
 
+const validatePlanChange = (subscription, targetPlan, requestedBillingCycle, requireUpgrade) => {
+  if (!targetPlan || !targetPlan.isActive) {
+    throw new ServiceError("Plan đích không tồn tại hoặc đã ngừng hoạt động", 404, ERROR_CODES.NOT_FOUND);
+  }
+  if (requestedBillingCycle === "yearly" && targetPlan.priceYearly == null) {
+    throw new ServiceError("Plan này không hỗ trợ thanh toán theo năm", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+  if (subscription.status === "canceled") return;
+
+  const isBillingCycleChange = subscription.billingCycle !== requestedBillingCycle;
+  if (subscription.planId === targetPlan.id && !isBillingCycleChange) {
+    throw new ServiceError("Bạn đang sử dụng plan này rồi", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+  const direction = getPlanChangeDirection(subscription.plan, targetPlan);
+  const invalidDirection = requireUpgrade
+    ? direction !== "upgrade"
+    : direction === "same";
+  if (invalidDirection && !isBillingCycleChange) {
+    throw new ServiceError("Chỉ được nâng cấp lên plan cao hơn", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+};
+
 export async function calculateProration(businessId, targetPlanId, requestedBillingCycle = "monthly") {
   const subscription = await prisma.subscription.findUnique({
     where: { businessId },
@@ -472,26 +494,8 @@ export async function calculateProration(businessId, targetPlanId, requestedBill
     where: { id: targetPlanId },
   });
 
-  if (!targetPlan || !targetPlan.isActive) {
-    throw new ServiceError("Plan đích không tồn tại hoặc đã ngừng hoạt động", 404, ERROR_CODES.NOT_FOUND);
-  }
-  if (requestedBillingCycle === "yearly" && targetPlan.priceYearly == null) {
-    throw new ServiceError("Plan này không hỗ trợ thanh toán theo năm", 400, ERROR_CODES.VALIDATION_ERROR);
-  }
-
+  validatePlanChange(subscription, targetPlan, requestedBillingCycle, false);
   const isCanceled = subscription.status === "canceled";
-
-  if (!isCanceled) {
-    const isBillingCycleChange = subscription.billingCycle !== requestedBillingCycle;
-    if (subscription.planId === targetPlanId && !isBillingCycleChange) {
-      throw new ServiceError("Bạn đang sử dụng plan này rồi", 400, ERROR_CODES.VALIDATION_ERROR);
-    }
-
-    const direction = getPlanChangeDirection(subscription.plan, targetPlan);
-    if (direction === "same" && !isBillingCycleChange) {
-      throw new ServiceError("Chỉ được nâng cấp lên plan cao hơn", 400, ERROR_CODES.VALIDATION_ERROR);
-    }
-  }
 
   const now = new Date();
 
@@ -569,25 +573,8 @@ export async function upgrade(businessId, targetPlanId, requestedBillingCycle = 
     where: { id: targetPlanId },
   });
 
-  if (!targetPlan || !targetPlan.isActive) {
-    throw new ServiceError("Plan đích không tồn tại hoặc đã ngừng hoạt động", 404, ERROR_CODES.NOT_FOUND);
-  }
-  if (requestedBillingCycle === "yearly" && targetPlan.priceYearly == null) {
-    throw new ServiceError("Plan này không hỗ trợ thanh toán theo năm", 400, ERROR_CODES.VALIDATION_ERROR);
-  }
-
+  validatePlanChange(subscription, targetPlan, requestedBillingCycle, true);
   const isCanceled = subscription.status === "canceled";
-
-  if (!isCanceled) {
-    const isBillingCycleChange = subscription.billingCycle !== requestedBillingCycle;
-    if (subscription.planId === targetPlanId && !isBillingCycleChange) {
-      throw new ServiceError("Bạn đang sử dụng plan này rồi", 400, ERROR_CODES.VALIDATION_ERROR);
-    }
-
-    if (getPlanChangeDirection(subscription.plan, targetPlan) !== "upgrade" && !isBillingCycleChange) {
-      throw new ServiceError("Chỉ được nâng cấp lên plan cao hơn", 400, ERROR_CODES.VALIDATION_ERROR);
-    }
-  }
 
   // Kiểm tra invoice upgrade pending trùng lặp (chống race condition khi user click nhiều lần)
   const now = new Date();

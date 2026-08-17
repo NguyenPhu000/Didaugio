@@ -12,6 +12,8 @@ const telemetryService = {
     api.post(`/telemetry/places/${placeId}`, payload),
   getBusinessHeatmap: (params = {}) =>
     api.get("/telemetry/business/heatmap", { params: sanitizeParams(params) }),
+  getBusinessTrafficSummary: (params = {}) =>
+    api.get("/telemetry/business/traffic-summary", { params: sanitizeParams(params) }),
   getAdminHeatmap: (params = {}) =>
     api.get("/telemetry/admin/heatmap", { params: sanitizeParams(params) }),
 };

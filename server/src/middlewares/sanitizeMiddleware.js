@@ -78,51 +78,59 @@ export const sanitizeQuery = (fields = ["search", "q"]) => {
   };
 };
 
+function sanitizeStringField(obj, key, currentPath, maxLength, allowedFields) {
+  const value = obj[key];
+  if (value.length > maxLength) return { error: `Trường ${currentPath} vượt quá độ dài tối đa ${maxLength}` };
+  if (allowedFields.includes(currentPath)) return { error: null };
+  const validation = validateNoHtml(value, currentPath);
+  if (!validation.valid) return { error: validation.error };
+  obj[key] = strictSanitize(value);
+  return { error: null };
+}
+
+function sanitizeArray(value, currentPath, maxLength, allowedFields) {
+  for (let index = 0; index < value.length; index += 1) {
+    if (typeof value[index] === "string") {
+      const itemPath = `${currentPath}[${index}]`;
+      const validation = validateNoHtml(value[index], itemPath);
+      if (!validation.valid) return { error: validation.error };
+      value[index] = strictSanitize(value[index]);
+    } else if (value[index] && typeof value[index] === "object") {
+      const result = sanitizeObject(value[index], `${currentPath}[${index}]`, maxLength, allowedFields);
+      if (result.error) return result;
+    }
+  }
+  return { error: null };
+}
+
+function sanitizeObject(obj, path, maxLength, allowedFields) {
+  for (const key of Object.keys(obj)) {
+    const currentPath = path ? `${path}.${key}` : key;
+    const value = obj[key];
+    if (typeof value === "string") {
+      const result = sanitizeStringField(obj, key, currentPath, maxLength, allowedFields);
+      if (result.error) return result;
+      continue;
+    }
+    if (!value || typeof value !== "object") continue;
+    if (Array.isArray(value)) {
+      const result = sanitizeArray(value, currentPath, maxLength, allowedFields);
+      if (result.error) return result;
+      continue;
+    }
+    const result = sanitizeObject(value, currentPath, maxLength, allowedFields);
+    if (result.error) return result;
+  }
+  return { error: null };
+}
+
 export const sanitizeAllStrings = (options = {}) => {
   const { maxLength = 10000, allowedFields = [] } = options;
 
   return (req, res, next) => {
     if (!req.body || typeof req.body !== "object") return next();
 
-    function sanitizeObject(obj, path = "") {
-      for (const key of Object.keys(obj)) {
-        const currentPath = path ? `${path}.${key}` : key;
-        const value = obj[key];
-
-        if (typeof value === "string") {
-          if (value.length > maxLength) {
-            return {
-              error: `Trường ${currentPath} vượt quá độ dài tối đa ${maxLength}`,
-            };
-          }
-          if (!allowedFields.includes(currentPath)) {
-            const validation = validateNoHtml(value, currentPath);
-            if (!validation.valid) return { error: validation.error };
-            obj[key] = strictSanitize(value);
-          }
-        } else if (value && typeof value === "object") {
-          if (Array.isArray(value)) {
-            for (let index = 0; index < value.length; index += 1) {
-              if (typeof value[index] === "string") {
-                const itemPath = `${currentPath}[${index}]`;
-                const validation = validateNoHtml(value[index], itemPath);
-                if (!validation.valid) return { error: validation.error };
-                value[index] = strictSanitize(value[index]);
-              } else if (value[index] && typeof value[index] === "object") {
-                const result = sanitizeObject(value[index], `${currentPath}[${index}]`);
-                if (result.error) return result;
-              }
-            }
-          } else {
-            const result = sanitizeObject(value, currentPath);
-            if (result.error) return result;
-          }
-        }
-      }
-      return { error: null };
-    }
-
-    const result = sanitizeObject(req.body);
+    const result = sanitizeObject(req.body, "", maxLength, allowedFields);
     if (result.error) {
       return res.status(400).json({
         success: false,

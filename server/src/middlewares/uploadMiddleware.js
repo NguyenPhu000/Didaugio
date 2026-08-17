@@ -2,7 +2,7 @@ import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import { createCloudinaryStorage } from "./cloudinaryStorage.js";
 
-export const MAX_UPLOAD_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+export const MAX_UPLOAD_FILE_SIZE_BYTES = 8 * 1024 * 1024;
 export const MAX_UPLOAD_FIELD_SIZE_BYTES = 64 * 1024;
 export const MAX_UPLOAD_FIELDS = 10;
 export const MAX_BASE64_DATA_URI_LENGTH =

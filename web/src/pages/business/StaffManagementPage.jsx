@@ -123,7 +123,7 @@ export default function StaffManagementPage() {
         </div>
         <Button
           onClick={() => setInviteModalOpen(true)}
-          className="h-9 gap-2 bg-zinc-950 px-3 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200"
+          className="w-full sm:w-auto justify-center h-10 gap-2 bg-zinc-950 px-4 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200"
         >
           <UserPlus className="h-4 w-4" />
           {t("business.staff.inviteStaff")}
@@ -152,13 +152,13 @@ export default function StaffManagementPage() {
       </div>
 
       <div className="border-y border-zinc-200 py-3 dark:border-zinc-800">
-        <div className="relative max-w-md">
+        <div className="relative w-full max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={t("business.staff.searchPlaceholder")}
-            className="h-9 border-zinc-200 bg-white pl-9 dark:border-zinc-800 dark:bg-zinc-950"
+            className="h-10 border-zinc-200 bg-white pl-9 dark:border-zinc-800 dark:bg-zinc-950"
           />
         </div>
       </div>

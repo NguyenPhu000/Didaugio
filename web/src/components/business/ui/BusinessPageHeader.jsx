@@ -91,7 +91,7 @@ export function BusinessPageHeader({
           )}
         </div>
         {(action || secondaryActions) && (
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
             {secondaryActions}
             {action}
           </div>

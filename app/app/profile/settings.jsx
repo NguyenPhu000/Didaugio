@@ -1,3 +1,7 @@
+// MAP: SettingsScreen
+// ├── UI: @/components/reacticx/settings-v1/components, @/components/ui/CustomModal
+// └── API: @/modules/profile/hooks/useProfile, @/modules/auth/hooks/useAuth, @/modules/notifications/hooks/useNotifications
+
 import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Animated,

@@ -1,3 +1,7 @@
+// MAP: AIPlannerScreen
+// ├── UI: @/modules/ai/components/genie/{AIPlannerComposer, AIPlannerHeader, AIPlannerMessageItem, QuickActionPills}
+// └── API: @/modules/ai/hooks/useAIPlanner, @/modules/ai/hooks/useGroqChat, @/modules/ai/hooks/useGenieVoiceController
+
 import {
   View,
   Text,

@@ -118,37 +118,37 @@ export default function TagManagementPage() {
   };
 
   return (
-    <div className="min-h-screen p-8 bg-transparent relative font-sans">
+    <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-transparent relative font-sans">
       {/* Enhanced grid background with dots */}
       <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none" />
       <div className="absolute inset-0 bg-grid-dots opacity-40 pointer-events-none" />
 
       <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex items-end justify-between border-b-2 border-black pb-6">
-          <div className="flex items-center gap-6">
-            <div className="accent-bar h-16"></div>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-black pb-6 gap-4">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <div className="accent-bar h-16 shrink-0"></div>
             <div>
               <h1 className="tim-title">{t("tags.title")}</h1>
-              <div className="flex items-center gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1 shrink-0">
                   SYSTEM // TAGS
                 </span>
                 <p className="tim-meta">{t("tags.subtitle")}</p>
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
             <Button
               variant="outline"
               onClick={handleRefresh}
-              className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white"
+              className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white shrink-0"
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
             <Button
               onClick={handleAdd}
-              className="h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6"
+              className="flex-1 sm:flex-initial justify-center h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6"
             >
               <Plus className="mr-2 h-4 w-4" />
               {t("tags.createTag")}
@@ -187,9 +187,9 @@ export default function TagManagementPage() {
         </div>
 
         {/* Control Panel */}
-        <div className="bg-white border border-black p-4 flex flex-wrap gap-4 items-center rounded-none shadow-sm">
-          <div className="flex-1 min-w-[300px] flex items-center gap-0">
-            <div className="h-10 w-10 bg-black flex items-center justify-center text-white">
+        <div className="bg-white border border-black p-4 flex flex-col md:flex-row gap-4 items-center rounded-none shadow-sm">
+          <div className="w-full md:flex-1 flex items-center gap-0">
+            <div className="h-10 w-10 bg-black flex items-center justify-center text-white shrink-0">
               <Search className="h-4 w-4" />
             </div>
             <input
@@ -198,19 +198,19 @@ export default function TagManagementPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              className="h-10 flex-1 px-4 border-y border-r border-black font-mono text-sm uppercase focus:outline-none focus:bg-black focus:text-primary placeholder:text-gray-400"
+              className="h-10 flex-1 px-4 border-y border-r border-black font-mono text-sm uppercase focus:outline-none focus:bg-black focus:text-primary placeholder:text-gray-400 min-w-0"
             />
             <Button
               onClick={handleSearch}
-              className="h-10 rounded-none bg-primary text-black border border-black border-l-0 font-bold uppercase hover:bg-yellow-400"
+              className="h-10 rounded-none bg-primary text-black border border-black border-l-0 font-bold uppercase hover:bg-yellow-400 shrink-0"
             >
               {t("common.search")}
             </Button>
           </div>
 
-          <div className="flex gap-4">
+          <div className="grid grid-cols-2 sm:flex gap-2.5 w-full md:w-auto">
             <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-[200px] rounded-none border-black font-mono text-xs uppercase h-10">
+              <SelectTrigger className="w-full sm:w-[200px] rounded-none border-black font-mono text-xs uppercase h-10">
                 <Filter className="h-3 w-3 mr-2" />
                 <SelectValue placeholder={t("tags.filterByType")} />
               </SelectTrigger>
@@ -228,7 +228,7 @@ export default function TagManagementPage() {
             </Select>
 
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[180px] rounded-none border-black font-mono text-xs uppercase h-10">
+              <SelectTrigger className="w-full sm:w-[180px] rounded-none border-black font-mono text-xs uppercase h-10">
                 <SelectValue placeholder={t("tags.sortBy")} />
               </SelectTrigger>
               <SelectContent className="rounded-none border-black">

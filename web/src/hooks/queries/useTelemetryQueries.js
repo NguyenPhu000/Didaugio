@@ -19,3 +19,11 @@ export function useBusinessPlaceHeatmap(params = {}) {
     { staleTime: HEATMAP_STALE_TIME },
   );
 }
+
+export function useBusinessTrafficSummary(params = {}) {
+  return useApiQuery(
+    ["telemetry", "business", "traffic-summary", params],
+    () => telemetryService.getBusinessTrafficSummary(params),
+    { staleTime: HEATMAP_STALE_TIME },
+  );
+}

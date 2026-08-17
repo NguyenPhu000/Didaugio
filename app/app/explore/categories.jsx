@@ -1,3 +1,7 @@
+// MAP: ExploreCategoriesScreen
+// ├── UI: @/modules/explore/components/{ExploreListScaffold, SmallPlaceCard}
+// └── API: @/modules/explore/hooks/useCategories, @/modules/explore/hooks/useExplore
+
 import { memo, useMemo } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";

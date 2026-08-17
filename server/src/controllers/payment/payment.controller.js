@@ -1,3 +1,7 @@
+// MAP: payment.controller
+// ├── ROUTE: src/routes/payment/payment.routes.js
+// └── SERVICE: src/services/payment/{payment.service.js, vnpay.service.js, sepay.service.js, cashflow.service.js}
+
 import * as paymentService from "../../services/payment/payment.service.js";
 import * as vnpayService from "../../services/payment/vnpay.service.js";
 import * as sepayService from "../../services/payment/sepay.service.js";
@@ -251,7 +255,7 @@ export async function sepayCheckoutForm(req, res, next) {
     const errorUrl = `${successUrl}&status=error`;
     const cancelUrl = `${successUrl}&status=cancel`;
 
-    const sepayResult = await sepayService.createCheckoutForm({
+    const sepayResult = sepayService.createCheckoutForm({
       amount: payment.amount,
       transactionRef: payment.transactionRef,
       orderInfo: `Thanh toan booking ${payment.bookingId}`,

@@ -1,3 +1,7 @@
+// MAP: OnboardingScreen
+// ├── UI: @/components/primitives/MaterialIconsRounded
+// └── API: @/stores/uiStore, @/stores/aiContextStore
+
 import { View, Text, Pressable, ScrollView } from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";

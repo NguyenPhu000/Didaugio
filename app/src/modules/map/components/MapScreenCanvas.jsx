@@ -77,6 +77,264 @@ const PreviewStopMarker = memo(function PreviewStopMarker({ stop, previewSegment
   );
 });
 
+const MapScreenCanvasLoadingOverlay = memo(function MapScreenCanvasLoadingOverlay({
+  isLoading,
+  mapUiTheme,
+  loadingText,
+}) {
+  if (!isLoading) return null;
+  return (
+    <View
+      className="flex-1 items-center justify-center gap-3"
+      style={{ backgroundColor: mapUiTheme.background }}
+    >
+      <ActivityIndicator color={mapUiTheme.neon} size="large" />
+      <Text
+        className="text-[14px] font-medium"
+        style={{ color: mapUiTheme.text }}
+      >
+        {loadingText}
+      </Text>
+    </View>
+  );
+});
+
+const MapScreenCanvasErrorOverlay = memo(function MapScreenCanvasErrorOverlay({
+  error,
+  mapUiTheme,
+  onRetry,
+  errorText,
+  retryText,
+}) {
+  if (!error) return null;
+  return (
+    <View
+      className="flex-1 items-center justify-center gap-3"
+      style={{ backgroundColor: mapUiTheme.background }}
+    >
+      <MaterialIconsRounded name="wifi-off" size={40} color="#FB7185" />
+      <Text className="text-[14px]" style={{ color: mapUiTheme.text }}>
+        {errorText}
+      </Text>
+      <Pressable
+        onPress={onRetry}
+        className="flex-row items-center gap-2 px-5 py-2.5 rounded-xl"
+        style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
+      >
+        <MaterialIconsRounded
+          name="refresh"
+          size={18}
+          color={mapUiTheme.text}
+        />
+        <Text className="text-[14px] font-bold text-white">
+          {retryText}
+        </Text>
+      </Pressable>
+    </View>
+  );
+});
+
+const TripPreviewRoutesAndStops = memo(function TripPreviewRoutesAndStops({
+  isTripPreviewMode,
+  previewSegments = [],
+  previewStops = [],
+}) {
+  if (!isTripPreviewMode) return null;
+  return (
+    <>
+      {previewSegments.map((segment) => (
+        <RoutePolyline
+          key={segment.id}
+          coordinates={segment.coordinates}
+          source={segment.source}
+          strokeWidth={6}
+          isPrimary
+          dashed={segment.dashed}
+          color="#111111"
+          strokeOpacity={0.96}
+        />
+      ))}
+      {previewStops.map((stop) => (
+        <PreviewStopMarker
+          key={`preview-stop-${stop.id}`}
+          stop={stop}
+          previewSegments={previewSegments}
+        />
+      ))}
+    </>
+  );
+});
+
+const ActiveTripNavigationOverlays = memo(function ActiveTripNavigationOverlays({
+  isActiveTripMode,
+  navigationController,
+  activeTripLocation,
+  previewStops = [],
+  previewSegments = [],
+}) {
+  if (!isActiveTripMode) return null;
+
+  return (
+    <>
+      {previewStops.length > 0 && previewSegments.length > 0
+        ? previewSegments.map((segment) =>
+            segment.labelCoordinate ? (
+              <Marker
+                key={`segment-label-${segment.id}`}
+                coordinate={segment.labelCoordinate}
+                anchor={{ x: 0.5, y: 0.5 }}
+                tracksViewChanges={false}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 4,
+                    paddingHorizontal: 9,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: "rgba(17,24,39,0.92)",
+                    borderWidth: 1.5,
+                    borderColor: "rgba(255,255,255,0.9)",
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 4,
+                    elevation: 4,
+                  }}
+                >
+                  <View
+                    style={{
+                      transform: [{ rotate: `${segment.bearing || 0}deg` }],
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <MaterialIconsRounded
+                      name="navigation"
+                      size={13}
+                      color={segment.color || "#38BDF8"}
+                    />
+                  </View>
+                  <Text
+                    style={{
+                      color: "#FFFFFF",
+                      fontSize: 11,
+                      fontFamily: TOKENS.font.bold,
+                      letterSpacing: -0.2,
+                    }}
+                  >
+                    {[segment.label, segment.distanceLabel].filter(Boolean).join(" • ")}
+                  </Text>
+                </View>
+              </Marker>
+            ) : null,
+          )
+        : null}
+
+      {!navigationController.isGpsLost &&
+      Number.isFinite(activeTripLocation?.latitude) &&
+      Number.isFinite(activeTripLocation?.longitude) ? (
+        <Marker
+          coordinate={activeTripLocation}
+          anchor={{ x: 0.5, y: 0.5 }}
+          flat
+          rotation={Number.isFinite(activeTripLocation.heading) ? activeTripLocation.heading : 0}
+          tracksViewChanges={false}
+          zIndex={220}
+        >
+          <View className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-md">
+            <View className="h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-[#101010]">
+              <MaterialIconsRounded name="navigation" size={25} color="#FFFFFF" />
+            </View>
+          </View>
+        </Marker>
+      ) : null}
+
+      {!navigationController.isGpsLost &&
+      navigationController.snappedPoint &&
+      Number(navigationController.distanceToRoute) > 8 ? (
+        <SnapLine
+          from={activeTripLocation}
+          to={navigationController.snappedPoint}
+        />
+      ) : null}
+
+      {navigationController.isGpsLost &&
+      navigationController.estimatedPosition ? (
+        <Marker
+          coordinate={navigationController.estimatedPosition}
+          anchor={{ x: 0.5, y: 0.5 }}
+          tracksViewChanges={false}
+        >
+          <View style={{ alignItems: "center", justifyContent: "center" }}>
+            <View
+              style={{
+                backgroundColor: "#9CA3AF",
+                opacity: 0.3,
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                position: "absolute",
+              }}
+            />
+            <View
+              style={{
+                backgroundColor: "#9CA3AF",
+                borderColor: "#FFFFFF",
+                borderWidth: 1.5,
+                width: 12,
+                height: 12,
+                borderRadius: 6,
+              }}
+            />
+          </View>
+        </Marker>
+      ) : null}
+    </>
+  );
+});
+
+const ActiveRoutePolylines = memo(function ActiveRoutePolylines({
+  isTripPreviewMode,
+  isActiveTripMode,
+  activeRouteCoordinates = [],
+  activeRouteSource,
+  routeCoordinates = [],
+  routeSource,
+  isGpsLost,
+}) {
+  if (isTripPreviewMode) return null;
+
+  if (isActiveTripMode && activeRouteCoordinates.length > 1) {
+    return (
+      <RoutePolyline
+        coordinates={activeRouteCoordinates}
+        source={activeRouteSource || "osrm"}
+        strokeWidth={6}
+        isPrimary
+        dashed={activeRouteSource === "fallback"}
+        color="#151515"
+        strokeOpacity={isGpsLost ? 0.4 : 0.95}
+      />
+    );
+  }
+
+  if (routeCoordinates.length > 1) {
+    return (
+      <RoutePolyline
+        coordinates={routeCoordinates}
+        source={routeSource || "osrm"}
+        strokeWidth={5}
+        isPrimary
+        dashed={routeSource === "fallback"}
+      />
+    );
+  }
+
+  return null;
+});
+
 export function MapScreenCanvas({
   activeArea,
   activeMapPadding,
@@ -112,46 +370,19 @@ export function MapScreenCanvas({
 
   return (
     <View className="absolute inset-0">
-      {isLoading ? (
-        <View
-          className="flex-1 items-center justify-center gap-3"
-          style={{ backgroundColor: mapUiTheme.background }}
-        >
-          <ActivityIndicator color={mapUiTheme.neon} size="large" />
-          <Text
-            className="text-[14px] font-medium"
-            style={{ color: mapUiTheme.text }}
-          >
-            {mapText.loading.map}
-          </Text>
-        </View>
-      ) : null}
+      <MapScreenCanvasLoadingOverlay
+        isLoading={isLoading}
+        mapUiTheme={mapUiTheme}
+        loadingText={mapText.loading.map}
+      />
 
-      {error ? (
-        <View
-          className="flex-1 items-center justify-center gap-3"
-          style={{ backgroundColor: mapUiTheme.background }}
-        >
-          <MaterialIconsRounded name="wifi-off" size={40} color="#FB7185" />
-          <Text className="text-[14px]" style={{ color: mapUiTheme.text }}>
-            {mapText.errors.mapData}
-          </Text>
-          <Pressable
-            onPress={refetch}
-            className="flex-row items-center gap-2 px-5 py-2.5 rounded-xl"
-            style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-          >
-            <MaterialIconsRounded
-              name="refresh"
-              size={18}
-              color={mapUiTheme.text}
-            />
-            <Text className="text-[14px] font-bold text-white">
-              {mapText.errors.retry}
-            </Text>
-          </Pressable>
-        </View>
-      ) : null}
+      <MapScreenCanvasErrorOverlay
+        error={error}
+        mapUiTheme={mapUiTheme}
+        onRetry={refetch}
+        errorText={mapText.errors.mapData}
+        retryText={mapText.errors.retry}
+      />
 
       <MapView
         ref={mapRef}
@@ -178,170 +409,29 @@ export function MapScreenCanvas({
           showDistrictLabels={mapStyle?.showDistrictLabels ?? true}
         />
 
-        {isTripPreviewMode && previewSegments.length > 0
-          ? previewSegments.map((segment) => (
-              <RoutePolyline
-                key={segment.id}
-                coordinates={segment.coordinates}
-                source={segment.source}
-                strokeWidth={6}
-                isPrimary
-                dashed={segment.dashed}
-                color="#111111"
-                strokeOpacity={0.96}
-              />
-            ))
-          : null}
+        <TripPreviewRoutesAndStops
+          isTripPreviewMode={isTripPreviewMode}
+          previewSegments={previewSegments}
+          previewStops={previewStops}
+        />
 
-        {isActiveTripMode && previewStops.length > 0 && previewSegments.length > 0
-          ? previewSegments.map((segment) =>
-              segment.labelCoordinate ? (
-                <Marker
-                  key={`segment-label-${segment.id}`}
-                  coordinate={segment.labelCoordinate}
-                  anchor={{ x: 0.5, y: 0.5 }}
-                  tracksViewChanges={false}
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 4,
-                      paddingHorizontal: 9,
-                      height: 28,
-                      borderRadius: 14,
-                      backgroundColor: "rgba(17,24,39,0.92)",
-                      borderWidth: 1.5,
-                      borderColor: "rgba(255,255,255,0.9)",
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.25,
-                      shadowRadius: 4,
-                      elevation: 4,
-                    }}
-                  >
-                    {/* Directional Arrow Icon rotated to segment bearing */}
-                    <View
-                      style={{
-                        transform: [{ rotate: `${segment.bearing || 0}deg` }],
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <MaterialIconsRounded
-                        name="navigation"
-                        size={13}
-                        color={segment.color || "#38BDF8"}
-                      />
-                    </View>
-                    <Text
-                      style={{
-                        color: "#FFFFFF",
-                        fontSize: 11,
-                        fontFamily: TOKENS.font.bold,
-                        letterSpacing: -0.2,
-                      }}
-                    >
-                      {[segment.label, segment.distanceLabel].filter(Boolean).join(" • ")}
-                    </Text>
-                  </View>
-                </Marker>
-              ) : null,
-            )
-          : null}
+        <ActiveRoutePolylines
+          isTripPreviewMode={isTripPreviewMode}
+          isActiveTripMode={isActiveTripMode}
+          activeRouteCoordinates={activeRouteCoordinates}
+          activeRouteSource={activeRouteSource}
+          routeCoordinates={routeCoordinates}
+          routeSource={routeSource}
+          isGpsLost={navigationController.isGpsLost}
+        />
 
-        {isTripPreviewMode && previewStops.length > 0
-          ? previewStops.map((stop) => (
-              <PreviewStopMarker
-                key={`preview-stop-${stop.id}`}
-                stop={stop}
-                previewSegments={previewSegments}
-              />
-            ))
-          : null}
-
-        {!isTripPreviewMode && isActiveTripMode && activeRouteCoordinates.length > 1 ? (
-          <RoutePolyline
-            coordinates={activeRouteCoordinates}
-            source={activeRouteSource || "osrm"}
-            strokeWidth={6}
-            isPrimary
-            dashed={activeRouteSource === "fallback"}
-            color="#151515"
-            strokeOpacity={navigationController.isGpsLost ? 0.4 : 0.95}
-          />
-        ) : !isTripPreviewMode && routeCoordinates.length > 1 ? (
-          <RoutePolyline
-            coordinates={routeCoordinates}
-            source={routeSource || "osrm"}
-            strokeWidth={5}
-            isPrimary
-            dashed={routeSource === "fallback"}
-          />
-        ) : null}
-
-        {isActiveTripMode &&
-        !navigationController.isGpsLost &&
-        Number.isFinite(activeTripLocation?.latitude) &&
-        Number.isFinite(activeTripLocation?.longitude) ? (
-          <Marker
-            coordinate={activeTripLocation}
-            anchor={{ x: 0.5, y: 0.5 }}
-            flat
-            rotation={Number.isFinite(activeTripLocation.heading) ? activeTripLocation.heading : 0}
-            tracksViewChanges={false}
-            zIndex={220}
-          >
-            <View className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-md">
-              <View className="h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-[#101010]">
-                <MaterialIconsRounded name="navigation" size={25} color="#FFFFFF" />
-              </View>
-            </View>
-          </Marker>
-        ) : null}
-
-        {isActiveTripMode &&
-        !navigationController.isGpsLost &&
-        navigationController.snappedPoint &&
-        Number(navigationController.distanceToRoute) > 8 ? (
-          <SnapLine
-            from={activeTripLocation}
-            to={navigationController.snappedPoint}
-          />
-        ) : null}
-
-        {isActiveTripMode &&
-        navigationController.isGpsLost &&
-        navigationController.estimatedPosition ? (
-          <Marker
-            coordinate={navigationController.estimatedPosition}
-            anchor={{ x: 0.5, y: 0.5 }}
-            tracksViewChanges={false}
-          >
-            <View style={{ alignItems: "center", justifyContent: "center" }}>
-              <View
-                style={{
-                  backgroundColor: "#9CA3AF",
-                  opacity: 0.3,
-                  width: 24,
-                  height: 24,
-                  borderRadius: 12,
-                  position: "absolute",
-                }}
-              />
-              <View
-                style={{
-                  backgroundColor: "#9CA3AF",
-                  borderColor: "#FFFFFF",
-                  borderWidth: 1.5,
-                  width: 12,
-                  height: 12,
-                  borderRadius: 6,
-                }}
-              />
-            </View>
-          </Marker>
-        ) : null}
+        <ActiveTripNavigationOverlays
+          isActiveTripMode={isActiveTripMode}
+          navigationController={navigationController}
+          activeTripLocation={activeTripLocation}
+          previewStops={previewStops}
+          previewSegments={previewSegments}
+        />
       </MapView>
     </View>
   );

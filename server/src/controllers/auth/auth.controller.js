@@ -1,3 +1,7 @@
+// MAP: auth.controller
+// ├── ROUTE: src/routes/auth/auth.routes.js
+// └── SERVICE: src/services/auth/auth.service.js
+
 import authService from "../../services/auth/auth.service.js";
 import { setOffline, setOnline } from "../../utils/onlineManager.js";
 import { clearBrowserCsrfCookie } from "../../middlewares/csrfProtection.js";

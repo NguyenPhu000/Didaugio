@@ -84,11 +84,13 @@ const compareDestinationOrder = (a, b) => {
   return Number(a?.id || 0) - Number(b?.id || 0);
 };
 
+const YMD_DATE_REGEX = /^(\d{4})-(\d{2})-(\d{2})/;
+
 const toLocalCalendarDate = (value) => {
   if (!value) return null;
 
   if (typeof value === "string") {
-    const ymdMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const ymdMatch = YMD_DATE_REGEX.exec(value);
     if (ymdMatch) {
       const [, year, month, day] = ymdMatch;
       const date = new Date(Number(year), Number(month) - 1, Number(day), 12);
@@ -96,7 +98,7 @@ const toLocalCalendarDate = (value) => {
     }
   }
 
-  const date = value instanceof Date ? new Date(value) : new Date(value);
+  const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
   date.setHours(12, 0, 0, 0);
   return date;
@@ -114,6 +116,12 @@ const formatPreviewDayDate = (date) => {
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
   return `${day}/${month}`;
+};
+
+const getDayStatus = (dateYmd, todayYmd) => {
+  if (dateYmd < todayYmd) return "past";
+  if (dateYmd > todayYmd) return "future";
+  return "today";
 };
 
 export function buildTripPreviewDays({
@@ -142,20 +150,18 @@ export function buildTripPreviewDays({
         dayNumber,
         dateYmd,
         dateLabel: formatPreviewDayDate(date),
-        status:
-          dateYmd < todayYmd ? "past" : dateYmd > todayYmd ? "future" : "today",
+        status: getDayStatus(dateYmd, todayYmd),
         destinations: [...dayDestinations].sort(compareDestinationOrder),
       };
     });
 }
 
 export function getDefaultTripPreviewDayNumber(days = []) {
-  return (
-    days.find((day) => day.status === "today")?.dayNumber ||
-    days.find((day) => day.status === "future")?.dayNumber ||
-    days[days.length - 1]?.dayNumber ||
-    null
-  );
+  const todayDay = days.find((day) => day.status === "today");
+  if (todayDay) return todayDay.dayNumber;
+  const futureDay = days.find((day) => day.status === "future");
+  if (futureDay) return futureDay.dayNumber;
+  return days[days.length - 1]?.dayNumber || null;
 }
 
 export function getTripPreviewDayStartState(day) {

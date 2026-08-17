@@ -1,3 +1,7 @@
+// MAP: TripsTabScreen
+// ├── UI: @/modules/trips/components/{TripsDashboard, TripCard, TripSyncIndicator, LoadingState, EmptyTrips}
+// └── API: @/modules/trips/hooks/useTrips, @/modules/trips/hooks/useTripsOffline
+
 import { useCallback, useMemo, useState } from "react";
 import { View, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";

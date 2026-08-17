@@ -5,14 +5,16 @@ WORKDIR /app
 # Prisma's native query engine needs the OpenSSL ABI available at build time.
 RUN apk add --no-cache openssl
 
-# Copy package files
-COPY package*.json ./
+# Copy package manifests
+COPY package.json package-lock.json ./
 
 # Install dependencies
 RUN npm ci
 
-# Copy application source
-COPY . .
+# Copy only application inputs required to generate Prisma and run the API.
+COPY prisma/schema.prisma ./prisma/schema.prisma
+COPY prisma/migrations ./prisma/migrations
+COPY src ./src
 
 # Generate Prisma client and prune devDependencies
 RUN npx prisma generate --schema=prisma/schema.prisma && \
@@ -37,10 +39,9 @@ VOLUME ["/var/lib/didaugio/sensitive"]
 # Copy node_modules and prisma from builder
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
-
-# Copy application source
-COPY --chown=nodejs:nodejs . .
+COPY --from=builder --chown=nodejs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nodejs:nodejs /app/package-lock.json ./package-lock.json
+COPY --from=builder --chown=nodejs:nodejs /app/src ./src
 
 # Switch to non-root user
 USER nodejs

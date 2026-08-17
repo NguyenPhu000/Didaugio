@@ -19,11 +19,11 @@ export const handleGroqChat = async (req, res) => {
     }
 
     const userId = req.user?.userId || req.user?.id;
-    const { reply, relatedPlaces, requestLogId } = await processGroqChat({
+    const { reply, relatedPlaces, requestLogId } = await Promise.resolve(processGroqChat({
       messages,
       context,
       userId,
-    });
+    }));
 
     return res.status(200).json({
       success: true,

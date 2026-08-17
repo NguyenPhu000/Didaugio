@@ -1,3 +1,7 @@
+// MAP: ai.controller
+// ├── ROUTE: src/routes/ai/ai.route.js
+// └── SERVICE: src/services/ai/{aiStreaming.service.js, groq.service.js, groqSpeech.service.js}
+
 import { getPlaceById } from "../../services/place/place.service.js";
 import {
   buildSseErrorPayload,
@@ -21,6 +25,42 @@ import {
   buildChatSystemPrompt,
 } from "../../lib/promptBuilder.js";
 import { findRelatedPlacesByKeywords } from "../../utils/spatialQuery.js";
+
+const writeChatStream = (execution, res) => {
+  res.write(encodeSseData(execution.result.outputText));
+  if (execution.requestLogId) {
+    res.write(encodeSseEvent("metadata", { requestLogId: execution.requestLogId }));
+  }
+  res.write(encodeSseData("[DONE]"));
+  res.end();
+};
+
+const selectResponsePlaces = (relatedPlaces, reply, suggestedPlaceIds) =>
+  suggestedPlaceIds.length > 0
+    ? relatedPlaces.filter((place) => suggestedPlaceIds.includes(place.id))
+    : relatedPlaces.filter((place) => reply.toLowerCase().includes(place.name.toLowerCase()));
+
+const sendChatError = (err, res) => {
+  const aiError = toAiServiceError(err);
+  console.info("[AI]", { feature: "chat", status: err?.status ?? err?.statusCode ?? 500 });
+  if (res.headersSent) {
+    res.write(encodeSseData(buildSseErrorPayload(aiError)));
+    res.end();
+    return;
+  }
+  const responses = {
+    QUOTA_EXCEEDED: [429, "AI đã chạm giới hạn tần suất. Vui lòng thử lại sau."],
+    AI_UNAVAILABLE: [503, "Dịch vụ AI tạm thời không khả dụng, vui lòng thử lại sau."],
+    AI_TIMEOUT: [504, "Trợ lý AI phản hồi quá lâu, vui lòng thử lại sau."],
+  };
+  const [status, message] = responses[aiError.code] || [aiError.statusCode || 502, "Trợ lý AI đang gặp sự cố, vui lòng thử lại sau."];
+  return res.status(status).json({
+    success: false,
+    data: null,
+    message,
+    errorCode: aiError.code,
+  });
+};
 
 /**
  * POST /api/ai/place-summary
@@ -177,29 +217,13 @@ export const handleChat = async (req, res) => {
     });
 
     if (stream) {
-      res.write(encodeSseData(execution.result.outputText));
-      if (execution.requestLogId) {
-        res.write(
-          encodeSseEvent("metadata", {
-            requestLogId: execution.requestLogId,
-          }),
-        );
-      }
-      res.write(encodeSseData("[DONE]"));
-      res.end();
+      writeChatStream(execution, res);
       return;
     }
 
     const { reply, suggestedPlaceIds } = execution.result;
 
-    let responsePlaces = [];
-    if (suggestedPlaceIds.length > 0) {
-      responsePlaces = relatedPlaces.filter((p) => suggestedPlaceIds.includes(p.id));
-    } else {
-      responsePlaces = relatedPlaces.filter((p) =>
-        reply.toLowerCase().includes(p.name.toLowerCase()),
-      );
-    }
+    const responsePlaces = selectResponsePlaces(relatedPlaces, reply, suggestedPlaceIds);
 
     return res.json({
       success: true,
@@ -213,51 +237,7 @@ export const handleChat = async (req, res) => {
       message: "Thành công",
     });
   } catch (err) {
-    const aiError = toAiServiceError(err);
-    const isQuotaError = aiError.code === "QUOTA_EXCEEDED";
-    const isUnavailable = aiError.code === "AI_UNAVAILABLE";
-
-    console.info("[AI]", { feature: "chat", status: err?.status ?? err?.statusCode ?? 500 });
-
-    if (res.headersSent) {
-      res.write(encodeSseData(buildSseErrorPayload(aiError)));
-      res.end();
-      return;
-    }
-
-    if (isQuotaError) {
-      return res.status(429).json({
-        success: false,
-        data: null,
-        message: "AI đã chạm giới hạn tần suất. Vui lòng thử lại sau.",
-        errorCode: "QUOTA_EXCEEDED",
-      });
-    }
-
-    if (isUnavailable) {
-      return res.status(503).json({
-        success: false,
-        data: null,
-        message: "Dịch vụ AI tạm thời không khả dụng, vui lòng thử lại sau.",
-        errorCode: "AI_UNAVAILABLE",
-      });
-    }
-
-    if (aiError.code === "AI_TIMEOUT") {
-      return res.status(504).json({
-        success: false,
-        data: null,
-        message: "Trợ lý AI phản hồi quá lâu, vui lòng thử lại sau.",
-        errorCode: "AI_TIMEOUT",
-      });
-    }
-
-    return res.status(aiError.statusCode || 502).json({
-      success: false,
-      data: null,
-      message: "Trợ lý AI đang gặp sự cố, vui lòng thử lại sau.",
-      errorCode: aiError.code,
-    });
+    return sendChatError(err, res);
   }
 };
 

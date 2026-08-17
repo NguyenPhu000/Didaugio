@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-const DOCUMENT_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const DOCUMENT_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 const IMAGE_ACCEPT = "image/png,image/jpeg,image/jpg,image/webp";
 const IMAGE_AND_PDF_ACCEPT = "image/png,image/jpeg,image/jpg,image/webp,application/pdf";
 
@@ -81,7 +81,7 @@ const DocumentImageUploadField = ({
             return;
           }
 
-          if (maxFileSize && pickedFile.size > maxFileSize) {
+          if (maxFileSize && pickedFile.size >= maxFileSize) {
             toast.error(t("common.fileTooLarge"));
             return;
           }

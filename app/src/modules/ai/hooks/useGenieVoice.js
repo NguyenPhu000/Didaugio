@@ -34,6 +34,52 @@ const VOICE_RECORDING_OPTIONS = {
   bitRate: 64000,
 };
 
+const createSpeechCallbacks = ({
+  cleanText,
+  isCurrentSpeech,
+  setError,
+  setSafely,
+  setVoiceLevel,
+  setVoiceStatus,
+}) => {
+  const resetToIdle = () => {
+    if (!isCurrentSpeech()) return;
+    setSafely(setVoiceLevel, 0);
+    setVoiceStatus(VOICE_STATUS.IDLE);
+  };
+  const failPlayback = () => {
+    setSafely(setError, "Voice playback failed");
+    setSafely(setVoiceLevel, 0);
+    setVoiceStatus(VOICE_STATUS.ERROR);
+  };
+  const fallbackOptions = {
+    language: "vi",
+    rate: 0.95,
+    pitch: 1.0,
+    onDone: resetToIdle,
+    onError: () => {
+      if (!isCurrentSpeech()) return;
+      failPlayback();
+    },
+  };
+
+  return {
+    language: "vi-VN",
+    rate: 0.95,
+    pitch: 1.0,
+    onDone: resetToIdle,
+    onStopped: resetToIdle,
+    onError: () => {
+      if (!isCurrentSpeech()) return;
+      try {
+        Speech.speak(cleanText, fallbackOptions);
+      } catch {
+        failPlayback();
+      }
+    },
+  };
+};
+
 
 
 export function useGenieVoice() {
@@ -268,47 +314,14 @@ export function useGenieVoice() {
           && speechSessionRef.current === speechSession
         );
 
-        Speech.speak(cleanText, {
-          language: "vi-VN",
-          rate: 0.95,
-          pitch: 1.0,
-          onDone: () => {
-            if (!isCurrentSpeech()) return;
-            setSafely(setVoiceLevel, 0);
-            setVoiceStatus(VOICE_STATUS.IDLE);
-          },
-          onStopped: () => {
-            if (!isCurrentSpeech()) return;
-            setSafely(setVoiceLevel, 0);
-            setVoiceStatus(VOICE_STATUS.IDLE);
-          },
-          onError: () => {
-            if (!isCurrentSpeech()) return;
-            // Fallback sang nhãn "vi" nếu thiết bị không hỗ trợ mã "vi-VN"
-            try {
-              Speech.speak(cleanText, {
-                language: "vi",
-                rate: 0.95,
-                pitch: 1.0,
-                onDone: () => {
-                  if (!isCurrentSpeech()) return;
-                  setSafely(setVoiceLevel, 0);
-                  setVoiceStatus(VOICE_STATUS.IDLE);
-                },
-                onError: () => {
-                  if (!isCurrentSpeech()) return;
-                  setSafely(setError, "Voice playback failed");
-                  setSafely(setVoiceLevel, 0);
-                  setVoiceStatus(VOICE_STATUS.ERROR);
-                },
-              });
-            } catch {
-              setSafely(setError, "Voice playback failed");
-              setSafely(setVoiceLevel, 0);
-              setVoiceStatus(VOICE_STATUS.ERROR);
-            }
-          },
-        });
+        Speech.speak(cleanText, createSpeechCallbacks({
+          cleanText,
+          isCurrentSpeech,
+          setError,
+          setSafely,
+          setVoiceLevel,
+          setVoiceStatus,
+        }));
         return true;
       } catch {
         if (speechSessionRef.current !== speechSession) return false;

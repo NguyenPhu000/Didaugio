@@ -14,12 +14,12 @@ export function useActiveProvince() {
     staleTime: 24 * 60 * 60 * 1000,
   });
 
-  const setActiveProvince = async (nextProvinceCode) => {
+  const setActiveProvince = (nextProvinceCode) => {
     const nextReleaseId = provincesQuery.data?.datasetReleaseId ?? datasetReleaseId;
     const previousProvinceCode = provinceCode;
     persistProvince({ provinceCode: nextProvinceCode, datasetReleaseId: nextReleaseId });
     if (previousProvinceCode && previousProvinceCode !== nextProvinceCode) {
-      await queryClient.removeQueries({
+      queryClient.removeQueries({
         predicate: ({ queryKey }) => queryKey.includes(previousProvinceCode),
       });
     }

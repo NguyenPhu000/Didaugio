@@ -1,3 +1,7 @@
+// MAP: MapScreen
+// ├── UI: @/modules/map/components/{MapScreenCanvas, MapScreenOverlays, MapScreenTripOverlays, LocationPermissionState}
+// └── API: @/modules/map/hooks/{useMapActiveTripNavigation, useMapDiscoveryState, useMapPlaceRouting, useMapTripExperience}
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   StatusBar,

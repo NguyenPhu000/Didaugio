@@ -1,3 +1,7 @@
+// MAP: ExploreNearbyScreen
+// ├── UI: @/modules/explore/components/{ExploreListScaffold, ExplorePlaceList}
+// └── API: @/modules/explore/hooks/useExplore, @/modules/explore/hooks/useExploreLocation
+
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";

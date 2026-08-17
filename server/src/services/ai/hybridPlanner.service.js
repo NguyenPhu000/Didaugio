@@ -24,6 +24,30 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+const formatPrice = (value) => {
+  if (!value || value <= 0) return null;
+  if (value >= 1_000_000) {
+    const millions = value / 1_000_000;
+    return millions % 1 === 0 ? `${millions} triệu` : `${millions.toFixed(1)} triệu`;
+  }
+  return `${Math.round(value / 1000)}k`;
+};
+
+const buildPlacesContext = (providerContext) => {
+  const promptPlaces = Array.isArray(providerContext.places) ? providerContext.places : [];
+  return promptPlaces.map((place) => ({
+    id: place.id,
+    name: place.name,
+    category: place.categoryName || "Địa điểm",
+    rating: place.ratingAvg,
+    priceFrom: place.priceFrom || 0,
+    priceTo: place.priceTo || 0,
+    priceReadable: place.priceFrom && place.priceTo
+      ? `${formatPrice(place.priceFrom)} - ${formatPrice(place.priceTo)}`
+      : "Chưa cập nhật",
+  }));
+};
+
 export function buildHybridPlanUserPrompt(basePrompt, userRequest = "") {
   return userRequest
     ? `${basePrompt}\nUser request: ${userRequest}`
@@ -49,31 +73,8 @@ export async function generateHybridPlan(
     throw new Error("Danh sách địa điểm đầu vào trống.");
   }
 
-  // Helper format giá readable
-  const fmtPrice = (v) => {
-    if (!v || v <= 0) return null;
-    if (v >= 1_000_000) {
-      const m = v / 1_000_000;
-      return m % 1 === 0 ? `${m} triệu` : `${m.toFixed(1)} triệu`;
-    }
-    return `${Math.round(v / 1000)}k`;
-  };
-
   // Rút gọn địa điểm để tiết kiệm token và định hướng AI
-  const promptPlaces = Array.isArray(providerContext.places)
-    ? providerContext.places
-    : [];
-  const placesContext = promptPlaces.map((p) => ({
-    id: p.id,
-    name: p.name,
-    category: p.categoryName || "Địa điểm",
-    rating: p.ratingAvg,
-    priceFrom: p.priceFrom || 0,
-    priceTo: p.priceTo || 0,
-    priceReadable: p.priceFrom && p.priceTo
-      ? `${fmtPrice(p.priceFrom)} - ${fmtPrice(p.priceTo)}`
-      : "Chưa cập nhật",
-  }));
+  const placesContext = buildPlacesContext(providerContext);
   const requestedPlaceCount = placesContext.length;
   const selectionInstruction = requestedPlaceCount > 0
     ? `Use the place count requested by the user. If the user asks to plan with the provided or previous places, include all ${requestedPlaceCount} DB places in the timeline. Do not default to 3-4 places when more places were requested.`

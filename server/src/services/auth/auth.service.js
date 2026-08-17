@@ -301,108 +301,42 @@ export const registerBusiness = async (data, _clientInfo = {}) => {
   };
 };
 
-export const login = async (data, clientInfo = {}) => {
-  const validated = loginSchema.parse(data);
+const loginUserSelect = { role: true, profile: true };
 
-  // Find user by email or username
-  let user;
-  if (validated.email) {
-    user = await prisma.user.findUnique({
-      where: { email: validated.email },
-      include: {
-        role: true,
-        profile: true,
-      },
-    });
-  } else if (validated.username) {
-    user = await prisma.user.findUnique({
-      where: { username: validated.username },
-      include: {
-        role: true,
-        profile: true,
-      },
-    });
-  }
+const findLoginUser = (validated) => {
+  const where = validated.email
+    ? { email: validated.email }
+    : { username: validated.username };
+  return prisma.user.findUnique({ where, include: loginUserSelect });
+};
 
+const assertUserCanAttemptLogin = (user) => {
   if (!user || user.deletedAt) {
-    throw new ServiceError(
-      ERROR_MESSAGES.UNAUTHORIZED,
-      401,
-      ERROR_CODES.UNAUTHORIZED,
-    );
+    throw new ServiceError(ERROR_MESSAGES.UNAUTHORIZED, 401, ERROR_CODES.UNAUTHORIZED);
   }
-
-  // Check lockout
   if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
-    const remainingTime = Math.ceil(
-      (new Date(user.lockedUntil) - new Date()) / 60000,
-    );
+    const remainingTime = Math.ceil((new Date(user.lockedUntil) - new Date()) / 60000);
     throw new ServiceError(
       `Tài khoản bị khóa. Vui lòng thử lại sau ${remainingTime} phút`,
       423,
       "ACCOUNT_LOCKED",
     );
   }
+};
 
-  // Check password
-  const isValidPassword = await bcrypt.compare(
-    validated.password,
-    user.password,
-  );
-
-  if (!isValidPassword) {
-    const failedCount = user.failedLoginCount + 1;
-    const updateData = { failedLoginCount: failedCount };
-
-    if (failedCount >= MAX_FAILED_ATTEMPTS) {
-      updateData.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION);
-    }
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: updateData,
-    });
-
-    const remainingAttempts = MAX_FAILED_ATTEMPTS - failedCount;
-    if (remainingAttempts > 0) {
-      throw new ServiceError(
-        `Email hoặc mật khẩu không đúng. Còn ${remainingAttempts} lần thử`,
-        401,
-        ERROR_CODES.UNAUTHORIZED,
-      );
-    } else {
-      throw new ServiceError(
-        "Tài khoản đã bị khóa do đăng nhập sai quá nhiều lần",
-        423,
-        "ACCOUNT_LOCKED",
-      );
-    }
-  }
-
-  // 🚫 BLOCK: GUEST role (id=6) cannot login to web admin
-  // GUEST is reserved for unauthenticated mobile sessions only.
-  // USER (id=5) = regular tourist — can login to web if needed
+const assertAuthenticatedAccount = (user) => {
   if (user.roleId === ROLES.GUEST) {
-    throw new ServiceError(
-      "GUEST users cannot login to web admin. Mobile app only.",
-      403,
-      "GUEST_LOGIN_NOT_ALLOWED",
-    );
+    throw new ServiceError("GUEST users cannot login to web admin. Mobile app only.", 403, "GUEST_LOGIN_NOT_ALLOWED");
   }
-
-  // Check status
-  if (user.status === USER_STATUS.INACTIVE) {
-    throw new ServiceError(
+  const statusErrors = {
+    [USER_STATUS.INACTIVE]: [
       "Tài khoản chưa được kích hoạt. Vui lòng liên hệ quản trị viên hoặc đăng nhập bằng Google để kích hoạt.",
-      403,
       "ACCOUNT_INACTIVE",
-    );
-  }
-
-  if (user.status === USER_STATUS.BANNED) {
-    throw new ServiceError("Tài khoản đã bị cấm", 403, "ACCOUNT_BANNED");
-  }
-
+    ],
+    [USER_STATUS.BANNED]: ["Tài khoản đã bị cấm", "ACCOUNT_BANNED"],
+  };
+  const statusError = statusErrors[user.status];
+  if (statusError) throw new ServiceError(statusError[0], 403, statusError[1]);
   if (!user.emailVerified) {
     throw new ServiceError(
       "Email chưa được xác thực. Vui lòng kiểm tra hộp thư và xác thực trước khi đăng nhập.",
@@ -410,6 +344,37 @@ export const login = async (data, clientInfo = {}) => {
       "EMAIL_NOT_VERIFIED",
     );
   }
+};
+
+const assertPasswordMatches = async (user, password) => {
+  if (await bcrypt.compare(password, user.password)) return;
+  const failedCount = user.failedLoginCount + 1;
+  const updateData = { failedLoginCount: failedCount };
+  if (failedCount >= MAX_FAILED_ATTEMPTS) {
+    updateData.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION);
+  }
+  await prisma.user.update({ where: { id: user.id }, data: updateData });
+  const remainingAttempts = MAX_FAILED_ATTEMPTS - failedCount;
+  if (remainingAttempts > 0) {
+    throw new ServiceError(
+      `Email hoặc mật khẩu không đúng. Còn ${remainingAttempts} lần thử`,
+      401,
+      ERROR_CODES.UNAUTHORIZED,
+    );
+  }
+  throw new ServiceError(
+    "Tài khoản đã bị khóa do đăng nhập sai quá nhiều lần",
+    423,
+    "ACCOUNT_LOCKED",
+  );
+};
+
+export const login = async (data, clientInfo = {}) => {
+  const validated = loginSchema.parse(data);
+  const user = await findLoginUser(validated);
+  assertUserCanAttemptLogin(user);
+  await assertPasswordMatches(user, validated.password);
+  assertAuthenticatedAccount(user);
 
   // Reset lockout
   await prisma.user.update({
@@ -669,12 +634,10 @@ export const changePassword = async (userId, data) => {
 export const forgotPassword = async (data, ipAddress = null) => {
   const validated = forgotPasswordSchema.parse(data);
 
-  const result = await passwordResetService.create(validated.email, ipAddress);
+  await passwordResetService.create(validated.email, ipAddress);
 
   // SECURITY: Never return reset token in response, even in development
   // Token should only be sent via email channel
-  void result; // Acknowledge usage to prevent lint errors
-
   return {
     message: "Nếu email tồn tại, bạn sẽ nhận được link đặt lại mật khẩu",
   };
@@ -860,6 +823,119 @@ export const revokeSession = async (userId, sessionId) => {
   return { message: SUCCESS_MESSAGES.ACTION_SUCCESS };
 };
 
+function resolveGoogleAudienceOptions(options) {
+  const configuredAudiences = getGoogleAllowedAudiences();
+  const requestedAudience = String(options.expectedAudience || "").trim();
+  const expectedAudiences = requestedAudience ? [requestedAudience] : configuredAudiences;
+  return {
+    expectedAudiences,
+    expectedAudience: expectedAudiences.length <= 1 ? expectedAudiences[0] || null : expectedAudiences,
+    expectedNonce: options.expectedNonce || null,
+  };
+}
+
+async function verifyGoogleToken(idToken, expectedAudience) {
+  const client = new OAuth2Client(Array.isArray(expectedAudience) ? expectedAudience[0] : expectedAudience);
+  try {
+    const ticket = await client.verifyIdToken({ idToken, audience: expectedAudience });
+    return ticket.getPayload();
+  } catch (error) {
+    if (isGoogleVerificationInfrastructureError(error)) {
+      throw new ServiceError("Dịch vụ xác minh Google đang tạm thời không khả dụng. Vui lòng thử lại sau.", 503, "GOOGLE_VERIFICATION_UNAVAILABLE");
+    }
+    throw new ServiceError(`Google token error: ${error.message}`, 401, "INVALID_GOOGLE_TOKEN");
+  }
+}
+
+function assertGoogleTokenClaims(tokenInfo, expectedAudiences, expectedNonce) {
+  if (!GOOGLE_ALLOWED_ISSUERS.has(String(tokenInfo.iss || ""))) throw new ServiceError("Google token issuer không hợp lệ", 401, "INVALID_GOOGLE_TOKEN");
+  const audience = String(tokenInfo.aud || "");
+  const authorizedParty = String(tokenInfo.azp || "");
+  if (expectedAudiences.length > 0 && !expectedAudiences.includes(audience) && !expectedAudiences.includes(authorizedParty)) {
+    throw new ServiceError("Google token audience không hợp lệ", 401, "INVALID_GOOGLE_TOKEN");
+  }
+  if (expectedNonce && String(tokenInfo.nonce || "") !== expectedNonce) throw new ServiceError("Google token nonce không hợp lệ", 401, "INVALID_GOOGLE_TOKEN");
+  const expMillis = Number(tokenInfo.exp || 0) * 1000;
+  if (!Number.isFinite(expMillis) || expMillis <= Date.now()) throw new ServiceError("Google token đã hết hạn", 401, "INVALID_GOOGLE_TOKEN");
+}
+
+function normalizeGoogleIdentity(tokenInfo) {
+  const email = String(tokenInfo.email || "").trim().toLowerCase();
+  if (!email) throw new ServiceError("Không lấy được email từ Google", 401, "NO_EMAIL");
+  if (tokenInfo.email_verified !== true) throw new ServiceError("Email Google chưa được xác thực", 401, "EMAIL_NOT_VERIFIED");
+  return { email, name: tokenInfo.name, picture: tokenInfo.picture };
+}
+
+async function upsertGoogleUser({ email, name, picture, isBusinessContext }) {
+  let user = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
+    include: { role: true, profile: true },
+  });
+  if (user?.deletedAt) {
+    await prisma.userSession.deleteMany({ where: { userId: user.id } });
+    throw new ServiceError("Tài khoản đã bị xóa. Vui lòng liên hệ quản trị viên.", 403, "ACCOUNT_DELETED");
+  }
+  if (!user) {
+    const username = await generateUniqueUsername({ prismaClient: prisma, email, preferred: name, fallback: "google_user" });
+    return prisma.user.create({
+      data: {
+        email,
+        username,
+        password: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), BCRYPT_ROUNDS),
+        roleId: isBusinessContext ? ROLES.BUSINESS : ROLES.USER,
+        status: USER_STATUS.ACTIVE,
+        emailVerified: true,
+        profile: { create: { fullName: name || email.split("@")[0], avatar: picture || null } },
+      },
+      include: { role: true, profile: true },
+    });
+  }
+
+  const shouldUpdateAvatar = picture && !user.profile?.avatar;
+  const shouldVerifyEmail = !user.emailVerified;
+  const shouldBackfillUsername = !user.username;
+  const shouldUpgradeToBusiness = isBusinessContext && user.roleId === ROLES.USER;
+  const nextUsername = shouldBackfillUsername
+    ? await generateUniqueUsername({ prismaClient: prisma, email, preferred: name, fallback: "google_user", excludeUserId: user.id })
+    : null;
+  if (!(shouldUpdateAvatar || shouldVerifyEmail || shouldBackfillUsername || shouldUpgradeToBusiness)) return user;
+  user = await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      ...(shouldUpgradeToBusiness ? { roleId: ROLES.BUSINESS } : {}),
+      ...(shouldVerifyEmail ? { emailVerified: true } : {}),
+      ...(shouldBackfillUsername ? { username: nextUsername } : {}),
+      ...(shouldUpdateAvatar ? { profile: { update: { avatar: picture } } } : {}),
+    },
+    include: { role: true, profile: true },
+  });
+  if (shouldUpgradeToBusiness) invalidateUserCache(user.id);
+  return user;
+}
+
+function assertActiveGoogleUser(user) {
+  if (user.status === USER_STATUS.BANNED) throw new ServiceError("Tài khoản đã bị cấm", 403, "ACCOUNT_BANNED");
+  if (user.status === USER_STATUS.INACTIVE) throw new ServiceError("Tài khoản chưa được kích hoạt hoặc đang bị khóa", 403, "ACCOUNT_INACTIVE");
+}
+
+async function createGoogleSession(user, clientInfo) {
+  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+  const accessToken = generateAccessToken({ userId: user.id, email: user.email, roleId: user.roleId, roleName: user.role.name });
+  const refreshToken = generateRefreshToken();
+  await prisma.userSession.create({
+    data: {
+      userId: user.id,
+      refreshToken: hashToken(refreshToken),
+      deviceId: clientInfo.deviceId || null,
+      deviceName: clientInfo.deviceName || "Mobile App (Google)",
+      ipAddress: clientInfo.ipAddress || null,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRES_MS),
+    },
+  });
+  await prisma.userSession.deleteMany({ where: { userId: user.id, expiresAt: { lt: new Date() } } });
+  return { accessToken, refreshToken };
+}
+
 /**
  * Xác thực Google id_token và tạo phiên đăng nhập
  * Tự động tạo tài khoản nếu email chưa tồn tại
@@ -873,235 +949,17 @@ export const loginWithGoogle = async (
     throw new ServiceError("id_token is required", 400, "MISSING_ID_TOKEN");
   }
 
-  const configuredAudiences = getGoogleAllowedAudiences();
-  const requestedAudience = String(options.expectedAudience || "").trim();
-  const expectedAudiences = requestedAudience
-    ? [requestedAudience]
-    : configuredAudiences;
-  const expectedAudience =
-    expectedAudiences.length <= 1 ? expectedAudiences[0] || null : expectedAudiences;
-  const expectedNonce = options.expectedNonce || null;
-
-  // Xác thực id_token với google-auth-library
-  const client = new OAuth2Client(
-    Array.isArray(expectedAudience) ? expectedAudience[0] : expectedAudience,
-  );
-  let tokenInfo;
-  
-  try {
-    const ticket = await client.verifyIdToken({
-      idToken,
-      audience: expectedAudience,
-    });
-    tokenInfo = ticket.getPayload();
-  } catch (error) {
-    if (isGoogleVerificationInfrastructureError(error)) {
-      throw new ServiceError(
-        "Dịch vụ xác minh Google đang tạm thời không khả dụng. Vui lòng thử lại sau.",
-        503,
-        "GOOGLE_VERIFICATION_UNAVAILABLE",
-      );
-    }
-
-    throw new ServiceError(
-      `Google token error: ${error.message}`,
-      401,
-      "INVALID_GOOGLE_TOKEN",
-    );
-  }
-
-  const issuer = String(tokenInfo.iss || "");
-  if (!GOOGLE_ALLOWED_ISSUERS.has(issuer)) {
-    throw new ServiceError(
-      "Google token issuer không hợp lệ",
-      401,
-      "INVALID_GOOGLE_TOKEN",
-    );
-  }
-
-  const audience = String(tokenInfo.aud || "");
-  const authorizedParty = String(tokenInfo.azp || "");
-  const audienceAllowed =
-    expectedAudiences.length === 0 ||
-    expectedAudiences.includes(audience) ||
-    expectedAudiences.includes(authorizedParty);
-
-  if (!audienceAllowed) {
-    throw new ServiceError(
-      "Google token audience không hợp lệ",
-      401,
-      "INVALID_GOOGLE_TOKEN",
-    );
-  }
-
-  if (expectedNonce && String(tokenInfo.nonce || "") !== expectedNonce) {
-    throw new ServiceError(
-      "Google token nonce không hợp lệ",
-      401,
-      "INVALID_GOOGLE_TOKEN",
-    );
-  }
-
-  const expMillis = Number(tokenInfo.exp || 0) * 1000;
-  if (!Number.isFinite(expMillis) || expMillis <= Date.now()) {
-    throw new ServiceError(
-      "Google token đã hết hạn",
-      401,
-      "INVALID_GOOGLE_TOKEN",
-    );
-  }
-
-  const rawEmail = tokenInfo.email;
-  const email = String(rawEmail || "").trim().toLowerCase();
-  const { email_verified, name, picture } = tokenInfo;
-
-  if (!email) {
-    throw new ServiceError("Không lấy được email từ Google", 401, "NO_EMAIL");
-  }
-
-  if (email_verified !== true) {
-    throw new ServiceError(
-      "Email Google chưa được xác thực",
-      401,
-      "EMAIL_NOT_VERIFIED",
-    );
-  }
+  const { expectedAudiences, expectedAudience, expectedNonce } = resolveGoogleAudienceOptions(options);
+  const tokenInfo = await verifyGoogleToken(idToken, expectedAudience);
+  assertGoogleTokenClaims(tokenInfo, expectedAudiences, expectedNonce);
+  const { email, name, picture } = normalizeGoogleIdentity(tokenInfo);
 
   const isBusinessContext = options.context === "web_business";
 
-  // Tìm user theo email (case-insensitive)
-  let user = await prisma.user.findFirst({
-    where: {
-      email: {
-        equals: email,
-        mode: "insensitive",
-      },
-    },
-    include: { role: true, profile: true },
-  });
+  const user = await upsertGoogleUser({ email, name, picture, isBusinessContext });
 
-  if (user?.deletedAt) {
-    await prisma.userSession.deleteMany({
-      where: { userId: user.id },
-    });
-    throw new ServiceError(
-      "Tài khoản đã bị xóa. Vui lòng liên hệ quản trị viên.",
-      403,
-      "ACCOUNT_DELETED",
-    );
-  }
-
-  if (!user) {
-    const generatedUsername = await generateUniqueUsername({
-      prismaClient: prisma,
-      email,
-      preferred: name,
-      fallback: "google_user",
-    });
-
-    // Tạo tài khoản mới - nếu đăng ký trong luồng web_business thì trực tiếp gán vai trò BUSINESS
-    user = await prisma.user.create({
-      data: {
-        email,
-        username: generatedUsername,
-        password: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), BCRYPT_ROUNDS),
-        roleId: isBusinessContext ? ROLES.BUSINESS : ROLES.USER,
-        status: USER_STATUS.ACTIVE,
-        emailVerified: true, // Google đã xác thực rồi
-        profile: {
-          create: {
-            fullName: name || email.split("@")[0],
-            avatar: picture || null,
-          },
-        },
-      },
-      include: { role: true, profile: true },
-    });
-  } else {
-    const shouldUpdateAvatar = picture && !user.profile?.avatar;
-    const shouldVerifyEmail = !user.emailVerified;
-    const shouldBackfillUsername = !user.username;
-    const shouldUpgradeToBusiness = isBusinessContext && user.roleId === ROLES.USER;
-
-    const nextUsername = shouldBackfillUsername
-      ? await generateUniqueUsername({
-          prismaClient: prisma,
-          email,
-          preferred: name,
-          fallback: "google_user",
-          excludeUserId: user.id,
-        })
-      : null;
-
-    if (shouldUpdateAvatar || shouldVerifyEmail || shouldBackfillUsername || shouldUpgradeToBusiness) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          ...(shouldUpgradeToBusiness ? { roleId: ROLES.BUSINESS } : {}),
-          ...(shouldVerifyEmail ? { emailVerified: true } : {}),
-          ...(shouldBackfillUsername ? { username: nextUsername } : {}),
-          ...(shouldUpdateAvatar
-            ? {
-                profile: {
-                  update: {
-                    avatar: picture,
-                  },
-                },
-              }
-            : {}),
-        },
-        include: { role: true, profile: true },
-      });
-      if (shouldUpgradeToBusiness) {
-        invalidateUserCache(user.id);
-      }
-    }
-  }
-
-  if (user.status === USER_STATUS.BANNED) {
-    throw new ServiceError("Tài khoản đã bị cấm", 403, "ACCOUNT_BANNED");
-  }
-
-  if (user.status === USER_STATUS.INACTIVE) {
-    throw new ServiceError(
-      "Tài khoản chưa được kích hoạt hoặc đang bị khóa",
-      403,
-      "ACCOUNT_INACTIVE",
-    );
-  }
-
-  // Update lastLoginAt
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { lastLoginAt: new Date() },
-  });
-
-  // Generate tokens
-  const accessToken = generateAccessToken({
-    userId: user.id,
-    email: user.email,
-    roleId: user.roleId,
-    roleName: user.role.name,
-  });
-
-  const refreshToken = generateRefreshToken();
-
-  // Tạo session
-  await prisma.userSession.create({
-    data: {
-      userId: user.id,
-      refreshToken: hashToken(refreshToken),
-      deviceId: clientInfo.deviceId || null,
-      deviceName: clientInfo.deviceName || "Mobile App (Google)",
-      ipAddress: clientInfo.ipAddress || null,
-      expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRES_MS),
-    },
-  });
-
-  // Cleanup expired sessions
-  await prisma.userSession.deleteMany({
-    where: { userId: user.id, expiresAt: { lt: new Date() } },
-  });
+  assertActiveGoogleUser(user);
+  const { accessToken, refreshToken } = await createGoogleSession(user, clientInfo);
 
   eventEmitter.emit(EVENTS.USER.LOGGED_IN, { userId: user.id });
 

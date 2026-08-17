@@ -1,3 +1,7 @@
+// MAP: booking.controller
+// ├── ROUTE: src/routes/booking/booking.routes.js
+// └── SERVICE: src/services/booking/{booking.service.js, bookingSchedule.service.js}
+
 import * as bookingService from "../../services/booking/booking.service.js";
 import * as bookingScheduleService from "../../services/booking/bookingSchedule.service.js";
 import { resolveBusinessId } from "../../utils/businessScope.js";

@@ -110,6 +110,35 @@ export async function checkResourceOverlap(tx, payload) {
  * @param {import("@prisma/client").Prisma.TransactionClient} tx
  * @param {{ serviceId: number; bookingAt: Date; quantity: number; resourceId?: number; excludeBookingId?: number }} payload
  */
+async function checkResourceAvailability(tx, { serviceId, bookingAt, quantity, requestedResourceId, excludeBookingId }, svc) {
+  let resourceId;
+  try { resourceId = normalizeRequestedResourceId(svc, requestedResourceId); }
+  catch { return { ok: false, used: 0, capacity: 0, reason: "RESOURCE_REQUIRED" }; }
+  await tx.$executeRaw`SELECT id FROM place_resources WHERE id = ${resourceId} FOR UPDATE`;
+  const resource = await tx.placeResource.findUnique({ where: { id: resourceId }, select: { id: true, status: true, serviceId: true, placeId: true, capacity: true } });
+  if (!resource || resource.status !== "active" || resource.serviceId !== svc.id || resource.placeId !== svc.placeId || (Number.isInteger(resource.capacity) && resource.capacity > 0 && quantity > resource.capacity)) {
+    return { ok: false, used: 0, capacity: resource?.capacity ?? 0, reason: "RESOURCE_INVALID" };
+  }
+  const blocked = await tx.businessBlockedDate.findFirst({ where: { businessId: svc.businessId, date: toUseDateOnly(bookingAt), OR: [{ serviceId: null }, { serviceId }] } });
+  if (blocked) return { ok: false, used: 0, capacity: 0, reason: "BLOCKED_DATE" };
+  const { startTime, endTime } = resolveOccupiedInterval(svc, bookingAt);
+  const overlapResult = await checkResourceOverlap(tx, { serviceId, startTime, endTime, resourceId, excludeBookingId });
+  if (!overlapResult.ok) return { ok: false, used: 0, capacity: resource.capacity ?? 1, reason: "RESOURCE_OVERLAP", resourceId, startTime, endTime, overlappingBookings: overlapResult.overlappingBookings };
+  return { ok: true, used: 0, capacity: resource.capacity ?? 1, resourceId, startTime, endTime };
+}
+
+async function checkCapacityAvailability(tx, { serviceId, bookingAt, quantity, excludeBookingId }, svc) {
+  const blocked = await tx.businessBlockedDate.findFirst({ where: { businessId: svc.businessId, date: toUseDateOnly(bookingAt), OR: [{ serviceId: null }, { serviceId }] } });
+  if (blocked) return { ok: false, used: 0, capacity: 0, reason: "BLOCKED_DATE" };
+  const cap = svc.maxCapacity ?? 999_999;
+  const start = startOfMinuteUtc(new Date(bookingAt));
+  const agg = await tx.booking.aggregate({ where: { serviceId, ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}), status: { in: ACTIVE_STATUSES }, deletedAt: null, bookingAt: { gte: start, lt: endOfMinuteUtc(start) } }, _sum: { quantity: true } });
+  const used = agg._sum.quantity || 0;
+  const overbookingAllowed = allowsCapacityOverbooking(svc, svc.business?.settings);
+  const ok = overbookingAllowed || used + quantity <= cap;
+  return { ok, used, capacity: cap, resourceId: null, startTime: null, endTime: null, ...(ok ? {} : { reason: "CAPACITY_EXCEEDED" }) };
+}
+
 export async function checkAvailability(tx, payload) {
   const { serviceId, bookingAt, quantity, resourceId: requestedResourceId, excludeBookingId } = payload;
 
@@ -137,138 +166,9 @@ export async function checkAvailability(tx, payload) {
   }
 
   if (resolveBookingModel(svc) === "resource") {
-    let resourceId;
-    try {
-      resourceId = normalizeRequestedResourceId(svc, requestedResourceId);
-    } catch (error) {
-      return {
-        ok: false,
-        used: 0,
-        capacity: 0,
-        reason: "RESOURCE_REQUIRED",
-      };
-    }
-
-    await tx.$executeRaw`SELECT id FROM place_resources WHERE id = ${resourceId} FOR UPDATE`;
-    const resource = await tx.placeResource.findUnique({
-      where: { id: resourceId },
-      select: {
-        id: true,
-        status: true,
-        serviceId: true,
-        placeId: true,
-        capacity: true,
-      },
-    });
-
-    if (
-      !resource ||
-      resource.status !== "active" ||
-      resource.serviceId !== svc.id ||
-      resource.placeId !== svc.placeId
-    ) {
-      return {
-        ok: false,
-        used: 0,
-        capacity: resource?.capacity ?? 0,
-        reason: "RESOURCE_INVALID",
-      };
-    }
-
-    if (Number.isInteger(resource.capacity) && resource.capacity > 0 && quantity > resource.capacity) {
-      return {
-        ok: false,
-        used: 0,
-        capacity: resource.capacity,
-        reason: "RESOURCE_INVALID",
-      };
-    }
-
-    const bookingDate = toUseDateOnly(bookingAt);
-    const blocked = await tx.businessBlockedDate.findFirst({
-      where: {
-        businessId: svc.businessId,
-        date: bookingDate,
-        OR: [{ serviceId: null }, { serviceId }],
-      },
-    });
-    if (blocked) {
-      return { ok: false, used: 0, capacity: 0, reason: "BLOCKED_DATE" };
-    }
-
-    const { startTime, endTime } = resolveOccupiedInterval(svc, bookingAt);
-    const overlapResult = await checkResourceOverlap(tx, {
-      serviceId,
-      startTime,
-      endTime,
-      resourceId,
-      excludeBookingId,
-    });
-
-    if (!overlapResult.ok) {
-      return {
-        ok: false,
-        used: 0,
-        capacity: resource.capacity ?? 1,
-        reason: "RESOURCE_OVERLAP",
-        resourceId,
-        startTime,
-        endTime,
-        overlappingBookings: overlapResult.overlappingBookings,
-      };
-    }
-
-    return {
-      ok: true,
-      used: 0,
-      capacity: resource.capacity ?? 1,
-      resourceId,
-      startTime,
-      endTime,
-    };
+    return checkResourceAvailability(tx, { serviceId, bookingAt, quantity, requestedResourceId, excludeBookingId }, svc);
   }
-
-  // Check blocked dates
-  const bookingDate = toUseDateOnly(bookingAt);
-  const blocked = await tx.businessBlockedDate.findFirst({
-    where: {
-      businessId: svc.businessId,
-      date: bookingDate,
-      OR: [{ serviceId: null }, { serviceId }],
-    },
-  });
-  if (blocked) {
-    return { ok: false, used: 0, capacity: 0, reason: "BLOCKED_DATE" };
-  }
-
-  const cap = svc.maxCapacity ?? 999_999;
-  const start = startOfMinuteUtc(new Date(bookingAt));
-  const end = endOfMinuteUtc(start);
-
-  const agg = await tx.booking.aggregate({
-    where: {
-      serviceId,
-      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
-      status: { in: ACTIVE_STATUSES },
-      deletedAt: null,
-      bookingAt: { gte: start, lt: end },
-    },
-    _sum: { quantity: true },
-  });
-
-  const used = agg._sum.quantity || 0;
-  const overbookingAllowed = allowsCapacityOverbooking(svc, svc.business?.settings);
-  return {
-    ok: overbookingAllowed || used + quantity <= cap,
-    used,
-    capacity: cap,
-    resourceId: null,
-    startTime: null,
-    endTime: null,
-    ...(overbookingAllowed || used + quantity <= cap
-      ? {}
-      : { reason: "CAPACITY_EXCEEDED" }),
-  };
+  return checkCapacityAvailability(tx, { serviceId, bookingAt, quantity, excludeBookingId }, svc);
 }
 
 /**
@@ -306,6 +206,53 @@ export function assertAvailability(availability) {
     ERROR_CODES.CONFLICT,
   ];
   throw new ServiceError(message, statusCode, errorCode);
+}
+
+const buildBlockedAvailability = ({ dateStr, serviceId, bookingModel, slotDurationMinutes, bufferMinutes }) => (
+  bookingModel === "resource"
+    ? { date: dateStr, serviceId, available: false, reason: "BLOCKED_DATE", bookingModel, slotDurationMinutes, bufferMinutes, resources: [] }
+    : { date: dateStr, serviceId, available: false, reason: "BLOCKED_DATE", slots: [] }
+);
+
+async function getResourceAvailability({ serviceId, dateStr, service, startOfDay, endOfDay, dayHours, slotDurationMinutes, bufferMinutes }) {
+  const resources = (await prisma.placeResource.findMany({
+    where: { serviceId, placeId: service.placeId, status: "active" },
+    select: { id: true, name: true, code: true, resourceType: true, capacity: true },
+    orderBy: [{ position: "asc" }, { id: "asc" }],
+  })).filter((resource) => resource.status === undefined || (resource.status === "active" && resource.serviceId === serviceId && resource.placeId === service.placeId));
+  const resourceIds = resources.map((resource) => resource.id);
+  const resourceBookings = resourceIds.length === 0 ? [] : await prisma.booking.findMany({
+    where: { serviceId, resourceId: { in: resourceIds }, status: { in: ACTIVE_STATUSES }, deletedAt: null, startTime: { not: null, lt: endOfDay }, endTime: { not: null, gt: startOfDay } },
+    select: { resourceId: true, startTime: true, endTime: true },
+  });
+  const resourcesWithSlots = resources.map((resource) => ({
+    id: resource.id,
+    name: resource.name,
+    code: resource.code,
+    resourceType: resource.resourceType,
+    capacity: resource.capacity,
+    bookedSlots: resourceBookings.filter((booking) => booking.resourceId === resource.id).map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime })),
+  }));
+  return { date: dateStr, serviceId, available: dayHours.closed !== true && resourcesWithSlots.length > 0, bookingModel: "resource", slotDurationMinutes, bufferMinutes, resources: resourcesWithSlots };
+}
+
+function buildCapacityAvailability({ serviceId, dateStr, service, businessSettings, activeBookings }) {
+  const cap = service.maxCapacity ?? 999_999;
+  const overbookingAllowed = allowsCapacityOverbooking(service, businessSettings);
+  const slots = [];
+  const now = new Date();
+  const isToday = dateStr === toUseDateOnly(now).toISOString().slice(0, 10);
+  for (let hour = 0; hour <= 23; hour += 1) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      const slotStart = combineUseDateAndTime(dateStr, `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
+      if (isToday && slotStart <= now) continue;
+      if (!isWithinOperatingHours(businessSettings, slotStart)) continue;
+      if (!evaluateBusinessBookingPolicy({ settings: businessSettings, bookingAt: slotStart, now }).ok) continue;
+      const usedQty = activeBookings.filter((booking) => booking.bookingAt && startOfMinuteUtc(booking.bookingAt).getTime() === slotStart.getTime()).reduce((sum, booking) => sum + booking.quantity, 0);
+      slots.push({ time: formatVietnamTime(slotStart), startTime: slotStart.toISOString(), available: overbookingAllowed || usedQty < cap, remaining: Math.max(0, cap - usedQty), capacity: cap });
+    }
+  }
+  return { date: dateStr, serviceId, available: slots.some((slot) => slot.available), bookingModel: "capacity", slots };
 }
 
 /**
@@ -355,91 +302,13 @@ export async function getAvailableSlots(serviceId, dateStr) {
   });
 
   if (blocked) {
-    if (bookingModel === "resource") {
-      return {
-        date: dateStr,
-        serviceId: normalizedServiceId,
-        available: false,
-        reason: "BLOCKED_DATE",
-        bookingModel,
-        slotDurationMinutes,
-        bufferMinutes,
-        resources: [],
-      };
-    }
-    return {
-      date: dateStr,
-      serviceId: normalizedServiceId,
-      available: false,
-      reason: "BLOCKED_DATE",
-      slots: [],
-    };
+    return buildBlockedAvailability({ dateStr, serviceId: normalizedServiceId, bookingModel, slotDurationMinutes, bufferMinutes });
   }
 
   const { start: startOfDay, end: endOfDay } = vietnamDayBounds(dateStr);
-  const cap = service.maxCapacity ?? 999_999;
 
   if (bookingModel === "resource") {
-    const resources = (await prisma.placeResource.findMany({
-      where: {
-        serviceId: normalizedServiceId,
-        placeId: service.placeId,
-        status: "active",
-      },
-      select: {
-        id: true,
-        name: true,
-        code: true,
-        resourceType: true,
-        capacity: true,
-      },
-      orderBy: [{ position: "asc" }, { id: "asc" }],
-    })).filter((resource) =>
-      resource.status === undefined || (
-        resource.status === "active" &&
-        resource.serviceId === normalizedServiceId &&
-        resource.placeId === service.placeId
-      ),
-    );
-
-    const resourceIds = resources.map((resource) => resource.id);
-    const resourceBookings = resourceIds.length === 0
-      ? []
-      : await prisma.booking.findMany({
-        where: {
-          serviceId: normalizedServiceId,
-          resourceId: { in: resourceIds },
-          status: { in: ACTIVE_STATUSES },
-          deletedAt: null,
-          startTime: { not: null, lt: endOfDay },
-          endTime: { not: null, gt: startOfDay },
-        },
-        select: { resourceId: true, startTime: true, endTime: true },
-      });
-
-    const resourcesWithSlots = resources.map((resource) => ({
-      id: resource.id,
-      name: resource.name,
-      code: resource.code,
-      resourceType: resource.resourceType,
-      capacity: resource.capacity,
-      bookedSlots: resourceBookings
-        .filter((booking) => booking.resourceId === resource.id)
-        .map((booking) => ({
-          startTime: booking.startTime,
-          endTime: booking.endTime,
-        })),
-    }));
-
-    return {
-      date: dateStr,
-      serviceId: normalizedServiceId,
-      available: dayHours.closed !== true && resourcesWithSlots.length > 0,
-      bookingModel: "resource",
-      slotDurationMinutes,
-      bufferMinutes,
-      resources: resourcesWithSlots,
-    };
+    return getResourceAvailability({ serviceId: normalizedServiceId, dateStr, service, startOfDay, endOfDay, dayHours, slotDurationMinutes, bufferMinutes });
   }
 
   const activeBookings = await prisma.booking.findMany({
@@ -455,43 +324,5 @@ export async function getAvailableSlots(serviceId, dateStr) {
     },
   });
 
-  const SLOT_INTERVAL_MINUTES = 30;
-  const overbookingAllowed = allowsCapacityOverbooking(service, businessSettings);
-  const slots = [];
-  const now = new Date();
-  const isToday = dateStr === toUseDateOnly(now).toISOString().slice(0, 10);
-
-  for (let hour = 0; hour <= 23; hour++) {
-    for (let minute = 0; minute < 60; minute += SLOT_INTERVAL_MINUTES) {
-      const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-      const slotStart = combineUseDateAndTime(dateStr, time);
-
-      if (isToday && slotStart <= now) continue;
-      if (!isWithinOperatingHours(businessSettings, slotStart)) continue;
-      if (!evaluateBusinessBookingPolicy({ settings: businessSettings, bookingAt: slotStart, now }).ok) {
-        continue;
-      }
-
-      const usedQty = activeBookings
-        .filter((booking) => booking.bookingAt && startOfMinuteUtc(booking.bookingAt).getTime() === slotStart.getTime())
-        .reduce((sum, booking) => sum + booking.quantity, 0);
-      const available = overbookingAllowed || usedQty < cap;
-
-      slots.push({
-        time: formatVietnamTime(slotStart),
-        startTime: slotStart.toISOString(),
-        available,
-        remaining: Math.max(0, cap - usedQty),
-        capacity: cap,
-      });
-    }
-  }
-
-  return {
-    date: dateStr,
-    serviceId: normalizedServiceId,
-    available: slots.some((s) => s.available),
-    bookingModel: "capacity",
-    slots,
-  };
+  return buildCapacityAvailability({ serviceId: normalizedServiceId, dateStr, service, businessSettings, activeBookings });
 }

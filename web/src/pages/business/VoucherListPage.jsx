@@ -145,7 +145,7 @@ export default function VoucherListPage() {
             setEditingVoucher(null);
             setModalOpen(true);
           }}
-          className="gap-2 bg-zinc-950 hover:bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200"
+          className="w-full sm:w-auto justify-center gap-2 bg-zinc-950 hover:bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200"
         >
           <Plus className="h-4 w-4" />
           {t("business.vouchers.createBtn")}
@@ -176,7 +176,7 @@ export default function VoucherListPage() {
 
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white p-4 rounded-xl border border-zinc-200/80 dark:bg-zinc-950 dark:border-zinc-800">
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 w-full max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
           <Input
             value={search}
@@ -186,7 +186,7 @@ export default function VoucherListPage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px] bg-zinc-50 border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800">
+          <SelectTrigger className="w-full sm:w-[180px] bg-zinc-50 border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800">
             <SelectValue placeholder={t("common.filter")} />
           </SelectTrigger>
           <SelectContent>

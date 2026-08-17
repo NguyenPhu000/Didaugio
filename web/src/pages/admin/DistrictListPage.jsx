@@ -336,11 +336,11 @@ const DistrictListPage = () => {
             className="w-full h-10 pl-10 pr-4 bg-[#F8F7F3] rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F3E600] placeholder:text-slate-400 transition-all border border-transparent focus:border-[#F3E600]/50"
           />
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 w-full sm:w-auto shrink-0">
           <button
             type="button"
             onClick={() => toggleSort("name")}
-            className={`h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs
+            className={`flex-1 sm:flex-initial justify-center h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs
               ${sort.startsWith("name") ? "bg-slate-950 text-white" : "bg-[#F8F7F3] text-slate-700 hover:bg-[#F4F2EC] border border-black/[0.04]"}`}
           >
             {sort === "name_desc" ? (
@@ -353,7 +353,7 @@ const DistrictListPage = () => {
           <button
             type="button"
             onClick={() => toggleSort("count")}
-            className={`h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs
+            className={`flex-1 sm:flex-initial justify-center h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs
               ${sort.startsWith("count") ? "bg-slate-950 text-white" : "bg-[#F8F7F3] text-slate-700 hover:bg-[#F4F2EC] border border-black/[0.04]"}`}
           >
             {sort === "count_desc" ? (

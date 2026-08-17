@@ -536,12 +536,12 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
             configData,
             "planner",
           );
-          const result = await generateItinerary(
+          const result = await Promise.resolve(generateItinerary(
             { ...preferences, selectedPlaceIds: normalizedSelectedPlaceIds },
             places,
             providerOptions,
             allowedContext,
-          );
+          ));
           return {
             outputText:
               result.raw || JSON.stringify(result.parsed),

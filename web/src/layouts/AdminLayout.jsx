@@ -169,8 +169,8 @@ const AdminLayout = ({ children }) => {
       <CustomSidebarRail />
       <SidebarInset className="bg-[#FAF9F5] relative font-sans min-h-screen text-slate-900 selection:bg-[#F3E600] selection:text-slate-950 flex flex-col">
         <AdminHeader />
-        <main className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 relative z-10 flex flex-col">
-          <div className="flex-1 bg-white rounded-3xl sm:rounded-[32px] border border-black/[0.04] p-4 sm:p-6 md:p-8 shadow-[0_4px_30px_rgba(0,0,0,0.03)] relative">
+        <main className="flex-1 p-2 sm:p-4 md:p-5 lg:p-6 relative z-10 flex flex-col">
+          <div className="flex-1 bg-white rounded-2xl sm:rounded-[32px] border border-black/[0.04] p-3.5 sm:p-6 md:p-8 shadow-[0_4px_30px_rgba(0,0,0,0.03)] relative">
             {children}
           </div>
         </main>

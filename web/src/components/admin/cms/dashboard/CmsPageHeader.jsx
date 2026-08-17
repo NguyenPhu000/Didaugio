@@ -59,7 +59,7 @@ export function CmsPageHeader({ activeTab, isRefreshing, onCreate, onRefresh }) 
         </p>
       </div>
 
-      <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+      <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0 flex-wrap">
         <button
           type="button"
           onClick={onRefresh}
@@ -73,7 +73,7 @@ export function CmsPageHeader({ activeTab, isRefreshing, onCreate, onRefresh }) 
         <button
           type="button"
           onClick={onCreate}
-          className="h-10 px-5 rounded-full bg-slate-950 hover:bg-black text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 active:scale-95"
+          className="flex-1 sm:flex-initial justify-center h-10 px-5 rounded-full bg-slate-950 hover:bg-black text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 active:scale-95"
         >
           <Plus className="h-4 w-4 text-[#F3E600]" />
           <span>{createLabel}</span>

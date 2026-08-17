@@ -211,7 +211,7 @@ function PlanFormDialog({ open, onOpenChange, plan, onSubmit, isLoading }) {
 
           <div className="space-y-3">
             <Label>{t("subscription.admin.form.limitsLabel")}</Label>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">
                   {t("subscription.admin.form.placesFieldLabel")}
@@ -403,7 +403,7 @@ export default function AdminPlanManagementPage() {
             Chỉnh sửa thông tin, giới hạn và trạng thái các gói subscription
           </p>
         </div>
-        <Button variant="outline" onClick={refetch} className="gap-1.5">
+        <Button variant="outline" onClick={refetch} className="gap-1.5 w-full sm:w-auto justify-center">
           <RefreshCw className="h-4 w-4" />
           {t("common.refresh")}
         </Button>

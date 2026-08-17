@@ -257,19 +257,29 @@ export const createCategory = async (data) => {
   return category;
 };
 
+async function resolveUpdatedCategoryLevel({ id, parentId, currentLevel }) {
+  if (parentId === undefined) return currentLevel;
+  if (parentId === null) return CATEGORY_LEVELS.ROOT;
+  if (parentId === id) throw new ServiceError("Danh mục không thể là danh mục cha của chính nó", 400, ERROR_CODES.VALIDATION_ERROR);
+  const parent = await prisma.category.findUnique({ where: { id: parentId }, select: { level: true } });
+  if (!parent) throw new ServiceError("Không tìm thấy danh mục cha", 404, ERROR_CODES.NOT_FOUND);
+  const level = parent.level + 1;
+  if (level > MAX_CATEGORY_LEVEL) throw new ServiceError(`Danh mục chỉ hỗ trợ tối đa ${MAX_CATEGORY_LEVEL} cấp`, 400, ERROR_CODES.VALIDATION_ERROR);
+  const parentPath = await getCategoryPath(parentId);
+  if (parentPath.some((node) => node.id === id)) throw new ServiceError("Không thể cập nhật vì tạo vòng lặp danh mục", 400, ERROR_CODES.VALIDATION_ERROR);
+  return level;
+}
+
+function buildCategoryUpdateData(data, level) {
+  const fields = ["name", "slug", "icon", "color", "description", "thumbnail", "order", "isActive"];
+  const updateData = Object.fromEntries(fields.filter((field) => data[field] !== undefined).map((field) => [field, data[field]]));
+  if (data.parentId !== undefined) Object.assign(updateData, { parentId: data.parentId, level });
+  return updateData;
+}
+
 // Update category
 export const updateCategory = async (id, data) => {
-  const {
-    name,
-    slug,
-    icon,
-    color,
-    description,
-    thumbnail,
-    parentId,
-    order,
-    isActive,
-  } = data;
+  const { slug, parentId } = data;
 
   // Check category exists
   const existing = await prisma.category.findUnique({
@@ -285,53 +295,7 @@ export const updateCategory = async (id, data) => {
     );
   }
 
-  // Validate new parent (nếu có)
-  let level = existing.level;
-  if (parentId !== undefined) {
-    if (parentId === null) {
-      level = CATEGORY_LEVELS.ROOT;
-    } else if (parentId === id) {
-      throw new ServiceError(
-        "Danh mục không thể là danh mục cha của chính nó",
-        400,
-        ERROR_CODES.VALIDATION_ERROR,
-      );
-    } else {
-      const parent = await prisma.category.findUnique({
-        where: { id: parentId },
-        select: { level: true },
-      });
-
-      if (!parent) {
-        throw new ServiceError(
-          "Không tìm thấy danh mục cha",
-          404,
-          ERROR_CODES.NOT_FOUND,
-        );
-      }
-
-      level = parent.level + 1;
-
-      if (level > MAX_CATEGORY_LEVEL) {
-        throw new ServiceError(
-          `Danh mục chỉ hỗ trợ tối đa ${MAX_CATEGORY_LEVEL} cấp`,
-          400,
-          ERROR_CODES.VALIDATION_ERROR,
-        );
-      }
-
-      // Check circular reference
-      const parentPath = await getCategoryPath(parentId);
-      const isCircular = parentPath.some((node) => node.id === id);
-      if (isCircular) {
-        throw new ServiceError(
-          "Không thể cập nhật vì tạo vòng lặp danh mục",
-          400,
-          ERROR_CODES.VALIDATION_ERROR,
-        );
-      }
-    }
-  }
+  const level = await resolveUpdatedCategoryLevel({ id, parentId, currentLevel: existing.level });
 
   // Check unique slug (nếu thay đổi)
   if (slug && slug !== existing.slug) {
@@ -348,19 +312,7 @@ export const updateCategory = async (id, data) => {
     }
   }
 
-  const updateData = {};
-  if (name !== undefined) updateData.name = name;
-  if (slug !== undefined) updateData.slug = slug;
-  if (icon !== undefined) updateData.icon = icon;
-  if (color !== undefined) updateData.color = color;
-  if (description !== undefined) updateData.description = description;
-  if (thumbnail !== undefined) updateData.thumbnail = thumbnail;
-  if (parentId !== undefined) {
-    updateData.parentId = parentId;
-    updateData.level = level;
-  }
-  if (order !== undefined) updateData.order = order;
-  if (isActive !== undefined) updateData.isActive = isActive;
+  const updateData = buildCategoryUpdateData(data, level);
 
   const category = await prisma.category.update({
     where: { id },

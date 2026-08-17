@@ -1,3 +1,7 @@
+// MAP: EventDetailScreen
+// ├── UI: @/components/primitives/MaterialIconsRounded, @/components/composed/NotificationBell
+// └── API: @/modules/explore/hooks/useEvents
+
 import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,

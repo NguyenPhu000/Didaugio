@@ -1,3 +1,7 @@
+// MAP: FeedbackScreen
+// ├── UI: @/modules/feedback/components/{TypeChip, RatingRow, ImagePickerField}
+// └── API: @/modules/feedback/hooks/useFeedback
+
 import { useEffect, useRef } from "react";
 import {
   ActivityIndicator,

@@ -118,6 +118,9 @@ function ErrorMessage({ message, id }) {
   );
 }
 
+const removeKeywordAt = (keywords, index) =>
+  keywords.filter((_, keywordIndex) => keywordIndex !== index);
+
 function AiSafetyPanelForm({
   config,
   permissions,
@@ -153,6 +156,11 @@ function AiSafetyPanelForm({
       )}`,
     [keywords],
   );
+
+  const removeKeyword = (index) => {
+    setKeywords((current) => removeKeywordAt(current, index));
+    setValidationError("");
+  };
 
   const addKeyword = () => {
     const candidate = collapseWhitespace(newKeyword.trim());
@@ -321,14 +329,7 @@ function AiSafetyPanelForm({
                           variant="ghost"
                           size="icon"
                           aria-label={`Xóa ${keyword}`}
-                          onClick={() => {
-                            setKeywords((current) =>
-                              current.filter(
-                                (_, keywordIndex) => keywordIndex !== index,
-                              ),
-                            );
-                            setValidationError("");
-                          }}
+                          onClick={() => removeKeyword(index)}
                         >
                           <Trash2 aria-hidden="true" />
                         </Button>

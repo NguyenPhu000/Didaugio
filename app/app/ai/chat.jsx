@@ -1,3 +1,7 @@
+// MAP: GroqChatScreen
+// ├── UI: @/modules/ai/components/chat/{MessageBubble, TypingIndicator, ChatInputBar}, @/components/reacticx/glow
+// └── API: @/modules/ai/hooks/useGroqChat, @/modules/ai/hooks/useGenieVoice, @/stores/aiContextStore
+
 import {
   View,
   Text,

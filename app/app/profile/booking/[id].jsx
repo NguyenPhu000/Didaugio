@@ -1,3 +1,7 @@
+// MAP: UserBookingDetailScreen
+// ├── UI: @/modules/booking/components/BookingTicketCard, @/modules/booking/components/RefundPolicyModal
+// └── API: @/modules/booking/hooks/useBooking
+
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,

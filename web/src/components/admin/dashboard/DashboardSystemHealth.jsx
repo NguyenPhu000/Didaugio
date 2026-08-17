@@ -1,6 +1,6 @@
 import { Cpu, Database, HardDrive, Zap, Users } from "lucide-react";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useDashboardOnlineUsers } from "@/hooks/queries/useDashboardQuery";
 
 const barColor = (v) => {
   if (v >= 80) return "bg-red-500";
@@ -37,6 +37,7 @@ const HealthBar = ({ icon: _Icon, label, value, unit = "%" }) => (
 
 const DashboardSystemHealth = () => {
   const { t } = useTranslation();
+  const { data: onlineUsersData } = useDashboardOnlineUsers();
 
   const metrics = [
     { icon: Cpu, label: t("dashboard.systemHealth.cpuUsage"), value: 24 },
@@ -45,7 +46,7 @@ const DashboardSystemHealth = () => {
     { icon: Zap, label: t("dashboard.systemHealth.apiResponse"), value: 12.5 },
   ];
 
-  const [onlineUsers] = useState(() => Math.floor(Math.random() * 50) + 10);
+  const onlineUsers = onlineUsersData?.count ?? 0;
   const allOk = metrics.every((m) => m.value < 80);
 
   return (

@@ -386,6 +386,37 @@ export const getMyPlaces = async (userId, activeBusinessId = null) => {
   return places;
 };
 
+function applyDocumentUploadPolicy(business, prismaData, sensitiveDocuments) {
+  if (sensitiveDocuments.length === 0) return;
+  const now = new Date();
+  const lastUpload = business.lastUploadAt ? new Date(business.lastUploadAt) : null;
+  const currentCount = lastUpload && lastUpload >= new Date(now.getTime() - 24 * 60 * 60 * 1000) ? business.documentUploadCount || 0 : 0;
+  const newCount = currentCount + 1;
+  if (newCount > 3) {
+    prismaData.status = BUSINESS_STATUS.SUSPICIOUS;
+    prismaData.suspensionReason = "Tải lên tài liệu quá 3 lần trong 24 giờ — có thể hoạt động đáng ngờ";
+  }
+  prismaData.documentUploadCount = newCount;
+  prismaData.lastUploadAt = now;
+}
+
+function getChangedSensitiveFields(data, prismaData, business, sensitiveDocuments) {
+  const fields = ["businessName", "businessType", "taxCode", "idCardNumber", "bankAccountNumber", "bankAccountOwner", "bankName"];
+  const keyMap = { bankAccountNumber: "bankAccount", bankAccountOwner: "bankOwner" };
+  const changed = fields.filter((field) => {
+    if (data[field] === undefined) return false;
+    const key = keyMap[field] || field;
+    if (prismaData[key] === undefined) return false;
+    return String(business[key] ?? "") !== String(prismaData[key] ?? "");
+  });
+  return changed.concat(sensitiveDocuments.map((document) => document.type));
+}
+
+function resetRejectedBusinessStatus(business, prismaData, hasVerificationUpdates) {
+  if (business.status !== BUSINESS_STATUS.REJECTED && !(hasVerificationUpdates && business.status === BUSINESS_STATUS.APPROVED)) return;
+  Object.assign(prismaData, { status: BUSINESS_STATUS.PENDING, rejectionReason: null, approvedBy: null, approvedAt: null });
+}
+
 export const updateProfile = async (data, userId, sensitiveDocuments = []) => {
   const business = await prisma.business.findUnique({
     where: { ownerId: userId },
@@ -423,34 +454,10 @@ export const updateProfile = async (data, userId, sensitiveDocuments = []) => {
     throw error;
   }
 
-  // Rate limit: max 3 document uploads per 24h
-  const hasNewUploads = sensitiveDocuments.length > 0;
-
   const prismaData = mapBusinessDataToPrisma(
     withoutBusinessSensitiveDocumentFields(data),
   );
-
-  if (hasNewUploads) {
-    const now = new Date();
-    const lastUpload = business.lastUploadAt ? new Date(business.lastUploadAt) : null;
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-    // Reset counter if last upload was more than 24h ago
-    const currentCount = (lastUpload && lastUpload >= twentyFourHoursAgo)
-      ? business.documentUploadCount || 0
-      : 0;
-
-    const newCount = currentCount + 1;
-
-    if (newCount > 3) {
-      // Flag as SUSPICIOUS — auto-lock
-      prismaData.status = BUSINESS_STATUS.SUSPICIOUS;
-      prismaData.suspensionReason = "Tải lên tài liệu quá 3 lần trong 24 giờ — có thể hoạt động đáng ngờ";
-    }
-
-    prismaData.documentUploadCount = newCount;
-    prismaData.lastUploadAt = now;
-  }
+  applyDocumentUploadPolicy(business, prismaData, sensitiveDocuments);
 
   const profileData = {
     fullName: data.fullName,
@@ -461,39 +468,11 @@ export const updateProfile = async (data, userId, sensitiveDocuments = []) => {
     (value) => value !== undefined,
   );
 
-  // Sensitive fields that trigger re-verification
-  const SENSITIVE_FIELDS = [
-    "businessName", "businessType", "taxCode",
-    "idCardNumber", "bankAccountNumber", "bankAccountOwner", "bankName",
-  ];
-
-  // Track which sensitive fields actually changed (diff)
-  const changedFields = SENSITIVE_FIELDS.filter((field) => {
-    if (data[field] === undefined) return false;
-    const prismaKey = field === "bankAccountNumber" ? "bankAccount"
-      : field === "bankAccountOwner" ? "bankOwner" : field;
-    const oldValue = business[prismaKey];
-    const newValue = prismaData[prismaKey];
-    // Compare: if old was null and new has value, or values differ
-    if (newValue === undefined) return false;
-    return String(oldValue ?? "") !== String(newValue ?? "");
-  });
-
-  changedFields.push(...sensitiveDocuments.map((document) => document.type));
+  const changedFields = getChangedSensitiveFields(data, prismaData, business, sensitiveDocuments);
   const hasVerificationUpdates = changedFields.length > 0;
 
   // Per-item reset: only reset status if sensitive fields changed, don't reset contract
-  if (
-    business.status === BUSINESS_STATUS.REJECTED ||
-    (hasVerificationUpdates && business.status === BUSINESS_STATUS.APPROVED)
-  ) {
-    prismaData.status = BUSINESS_STATUS.PENDING;
-    prismaData.rejectionReason = null;
-    prismaData.approvedBy = null;
-    prismaData.approvedAt = null;
-    // Don't reset contractSigned — only reset if contract-related fields changed
-    // Contract remains valid unless business itself is rejected
-  }
+  resetRejectedBusinessStatus(business, prismaData, hasVerificationUpdates);
 
   let updated;
   let storedDocuments = [];

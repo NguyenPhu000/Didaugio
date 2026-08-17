@@ -1,3 +1,7 @@
+// MAP: trip.controller
+// ├── ROUTE: src/routes/trip/trip.routes.js
+// └── SERVICE: src/services/trip/{trip.service.js, tripPlan.service.js, tripExecution.service.js}
+
 import tripService from "../../services/trip/trip.service.js";
 import tripPlanService from "../../services/trip/tripPlan.service.js";
 import * as bookingService from "../../services/booking/booking.service.js";

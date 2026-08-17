@@ -204,7 +204,7 @@ export function useGroqChat() {
   );
 
   const retryLastMessage = useCallback(() => {
-    if (!lastFailedRequestRef.current) return;
+    if (!lastFailedRequestRef.current) return Promise.resolve();
     const req = lastFailedRequestRef.current;
     lastFailedRequestRef.current = null;
 
@@ -214,7 +214,7 @@ export function useGroqChat() {
       state.removeMessage(lastMsg.id);
     }
 
-    sendMessage(req.text, { retryRequest: req, appendUserMessage: false }).catch(() => {});
+    return sendMessage(req.text, { retryRequest: req, appendUserMessage: false }).catch(() => {});
   }, [sendMessage]);
 
   return {

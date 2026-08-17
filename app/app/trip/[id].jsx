@@ -1,3 +1,7 @@
+// MAP: TripDetailScreen
+// ├── UI: @/modules/trips/components/{TripHeroHeader, TripDayTimeline, TripBookingList, TripActionMenu}
+// └── API: @/modules/trips/hooks/useTripDetail, @/modules/trips/hooks/useTrips, @/modules/booking/hooks/useBooking
+
 import { useCallback, useMemo, useState } from "react";
 import {
   Pressable,

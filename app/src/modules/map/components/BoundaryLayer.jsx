@@ -34,14 +34,23 @@ function extractDistrictExteriorRings(geometry) {
   return rings;
 }
 
+function getRepresentativeCoordinates(geometry) {
+  if (!geometry?.coordinates) return null;
+  if (geometry.type === "Point") {
+    return [geometry.coordinates];
+  }
+  if (geometry.type === "MultiPolygon") {
+    return geometry.coordinates[0]?.[0] || null;
+  }
+  if (geometry.type === "Polygon") {
+    return geometry.coordinates[0] || null;
+  }
+  return null;
+}
+
 function computeCentroid(geometry) {
   try {
-    const coords =
-      geometry.type === "Point"
-        ? [geometry.coordinates]
-        : geometry.type === "MultiPolygon"
-          ? geometry.coordinates[0][0]
-          : geometry.coordinates[0];
+    const coords = getRepresentativeCoordinates(geometry);
 
     if (!coords?.length) return null;
 

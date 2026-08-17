@@ -123,27 +123,6 @@ const defaultInclude = {
     take: 10,
   },
   tagLinks: {
-  category: {
-    select: { id: true, name: true, slug: true, icon: true, color: true },
-  },
-  district: {
-    select: { id: true, name: true, code: true },
-  },
-  ward: {
-    select: { id: true, name: true, wardType: true },
-  },
-  createdByUser: {
-    select: {
-      id: true,
-      email: true,
-      profile: { select: { fullName: true, avatar: true } },
-    },
-  },
-  images: {
-    orderBy: [{ isCover: "desc" }, { order: "asc" }],
-    take: 10,
-  },
-  tagLinks: {
     include: {
       tag: {
         select: { id: true, name: true, slug: true, color: true, icon: true },
@@ -300,75 +279,6 @@ export const getAllPlaces = async (filters = {}) => {
     case "name":
       orderBy = [{ name: "asc" }];
       break;
-    sortBy = "newest",
-    page = PAGINATION.DEFAULT_PAGE,
-    limit = PAGINATION.DEFAULT_LIMIT,
-  } = filters;
-
-  const where = {
-    deletedAt: null,
-  };
-
-  // Filters
-  if (categoryId) where.categoryId = parseInt(categoryId);
-  if (districtId) where.districtId = parseInt(districtId);
-  if (wardId) where.wardId = parseInt(wardId);
-  if (status) where.status = status;
-  if (isFeatured !== undefined)
-    where.isFeatured = isFeatured === "true" || isFeatured === true;
-  if (isVerified !== undefined)
-    where.isVerified = isVerified === "true" || isVerified === true;
-  if (createdBy) where.createdBy = parseInt(createdBy);
-  if (filters.businessId && !ownerUserId)
-    where.businessId = parseInt(filters.businessId);
-  if (priceRange && priceRange !== "all") where.priceRange = priceRange;
-  if (minRating) where.ratingAvg = { gte: parseFloat(minRating) };
-
-  const ownershipOr = [];
-  if (ownerUserId) {
-    ownershipOr.push({ createdBy: parseInt(ownerUserId) });
-  }
-  if (filters.businessId) {
-    ownershipOr.push({ businessId: parseInt(filters.businessId) });
-  }
-
-  // Search
-  let searchOr = null;
-  if (search) {
-    searchOr = [
-      { name: { contains: search, mode: "insensitive" } },
-      { shortDescription: { contains: search, mode: "insensitive" } },
-      { address: { contains: search, mode: "insensitive" } },
-    ];
-  }
-
-  if (ownershipOr.length > 0 && searchOr) {
-    where.AND = [{ OR: ownershipOr }, { OR: searchOr }];
-  } else if (ownershipOr.length > 0) {
-    where.OR = ownershipOr;
-  } else if (searchOr) {
-    where.OR = searchOr;
-  }
-
-  // Sorting
-  let orderBy = [];
-  switch (sortBy) {
-    case "newest":
-      orderBy = [{ createdAt: "desc" }];
-      break;
-    case "oldest":
-      orderBy = [{ createdAt: "asc" }];
-      break;
-    case "rating":
-      orderBy = [{ ratingAvg: "desc" }, { ratingCount: "desc" }];
-      break;
-    case "popular":
-    case "views":
-      orderBy = [{ viewCount: "desc" }];
-      break;
-    case "name":
-      orderBy = [{ name: "asc" }];
-      break;
     default:
       orderBy = [{ createdAt: "desc" }];
   }
@@ -454,6 +364,8 @@ export const getAllPlaces = async (filters = {}) => {
     },
   };
 };
+
+/**
  * Lấy danh sách địa điểm gần vị trí hiện tại
  */
 export const getNearbyPlaces = async (params = {}) => {

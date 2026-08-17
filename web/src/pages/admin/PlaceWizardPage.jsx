@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Check } from "lucide-react";
 import usePlaceStore from "@/stores/placeStore";
 import { usePlaceDetail } from "@/hooks/queries/usePlaceQueries";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { BUSINESS_ROUTES, ADMIN_ROUTES } from "@/constants/routes";
 import StepBasicInfo from "@/components/place/StepBasicInfo";
 import StepDetails from "@/components/place/StepDetails";
 import StepPreview from "@/components/place/StepPreview";
@@ -48,6 +49,11 @@ const PlaceWizardPage = () => {
     }
   }, [isEditMode, placeRes, loadPlaceIntoWizard, resetWizard]);
 
+  const location = useLocation();
+  const placesRoute = location.pathname.startsWith("/business")
+    ? BUSINESS_ROUTES.PLACES
+    : ADMIN_ROUTES.PLACES;
+
   // Handle error when editing
   useEffect(() => {
     if (placeError) {
@@ -56,9 +62,9 @@ const PlaceWizardPage = () => {
         title: t("admin.placeWizard.error"),
         description: placeError.message || t("admin.placeWizard.loadFailed"),
       });
-      navigate("/admin/places");
+      navigate(placesRoute);
     }
-  }, [placeError, toast, navigate]);
+  }, [placeError, toast, navigate, placesRoute]);
 
   const steps = [
     {
@@ -87,7 +93,7 @@ const PlaceWizardPage = () => {
   useWizardEntrance(pageRef, currentStep);
 
   const handleBack = () => {
-    navigate("/admin/places");
+    navigate(placesRoute);
   };
 
   return (
@@ -131,7 +137,7 @@ const PlaceWizardPage = () => {
           aria-label="Place creation progress"
           className="rounded-[22px] border border-black/10 bg-[#FFFEFB] p-2 shadow-[0_16px_48px_rgba(32,28,20,0.06)]"
         >
-          <div className="grid gap-2 md:grid-cols-3">
+          <div className="grid gap-2 grid-cols-1 md:grid-cols-3">
 
             {steps.map((step) => {
               const isActive = step.number === currentStep;

@@ -1,3 +1,7 @@
+// MAP: place.controller
+// ├── ROUTE: src/routes/place/place.routes.js
+// └── SERVICE: src/services/place/place.service.js, src/services/app/app.service.js
+
 import * as placeService from "../../services/place/place.service.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import appService from "../../services/app/app.service.js";

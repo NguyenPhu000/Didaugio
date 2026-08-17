@@ -9,31 +9,13 @@ function repairTruncatedJson(jsonStr) {
   str = str.replace(/^```json\s*/i, "").replace(/```$/, "");
 
   const stack = [];
-  let inString = false;
-  let escaped = false;
+  const state = { inString: false, escaped: false, stack };
 
   for (let i = 0; i < str.length; i += 1) {
-    const char = str[i];
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (char === "\\") {
-      escaped = true;
-      continue;
-    }
-    if (char === '"') {
-      inString = !inString;
-      continue;
-    }
-    if (inString) continue;
-
-    if (char === "{" || char === "[") stack.push(char);
-    if (char === "}" && stack.at(-1) === "{") stack.pop();
-    if (char === "]" && stack.at(-1) === "[") stack.pop();
+    scanRepairCharacter(state, str[i]);
   }
 
-  if (inString) str += '"';
+  if (state.inString) str += '"';
   str = str.replace(/,\s*$/, "");
 
   while (stack.length > 0) {
@@ -41,6 +23,25 @@ function repairTruncatedJson(jsonStr) {
   }
 
   return str;
+}
+
+function scanRepairCharacter(state, char) {
+  if (state.escaped) {
+    state.escaped = false;
+    return;
+  }
+  if (char === "\\") {
+    state.escaped = true;
+    return;
+  }
+  if (char === '"') {
+    state.inString = !state.inString;
+    return;
+  }
+  if (state.inString) return;
+  if (char === "{" || char === "[") state.stack.push(char);
+  if (char === "}" && state.stack.at(-1) === "{") state.stack.pop();
+  if (char === "]" && state.stack.at(-1) === "[") state.stack.pop();
 }
 
 function parseItineraryJson(rawText) {

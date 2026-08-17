@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { XCircle, CalendarClock, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -58,43 +58,47 @@ export function QuickRejectModal({ open, onConfirm, onCancel, loading }) {
       toast.error(t("business.bookings.enterRejectReason"));
       return;
     }
-    const reason = selectedReason === "other"
-      ? customReason.trim()
-      : reasons.find(r => r.id === selectedReason)?.label || "";
+    const reason =
+      selectedReason === "other"
+        ? customReason.trim()
+        : reasons.find((r) => r.id === selectedReason)?.label || "";
     onConfirm(reason, businessNote.trim() || null);
   };
 
   return (
     <Dialog open={open} onOpenChange={onCancel}>
-      <DialogContent className="max-w-md border-zinc-200/80 dark:bg-zinc-950 dark:border-zinc-800">
+      <DialogContent className="max-w-md rounded-[36px] p-6 sm:p-7 border border-slate-200/80 shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
-            <XCircle className="h-5 w-5" aria-hidden="true" />
+          <DialogTitle className="font-black text-lg text-destructive tracking-tight">
             {t("business.bookings.rejectRequest")}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs text-slate-500 mt-0.5">
             {t("business.bookings.quickRejectReasons")}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 py-2">
-          <Label>{t("business.bookings.rejectReason")}</Label>
-          <div className="grid grid-cols-2 gap-2">
-            {reasons.map((reason) => (
-              <button
-                key={reason.id}
-                type="button"
-                onClick={() => setSelectedReason(reason.id)}
-                className={cn(
-                  "px-3 py-2.5 rounded-xl border text-xs font-medium text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400",
-                  selectedReason === reason.id
-                    ? "border-zinc-950 bg-zinc-950 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-950"
-                    : "border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                )}
-              >
-                {reason.label}
-              </button>
-            ))}
+        <div className="space-y-3.5 py-2 text-xs">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              {t("business.bookings.rejectReason")}
+            </Label>
+            <div className="grid grid-cols-2 gap-2">
+              {reasons.map((reason) => (
+                <button
+                  key={reason.id}
+                  type="button"
+                  onClick={() => setSelectedReason(reason.id)}
+                  className={cn(
+                    "px-3 py-2.5 rounded-2xl border text-xs font-bold text-left transition-all",
+                    selectedReason === reason.id
+                      ? "bg-slate-950 text-white dark:bg-primary dark:text-primary-foreground border-slate-950 shadow-xs"
+                      : "bg-slate-50 dark:bg-muted/40 border-slate-200/80 text-slate-700 hover:bg-slate-100"
+                  )}
+                >
+                  {reason.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {selectedReason === "other" && (
@@ -102,32 +106,34 @@ export function QuickRejectModal({ open, onConfirm, onCancel, loading }) {
               placeholder={t("business.bookings.enterRejectReason")}
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
-              className="min-h-[80px] border-zinc-200 dark:border-zinc-800 dark:bg-zinc-900"
+              className="rounded-2xl text-xs min-h-[70px]"
             />
           )}
 
           <div className="space-y-1.5">
-            <Label className="text-zinc-500 dark:text-zinc-400">{t("business.bookings.internalNote")} ({t("common.optional")})</Label>
+            <Label className="text-xs font-bold text-slate-500">
+              {t("business.bookings.internalNote")} ({t("common.optional")})
+            </Label>
             <Textarea
               placeholder={t("business.bookings.noteExample")}
               value={businessNote}
               onChange={(e) => setBusinessNote(e.target.value)}
-              className="min-h-[60px] border-zinc-200 dark:border-zinc-800 dark:bg-zinc-900"
+              className="rounded-2xl text-xs min-h-[60px]"
             />
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onCancel} className="border-zinc-200 dark:border-zinc-800 dark:hover:bg-zinc-900">
+        <DialogFooter className="gap-2 pt-2 border-t border-slate-100 dark:border-border/60">
+          <Button variant="outline" onClick={onCancel} className="rounded-2xl text-xs font-bold px-4">
             {t("common.cancel")}
           </Button>
           <Button
             variant="destructive"
             onClick={handleConfirm}
             disabled={loading}
-            className="gap-2"
+            className="rounded-2xl text-xs font-bold px-5"
           >
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
             {t("business.bookings.reject")}
           </Button>
         </DialogFooter>
@@ -159,43 +165,47 @@ export function QuickCancelModal({ open, onConfirm, onCancel, loading }) {
       toast.error(t("business.bookings.enterCancelReason"));
       return;
     }
-    const reason = selectedReason === "other"
-      ? customReason.trim()
-      : reasons.find(r => r.id === selectedReason)?.label || "";
+    const reason =
+      selectedReason === "other"
+        ? customReason.trim()
+        : reasons.find((r) => r.id === selectedReason)?.label || "";
     onConfirm(reason);
   };
 
   return (
     <Dialog open={open} onOpenChange={onCancel}>
-      <DialogContent className="max-w-md border-zinc-200/80 dark:bg-zinc-950 dark:border-zinc-800">
+      <DialogContent className="max-w-md rounded-[36px] p-6 sm:p-7 border border-slate-200/80 shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
-            <XCircle className="h-5 w-5" aria-hidden="true" />
+          <DialogTitle className="font-black text-lg text-destructive tracking-tight">
             {t("business.bookings.cancelBooking")}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs text-slate-500 mt-0.5">
             {t("business.bookings.quickCancelReasons")}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 py-2">
-          <Label>{t("business.bookings.cancelReason")}</Label>
-          <div className="grid grid-cols-2 gap-2">
-            {reasons.map((reason) => (
-              <button
-                key={reason.id}
-                type="button"
-                onClick={() => setSelectedReason(reason.id)}
-                className={cn(
-                  "px-3 py-2.5 rounded-xl border text-xs font-medium text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400",
-                  selectedReason === reason.id
-                    ? "border-zinc-950 bg-zinc-950 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-950"
-                    : "border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                )}
-              >
-                {reason.label}
-              </button>
-            ))}
+        <div className="space-y-3.5 py-2 text-xs">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              {t("business.bookings.cancelReason")}
+            </Label>
+            <div className="grid grid-cols-2 gap-2">
+              {reasons.map((reason) => (
+                <button
+                  key={reason.id}
+                  type="button"
+                  onClick={() => setSelectedReason(reason.id)}
+                  className={cn(
+                    "px-3 py-2.5 rounded-2xl border text-xs font-bold text-left transition-all",
+                    selectedReason === reason.id
+                      ? "bg-slate-950 text-white dark:bg-primary dark:text-primary-foreground border-slate-950 shadow-xs"
+                      : "bg-slate-50 dark:bg-muted/40 border-slate-200/80 text-slate-700 hover:bg-slate-100"
+                  )}
+                >
+                  {reason.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {selectedReason === "other" && (
@@ -203,21 +213,22 @@ export function QuickCancelModal({ open, onConfirm, onCancel, loading }) {
               placeholder={t("business.bookings.enterCancelReason")}
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
-              className="min-h-[80px] border-zinc-200 dark:border-zinc-800 dark:bg-zinc-900"
+              className="rounded-2xl text-xs min-h-[70px]"
             />
           )}
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onCancel} className="border-zinc-200 dark:border-zinc-800 dark:hover:bg-zinc-900">
+        <DialogFooter className="gap-2 pt-2 border-t border-slate-100 dark:border-border/60">
+          <Button variant="outline" onClick={onCancel} className="rounded-2xl text-xs font-bold px-4">
             {t("common.cancel")}
           </Button>
           <Button
             variant="destructive"
             onClick={handleConfirm}
             disabled={loading}
+            className="rounded-2xl text-xs font-bold px-5"
           >
-            {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
             {t("business.bookings.cancel")}
           </Button>
         </DialogFooter>
@@ -253,46 +264,61 @@ export function QuickRescheduleModal({ open, booking, onConfirm, onCancel, loadi
 
   return (
     <Dialog open={open} onOpenChange={onCancel}>
-      <DialogContent className="max-w-md border-zinc-200/80 dark:bg-zinc-950 dark:border-zinc-800">
+      <DialogContent className="max-w-md rounded-[36px] p-6 sm:p-7 border border-slate-200/80 shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-zinc-950 dark:text-zinc-100">
-            <CalendarClock className="h-5 w-5 text-zinc-500" aria-hidden="true" />
+          <DialogTitle className="font-black text-lg text-slate-900 dark:text-white tracking-tight">
             {t("business.bookings.rescheduleBooking")}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs text-slate-500 mt-0.5">
             {t("business.bookings.confirmReschedule")}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-4 py-2 text-xs">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>{t("business.bookings.newDate")}</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="border-zinc-200 dark:border-zinc-800 dark:bg-zinc-900" />
+              <Label className="text-xs font-bold">{t("business.bookings.newDate")}</Label>
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="rounded-2xl text-xs h-10"
+              />
             </div>
             <div className="space-y-1.5">
-              <Label>{t("business.bookings.newTime")}</Label>
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="border-zinc-200 dark:border-zinc-800 dark:bg-zinc-900" />
+              <Label className="text-xs font-bold">{t("business.bookings.newTime")}</Label>
+              <Input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="rounded-2xl text-xs h-10"
+              />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-zinc-500 dark:text-zinc-400">{t("business.bookings.internalNote")} ({t("common.optional")})</Label>
+            <Label className="text-xs font-bold text-slate-500">
+              {t("business.bookings.internalNote")} ({t("common.optional")})
+            </Label>
             <Textarea
               placeholder={t("business.bookings.noteExample")}
               value={businessNote}
               onChange={(e) => setBusinessNote(e.target.value)}
-              className="border-zinc-200 dark:border-zinc-800 dark:bg-zinc-900"
+              className="rounded-2xl text-xs min-h-[70px]"
             />
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onCancel} className="border-zinc-200 dark:border-zinc-800 dark:hover:bg-zinc-900">
+        <DialogFooter className="gap-2 pt-2 border-t border-slate-100 dark:border-border/60">
+          <Button variant="outline" onClick={onCancel} className="rounded-2xl text-xs font-bold px-4">
             {t("common.cancel")}
           </Button>
-          <Button onClick={handleConfirm} disabled={loading} className="gap-2 bg-zinc-950 hover:bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200">
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          <Button
+            onClick={handleConfirm}
+            disabled={loading}
+            className="rounded-2xl text-xs font-bold bg-slate-950 text-white px-5"
+          >
+            {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
             {t("business.bookings.reschedule")}
           </Button>
         </DialogFooter>

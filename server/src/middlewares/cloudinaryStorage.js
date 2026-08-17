@@ -25,6 +25,17 @@ const createValidationError = (message, statusCode = 400) => {
   return error;
 };
 
+const uploadBuffer = (cloudinary, uploadOptions, buffer) =>
+  new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      uploadOptions,
+      (error, response) => (error ? reject(error) : resolve(response)),
+    );
+
+    uploadStream.once("error", reject);
+    uploadStream.end(buffer);
+  });
+
 export function createCloudinaryStorage({ cloudinary, params = {} } = {}) {
   if (!cloudinary?.uploader?.upload_stream) {
     throw new Error("A configured Cloudinary client is required");
@@ -56,17 +67,8 @@ export function createCloudinaryStorage({ cloudinary, params = {} } = {}) {
             throw createValidationError("File content does not match its declared format");
           }
 
-          return resolveParams(req, file).then(
-            (uploadOptions) =>
-              new Promise((resolve, reject) => {
-                const uploadStream = cloudinary.uploader.upload_stream(
-                  uploadOptions,
-                  (error, response) => (error ? reject(error) : resolve(response)),
-                );
-
-                uploadStream.once("error", reject);
-                uploadStream.end(buffer);
-              }),
+          return resolveParams(req, file).then((uploadOptions) =>
+            uploadBuffer(cloudinary, uploadOptions, buffer),
           );
         })
         .then((response) => {

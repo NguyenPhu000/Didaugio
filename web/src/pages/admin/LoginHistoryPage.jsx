@@ -1,35 +1,32 @@
+// MAP: LoginHistoryPage
+// ├── UI: @/components/admin/login-history/{LoginHistoryTableView, LoginHistoryDetailModal}
+// └── API: @/apis/loginHistoryService
+
 import { useState, useEffect, useCallback } from "react";
 import {
   Monitor,
   RefreshCw,
-  Eye,
   Ban,
   CheckCircle,
   XCircle,
-  Clock,
-  Smartphone,
-  AlertCircle,
   Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { exportToCsv, fetchAllPages, formatCsvDate, slugifyFilename } from "@/utils/csvExport";
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Button,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui";
+  exportToCsv,
+  fetchAllPages,
+  formatCsvDate,
+  slugifyFilename,
+} from "@/utils/csvExport";
+import { Button } from "@/components/ui";
 import { loginHistoryService } from "@/apis";
-import { formatDate } from "@/utils/dateUtils";
-import { getTableSerialNumber } from "@/utils/tableSerial";
 import { useAuthStore } from "@/stores/authStore";
 import TimStatsCard from "@/components/admin/TimStatsCard";
+
+// Extracted Sub-Components
+import LoginHistoryTableView from "@/components/admin/login-history/LoginHistoryTableView";
+import LoginHistoryDetailModal from "@/components/admin/login-history/LoginHistoryDetailModal";
 
 const LoginHistoryPage = () => {
   const { t } = useTranslation();
@@ -74,7 +71,7 @@ const LoginHistoryPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, statusFilter]);
+  }, [currentPage, itemsPerPage, statusFilter, t]);
 
   // Fetch stats
   const fetchStats = useCallback(async () => {
@@ -124,19 +121,13 @@ const LoginHistoryPage = () => {
 
   // Revoke all except current
   const handleRevokeAll = async (userId) => {
-    if (
-      !window.confirm(
-        t("loginHistory.confirmRevokeAll"),
-      )
-    )
-      return;
+    if (!window.confirm(t("loginHistory.confirmRevokeAll"))) return;
 
     try {
-      // Lấy currentSessionId từ localStorage (nếu có lưu)
       const currentSessionId = loginHistoryService.getCurrentSessionId();
       const response = await loginHistoryService.revokeAll(
         userId,
-        currentSessionId,
+        currentSessionId
       );
       if (response.success) {
         toast.success(response.message || t("loginHistory.loggedOutAll"));
@@ -145,7 +136,7 @@ const LoginHistoryPage = () => {
       }
     } catch (error) {
       toast.error(
-        error.response?.data?.message || t("loginHistory.logoutAllError"),
+        error.response?.data?.message || t("loginHistory.logoutAllError")
       );
       console.error(error);
     }
@@ -156,12 +147,14 @@ const LoginHistoryPage = () => {
     try {
       toast.loading(t("loginHistory.exporting"), { id: "csv-export" });
       const allData = await fetchAllPages(loginHistoryService.getAll, {
-        isActive: statusFilter === "all" ? undefined : statusFilter === "active",
+        isActive:
+          statusFilter === "all" ? undefined : statusFilter === "active",
       });
 
       const getStatusLabel = (s) => {
         const status = s.status || "active";
-        if (status === "revoked" || !s.isActive) return t("loginHistory.revoked");
+        if (status === "revoked" || !s.isActive)
+          return t("loginHistory.revoked");
         if (status === "expired") return t("loginHistory.expired");
         return t("loginHistory.active");
       };
@@ -169,97 +162,66 @@ const LoginHistoryPage = () => {
       exportToCsv({
         columns: [
           { key: "id", label: "ID" },
-          { key: (row) => row.user?.profile?.fullName || "N/A", label: t("loginHistory.user") },
+          {
+            key: (row) => row.user?.profile?.fullName || "N/A",
+            label: t("loginHistory.user"),
+          },
           { key: (row) => row.user?.email || "", label: "Email" },
           { key: "deviceName", label: t("loginHistory.device") },
           { key: "ipAddress", label: "IP" },
           { key: getStatusLabel, label: t("loginHistory.status") },
-          { key: (row) => formatCsvDate(row.createdAt), label: t("loginHistory.loggedIn") },
-          { key: (row) => formatCsvDate(row.lastUsedAt), label: t("loginHistory.lastUsed") },
-          { key: (row) => formatCsvDate(row.expiresAt), label: t("loginHistory.expiresAt") },
+          {
+            key: (row) => formatCsvDate(row.createdAt),
+            label: t("loginHistory.loggedIn"),
+          },
+          {
+            key: (row) => formatCsvDate(row.lastUsedAt),
+            label: t("loginHistory.lastUsed"),
+          },
+          {
+            key: (row) => formatCsvDate(row.expiresAt),
+            label: t("loginHistory.expiresAt"),
+          },
         ],
         data: allData,
         filename: slugifyFilename("lich_su_dang_nhap"),
       });
 
-      toast.success(t("loginHistory.exportSuccess", { count: allData.length }), { id: "csv-export" });
+      toast.success(
+        t("loginHistory.exportSuccess", { count: allData.length }),
+        { id: "csv-export" }
+      );
     } catch {
       toast.error(t("loginHistory.exportError"), { id: "csv-export" });
     }
   };
 
-  // Get status info (sử dụng status computed từ backend)
-  const getStatusInfo = (session) => {
-    // Backend đã compute status: active, revoked, expired
-    const status = session.status || "active";
-
-    if (status === "revoked" || !session.isActive) {
-      return {
-        label: t("loginHistory.revoked"),
-        color: "text-gray-600 bg-gray-100",
-        icon: <Ban className="w-4 h-4" />,
-      };
-    }
-    if (status === "expired") {
-      return {
-        label: t("loginHistory.expired"),
-        color: "text-red-600 bg-red-100",
-        icon: <XCircle className="w-4 h-4" />,
-      };
-    }
-    return {
-      label: t("loginHistory.active"),
-      color: "text-green-600 bg-green-100",
-      icon: <CheckCircle className="w-4 h-4" />,
-    };
-  };
-
-  // Get device icon
-  const getDeviceIcon = (deviceName) => {
-    if (!deviceName) return <Monitor className="w-4 h-4" />;
-    const lower = deviceName.toLowerCase();
-    if (
-      lower.includes("mobile") ||
-      lower.includes("android") ||
-      lower.includes("iphone")
-    ) {
-      return <Smartphone className="w-4 h-4" />;
-    }
-    return <Monitor className="w-4 h-4" />;
-  };
-
-  // Truncate device name
-  const truncateDevice = (name) => {
-    if (!name) return "Unknown";
-    return name.length > 50 ? `${name.substring(0, 50)}...` : name;
-  };
-
   return (
-    <div className="min-h-screen p-8 bg-transparent relative font-sans">
+    <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-transparent relative font-sans">
       {/* Enhanced grid background with dots */}
       <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none" />
       <div className="absolute inset-0 bg-grid-dots opacity-40 pointer-events-none" />
 
       <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex items-end justify-between border-b-2 border-black pb-6">
-          <div className="flex items-center gap-6">
-            <div className="accent-bar h-16"></div>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-black pb-6 gap-4">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <div className="accent-bar h-16 shrink-0" />
             <div>
               <h1 className="tim-title">{t("loginHistory.title")}</h1>
-              <div className="flex items-center gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1 shrink-0">
                   {t("loginHistory.system")}
                 </span>
                 <p className="tim-meta">{t("loginHistory.subtitle")}</p>
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
             <Button
               onClick={handleExportCsv}
               variant="outline"
-              className="h-12 rounded-none border border-black hover:bg-black hover:text-white px-4 font-mono text-xs uppercase font-bold"
+              className="flex-1 sm:flex-initial justify-center h-12 rounded-none border border-black hover:bg-black hover:text-white px-4 font-mono text-xs uppercase font-bold cursor-pointer"
             >
               <Download className="h-4 w-4 mr-2" />
               CSV
@@ -268,9 +230,11 @@ const LoginHistoryPage = () => {
               onClick={() => fetchSessions()}
               disabled={loading}
               variant="outline"
-              className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white"
+              className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white cursor-pointer shrink-0"
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
             </Button>
           </div>
         </div>
@@ -318,17 +282,19 @@ const LoginHistoryPage = () => {
                   setStatusFilter(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50"
+                className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50 cursor-pointer"
               >
                 <option value="all">{t("loginHistory.allStatuses")}</option>
                 <option value="active">{t("loginHistory.activeStatus")}</option>
-                <option value="inactive">{t("loginHistory.inactiveStatus")}</option>
+                <option value="inactive">
+                  {t("loginHistory.inactiveStatus")}
+                </option>
               </select>
               {currentUser && (
                 <Button
                   variant="outline"
                   onClick={() => handleRevokeAll(currentUser.id)}
-                  className="h-10 rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
+                  className="h-10 rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold cursor-pointer"
                 >
                   <Ban className="w-4 h-4 mr-2" />
                   {t("loginHistory.logoutAll")}
@@ -339,291 +305,25 @@ const LoginHistoryPage = () => {
         </div>
 
         {/* Data Table */}
-        <div className="bg-white border border-black shadow-sm overflow-hidden">
-          {(() => {
-            if (loading) {
-              return (
-                <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
-                  <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
-                  <span className="font-mono text-xs uppercase text-gray-500">
-                    {t("loginHistory.loadingData")}
-                  </span>
-                </div>
-              );
-            }
-
-            if (sessions.length === 0) {
-              return (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <Monitor className="h-12 w-12 text-gray-300 mb-4" />
-                  <div className="font-bold uppercase text-gray-400">
-                    {t("loginHistory.noData")}
-                  </div>
-                </div>
-              );
-            }
-
-            return (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-black text-white tim-table-header">
-                      <th className="p-4 border-r border-black/20 w-[60px]">
-                        STT
-                      </th>
-                      <th className="p-4 border-r border-black/20">USER</th>
-                      <th className="p-4 border-r border-black/20">{t("loginHistory.device").toUpperCase()}</th>
-                      <th className="p-4 border-r border-black/20">
-                        IP ADDRESS
-                      </th>
-                      <th className="p-4 border-r border-black/20">
-                        {t("loginHistory.status").toUpperCase()}
-                      </th>
-                      <th className="p-4 border-r border-black/20">
-                        {t("loginHistory.loggedIn").toUpperCase()}
-                      </th>
-                      <th className="p-4 border-r border-black/20">
-                        {t("loginHistory.lastUsed").toUpperCase()}
-                      </th>
-                      <th className="p-4 border-r border-black/20">{t("loginHistory.expiresAt").toUpperCase()}</th>
-                      <th className="p-4 text-center">{t("loginHistory.actions").toUpperCase()}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-black/5">
-                    {sessions.map((session, index) => {
-                      const statusInfo = getStatusInfo(session);
-                      return (
-                        <tr
-                          key={session.id}
-                          className="hover:bg-yellow-50 group transition-colors"
-                        >
-                          <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
-                            {getTableSerialNumber(
-                              totalItems || sessions.length,
-                              index,
-                              currentPage,
-                              itemsPerPage,
-                            )}
-                          </td>
-                          <td className="p-4 border-r border-black/5">
-                            <div>
-                              <div className="font-bold uppercase text-sm">
-                                {session.user?.profile?.fullName || "N/A"}
-                              </div>
-                              <div className="text-gray-500 text-xs font-mono">
-                                {session.user?.email || "N/A"}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-4 border-r border-black/5">
-                            <div className="flex items-center gap-2">
-                              {getDeviceIcon(session.deviceName)}
-                              <span className="truncate max-w-[200px] text-sm">
-                                {truncateDevice(session.deviceName)}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="p-4 border-r border-black/5">
-                            <span className="font-mono text-sm">
-                              {session.ipAddress}
-                            </span>
-                          </td>
-                          <td className="p-4 border-r border-black/5">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-none border border-black text-[10px] font-bold uppercase font-mono ${statusInfo.color}`}
-                            >
-                              {statusInfo.icon}
-                              {statusInfo.label}
-                            </span>
-                          </td>
-                          <td className="p-4 border-r border-black/5">
-                            <span className="font-mono text-sm text-gray-500">
-                              {formatDate(session.createdAt)}
-                            </span>
-                          </td>
-                          <td className="p-4 border-r border-black/5">
-                            <span className="font-mono text-sm text-gray-500">
-                              {formatDate(session.lastUsedAt)}
-                            </span>
-                          </td>
-                          <td className="p-4 border-r border-black/5">
-                            <span className="font-mono text-sm text-gray-500">
-                              {formatDate(session.expiresAt)}
-                            </span>
-                          </td>
-                          <td className="p-4 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleViewDetail(session)}
-                                className="rounded-none border border-transparent hover:border-black hover:bg-white h-8"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              {session.isActive && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleRevoke(session.id)}
-                                  className="rounded-none border border-transparent hover:border-red-600 hover:bg-red-50 text-red-600 hover:text-red-700 h-8"
-                                >
-                                  <Ban className="w-4 h-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            );
-          })()}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between p-4 border-t border-black bg-gray-50 font-mono text-xs uppercase">
-              <div>{t("common.showing")} {sessions.length} {t("common.results")}</div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="rounded-none border-black h-8 hover:bg-black hover:text-white"
-                >
-                  {t("common.previous")}
-                </Button>
-                <span className="flex items-center px-4 font-bold">
-                  {currentPage}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setCurrentPage((p) => Math.min(totalPages, p + 1))
-                  }
-                  disabled={currentPage === totalPages}
-                  className="rounded-none border-black h-8 hover:bg-black hover:text-white"
-                >
-                  {t("common.nextPage")}
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
+        <LoginHistoryTableView
+          loading={loading}
+          sessions={sessions}
+          totalItems={totalItems}
+          currentPage={currentPage}
+          itemsPerPage={itemsPerPage}
+          totalPages={totalPages}
+          setCurrentPage={setCurrentPage}
+          handleViewDetail={handleViewDetail}
+          handleRevoke={handleRevoke}
+        />
 
         {/* Detail Modal */}
-        <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>{t("loginHistory.detailTitle", { id: selectedSession?.id })}</DialogTitle>
-            </DialogHeader>
-            {selectedSession && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">
-                      User
-                    </label>
-                    <p className="mt-1">
-                      {selectedSession.user?.profile?.fullName || "N/A"}
-                      <br />
-                      <span className="text-sm text-gray-500">
-                        {selectedSession.user?.email}
-                      </span>
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">
-                      {t("loginHistory.status")}
-                    </label>
-                    <p className="mt-1">
-                      {(() => {
-                        const statusInfo = getStatusInfo(selectedSession);
-                        return (
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}
-                          >
-                            {statusInfo.icon}
-                            {statusInfo.label}
-                          </span>
-                        );
-                      })()}
-                    </p>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-sm font-medium text-gray-500">
-                      {t("loginHistory.device")}
-                    </label>
-                    <div className="mt-1 flex items-center gap-2">
-                      {getDeviceIcon(selectedSession.deviceName)}
-                      <p className="break-all">{selectedSession.deviceName}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">
-                      IP Address
-                    </label>
-                    <p className="mt-1 font-mono">
-                      {selectedSession.ipAddress}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">
-                      Device ID
-                    </label>
-                    <p className="mt-1 font-mono">
-                      {selectedSession.deviceId || "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">
-                      {t("loginHistory.loggedIn")}
-                    </label>
-                    <p className="mt-1">
-                      {formatDate(selectedSession.createdAt)}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">
-                      {t("loginHistory.lastUsed")}
-                    </label>
-                    <p className="mt-1">
-                      {formatDate(selectedSession.lastUsedAt)}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">
-                      {t("loginHistory.expiresAt")}
-                    </label>
-                    <p className="mt-1">
-                      {formatDate(selectedSession.expiresAt)}
-                    </p>
-                  </div>
-                </div>
-
-                {selectedSession.isActive && (
-                  <div className="pt-4 border-t">
-                    <Button
-                      variant="destructive"
-                      onClick={() => {
-                        handleRevoke(selectedSession.id);
-                        setShowDetailModal(false);
-                      }}
-                      className="w-full"
-                    >
-                      <Ban className="w-4 h-4 mr-2" />
-                      {t("loginHistory.deactivateSession")}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+        <LoginHistoryDetailModal
+          open={showDetailModal}
+          onOpenChange={setShowDetailModal}
+          selectedSession={selectedSession}
+          handleRevoke={handleRevoke}
+        />
       </div>
     </div>
   );

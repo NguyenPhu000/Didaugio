@@ -100,7 +100,7 @@ const DashboardPage = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <input
@@ -119,32 +119,32 @@ const DashboardPage = () => {
       <SectionCards stats={stats} userCount={userCount} />
 
       {/* Interactive Chart */}
-      <div className="rounded-3xl bg-white border border-black/[0.04] shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-6 overflow-hidden">
+      <div className="rounded-2xl sm:rounded-3xl bg-white border border-black/[0.04] shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-3.5 sm:p-6 overflow-hidden">
         <ChartAreaInteractive />
       </div>
 
       {/* Monitoring Section */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
         <OnlineUsersCard />
         <ServerHealthCard />
         <RecentErrorsCard />
       </div>
 
       {/* Data Status + Categories */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
         <DashboardDataStatus stats={stats} />
         <DashboardCategories categories={categories} places={places} />
       </div>
 
       {/* Recent Places Table */}
-      <div className="rounded-3xl border border-black/[0.04] bg-white shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden">
-        <div className="border-b border-black/[0.04] px-6 py-5 bg-[#FAF9F5]">
+      <div className="rounded-2xl sm:rounded-3xl border border-black/[0.04] bg-white shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden">
+        <div className="border-b border-black/[0.04] px-4 sm:px-6 py-3.5 sm:py-5 bg-[#FAF9F5]">
           <h3 className="text-base font-extrabold text-slate-950">{t("dashboard.recentPlaces.title")}</h3>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
             {t("dashboard.latestPlaces")}
           </p>
         </div>
-        <div className="p-6">
+        <div className="p-3.5 sm:p-6 overflow-x-auto">
           <RecentPlacesTable places={places} />
         </div>
       </div>

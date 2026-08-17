@@ -60,6 +60,11 @@ const formatCurrency = (value) => {
   });
 };
 
+const getDocumentSource = (detail, type, fallbackField) => {
+  const document = (detail?.sensitiveDocuments || []).find((item) => item.type === type);
+  return document || fallbackField || null;
+};
+
 const ChecklistItem = ({ label, checked, previewUrl, onPreview }) => {
   const { t } = useTranslation();
   return (
@@ -244,6 +249,10 @@ export default function BusinessDetailModal({
   const compliance = insights.complianceChecklist || {};
   const risks = Array.isArray(insights.riskFlags) ? insights.riskFlags : [];
   const placeStatusCounts = operations.placeStatusCounts || {};
+  const idFrontSource = getDocumentSource(detail, "id_card_front", detail?.idCardFront);
+  const idBackSource = getDocumentSource(detail, "id_card_back", detail?.idCardBack);
+  const licenseSource = getDocumentSource(detail, "business_license", detail?.businessLicense);
+  const certSource = getDocumentSource(detail, "certificate", null);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -513,20 +522,7 @@ export default function BusinessDetailModal({
                       label={t("business.detailModal.taxCode")}
                       checked={Boolean(compliance.hasTaxCode)}
                     />
-                    {(() => {
-                      const getDocSource = (type, fallbackField) => {
-                        const doc = (detail?.sensitiveDocuments || []).find((d) => d.type === type);
-                        if (doc) return doc;
-                        return fallbackField || null;
-                      };
-
-                      const idFrontSource = getDocSource("id_card_front", detail.idCardFront);
-                      const idBackSource = getDocSource("id_card_back", detail.idCardBack);
-                      const licenseSource = getDocSource("business_license", detail.businessLicense);
-                      const certSource = getDocSource("certificate", null);
-
-                      return (
-                        <>
+                    <>
                           <ChecklistItem
                             label={t("business.detailModal.idFront")}
                             checked={Boolean(compliance.hasIdCardFront)}
@@ -553,9 +549,7 @@ export default function BusinessDetailModal({
                               onPreview={(url, label) => setPreviewData({ url, title: label })}
                             />
                           )}
-                        </>
-                      );
-                    })()}
+                    </>
                     <ChecklistItem
                       label={t("business.detailModal.bankName")}
                       checked={Boolean(compliance.hasBankInfo)}

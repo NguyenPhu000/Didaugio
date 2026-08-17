@@ -13,14 +13,14 @@ function parsePagination(params = {}) {
 }
 
 function resolveDateRange(params = {}) {
-  const createdAt = {};
+  const range = {};
   if (params.startDate) {
-    createdAt.gte = new Date(`${params.startDate}T00:00:00.000Z`);
+    range.gte = new Date(`${params.startDate}T00:00:00.000Z`);
   }
   if (params.endDate) {
-    createdAt.lte = new Date(`${params.endDate}T23:59:59.999Z`);
+    range.lte = new Date(`${params.endDate}T23:59:59.999Z`);
   }
-  return Object.keys(createdAt).length ? createdAt : null;
+  return Object.keys(range).length ? range : null;
 }
 
 function toDate(value) {
@@ -57,9 +57,9 @@ function normalizePaymentRows(payments, range) {
         occurredAt: payment.paidAt || payment.createdAt,
         transactionRef: payment.transactionRef,
         transactionId: payment.transactionId,
-        description: `Thanh toan booking ${payment.booking?.bookingCode || payment.bookingId}`,
+        description: `Thanh toán đơn #${payment.booking?.bookingCode || payment.bookingId}`,
         booking: payment.booking,
-        business: payment.booking?.service?.place?.business || payment.booking?.business,
+        business: payment.booking?.business || null,
       });
     }
 
@@ -79,9 +79,9 @@ function normalizePaymentRows(payments, range) {
         occurredAt: payment.refundedAt || payment.updatedAt,
         transactionRef: payment.transactionRef,
         transactionId: payment.transactionId,
-        description: payment.refundReason || `Hoan tien booking ${payment.booking?.bookingCode || payment.bookingId}`,
+        description: payment.refundReason || `Hoàn tiền đơn #${payment.booking?.bookingCode || payment.bookingId}`,
         booking: payment.booking,
-        business: payment.booking?.service?.place?.business || payment.booking?.business,
+        business: payment.booking?.business || null,
       });
     }
   }
@@ -106,9 +106,9 @@ function normalizePayoutRows(payouts, range) {
       occurredAt: payout.transferredAt || payout.requestedAt || payout.createdAt,
       transactionRef: `PAYOUT_${payout.id}`,
       transactionId: null,
-      description: payout.note || "Rut tien doi tac",
+      description: payout.note || `Rút tiền về ${payout.bankName || "ngân hàng"} (${payout.bankAccount || ""})`,
       booking: null,
-      business: payout.business,
+      business: payout.business || null,
     }));
 }
 
@@ -126,9 +126,9 @@ function normalizeLedgerRows(ledgers) {
     occurredAt: ledger.createdAt,
     transactionRef: ledger.payoutId ? `PAYOUT_${ledger.payoutId}` : null,
     transactionId: null,
-    description: ledger.description,
+    description: ledger.description || "Giao dịch sổ cái",
     booking: ledger.booking,
-    business: ledger.booking?.service?.place?.business || ledger.booking?.business || null,
+    business: ledger.booking?.business || null,
   }));
 }
 
@@ -182,8 +182,8 @@ export async function getCashflowSummary({ businessId } = {}) {
     }),
   ]);
 
-  const walletBalance = wallets.reduce((sum, item) => sum + item.balance, 0);
-  const frozenBalance = wallets.reduce((sum, item) => sum + item.frozenBalance, 0);
+  const walletBalance = wallets.reduce((sum, item) => sum + (item.balance || 0), 0);
+  const frozenBalance = wallets.reduce((sum, item) => sum + (item.frozenBalance || 0), 0);
   const totalIn = paidAgg._sum.amount || 0;
   const totalRefunded = refundAgg._sum.refundAmount || 0;
   const totalPayouts = payoutTransferredAgg._sum.amount || 0;
@@ -206,110 +206,121 @@ export async function getCashflowSummary({ businessId } = {}) {
   };
 }
 
-export async function getCashflow({ businessId, ...params } = {}) {
-  const { page, limit } = parsePagination(params);
+function buildCashflowScopes(businessId, params) {
   const dateRange = resolveDateRange(params);
   const type = params.type && params.type !== "all" ? params.type : null;
-  const gateway = params.gateway && params.gateway !== "all"
-    ? params.gateway.toLowerCase()
-    : null;
+  const gateway = params.gateway && params.gateway !== "all" ? params.gateway : null;
+  const paymentDateScope = !dateRange ? {} : type === "money_in"
+    ? { paidAt: dateRange }
+    : type === "refund"
+      ? { OR: [{ refundedAt: dateRange }, { refundedAt: null, updatedAt: dateRange }] }
+      : { OR: [{ paidAt: dateRange }, { refundedAt: dateRange }, { refundedAt: null, updatedAt: dateRange }] };
+  const payoutDateScope = !dateRange ? {} : { OR: [{ transferredAt: dateRange }, { transferredAt: null, requestedAt: dateRange }, { transferredAt: null, requestedAt: null, createdAt: dateRange }] };
+  const ledgerScope = businessId ? { OR: [{ booking: { businessId } }, { payout: { businessId } }] } : {};
+  return { dateRange, type, gateway, businessScope: getBusinessWhere(businessId), payoutScope: businessId ? { businessId } : {}, paymentDateScope, payoutDateScope, ledgerScope };
+}
 
-  const businessScope = getBusinessWhere(businessId);
-  const payoutScope = businessId ? { businessId } : {};
-  const payoutIds = businessId
-    ? (
-        await prisma.payout.findMany({
-          where: payoutScope,
-          select: { id: true },
-        })
-      ).map((payout) => payout.id)
-    : null;
+function paginateCashflowRows(rows, page, limit, type) {
+  const filteredRows = type ? rows.filter((row) => row.type === type || row.direction === type) : rows;
+  filteredRows.sort((a, b) => new Date(b.occurredAt || 0) - new Date(a.occurredAt || 0));
+  const total = filteredRows.length;
+  const start = (page - 1) * limit;
+  return { rows: filteredRows.slice(start, start + limit), pagination: { page, limit, total, totalPages: Math.max(Math.ceil(total / limit), 1) } };
+}
+
+export async function getCashflow({ businessId, ...params } = {}) {
+  const { page, limit } = parsePagination(params);
+  const { dateRange, type, gateway, businessScope, payoutScope, paymentDateScope, payoutDateScope, ledgerScope } = buildCashflowScopes(businessId, params);
 
   const [payments, payouts, ledgers] = await Promise.all([
-    prisma.payment.findMany({
-      where: {
-        ...businessScope,
-        ...(gateway ? { paymentMethod: gateway } : {}),
-      },
-      include: {
-        booking: {
-          include: {
-            business: { select: { id: true, name: true } },
-            service: {
-              include: {
-                place: {
-                  include: {
-                    business: { select: { id: true, name: true } },
-                  },
-                },
+    (!type || type === "money_in" || type === "refund")
+      ? prisma.payment.findMany({
+          where: {
+            ...businessScope,
+            ...(gateway ? { paymentMethod: gateway } : {}),
+            ...paymentDateScope,
+          },
+          select: {
+            id: true,
+            amount: true,
+            currency: true,
+            paymentMethod: true,
+            transactionId: true,
+            transactionRef: true,
+            status: true,
+            paidAt: true,
+            refundAmount: true,
+            refundedAt: true,
+            refundReason: true,
+            createdAt: true,
+            updatedAt: true,
+            booking: {
+              select: {
+                id: true,
+                bookingCode: true,
+                businessId: true,
+                guestName: true,
               },
             },
           },
-        },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 500,
-    }),
-    prisma.payout.findMany({
-      where: payoutScope,
-      include: {
-        business: { select: { id: true, name: true } },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 500,
-    }),
-    prisma.financialLedger.findMany({
-      where: businessId
-        ? {
-            OR: [
-              { booking: { businessId } },
-              ...(payoutIds?.length ? [{ payoutId: { in: payoutIds } }] : []),
-            ],
-          }
-        : {},
-      include: {
-        booking: {
-          include: {
-            business: { select: { id: true, name: true } },
-            service: {
-              include: {
-                place: {
-                  include: {
-                    business: { select: { id: true, name: true } },
-                  },
-                },
+          orderBy: { updatedAt: "desc" },
+        })
+      : Promise.resolve([]),
+
+    (!type || type === "payout")
+      ? prisma.payout.findMany({
+          where: {
+            ...payoutScope,
+            ...payoutDateScope,
+          },
+          select: {
+            id: true,
+            amount: true,
+            status: true,
+            bankName: true,
+            bankAccount: true,
+            bankOwner: true,
+            note: true,
+            requestedAt: true,
+            transferredAt: true,
+            createdAt: true,
+          },
+          orderBy: { updatedAt: "desc" },
+        })
+      : Promise.resolve([]),
+
+    (!type || type === "ledger")
+      ? prisma.financialLedger.findMany({
+          where: {
+            ...ledgerScope,
+            ...(dateRange ? { createdAt: dateRange } : {}),
+          },
+          select: {
+            id: true,
+            type: true,
+            amount: true,
+            description: true,
+            createdAt: true,
+            payoutId: true,
+            booking: {
+              select: {
+                id: true,
+                bookingCode: true,
+                businessId: true,
+                guestName: true,
               },
             },
           },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 500,
-    }),
+          orderBy: { createdAt: "desc" },
+        })
+      : Promise.resolve([]),
   ]);
 
-  let rows = [
+  const rows = [
     ...normalizePaymentRows(payments, dateRange),
     ...normalizePayoutRows(payouts, dateRange),
     ...normalizeLedgerRows(ledgers).filter((row) => dateMatches(row.occurredAt, dateRange)),
   ];
 
-  if (type) {
-    rows = rows.filter((row) => row.type === type || row.direction === type);
-  }
-
-  rows.sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt));
-
-  const total = rows.length;
-  const start = (page - 1) * limit;
-
-  return {
-    rows: rows.slice(start, start + limit),
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    },
-  };
+  return paginateCashflowRows(rows, page, limit, type);
 }

@@ -696,6 +696,16 @@ const AppRoutes = () => {
         }
       />
 
+      {/* Pricing alias routes */}
+      <Route
+        path="/business/pricing"
+        element={<Navigate to={BUSINESS_ROUTES.SUBSCRIPTION_PLANS} replace />}
+      />
+      <Route
+        path="/pricing"
+        element={<Navigate to={BUSINESS_ROUTES.SUBSCRIPTION_PLANS} replace />}
+      />
+
       {/* Alias routes */}
       <Route
         path={PLACES_ALIAS}

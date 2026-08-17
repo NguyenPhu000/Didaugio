@@ -84,6 +84,137 @@ const canManageTrip = (trip, actorUserId, actor) => {
   );
 };
 
+const validateBookingTripLinkPreconditions = ({ booking, trip, actorUserId, actor }) => {
+  if (!booking) {
+    throw serviceError("Không tìm thấy booking", 404, "BOOKING_NOT_FOUND");
+  }
+  if (!trip) {
+    throw serviceError("Không tìm thấy chuyến đi", 404, "TRIP_NOT_FOUND");
+  }
+  if (!canManageTrip(trip, actorUserId, actor)) {
+    throw serviceError(
+      "Bạn không có quyền truy cập chuyến đi này",
+      403,
+      "TRIP_FORBIDDEN",
+    );
+  }
+  if (booking.userId !== trip.userId) {
+    throw serviceError(
+      "Người sở hữu booking không khớp với chủ chuyến đi",
+      400,
+      "BOOKING_OWNER_MISMATCH",
+    );
+  }
+  if (!booking.service?.placeId) {
+    throw serviceError(
+      "Dịch vụ trong booking chưa được gắn với địa điểm",
+      400,
+      "BOOKING_PLACE_MISSING",
+    );
+  }
+};
+
+const resolveEffectiveTripForBooking = async (tx, { trip, booking, dateRangeMode }) => {
+  let computedDayNumber = diffDaysInclusive(trip.startDate, booking.useDate);
+  const isOutsideRange =
+    computedDayNumber < 1 || computedDayNumber > trip.totalDays;
+
+  if (!isOutsideRange) {
+    return { effectiveTrip: trip, computedDayNumber };
+  }
+
+  if (dateRangeMode === TRIP_DATE_RANGE_MODE.REJECT_OUTSIDE_RANGE) {
+    throw serviceError(
+      "Ngày sử dụng booking nằm ngoài thời gian của chuyến đi",
+      400,
+      "BOOKING_OUTSIDE_TRIP_RANGE",
+    );
+  }
+
+  if (dateRangeMode === TRIP_DATE_RANGE_MODE.EXPAND_TRIP_RANGE) {
+    const rangeUpdate = buildDateRangeUpdate(trip, booking.useDate);
+    const effectiveTrip = await tx.tripPlan.update({
+      where: { id: trip.id },
+      data: rangeUpdate,
+      include: {
+        stops: {
+          select: {
+            id: true,
+            placeId: true,
+            dayNumber: true,
+            fulfillmentStatus: true,
+          },
+        },
+      },
+    });
+    return {
+      effectiveTrip,
+      computedDayNumber: diffDaysInclusive(
+        effectiveTrip.startDate,
+        booking.useDate,
+      ),
+    };
+  }
+
+  return { effectiveTrip: trip, computedDayNumber };
+};
+
+const resolveOrCreateMatchedStop = async (
+  tx,
+  { effectiveTrip, booking, computedDayNumber, attachMode },
+) => {
+  let matchedStop = null;
+  let stopCreated = false;
+
+  if (computedDayNumber >= 1 && computedDayNumber <= effectiveTrip.totalDays) {
+    const candidates = effectiveTrip.stops.filter(
+      (stop) =>
+        stop.placeId === booking.service.placeId &&
+        stop.dayNumber === computedDayNumber,
+    );
+
+    if (candidates.length === 1) {
+      [matchedStop] = candidates;
+    }
+  }
+
+  if (
+    !matchedStop &&
+    attachMode === TRIP_BOOKING_ATTACH_MODE.CREATE_STOP_IF_MISSING
+  ) {
+    const nextSequence = await getNextStopSequence(tx, {
+      tripId: effectiveTrip.id,
+      dayNumber: computedDayNumber,
+    });
+
+    matchedStop = await tx.tripStop.create({
+      data: {
+        tripId: effectiveTrip.id,
+        placeId: booking.service.placeId,
+        dayNumber: computedDayNumber,
+        sequence: nextSequence,
+        plannedDate: booking.useDate,
+        arrivalTime: booking.useTime,
+        departureTime: booking.endTimeStr,
+        fulfillmentStatus: deriveStopFulfillmentStatus(booking),
+        metadata: {
+          createdFromBookingId: booking.id,
+          createdFromBookingCode: booking.bookingCode,
+        },
+      },
+      select: {
+        id: true,
+        placeId: true,
+        dayNumber: true,
+        fulfillmentStatus: true,
+      },
+    });
+    stopCreated = true;
+  }
+
+  return { matchedStop, stopCreated };
+};
+
 const toLegacyDestination = (stop) => {
   return {
     id: stop.id,
@@ -235,150 +366,24 @@ export const makeTripPlanService = (prismaClient = prisma) => {
         },
       });
 
-      if (!booking) {
-        throw serviceError("Không tìm thấy booking", 404, "BOOKING_NOT_FOUND");
-      }
+      validateBookingTripLinkPreconditions({ booking, trip, actorUserId, actor });
 
-      const trip = await tx.tripPlan.findUnique({
-        where: { id: tripId },
-        include: {
-          stops: {
-            select: {
-              id: true,
-              placeId: true,
-              dayNumber: true,
-              fulfillmentStatus: true,
-            },
-          },
+      const { effectiveTrip, computedDayNumber } =
+        await resolveEffectiveTripForBooking(tx, {
+          trip,
+          booking,
+          dateRangeMode,
+        });
+
+      const { matchedStop, stopCreated } = await resolveOrCreateMatchedStop(
+        tx,
+        {
+          effectiveTrip,
+          booking,
+          computedDayNumber,
+          attachMode,
         },
-      });
-
-      if (!trip) {
-        throw serviceError("Không tìm thấy chuyến đi", 404, "TRIP_NOT_FOUND");
-      }
-
-      const actor = await tx.user.findUnique({
-        where: { id: actorUserId },
-        select: {
-          id: true,
-          roleId: true,
-          role: { select: { name: true } },
-        },
-      });
-
-      if (!canManageTrip(trip, actorUserId, actor)) {
-        throw serviceError(
-          "Bạn không có quyền truy cập chuyến đi này",
-          403,
-          "TRIP_FORBIDDEN",
-        );
-      }
-
-      if (booking.userId !== trip.userId) {
-        throw serviceError(
-          "Người sở hữu booking không khớp với chủ chuyến đi",
-          400,
-          "BOOKING_OWNER_MISMATCH",
-        );
-      }
-
-      if (!booking.service?.placeId) {
-        throw serviceError(
-          "Dịch vụ trong booking chưa được gắn với địa điểm",
-          400,
-          "BOOKING_PLACE_MISSING",
-        );
-      }
-
-      let effectiveTrip = trip;
-      let computedDayNumber = diffDaysInclusive(trip.startDate, booking.useDate);
-      const isOutsideRange =
-        computedDayNumber < 1 || computedDayNumber > trip.totalDays;
-
-      if (
-        isOutsideRange &&
-        dateRangeMode === TRIP_DATE_RANGE_MODE.REJECT_OUTSIDE_RANGE
-      ) {
-        throw serviceError(
-          "Ngày sử dụng booking nằm ngoài thời gian của chuyến đi",
-          400,
-          "BOOKING_OUTSIDE_TRIP_RANGE",
-        );
-      }
-
-      if (
-        isOutsideRange &&
-        dateRangeMode === TRIP_DATE_RANGE_MODE.EXPAND_TRIP_RANGE
-      ) {
-        const rangeUpdate = buildDateRangeUpdate(trip, booking.useDate);
-        effectiveTrip = await tx.tripPlan.update({
-          where: { id: trip.id },
-          data: rangeUpdate,
-          include: {
-            stops: {
-              select: {
-                id: true,
-                placeId: true,
-                dayNumber: true,
-                fulfillmentStatus: true,
-              },
-            },
-          },
-        });
-        computedDayNumber = diffDaysInclusive(
-          effectiveTrip.startDate,
-          booking.useDate,
-        );
-      }
-
-      let matchedStop = null;
-      let stopCreated = false;
-
-      if (computedDayNumber >= 1 && computedDayNumber <= effectiveTrip.totalDays) {
-        const candidates = effectiveTrip.stops.filter(
-          (stop) =>
-            stop.placeId === booking.service.placeId &&
-            stop.dayNumber === computedDayNumber,
-        );
-
-        if (candidates.length === 1) {
-          [matchedStop] = candidates;
-        }
-      }
-
-      if (
-        !matchedStop &&
-        attachMode === TRIP_BOOKING_ATTACH_MODE.CREATE_STOP_IF_MISSING
-      ) {
-        const nextSequence = await getNextStopSequence(tx, {
-          tripId: effectiveTrip.id,
-          dayNumber: computedDayNumber,
-        });
-
-        matchedStop = await tx.tripStop.create({
-          data: {
-            tripId: effectiveTrip.id,
-            placeId: booking.service.placeId,
-            dayNumber: computedDayNumber,
-            sequence: nextSequence,
-            plannedDate: booking.useDate,
-            arrivalTime: booking.useTime,
-            departureTime: booking.endTimeStr,
-            fulfillmentStatus: deriveStopFulfillmentStatus(booking),
-            metadata: {
-              createdFromBookingId: booking.id,
-              createdFromBookingCode: booking.bookingCode,
-            },
-          },
-          select: {
-            id: true,
-            placeId: true,
-            dayNumber: true,
-            fulfillmentStatus: true,
-          },
-        });
-        stopCreated = true;
-      }
+      );
 
       const link = await tx.bookingTripLink.upsert({
         where: { bookingId: booking.id },

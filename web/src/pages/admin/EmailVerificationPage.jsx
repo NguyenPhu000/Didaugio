@@ -141,20 +141,20 @@ const EmailVerificationPage = () => {
   };
 
   return (
-    <div className="min-h-screen p-8 bg-transparent relative font-sans">
+    <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-transparent relative font-sans">
       {/* Enhanced grid background with dots */}
       <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none" />
       <div className="absolute inset-0 bg-grid-dots opacity-40 pointer-events-none" />
 
       <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex items-end justify-between border-b-2 border-black pb-6">
-          <div className="flex items-center gap-6">
-            <div className="accent-bar h-16"></div>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-black pb-6 gap-4">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <div className="accent-bar h-16 shrink-0"></div>
             <div>
               <h1 className="tim-title">XÁC THỰC EMAIL</h1>
-              <div className="flex items-center gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
+                <span className="tim-system bg-black text-white px-2 py-1 shrink-0">
                   SYSTEM // EMAIL VERIFICATION
                 </span>
                 <p className="tim-meta">QUẢN LÝ XÁC THỰC EMAIL</p>
@@ -165,14 +165,14 @@ const EmailVerificationPage = () => {
             onClick={() => fetchVerifications()}
             disabled={loading}
             variant="outline"
-            className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white"
+            className="self-end sm:self-auto h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white shrink-0"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
             <div className="flex items-center justify-between mb-2">
               <span className="tim-meta">TỔNG SỐ</span>
@@ -213,7 +213,7 @@ const EmailVerificationPage = () => {
 
         {/* Filter Bar */}
         <div className="bg-white border border-black p-4 shadow-sm">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <span className="tim-meta">BỘ LỌC DỮ LIỆU</span>
             <select
               value={statusFilter}
@@ -221,7 +221,7 @@ const EmailVerificationPage = () => {
                 setStatusFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50"
+              className="w-full sm:w-auto h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50"
             >
               <option value="all">TẤT CẢ TRẠNG THÁI</option>
               <option value="pending">CHỜ XÁC THỰC</option>

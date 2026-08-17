@@ -1,3 +1,7 @@
+// MAP: PaymentResultScreen
+// ├── UI: @/components/primitives/MaterialIconsRounded
+// └── API: @/modules/booking/api/bookingApi
+
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,

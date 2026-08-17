@@ -23,7 +23,7 @@ const ALLOWED_MIME = [
   "image/webp",
   "application/pdf",
 ];
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8MB
 
 /**
  * Đảm bảo thư mục storage tồn tại
@@ -128,7 +128,7 @@ export const uploadDocument = async ({
     throw err;
   }
   if (buffer.length > MAX_FILE_SIZE) {
-    const err = new Error("Tệp vượt quá 10MB");
+    const err = new Error("Tệp vượt quá 8MB");
     err.statusCode = 413;
     throw err;
   }

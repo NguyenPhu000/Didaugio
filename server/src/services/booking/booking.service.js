@@ -1106,13 +1106,13 @@ export const create = async (payload = {}, userId) => {
 
     if (payload.voucherId) {
       try {
-        const voucherResult = await validateAndApplyVoucher(tx, {
+        const voucherResult = await Promise.resolve(validateAndApplyVoucher(tx, {
           voucherId: payload.voucherId,
           serviceId,
           businessId: service.businessId,
           userId,
           originalPrice,
-        });
+        }));
         discountAmount = voucherResult.discountAmount;
         voucherId = voucherResult.voucherId;
       } catch (voucherError) {

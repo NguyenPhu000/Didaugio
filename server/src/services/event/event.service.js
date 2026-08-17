@@ -1,9 +1,11 @@
 import prisma from "../../config/prismaClient.js";
 import ServiceError from "../../utils/serviceError.js";
 import { ERROR_CODES } from "../../config/messages.js";
-import { deleteImage } from "../../utils/cloudinaryService.js";
 import { uploadPlaceImage } from "../media/media.service.js";
-import { enqueueCloudinaryAssetCleanup } from "../media/cloudinaryCleanupJob.service.js";
+import {
+  enqueueCloudinaryAssetCleanup,
+  enqueueCloudinaryAssetRollback,
+} from "../media/cloudinaryCleanupJob.service.js";
 
 const EVENT_TRIP_PLACE_SELECT = {
   id: true,
@@ -68,7 +70,7 @@ export const createEvent = async (userId, data) => {
         title: data.title,
         description: data.description,
         thumbnail: staged.url,
-        thumbnailPublicId: staged.publicId || data.thumbnailPublicId || null,
+        thumbnailPublicId: staged.publicId,
         startDate,
         endDate,
         location: data.location || "Cần Thơ",
@@ -81,26 +83,22 @@ export const createEvent = async (userId, data) => {
       },
     });
   } catch (error) {
-    if (staged.publicId) await deleteImage(staged.publicId).catch(() => {});
+    await enqueueCloudinaryAssetRollback(prisma, {
+      aggregate: "Event",
+      aggregateId: 0,
+      publicIds: [staged.publicId],
+    });
     throw error;
   }
 };
 
-export const updateEvent = async (eventId, data) => {
-  const existingEvent = await prisma.event.findUnique({ where: { id: eventId } });
-  if (!existingEvent) throw new ServiceError("Event does not exist", 404, ERROR_CODES.NOT_FOUND);
-
-  const updateData = {};
-  for (const field of ["title", "description", "location", "maxParticipants", "isFeaturedBanner", "status"]) {
-    if (data[field] !== undefined) updateData[field] = data[field];
-  }
+async function buildEventUpdateData(existingEvent, data) {
+  const updateData = Object.fromEntries(["title", "description", "location", "maxParticipants", "isFeaturedBanner", "status"].filter((field) => data[field] !== undefined).map((field) => [field, data[field]]));
   if (data.broadcastNotice !== undefined) updateData.broadcastNotice = data.broadcastNotice || null;
   if (data.startDate !== undefined || data.endDate !== undefined) {
     const startDate = new Date(data.startDate || existingEvent.startDate);
     const endDate = new Date(data.endDate || existingEvent.endDate);
-    if (startDate > endDate) {
-      throw new ServiceError("Start date cannot be after end date", 400, ERROR_CODES.VALIDATION_ERROR);
-    }
+    if (startDate > endDate) throw new ServiceError("Start date cannot be after end date", 400, ERROR_CODES.VALIDATION_ERROR);
     if (data.startDate !== undefined) updateData.startDate = startDate;
     if (data.endDate !== undefined) updateData.endDate = endDate;
   }
@@ -111,12 +109,20 @@ export const updateEvent = async (eventId, data) => {
     }
     updateData.tripId = data.tripId;
   }
+  return updateData;
+}
+
+export const updateEvent = async (eventId, data) => {
+  const existingEvent = await prisma.event.findUnique({ where: { id: eventId } });
+  if (!existingEvent) throw new ServiceError("Event does not exist", 404, ERROR_CODES.NOT_FOUND);
+
+  const updateData = await buildEventUpdateData(existingEvent, data);
 
   let staged = null;
   if (data.thumbnail !== undefined && data.thumbnail !== existingEvent.thumbnail) {
     staged = await stageEventImage(data.thumbnail, "didaugio/events");
     updateData.thumbnail = staged.url;
-    updateData.thumbnailPublicId = staged.publicId || data.thumbnailPublicId || null;
+    updateData.thumbnailPublicId = staged.publicId;
   }
 
   try {
@@ -132,7 +138,11 @@ export const updateEvent = async (eventId, data) => {
       return updated;
     });
   } catch (error) {
-    if (staged?.publicId) await deleteImage(staged.publicId).catch(() => {});
+    await enqueueCloudinaryAssetRollback(prisma, {
+      aggregate: "Event",
+      aggregateId: eventId,
+      publicIds: [staged?.publicId],
+    });
     throw error;
   }
 };
@@ -879,7 +889,11 @@ export const createMoment = async (eventId, userId, data) => {
     return newMoment;
     });
   } catch (error) {
-    if (uploadedMomentPublicId) await deleteImage(uploadedMomentPublicId).catch(() => {});
+    await enqueueCloudinaryAssetRollback(prisma, {
+      aggregate: "EventMoment",
+      aggregateId: eventId,
+      publicIds: [uploadedMomentPublicId],
+    });
     throw error;
   }
 

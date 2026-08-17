@@ -1,3 +1,7 @@
+// MAP: SavedTabScreen
+// ├── UI: @/modules/saved/components/{SavedCard, NoteEditorModal, SavedStates}, @/modules/map/components/filters/FilterPickerModal
+// └── API: @/modules/saved/hooks/useSaved, @/modules/saved/hooks/useSavedOffline
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   RefreshControl,

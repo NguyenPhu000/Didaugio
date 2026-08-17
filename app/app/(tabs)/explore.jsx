@@ -1,3 +1,7 @@
+// MAP: ExploreTabScreen
+// ├── UI: @/modules/explore/components/{FeaturedSection, ExperienceBentoSection, CategoryPlacesSection, CategoryPlacesSheet, SearchOverlay}
+// └── API: @/modules/explore/hooks/useExplore, @/modules/explore/hooks/useCategories
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,

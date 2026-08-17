@@ -46,6 +46,17 @@ if (Notifications) {
 const BANNER_DURATION_MS = 4800;
 const MAX_BANNER_QUEUE = 3;
 
+const appendUniqueBanner = (queue, notification) => {
+  const seenIds = new Set();
+  return [...queue, notification]
+    .filter((item) => {
+      if (seenIds.has(item.id)) return false;
+      seenIds.add(item.id);
+      return true;
+    })
+    .slice(-MAX_BANNER_QUEUE);
+};
+
 function getProjectId() {
   return (
     Constants?.expoConfig?.extra?.eas?.projectId ??
@@ -285,14 +296,7 @@ export function NotificationProvider({ children }) {
       ...seenBannerIdsRef.current,
     ].slice(0, 20);
 
-    setBannerQueue((prev) =>
-      [...prev, notification]
-        .filter(
-          (item, index, items) =>
-            items.findIndex((candidate) => candidate.id === item.id) === index,
-        )
-        .slice(-MAX_BANNER_QUEUE),
-    );
+    setBannerQueue((prev) => appendUniqueBanner(prev, notification));
   }, []);
 
   const dismissBanner = useCallback(() => {

@@ -136,40 +136,32 @@ export const mapBusinessDataToPrisma = (data) => {
     bankAccountNumber,
     bankAccountOwner,
     bankName,
-    commissionRate,
-    contractSigned,
-    approvedBy,
-    approvedAt,
-    rejectionReason,
-    status,
     businessName,
     taxCode,
     idCardNumber,
-    idCardFront,
-    idCardFrontPublicId,
-    idCardBack,
-    idCardBackPublicId,
-    businessLicense,
-    businessLicensePublicId,
-    fullName,
-    phone,
-    address,
     ...rest
   } = data;
 
   // Ignore admin-only lifecycle fields in owner profile update flows.
-  void commissionRate;
-  void contractSigned;
-  void approvedBy;
-  void approvedAt;
-  void rejectionReason;
-  void status;
-  void idCardFrontPublicId;
-  void idCardBackPublicId;
-  void businessLicensePublicId;
-  void idCardFront;
-  void idCardBack;
-  void businessLicense;
+  for (const field of [
+    "commissionRate",
+    "contractSigned",
+    "approvedBy",
+    "approvedAt",
+    "rejectionReason",
+    "status",
+    "idCardFront",
+    "idCardFrontPublicId",
+    "idCardBack",
+    "idCardBackPublicId",
+    "businessLicense",
+    "businessLicensePublicId",
+    "fullName",
+    "phone",
+    "address",
+  ]) {
+    delete rest[field];
+  }
 
   // Helper to encrypt if encryption key is configured
   const encryptIfConfigured = (value) => {

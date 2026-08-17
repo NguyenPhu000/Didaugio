@@ -1,4 +1,8 @@
-import { getPlaceHeatmap, recordPlaceTelemetry } from "../../services/analytics/placeTelemetry.service.js";
+import {
+  getPlaceHeatmap,
+  recordPlaceTelemetry,
+  getBusinessTrafficSummary,
+} from "../../services/analytics/placeTelemetry.service.js";
 import { resolveBusinessId } from "../../utils/businessScope.js";
 import ServiceError from "../../utils/serviceError.js";
 
@@ -25,6 +29,19 @@ export async function getBusinessPlaceHeatmap(req, res, next) {
     }
     const data = await getPlaceHeatmap({ businessId, ...req.query });
     return res.json({ success: true, data });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function getBusinessTrafficSummaryController(req, res, next) {
+  try {
+    const businessId = await resolveBusinessId(req);
+    if (!businessId) {
+      throw new ServiceError("Business context is required", 403, "FORBIDDEN");
+    }
+    const data = await getBusinessTrafficSummary({ businessId, ...req.query });
+    return res.json({ success: true, data, message: "Lấy tổng hợp lưu lượng truy cập thành công" });
   } catch (error) {
     return next(error);
   }

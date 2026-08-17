@@ -1,3 +1,7 @@
+// MAP: businessProfile.controller
+// ├── ROUTE: src/routes/business/business.routes.js
+// └── SERVICE: src/services/business/businessProfile.service.js
+
 /**
  * Business Profile Controller - SRP: Xử lý request hồ sơ doanh nghiệp
  */

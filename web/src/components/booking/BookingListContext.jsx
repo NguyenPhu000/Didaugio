@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState, useMemo } from "react";
+import { createContext, useContext, useState, useMemo } from "react";
 
 const BookingListContext = createContext(null);
 
 export function BookingListProvider({ children, initialValue = {} }) {
   const [activeTab, setActiveTab] = useState("all");
   const [selectedPlace, setSelectedPlace] = useState("all");
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState("all"); // "all" | "morning" | "afternoon" | "evening"
   const [search, setSearch] = useState("");
   const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [selectedBookings, setSelectedBookings] = useState([]);
@@ -21,6 +22,8 @@ export function BookingListProvider({ children, initialValue = {} }) {
       setActiveTab,
       selectedPlace,
       setSelectedPlace,
+      selectedTimeSlot,
+      setSelectedTimeSlot,
       search,
       setSearch,
       dateRange,
@@ -44,6 +47,7 @@ export function BookingListProvider({ children, initialValue = {} }) {
     [
       activeTab,
       selectedPlace,
+      selectedTimeSlot,
       search,
       dateRange,
       selectedBookings,
@@ -67,7 +71,9 @@ export function BookingListProvider({ children, initialValue = {} }) {
 export function useBookingListContext() {
   const context = useContext(BookingListContext);
   if (!context) {
-    throw new Error("useBookingListContext must be used within a BookingListProvider");
+    throw new Error(
+      "useBookingListContext must be used within a BookingListProvider"
+    );
   }
   return context;
 }

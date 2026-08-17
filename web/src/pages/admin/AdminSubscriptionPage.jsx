@@ -189,7 +189,7 @@ export default function AdminSubscriptionPage() {
             {t("subscription.admin.subtitle")}
           </p>
         </div>
-        <Button variant="outline" onClick={refresh} className="gap-1.5">
+        <Button variant="outline" onClick={refresh} className="gap-1.5 w-full sm:w-auto justify-center">
           <RefreshCw className="h-4 w-4" />
           {t("common.refresh")}
         </Button>
@@ -207,7 +207,7 @@ export default function AdminSubscriptionPage() {
       {/* Table */}
       <Card>
         <CardContent className="space-y-4 p-4">
-          <div className="grid gap-3 md:grid-cols-4">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input

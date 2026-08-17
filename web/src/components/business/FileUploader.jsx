@@ -14,7 +14,7 @@ const formatBytes = (bytes) => {
 const isImage = (file) => file?.type?.startsWith("image/");
 
 const defaultValidate = (file, { maxFileSize, acceptTypes }) => {
-  if (maxFileSize && file.size > maxFileSize) {
+  if (maxFileSize && file.size >= maxFileSize) {
     return `Tệp ${file.name} vượt quá ${formatBytes(maxFileSize)}`;
   }
 
@@ -25,12 +25,27 @@ const defaultValidate = (file, { maxFileSize, acceptTypes }) => {
   return null;
 };
 
+const updateProgressForFiles = (previous, nextFiles, step) => {
+  const updated = { ...previous };
+  nextFiles.forEach((file) => {
+    if (updated[file.name] !== undefined) updated[file.name] = step;
+  });
+  return updated;
+};
+
+const scheduleProgressUpdate = (setProgressByName, nextFiles, step, delay) => {
+  window.setTimeout(
+    () => setProgressByName((previous) => updateProgressForFiles(previous, nextFiles, step)),
+    delay,
+  );
+};
+
 const FileUploader = ({
   label = "Tải tài liệu",
   hint,
   required = false,
   maxFiles = 1,
-  maxFileSize = 10 * 1024 * 1024,
+  maxFileSize = 8 * 1024 * 1024,
   acceptTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"],
   value = [],
   onChange,
@@ -70,18 +85,10 @@ const FileUploader = ({
 
     const steps = [45, 70, 100];
     steps.forEach((step, index) => {
-      window.setTimeout(
-        () => {
-          setProgressByName((prev) => {
-            const updated = { ...prev };
-            nextFiles.forEach((file) => {
-              if (updated[file.name] !== undefined) {
-                updated[file.name] = step;
-              }
-            });
-            return updated;
-          });
-        },
+      scheduleProgressUpdate(
+        setProgressByName,
+        nextFiles,
+        step,
         (index + 1) * 120,
       );
     });

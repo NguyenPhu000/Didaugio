@@ -1,3 +1,7 @@
+// MAP: LoginScreen
+// ├── UI: @/components/ui/GridBackground, @/components/primitives/GoogleLogo
+// └── API: @/modules/auth/hooks/useLogin, @/modules/auth/hooks/useGoogleLogin, @/modules/auth/hooks/useAuth
+
 import { useRef, useState, useCallback, forwardRef } from "react";
 import {
   ActivityIndicator,

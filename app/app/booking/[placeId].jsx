@@ -1,3 +1,7 @@
+// MAP: BookingScreen
+// ├── UI: @/modules/booking/components/{StepIndicator, ServiceCard, ResourcePicker, VoucherApplyField, PaymentMethodSelector, OrderSummary, RefundPolicyModal}
+// └── API: @/modules/booking/hooks/useBooking, @/modules/booking/hooks/useServiceAvailability, @/modules/place/hooks/usePlaceDetail
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,

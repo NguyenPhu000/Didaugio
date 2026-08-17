@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { BUSINESS_ROUTES, ADMIN_ROUTES } from "@/constants/routes";
 import {
   ArrowLeft,
   Check,
@@ -55,6 +56,11 @@ const StepPreview = ({ isEditMode }) => {
 
   const category = categories.find((cat) => cat.id === wizardData.categoryId);
 
+  const location = useLocation();
+  const placesRoute = location.pathname.startsWith("/business")
+    ? BUSINESS_ROUTES.PLACES
+    : ADMIN_ROUTES.PLACES;
+
   const handleSubmit = async () => {
     try {
       const placeData = {
@@ -91,7 +97,7 @@ const StepPreview = ({ isEditMode }) => {
         });
       }
 
-      navigate("/admin/places");
+      navigate(placesRoute);
     } catch (error) {
       console.error(error);
       toast({

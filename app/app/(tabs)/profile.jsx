@@ -1,3 +1,7 @@
+// MAP: ProfileTabScreen
+// ├── UI: @/modules/profile/components/{UpcomingTripCard, MemoriesSection}, @/components/reacticx/settings-v1/components
+// └── API: @/modules/profile/hooks/useProfile, @/modules/trips/hooks/useTrips, @/stores/authStore
+
 import { useState, useEffect, useRef } from "react";
 import {
   ActivityIndicator,

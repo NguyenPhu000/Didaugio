@@ -4,6 +4,24 @@ function stripMarkdownFence(text) {
   return (fenceMatch?.[1] || trimmed).trim();
 }
 
+function scanJsonCharacter(state, char, open, close) {
+  if (state.escaped) {
+    state.escaped = false;
+    return;
+  }
+  if (char === "\\") {
+    state.escaped = state.inString;
+    return;
+  }
+  if (char === '"') {
+    state.inString = !state.inString;
+    return;
+  }
+  if (state.inString) return;
+  if (char === open) state.depth += 1;
+  if (char === close) state.depth -= 1;
+}
+
 function findBalancedJsonSlice(text) {
   const source = stripMarkdownFence(text);
   const start = source.search(/[\[{]/);
@@ -11,34 +29,12 @@ function findBalancedJsonSlice(text) {
 
   const open = source[start];
   const close = open === "{" ? "}" : "]";
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
+  const state = { depth: 0, inString: false, escaped: false };
 
   for (let i = start; i < source.length; i += 1) {
     const char = source[i];
-
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-
-    if (char === "\\") {
-      escaped = inString;
-      continue;
-    }
-
-    if (char === "\"") {
-      inString = !inString;
-      continue;
-    }
-
-    if (inString) continue;
-
-    if (char === open) depth += 1;
-    if (char === close) depth -= 1;
-
-    if (depth === 0) {
+    scanJsonCharacter(state, char, open, close);
+    if (state.depth === 0) {
       return source.slice(start, i + 1);
     }
   }

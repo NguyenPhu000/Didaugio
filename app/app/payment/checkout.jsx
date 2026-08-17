@@ -1,3 +1,7 @@
+// MAP: PaymentCheckoutScreen
+// ├── UI: @/modules/booking/components/{OrderSummary, PaymentMethodSelector}
+// └── API: @/modules/booking/hooks/usePayment, @/modules/booking/api/bookingApi
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
   ActivityIndicator,
