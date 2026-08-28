@@ -18,7 +18,17 @@ function extractPaymentCode(rawCode, content) {
   }
 
   if (typeof content === "string" && content) {
-    const pattern = new RegExp(`${PAYMENT_CODE_PREFIX}[A-Za-z0-9]+`, "i");
+    const escapedPrefix = PAYMENT_CODE_PREFIX.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const legacySubscriptionPattern = new RegExp(
+      `${escapedPrefix}-INV-\\d+-\\d{6}-\\d+`,
+      "i",
+    );
+    const legacySubscriptionMatch = content.match(legacySubscriptionPattern);
+    if (legacySubscriptionMatch) {
+      return legacySubscriptionMatch[0].toUpperCase();
+    }
+
+    const pattern = new RegExp(`${escapedPrefix}[A-Za-z0-9]+`, "i");
     const match = content.match(pattern);
     if (match) {
       return match[0].toUpperCase();
@@ -100,7 +110,17 @@ export function parseBankWebhook(body) {
     return { valid: false, data: null, error: "Invalid webhook body" };
   }
 
-  const { id, gateway, code, content, transferType, transferAmount, transactionDate, referenceCode } = body;
+  const {
+    id,
+    accountNumber,
+    gateway,
+    code,
+    content,
+    transferType,
+    transferAmount,
+    transactionDate,
+    referenceCode,
+  } = body;
 
   if (!id || !transferAmount) {
     return { valid: false, data: null, error: "Missing required fields (id, transferAmount)" };
@@ -128,6 +148,7 @@ export function parseBankWebhook(body) {
     valid: true,
     data: {
       sepayTransactionId: id,
+      accountNumber,
       code: resolvedCode,
       content,
       gateway,
@@ -137,6 +158,14 @@ export function parseBankWebhook(body) {
     },
     error: null,
   };
+}
+
+export function isExpectedSePayBankAccount(accountNumber, expectedAccountNumber) {
+  const normalize = (value) => String(value || "").replace(/\D/gu, "");
+  const received = normalize(accountNumber);
+  const expected = normalize(expectedAccountNumber);
+
+  return Boolean(received && expected && received === expected);
 }
 
 /**
@@ -150,6 +179,7 @@ export function parseRefundWebhook(body) {
 
   const {
     id,
+    accountNumber,
     gateway,
     code,
     content,
@@ -179,13 +209,19 @@ export function parseRefundWebhook(body) {
   const payoutSource = [code, content].filter(Boolean).join(" ");
   const payoutMatch = payoutSource.match(/\bPAYOUT[-_\s#]*(\d+)\b/i);
   const payoutId = payoutMatch ? parseInt(payoutMatch[1], 10) : null;
+  const refundTransferMatch = payoutSource.match(
+    /\bSEPAY-REFUND-\d+-[A-Fa-f0-9]{24}\b/i,
+  );
+  const refundTransferReference = refundTransferMatch?.[0] || null;
 
   return {
     valid: true,
     data: {
       sepayTransactionId: id,
+      accountNumber,
       code: resolvedCode,
       payoutId: Number.isInteger(payoutId) ? payoutId : null,
+      refundTransferReference,
       content,
       gateway,
       transferAmount,

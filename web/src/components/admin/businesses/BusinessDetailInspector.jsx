@@ -213,7 +213,7 @@ export const BusinessDetailInspector = memo(
                     className={cn(
                       "h-2 w-2 rounded-full",
                       item.ok
-                        ? "bg-[#F3E600] shadow-[0_0_4px_#F3E600]"
+                        ? "bg-emerald-500"
                         : "bg-slate-300"
                     )}
                   />

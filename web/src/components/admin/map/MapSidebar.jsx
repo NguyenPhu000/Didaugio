@@ -90,7 +90,7 @@ export const MapSidebar = memo(
               {label}
               {id === "filters" && hasActiveFilters && (
                 <span
-                  className="w-1.5 h-1.5 bg-[#F3E600] rounded-full shadow-[0_0_4px_#F3E600]"
+                  className="w-1.5 h-1.5 bg-emerald-500 rounded-full"
                   aria-label={t("admin.map.ariaLabels.filterActive")}
                 />
               )}

@@ -74,8 +74,13 @@ export default function AdminPayoutManagementPage() {
   };
 
   const handleTransfer = async (id) => {
+    const transferRef = window.prompt(
+      "Nhập mã tham chiếu giao dịch từ ngân hàng sau khi đã chuyển tiền",
+    )?.trim();
+    if (!transferRef) return;
+
     try {
-      await transferPayout.mutateAsync({ id });
+      await transferPayout.mutateAsync({ id, transferRef });
       toast.success("Đã xác nhận chuyển khoản");
     } catch {
       toast.error("Xác nhận chuyển khoản thất bại");
@@ -171,16 +176,13 @@ export default function AdminPayoutManagementPage() {
   }, [stats, payouts]);
 
   return (
-    <div className="space-y-6 text-slate-900 antialiased selection:bg-[#F3E600] selection:text-slate-950 max-w-[1560px] mx-auto">
+    <div className="space-y-6 text-slate-900 antialiased max-w-[1560px] mx-auto">
       {/* Editorial Header */}
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-black/[0.04]">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[#F3E600] shadow-[0_0_6px_#F3E600]" />
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Tài chính & Thanh toán Đối tác
-            </span>
-          </div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Tài chính & Thanh toán Đối tác
+          </p>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
             Quản lý Rút tiền (Payout)
           </h1>

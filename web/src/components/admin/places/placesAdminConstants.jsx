@@ -20,23 +20,23 @@ export const getStatusBadge = (status) => {
   const statusConfig = {
     draft: {
       label: "Bản nháp",
-      className: "bg-[#F4F2EC] text-slate-600 border-black/[0.04]",
+      className: "bg-slate-100 text-slate-600 border-slate-200",
       dot: "bg-slate-400",
     },
     pending: {
       label: "Chờ duyệt",
-      className: "bg-[#FFFDE6] text-slate-900 border-[#F3E600]/80",
-      dot: "bg-[#F3E600] animate-pulse shadow-[0_0_6px_#F3E600]",
+      className: "bg-amber-50 text-amber-700 border-amber-200",
+      dot: "bg-amber-500",
     },
     approved: {
       label: "Đã duyệt",
-      className: "bg-slate-950 text-white border-slate-950",
-      dot: "bg-[#F3E600]",
+      className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      dot: "bg-emerald-500",
     },
     rejected: {
       label: "Từ chối",
-      className: "bg-[#F4F2EC] text-slate-600 border-black/[0.04]",
-      dot: "bg-slate-400",
+      className: "bg-rose-50 text-rose-700 border-rose-200",
+      dot: "bg-rose-500",
     },
     hidden: {
       label: "Tạm ẩn",

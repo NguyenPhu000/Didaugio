@@ -93,7 +93,7 @@ const CustomAlertModal = memo(function CustomAlertModal({
       style: isDestructive ? "destructive" : "default",
     });
     return list;
-  }, [buttons, onConfirm, onCancel, confirmText, cancelText, isDestructive, isLoading, t]);
+  }, [buttons, onConfirm, onCancel, confirmText, cancelText, isDestructive, t]);
 
   const isVertical = resolvedButtons.length > 2;
 

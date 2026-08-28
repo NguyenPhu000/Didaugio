@@ -144,6 +144,7 @@ export const adminTransfer = async (req, res, next) => {
     const payout = await payoutService.markTransferred(
       parseInt(req.params.id),
       req.user.userId,
+      req.body?.transferRef,
     );
     res.json({
       success: true,

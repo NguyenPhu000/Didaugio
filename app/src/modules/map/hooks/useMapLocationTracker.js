@@ -4,6 +4,7 @@ import * as Location from "expo-location";
 import { useSharedValue } from "react-native-reanimated";
 import { distanceMeters } from "../utils/distance";
 import { normalizeHeadingDelta } from "../utils/routeEngine";
+import { shouldPublishHeadingState } from "./mapLocationTrackerUtils";
 
 const LAST_KNOWN_MAX_AGE_MS = 5 * 60 * 1000;
 const WATCH_STATE_PUBLISH_INTERVAL_MS = 3500;
@@ -31,6 +32,7 @@ export function useMapLocationTracker({
   const currentLocationSharedValue = useSharedValue(null);
   const currentLocationRef = useRef(null);
   const lastPublishedAtRef = useRef(0);
+  const lastHeadingPublishedAtRef = useRef(null);
   const headingRef = useRef(null);
   const headingAccuracyRef = useRef(null);
 
@@ -128,12 +130,21 @@ export function useMapLocationTracker({
 
           headingRef.current = raw;
           headingAccuracyRef.current = rawAcc;
-          setHeading(raw);
+
           if (currentLocationRef.current) {
             const updated = mergeLocationHeading(currentLocationRef.current, raw, rawAcc);
             currentLocationRef.current = updated;
             currentLocationSharedValue.value = updated;
-            setCurrentLocation(updated);
+          }
+
+          // Throttle React state dispatch to avoid high-frequency re-renders on the JS thread
+          const now = Date.now();
+          if (shouldPublishHeadingState(lastHeadingPublishedAtRef.current, now)) {
+            lastHeadingPublishedAtRef.current = now;
+            setHeading(raw);
+            if (currentLocationRef.current) {
+              setCurrentLocation(currentLocationRef.current);
+            }
           }
         });
 

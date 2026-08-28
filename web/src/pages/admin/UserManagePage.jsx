@@ -67,16 +67,13 @@ const UserManagePage = () => {
   } = useUserManagement(currentUser);
 
   return (
-    <div className="space-y-6 text-slate-900 antialiased selection:bg-[#F3E600] selection:text-slate-950 max-w-[1560px] mx-auto">
+    <div className="space-y-6 text-slate-900 antialiased max-w-[1560px] mx-auto">
       {/* Editorial Header */}
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-black/[0.04]">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[#F3E600] shadow-[0_0_6px_#F3E600]" />
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Quản trị Tài khoản & Phân quyền
-            </span>
-          </div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Quản trị Tài khoản & Phân quyền
+          </p>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
             {t("users.title")}
           </h1>
@@ -89,7 +86,7 @@ const UserManagePage = () => {
           <button
             type="button"
             onClick={handleExportCsv}
-            className="flex-1 sm:flex-initial justify-center h-10 px-4 rounded-full text-xs font-semibold bg-white text-slate-900 hover:bg-[#F4F2EC] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/[0.04] transition-all flex items-center gap-2 shrink-0 active:scale-95 cursor-pointer"
+            className="flex-1 sm:flex-initial justify-center h-10 px-4 rounded-full text-xs font-semibold bg-white text-slate-900 hover:bg-slate-50 shadow-sm border border-slate-200 transition-all flex items-center gap-2 shrink-0 active:scale-95 cursor-pointer"
           >
             <Download className="h-3.5 w-3.5 text-slate-700" />
             <span>Xuất CSV</span>
@@ -98,7 +95,7 @@ const UserManagePage = () => {
           <button
             type="button"
             onClick={fetchUsers}
-            className="h-10 w-10 rounded-full bg-white text-slate-900 hover:bg-[#F4F2EC] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/[0.04] transition-all flex items-center justify-center shrink-0 active:scale-95 cursor-pointer"
+            className="h-10 w-10 rounded-full bg-white text-slate-900 hover:bg-slate-50 shadow-sm border border-slate-200 transition-all flex items-center justify-center shrink-0 active:scale-95 cursor-pointer"
             title="Đồng bộ lại"
           >
             <RefreshCw
@@ -109,9 +106,9 @@ const UserManagePage = () => {
           <button
             type="button"
             onClick={handleCreate}
-            className="flex-1 sm:flex-initial justify-center h-10 px-5 rounded-full bg-slate-950 hover:bg-black text-white font-bold text-xs shadow-xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+            className="flex-1 sm:flex-initial justify-center h-10 px-5 rounded-full bg-slate-950 hover:bg-black text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
           >
-            <Plus className="h-4 w-4 text-[#F3E600]" />
+            <Plus className="h-4 w-4 text-white" />
             <span>{t("users.addUser")}</span>
           </button>
         </div>

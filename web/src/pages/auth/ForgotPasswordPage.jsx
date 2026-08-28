@@ -65,7 +65,6 @@ const ForgotPasswordPage = () => {
 
             {/* Card */}
             <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_16px_48px_-12px_rgba(15,23,42,0.16),0_4px_16px_-4px_rgba(15,23,42,0.08)]">
-              <div className="h-[3px] w-full bg-[#F3E600]" />
               <div className="px-8 py-8 sm:px-10">
                 {/* Header */}
                 <div className="mb-8">
@@ -128,7 +127,6 @@ const ForgotPasswordPage = () => {
           >
             {/* Success card */}
             <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_16px_48px_-12px_rgba(15,23,42,0.16),0_4px_16px_-4px_rgba(15,23,42,0.08)]">
-              <div className="h-[3px] w-full bg-[#F3E600]" />
               <div className="px-8 py-10 text-center sm:px-10">
                 {/* Animated check */}
                 <motion.div

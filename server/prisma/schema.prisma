@@ -1,3 +1,40 @@
+// ==============================================================================
+// DATABASE SCHEMA: didaugio_db (TỔNG CỘNG: 88 MODELS)
+// Hệ sinh thái Du lịch Thông minh Cần Thơ (iPoint Genie)
+// ------------------------------------------------------------------------------
+// 1. Security & IAM (12 models):
+//    Role, Permission, RolePermission, UserPermission, User, UserProfile,
+//    UserSession, ActiveSession, EmailVerification, PasswordReset,
+//    SensitiveDocument, StaffInvitation
+// 2. Geography, Boundaries & PostGIS (10 models):
+//    DistrictCantho, WardCantho, AdministrativeDatasetRelease, Province,
+//    AdministrativeWard, ProvinceDatasetRecord, AdministrativeWardDatasetRecord,
+//    PlaceAdministrativeLocationException, administrative_ward_boundaries,
+//    province_boundaries
+// 3. Place, Content, Tags & Telemetry (12 models):
+//    Category, PlaceTag, TagGroup, CategoryTag, Place, PlaceTelemetry,
+//    PlaceAiGuide, PlaceGuideFaq, PlaceImage, PlaceOpeningHour,
+//    PlaceAmenity, PlaceTagLink
+// 4. Social, Checkin & Community (7 models):
+//    Review, ReviewMedia, ReviewReply, ReviewModerationLog, Favorite,
+//    SavedTrip, UserCheckin
+// 5. AI Engine, Chatbot Genie & Smart Travel (10 models):
+//    AiConfig, AiConfigVersion, AiRequestLog, AiPromptHistory, TripPlan,
+//    TripStop, BookingTripLink, TripExecutionSession, TripExecutionOperation,
+//    CachedItinerary
+// 6. Commerce, Booking & Financial Ledger (21 models):
+//    Business, BusinessRole, BusinessService, BusinessBlockedDate,
+//    PlaceResource, Voucher, AutoApproveRule, BookingActionLog, Booking,
+//    BookingTransaction, Payment, PaymentReceipt, RefundAttempt,
+//    PaymentWebhookLog, Payout, PartnerWallet, PlatformWallet, FinancialLedger,
+//    SubscriptionPlan, Subscription, SubscriptionInvoice
+// 7. Events, Marketing & System Operations (16 models):
+//    Event, EventParticipant, EventMoment, DomainJob, TripShare, SystemConfig,
+//    ApiKeyManagement, AuditLog, FeedbackReport, BannerMarketing,
+//    NotificationGlobal, NotificationRecipient, PushSubscription,
+//    SubscriptionStats, TripLegacyMap, spatial_ref_sys
+// ==============================================================================
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -1568,6 +1605,7 @@ model Payout {
   reviewedAt    DateTime?         @map("reviewed_at")
   reviewedBy    Int?              @map("reviewed_by")
   transferredAt DateTime?         @map("transferred_at")
+  transferReference String?       @unique @map("transfer_reference")
   createdAt     DateTime          @default(now()) @map("created_at")
   updatedAt     DateTime          @updatedAt @map("updated_at")
   ledgerEntries FinancialLedger[]

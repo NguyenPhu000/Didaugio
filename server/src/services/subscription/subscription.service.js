@@ -3,8 +3,12 @@ import logger from "../../config/logger.js";
 import { PAGINATION, PAYMENT_METHODS } from "../../config/constants.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
-import { buildQrUrl } from "../payment/sepay.service.js";
-import { parseBankWebhook, verifyWebhookSignature } from "../payment/sepayWebhook.service.js";
+import { buildQrUrl, getBankInfo } from "../payment/sepay.service.js";
+import {
+  isExpectedSePayBankAccount,
+  parseBankWebhook,
+  verifyWebhookSignature,
+} from "../payment/sepayWebhook.service.js";
 import {
   buildScheduledDowngradeMetadata,
   calculateSubscriptionUpgradeCharge,
@@ -18,7 +22,8 @@ import { buildSubscriptionEntitlements } from "./subscriptionEntitlement.service
 
 const GRACE_PERIOD_DAYS = 3;
 const RENEWAL_REMINDER_DAYS = 3;
-const TX_REF_PREFIX = "DDG-INV";
+const DEFAULT_PAYMENT_CODE_PREFIX = "DDG";
+const SUBSCRIPTION_REFERENCE_MARKER = "INV";
 
 // ─── Feature Lock Cache ──────────────────────────────────────────────────────
 let lockedBusinessIdsCache = null;
@@ -27,9 +32,37 @@ const LOCK_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function formatTxRef(businessId, period) {
-  const yyyymm = period.replace(/-/g, "").slice(0, 6);
-  return `${TX_REF_PREFIX}-${businessId}-${yyyymm}`;
+const getSubscriptionReferencePrefix = () =>
+  `${String(process.env.PAYMENT_CODE_PREFIX || DEFAULT_PAYMENT_CODE_PREFIX).trim().toUpperCase()}${SUBSCRIPTION_REFERENCE_MARKER}`;
+
+export function buildSePayCompatibleSubscriptionReference({
+  businessId,
+  yyyymm,
+  sequence,
+}) {
+  const normalizedBusinessId = Number(businessId);
+  const normalizedSequence = Number(sequence);
+  if (
+    !Number.isInteger(normalizedBusinessId) ||
+    normalizedBusinessId <= 0 ||
+    !/^\d{6}$/u.test(String(yyyymm)) ||
+    !Number.isInteger(normalizedSequence) ||
+    normalizedSequence <= 0
+  ) {
+    throw new Error("Subscription transaction reference is invalid");
+  }
+
+  return `${getSubscriptionReferencePrefix()}${normalizedBusinessId}${yyyymm}${String(normalizedSequence).padStart(3, "0")}`;
+}
+
+export function isSubscriptionReference(reference) {
+  const normalizedReference = String(reference || "").trim().toUpperCase();
+  if (!normalizedReference) return false;
+
+  return (
+    normalizedReference.startsWith(getSubscriptionReferencePrefix()) ||
+    /^DDG-INV-\d+-\d{6}-\d+$/u.test(normalizedReference)
+  );
 }
 
 function buildPeriodDates(billingCycle = "monthly", referenceDate = null) {
@@ -58,23 +91,41 @@ function getPeriodEndFrom(startDate, billingCycle) {
 }
 
 async function getNextInvoiceSequence(businessId, yyyymm) {
-  const pattern = `${TX_REF_PREFIX}-${businessId}-${yyyymm}-%`;
-  const last = await prisma.subscriptionInvoice.findFirst({
-    where: { transactionRef: { startsWith: `${TX_REF_PREFIX}-${businessId}-${yyyymm}-` } },
-    orderBy: { transactionRef: "desc" },
-    select: { transactionRef: true },
-  });
+  const currentPrefix = `${getSubscriptionReferencePrefix()}${businessId}${yyyymm}`;
+  const legacyPrefix = `DDG-INV-${businessId}-${yyyymm}-`;
+  const [lastCurrent, lastLegacy] = await Promise.all([
+    prisma.subscriptionInvoice.findFirst({
+      where: { transactionRef: { startsWith: currentPrefix } },
+      orderBy: { transactionRef: "desc" },
+      select: { transactionRef: true },
+    }),
+    prisma.subscriptionInvoice.findFirst({
+      where: { transactionRef: { startsWith: legacyPrefix } },
+      orderBy: { transactionRef: "desc" },
+      select: { transactionRef: true },
+    }),
+  ]);
 
-  if (!last) return 1;
-  const parts = last.transactionRef.split("-");
-  return (parseInt(parts[parts.length - 1], 10) || 0) + 1;
+  const currentSequence = Number.parseInt(
+    lastCurrent?.transactionRef.slice(currentPrefix.length) || "0",
+    10,
+  );
+  const legacySequence = Number.parseInt(
+    lastLegacy?.transactionRef.slice(legacyPrefix.length) || "0",
+    10,
+  );
+  return Math.max(currentSequence || 0, legacySequence || 0) + 1;
 }
 
 async function createInvoiceWithQr(subscription, amount, billingCycle, notes, referenceDate = null) {
   const { periodStart, periodEnd, dueDate } = buildPeriodDates(billingCycle, referenceDate);
   const yyyymm = `${periodStart.getFullYear()}${String(periodStart.getMonth() + 1).padStart(2, "0")}`;
   const sequence = await getNextInvoiceSequence(subscription.businessId, yyyymm);
-  const transactionRef = `${formatTxRef(subscription.businessId, periodStart.toISOString())}-${String(sequence).padStart(3, "0")}`;
+  const transactionRef = buildSePayCompatibleSubscriptionReference({
+    businessId: subscription.businessId,
+    yyyymm,
+    sequence,
+  });
 
   let qrUrl = null;
   try {
@@ -649,7 +700,11 @@ export async function upgrade(businessId, targetPlanId, requestedBillingCycle = 
   const { periodStart, periodEnd: pe, dueDate } = buildPeriodDates(requestedBillingCycle);
   const yyyymm = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
   const sequence = await getNextInvoiceSequence(businessId, yyyymm);
-  const transactionRef = `${TX_REF_PREFIX}-${businessId}-${yyyymm}-${String(sequence).padStart(3, "0")}`;
+  const transactionRef = buildSePayCompatibleSubscriptionReference({
+    businessId,
+    yyyymm,
+    sequence,
+  });
 
   let qrUrl = null;
   try {
@@ -849,9 +904,14 @@ export async function processSubscriptionWebhook(body, headers = {}, rawBody = n
     return { success: false, message: parsed.error };
   }
 
-  const { code, sepayTransactionId, transferAmount, content } = parsed.data;
+  const { code, sepayTransactionId, transferAmount, accountNumber, content } = parsed.data;
 
-  if (!code.startsWith(TX_REF_PREFIX)) {
+  if (!isExpectedSePayBankAccount(accountNumber, getBankInfo().bankAccountNumber)) {
+    logger.warn(`[subscription-webhook] Ignored transaction for another bank account: ${code}`);
+    return { success: true, message: "Giao dịch không thuộc tài khoản nhận" };
+  }
+
+  if (!isSubscriptionReference(code)) {
     return { success: false, message: "Không phải mã subscription" };
   }
 

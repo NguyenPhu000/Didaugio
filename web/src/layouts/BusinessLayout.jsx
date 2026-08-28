@@ -101,13 +101,11 @@ const BusinessLayout = ({ children }) => {
         </SidebarContent>
       </Sidebar>
       <CustomSidebarRail />
-      <SidebarInset className="bg-[#F4F4F4] relative font-sans min-h-screen">
-        <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none" />
-        <div className="absolute inset-0 bg-grid-dots opacity-40 pointer-events-none" />
+      <SidebarInset className="bg-[#FAF9F5] relative font-sans min-h-screen flex flex-col min-w-0">
         <BusinessHeader />
-        <main className="flex-1 overflow-auto p-4 md:p-6 relative z-10">
+        <div className="flex-1 p-3 sm:p-5 md:p-6 lg:p-8 relative z-10 flex flex-col min-w-0 w-full overflow-x-hidden">
           {children}
-        </main>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

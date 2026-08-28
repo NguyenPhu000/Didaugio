@@ -1,21 +1,36 @@
-node_modules
-# Keep environment variables out of version control
-thunder-collection.json
+node_modules/
 .env
-scripts
+.env*.local
+thunder-collection.json
 /generated/prisma
-tests
 storage/sensitive/*
 !storage/sensitive/.gitkeep
-scripts
-check_db.js 
+
+# Test directories & files
+test/
+tests/
+__tests__/
+*.test.js
+*.test.jsx
+*.test.ts
+*.test.tsx
+*.test.cjs
+*.test.mjs
+*.spec.js
+*.spec.jsx
+*.spec.ts
+*.spec.tsx
+*.spec.cjs
+*.spec.mjs
+coverage/
+
+# Scripts & temporary debug
+scripts/
+check_db.js
 debug_turf.js
-import_boundaries.js 
+import_boundaries.js
 inspect_geojson.js
 inspect_ward_geojson.js
 test_lookup.js
-scripts
-thunder-collection.json
-scripts
 !src/scripts/
 !src/scripts/backfillTripPlans.js

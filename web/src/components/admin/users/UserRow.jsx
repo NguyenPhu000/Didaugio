@@ -58,15 +58,15 @@ export const UserRow = memo(
       },
       [ROLES.BUSINESS]: {
         key: "roles.names.business",
-        class: "bg-[#FFFDE6] text-slate-950 border-[#F3E600]/80",
+        class: "bg-blue-50 text-blue-700 border-blue-200",
       },
       [ROLES.STAFF]: {
         key: "roles.names.staff",
-        class: "bg-[#F4F2EC] text-slate-800 border-black/[0.06]",
+        class: "bg-slate-100 text-slate-800 border-slate-200",
       },
       [ROLES.USER]: {
         key: "roles.names.user",
-        class: "bg-slate-100 text-slate-700 border-slate-200",
+        class: "bg-slate-50 text-slate-600 border-slate-200",
       },
     };
     const role = roleConfig[user.roleId] || {
@@ -76,7 +76,7 @@ export const UserRow = memo(
     const roleLabel = role.key ? t(role.key) : `Vai trò #${user.roleId}`;
 
     return (
-      <tr className="hover:bg-[#FAF9F5] group transition-colors">
+      <tr className="hover:bg-slate-50/80 group transition-colors">
         <td className="p-4 w-[40px]">
           <Checkbox
             checked={selected}
@@ -91,12 +91,12 @@ export const UserRow = memo(
         <td className="p-4">
           <div className="flex items-center gap-3">
             <div className="relative shrink-0">
-              <Avatar className="h-10 w-10 rounded-xl border border-black/[0.06] bg-slate-950 text-[#F3E600] font-bold">
+              <Avatar className="h-10 w-10 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-bold">
                 <AvatarImage
                   src={resolveMediaUrl(avatar) || undefined}
                   className="rounded-xl object-cover"
                 />
-                <AvatarFallback className="rounded-xl bg-slate-950 text-[#F3E600] font-bold text-xs">
+                <AvatarFallback className="rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">
                   {(user.username || user.email || "?")
                     .substring(0, 2)
                     .toUpperCase()}
@@ -106,7 +106,7 @@ export const UserRow = memo(
                 className={cn(
                   "absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 border-2 border-white rounded-full",
                   isOnline
-                    ? "bg-[#F3E600] shadow-[0_0_4px_#F3E600]"
+                    ? "bg-emerald-500"
                     : "bg-slate-300"
                 )}
                 title={isOnline ? "Trực tuyến" : "Ngoại tuyến"}
@@ -170,8 +170,8 @@ export const UserRow = memo(
         </td>
         <td className="p-4 whitespace-nowrap">
           {isOnline ? (
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-900 bg-[#FFFDE6] px-2.5 py-0.5 rounded-full border border-[#F3E600]/80">
-              <span className="w-1.5 h-1.5 bg-[#F3E600] rounded-full animate-pulse shadow-[0_0_4px_#F3E600]" />
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
               Online
             </span>
           ) : (
@@ -186,14 +186,14 @@ export const UserRow = memo(
             className={cn(
               "inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border",
               isActive
-                ? "bg-white text-slate-950 border-black/[0.08]"
+                ? "bg-white text-slate-950 border-slate-200"
                 : "bg-slate-100 text-slate-500 border-slate-200"
             )}
           >
             <span
               className={cn(
                 "w-1.5 h-1.5 rounded-full",
-                isActive ? "bg-[#F3E600]" : "bg-slate-400"
+                isActive ? "bg-emerald-500" : "bg-slate-400"
               )}
             />
             {isActive ? t("users.status.active") : t("users.status.locked")}

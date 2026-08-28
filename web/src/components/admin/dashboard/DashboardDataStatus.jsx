@@ -2,29 +2,29 @@ import { Activity, AlertCircle, Archive, Layers } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const StatusRow = ({ icon: _Icon, value, label, pct, barColor, iconClass }) => (
-  <div className="group flex items-center gap-4 p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors cursor-default">
+  <div className="group flex items-center gap-4 p-4 border-b border-black/[0.04] last:border-0 hover:bg-slate-50/80 transition-colors cursor-default">
     <div
-      className={`w-10 h-10 flex items-center justify-center rounded-none border transition-colors ${iconClass}`}
+      className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-colors ${iconClass}`}
     >
-      <_Icon className="h-5 w-5" />
+      <_Icon className="h-4 w-4" />
     </div>
     <div className="flex-1 min-w-0">
       <div className="flex items-center justify-between mb-1.5">
-        <span className="font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground">
+        <span className="text-xs font-semibold text-slate-700">
           {label}
         </span>
         <div className="flex items-center gap-2">
-          <span className="font-black font-mono text-lg leading-none">
+          <span className="font-extrabold font-mono text-sm text-slate-950 leading-none">
             {value}
           </span>
-          <span className="text-[10px] font-mono text-muted-foreground">
+          <span className="text-[11px] font-mono text-slate-400">
             {pct}%
           </span>
         </div>
       </div>
-      <div className="h-1.5 bg-gray-100 border border-gray-200 overflow-hidden">
+      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
         <div
-          className={`h-full ${barColor} transition-all duration-700`}
+          className={`h-full ${barColor} rounded-full transition-all duration-700`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -44,48 +44,43 @@ const DashboardDataStatus = ({ stats }) => {
       pct: Math.round((stats.approved / total) * 100),
       barColor: "bg-emerald-500",
       iconClass:
-        "bg-emerald-50 border-emerald-200 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white",
+        "bg-emerald-50 border-emerald-200 text-emerald-600",
     },
     {
       icon: AlertCircle,
       value: stats.pending,
       label: t("dashboard.dataStatus.pending"),
       pct: Math.round((stats.pending / total) * 100),
-      barColor: "bg-yellow-400",
+      barColor: "bg-amber-400",
       iconClass:
-        "bg-yellow-50 border-yellow-200 text-yellow-600 group-hover:bg-yellow-400 group-hover:text-black",
+        "bg-amber-50 border-amber-200 text-amber-600",
     },
     {
       icon: Archive,
       value: stats.rejected,
       label: t("dashboard.dataStatus.cancelled"),
       pct: Math.round((stats.rejected / total) * 100),
-      barColor: "bg-red-500",
+      barColor: "bg-rose-500",
       iconClass:
-        "bg-red-50 border-red-200 text-red-500 group-hover:bg-red-500 group-hover:text-white",
+        "bg-rose-50 border-rose-200 text-rose-600",
     },
   ];
 
   return (
-    <div className="lg:col-span-2 border border-black bg-white shadow-sm flex flex-col">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-black bg-black text-white shrink-0">
-        <div className="flex items-center gap-2">
-          <Layers className="h-4 w-4 text-primary" />
-          <h3 className="font-bold font-mono text-sm uppercase tracking-widest">
+    <div className="lg:col-span-2 rounded-3xl border border-black/[0.04] bg-white shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-black/[0.04] bg-[#FAF9F5] shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-slate-900 text-white flex items-center justify-center shadow-xs">
+            <Layers className="h-3.5 w-3.5" />
+          </div>
+          <h3 className="font-extrabold text-sm text-slate-950 tracking-tight">
             {t("dashboard.dataStatus.title")}
           </h3>
         </div>
-        <div className="flex gap-1.5">
-          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-          <div className="w-2 h-2 bg-yellow-400 rounded-full" />
-          <div className="w-2 h-2 bg-emerald-500 rounded-full" />
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+          <span>{t("dashboard.dataStatus.totalPlaces")}:</span>
+          <span className="font-mono font-bold text-slate-900 text-sm">{stats.total}</span>
         </div>
-      </div>
-
-      {/* Total */}
-      <div className="px-4 py-3 border-b border-dashed border-gray-200 bg-gray-50">
-        <span className="tim-meta">{t("dashboard.dataStatus.totalPlaces")}</span>
-        <span className="ml-3 font-black font-mono text-xl">{stats.total}</span>
       </div>
 
       <div className="flex-1">
@@ -95,9 +90,9 @@ const DashboardDataStatus = ({ stats }) => {
       </div>
 
       {stats.featured > 0 && (
-        <div className="px-4 py-2.5 border-t border-dashed border-gray-200 bg-primary/5 flex items-center justify-between">
-          <span className="tim-meta">{t("dashboard.dataStatus.featured")}</span>
-          <span className="font-black font-mono text-sm text-primary">
+        <div className="px-6 py-3 border-t border-black/[0.04] bg-slate-50/50 flex items-center justify-between text-xs">
+          <span className="font-medium text-slate-600">{t("dashboard.dataStatus.featured")}</span>
+          <span className="font-bold font-mono text-xs text-slate-900">
             {stats.featured}
           </span>
         </div>

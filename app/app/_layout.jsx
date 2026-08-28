@@ -37,6 +37,8 @@ import { isMobileUserRole } from "../src/modules/auth/utils/authRoleAccess";
 import { logger } from "../src/lib/logger";
 import CinematicSplash from "../src/components/splash/CinematicSplash";
 import { SPLASH_TIMING } from "../src/components/splash/cinematicSplashTiming";
+import { resolveStatusBarStyle } from "../src/config/statusBarStyle";
+import { useTheme } from "../src/hooks/useTheme";
 
 // Tat strict mode canh bao doc/ghi shared value truc tiep trong render cycle vi mot so thu vien ben thu ba (nhu bottom-sheet, draggable-flatlist) chua cap nhat tuong thich.
 configureReanimatedLogger({
@@ -106,6 +108,7 @@ function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
   const pathname = usePathname();
+  const { isDark } = useTheme();
   
   // Tráº¡ng thÃ¡i Hydration tá»« cáº£ 2 store
   const isAuthHydrated = useAuthStore((s) => s.isHydrated);
@@ -217,7 +220,7 @@ function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#02030A" }}>
       <StatusBar
-        style={splashFinished ? "dark" : "light"}
+        style={resolveStatusBarStyle({ splashFinished, isDark })}
         translucent
         backgroundColor="transparent"
       />

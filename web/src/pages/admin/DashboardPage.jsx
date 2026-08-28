@@ -74,7 +74,7 @@ const DashboardPage = () => {
     return (
       <div className="space-y-6 max-w-[1560px] mx-auto py-6">
         <div className="py-28 text-center space-y-3">
-          <div className="w-10 h-10 border-3 border-slate-950 border-t-[#F3E600] rounded-full animate-spin mx-auto" />
+          <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mx-auto" />
           <p className="text-xs font-semibold text-slate-500">Đang tải dữ liệu tổng quan...</p>
         </div>
       </div>
@@ -82,16 +82,13 @@ const DashboardPage = () => {
   }
 
   return (
-    <div className="space-y-7 max-w-[1560px] mx-auto text-slate-900 antialiased selection:bg-[#F3E600] selection:text-slate-950">
+    <div className="space-y-7 max-w-[1560px] mx-auto text-slate-900 antialiased">
       {/* Editorial Header */}
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-black/[0.04]">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[#F3E600] shadow-[0_0_6px_#F3E600]" />
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Tổng quan Hệ thống
-            </span>
-          </div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Tổng quan Hệ thống
+          </p>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
             {t("dashboard.greeting", { name: user?.fullName || user?.username || "Admin" })}
           </h1>
@@ -109,7 +106,7 @@ const DashboardPage = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleSearch}
-              className="w-full h-10 pl-10 pr-4 bg-white rounded-full text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#F3E600] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/[0.04] placeholder:text-slate-400 transition-all"
+              className="w-full h-10 pl-10 pr-4 bg-white rounded-full text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300 shadow-sm border border-slate-200 placeholder:text-slate-400 transition-all"
             />
           </div>
         </div>

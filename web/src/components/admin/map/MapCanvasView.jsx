@@ -40,7 +40,7 @@ export const MapCanvasView = memo(
         {loading && (
           <div className="w-full h-full flex items-center justify-center bg-[#FAF9F5]">
             <div className="text-center space-y-2">
-              <div className="w-8 h-8 border-3 border-slate-950 border-t-[#F3E600] rounded-full animate-spin mx-auto" />
+              <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mx-auto" />
               <p className="text-xs font-semibold text-slate-500">
                 {t("admin.map.loading")}
               </p>
@@ -56,7 +56,7 @@ export const MapCanvasView = memo(
             <button
               type="button"
               onClick={retry}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-slate-950 rounded-full hover:bg-black transition-colors shadow-2xs cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-slate-950 rounded-full hover:bg-black transition-colors shadow-sm cursor-pointer"
             >
               <RefreshCw className="h-3.5 w-3.5" />
               {t("admin.map.retry")}
@@ -81,8 +81,8 @@ export const MapCanvasView = memo(
         )}
 
         {/* Floating Pill on Map */}
-        <div className="absolute bottom-6 left-6 bg-white/90 backdrop-blur-md border border-black/[0.06] rounded-full px-3.5 py-2 flex items-center gap-2 text-xs font-semibold text-slate-700 shadow-[0_4px_20px_rgba(0,0,0,0.08)] pointer-events-none">
-          <span className="w-2 h-2 bg-[#F3E600] rounded-full shadow-[0_0_6px_#F3E600] animate-pulse" />
+        <div className="absolute bottom-6 left-6 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-full px-3.5 py-2 flex items-center gap-2 text-xs font-semibold text-slate-700 shadow-lg pointer-events-none">
+          <span className="w-2 h-2 bg-emerald-500 rounded-full" />
           <span>
             <strong className="text-slate-950 font-bold font-mono tabular-nums">
               {filteredPlaces.length}

@@ -215,7 +215,7 @@ const BusinessListPage = ({ initialStatus = "all" }) => {
   const selectedKyc = selectedBusiness ? getKycDetails(selectedBusiness) : null;
 
   return (
-    <div className="min-h-screen bg-[#ECEAE4] p-3 sm:p-6 lg:p-8 font-sans text-slate-900 antialiased selection:bg-[#F3E600] selection:text-slate-950">
+    <div className="min-h-screen bg-[#ECEAE4] p-3 sm:p-6 lg:p-8 font-sans text-slate-900 antialiased">
       {/* Outer Floating Canvas */}
       <div className="max-w-[1560px] mx-auto bg-[#FAF9F6] rounded-[32px] shadow-[0_24px_70px_rgba(0,0,0,0.06)] border border-black/[0.04] p-5 sm:p-8 space-y-6">
         {/* Header & Status Filters */}
@@ -236,7 +236,7 @@ const BusinessListPage = ({ initialStatus = "all" }) => {
         {/* Master-Detail 2-Column Dashboard View */}
         {isLoading ? (
           <div className="py-32 text-center space-y-3">
-            <div className="w-10 h-10 border-3 border-slate-950 border-t-[#F3E600] rounded-full animate-spin mx-auto" />
+            <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mx-auto" />
             <p className="text-xs font-semibold text-slate-500">
               Đang tải dữ liệu đối tác...
             </p>

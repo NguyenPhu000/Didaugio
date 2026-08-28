@@ -103,12 +103,11 @@ const AdminLayout = ({ children }) => {
                   }
                   className="flex items-center gap-3 group"
                 >
-                  <div className="relative flex size-10 items-center justify-center rounded-[14px] bg-gradient-to-b from-white/[0.12] to-white/[0.03] border border-white/[0.12] shadow-[0_2px_12px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.2)] shrink-0 overflow-hidden transition-transform duration-300 group-hover:scale-105">
-                    <div className="absolute inset-0 bg-[#F3E600]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[14px]" />
+                  <div className="relative flex size-10 items-center justify-center rounded-xl bg-white/[0.08] border border-white/[0.12] shadow-sm shrink-0 overflow-hidden transition-transform duration-200 group-hover:scale-105">
                     <img
                       src="/logo512.png"
                       alt="iPoint Genie"
-                      className="size-6 object-contain relative z-10 transition-transform duration-300 group-hover:rotate-6 group-hover:drop-shadow-[0_0_8px_rgba(243,230,0,0.4)]"
+                      className="size-6 object-contain relative z-10"
                     />
                   </div>
                   <div className="grid flex-1 text-left group-data-[collapsible=icon]:hidden min-w-0">
@@ -118,8 +117,7 @@ const AdminLayout = ({ children }) => {
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 mt-1">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#F3E600]/10 border border-[#F3E600]/25 text-[#F3E600] text-[9.5px] font-mono font-bold tracking-wider uppercase leading-none shadow-2xs">
-                        <span className="size-1.5 rounded-full bg-[#F3E600] shadow-[0_0_6px_#F3E600] animate-pulse" />
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-white/10 text-slate-300 text-[10px] font-medium tracking-wide uppercase leading-none border border-white/10">
                         {ROLE_NAMES[user?.roleId]
                           ? `${ROLE_NAMES[user?.roleId]}`
                           : APP_META.ADMIN_SUBTITLE}
@@ -167,13 +165,11 @@ const AdminLayout = ({ children }) => {
         </SidebarContent>
       </Sidebar>
       <CustomSidebarRail />
-      <SidebarInset className="bg-[#FAF9F5] relative font-sans min-h-screen text-slate-900 selection:bg-[#F3E600] selection:text-slate-950 flex flex-col">
+      <SidebarInset className="bg-[#FAF9F5] relative font-sans min-h-screen text-slate-900 flex flex-col min-w-0">
         <AdminHeader />
-        <main className="flex-1 p-2 sm:p-4 md:p-5 lg:p-6 relative z-10 flex flex-col">
-          <div className="flex-1 bg-white rounded-2xl sm:rounded-[32px] border border-black/[0.04] p-3.5 sm:p-6 md:p-8 shadow-[0_4px_30px_rgba(0,0,0,0.03)] relative">
-            {children}
-          </div>
-        </main>
+        <div className="flex-1 p-3 sm:p-5 md:p-6 lg:p-8 relative z-10 flex flex-col min-w-0 w-full overflow-x-hidden">
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

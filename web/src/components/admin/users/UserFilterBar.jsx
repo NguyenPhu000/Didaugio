@@ -22,7 +22,7 @@ export const UserFilterBar = memo(
             placeholder={t("users.searchPlaceholder")}
             value={filters.search}
             onChange={(e) => handleFilterChange("search", e.target.value)}
-            className="w-full h-10 pl-10 pr-4 bg-[#F8F7F3] rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F3E600] placeholder:text-slate-400 transition-all border border-transparent focus:border-[#F3E600]/50"
+            className="w-full h-10 pl-10 pr-4 bg-slate-50 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-slate-300 placeholder:text-slate-400 transition-all border border-slate-200 focus:border-slate-400"
           />
         </div>
 

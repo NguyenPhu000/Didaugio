@@ -27,7 +27,7 @@ export const UserTableView = memo(
       <div className="bg-white rounded-3xl border border-black/[0.04] shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden">
         {loading ? (
           <div className="py-24 text-center space-y-3">
-            <div className="w-9 h-9 border-3 border-slate-950 border-t-[#F3E600] rounded-full animate-spin mx-auto" />
+            <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mx-auto" />
             <span className="text-xs font-semibold text-slate-500">
               {t("common.loading")}
             </span>

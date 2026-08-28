@@ -267,12 +267,12 @@ const MapPageContent = () => {
               })}
             </span>
             {hasActiveFilters && (
-              <span className="text-[#F3E600] font-bold">
+              <span className="text-emerald-400 font-semibold">
                 {t("admin.map.statusBar.filtersActive")}
               </span>
             )}
             {selectedDistrictId && (
-              <span className="text-[#F3E600] font-bold">
+              <span className="text-white font-semibold">
                 ◈ {selectedDistrict?.properties?.name}
               </span>
             )}

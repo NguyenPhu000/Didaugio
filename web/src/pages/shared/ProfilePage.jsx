@@ -141,9 +141,9 @@ const ProfilePage = () => {
 
   if (isFetching) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <div className="w-12 h-12 border-4 border-black border-t-[#F3E600] rounded-full animate-spin" />
-        <span className="font-mono text-xs uppercase tracking-widest text-gray-500">
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
+        <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
+        <span className="text-xs font-semibold text-slate-500">
           {t("profile.loading")}
         </span>
       </div>
@@ -151,91 +151,77 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-background relative">
-      {/* Grid Background */}
-      <div className="absolute inset-0 bg-grid-dots opacity-60 pointer-events-none" />
-      <div className="absolute inset-0 bg-grid-lines opacity-20 pointer-events-none" />
-
-      <div className="relative z-10 space-y-6 max-w-[1400px] mx-auto">
-        {/* Header - T.I.M Style */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-black pb-6 gap-4">
-          <div className="flex items-center gap-4 sm:gap-6">
-            <div className="accent-bar h-16 shrink-0" />
-            <div>
-              <h1 className="tim-title">PROFILE SETTINGS</h1>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1 shrink-0">
-                  SYSTEM // USER PROFILE
-                </span>
-                <p className="tim-meta">{t("profile.subtitle")}</p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            <div className="bg-white border-2 border-black p-3">
-              <Activity className="h-5 w-5" />
-            </div>
-          </div>
+    <div className="space-y-6 text-slate-900 antialiased max-w-[1400px] mx-auto">
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-black/[0.04]">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Hồ sơ & Thiết lập Cá nhân
+          </p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
+            Cài đặt Tài khoản
+          </h1>
+          <p className="text-xs text-slate-500 font-medium">{t("profile.subtitle")}</p>
         </div>
+      </header>
 
-        <Tabs defaultValue="profile" className="space-y-6">
-          {/* Tactical Tabs */}
-          <TabsList className="bg-white border-2 border-black p-1 rounded-none h-auto flex flex-wrap sm:flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            <TabsTrigger
-              value="profile"
-              className="flex items-center gap-2 rounded-none data-[state=active]:bg-[#F3E600] data-[state=active]:text-black font-bold uppercase text-xs px-6 h-10 cursor-pointer"
-            >
-              <User className="h-4 w-4" />
-              {t("profile.tabs.info")}
-            </TabsTrigger>
-            <TabsTrigger
-              value="security"
-              className="flex items-center gap-2 rounded-none data-[state=active]:bg-[#F3E600] data-[state=active]:text-black font-bold uppercase text-xs px-6 h-10 cursor-pointer"
-            >
-              <Shield className="h-4 w-4" />
-              {t("profile.tabs.security")}
-            </TabsTrigger>
-            <TabsTrigger
-              value="notifications"
-              className="flex items-center gap-2 rounded-none data-[state=active]:bg-[#F3E600] data-[state=active]:text-black font-bold uppercase text-xs px-6 h-10 cursor-pointer"
-            >
-              <Bell className="h-4 w-4" />
-              {t("profile.tabs.notifications")}
-            </TabsTrigger>
-          </TabsList>
+      <Tabs defaultValue="profile" className="space-y-6">
+        {/* Tabs */}
+        <TabsList className="bg-slate-100 p-1 rounded-xl h-auto flex flex-wrap sm:flex-nowrap border border-slate-200/80">
+          <TabsTrigger
+            value="profile"
+            className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm font-semibold text-xs px-5 h-9 cursor-pointer transition-all text-slate-600"
+          >
+            <User className="h-4 w-4" />
+            {t("profile.tabs.info")}
+          </TabsTrigger>
+          <TabsTrigger
+            value="security"
+            className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm font-semibold text-xs px-5 h-9 cursor-pointer transition-all text-slate-600"
+          >
+            <Shield className="h-4 w-4" />
+            {t("profile.tabs.security")}
+          </TabsTrigger>
+          <TabsTrigger
+            value="notifications"
+            className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm font-semibold text-xs px-5 h-9 cursor-pointer transition-all text-slate-600"
+          >
+            <Bell className="h-4 w-4" />
+            {t("profile.tabs.notifications")}
+          </TabsTrigger>
+        </TabsList>
 
-          {/* Profile Tab */}
-          <TabsContent value="profile" className="space-y-6">
-            <ProfileAvatarCard profile={profile} />
-            <ProfileBasicInfoForm
-              profile={profile}
-              register={register}
-              handleSubmit={handleSubmit}
-              onSubmit={onSubmit}
-              errors={errors}
-              reset={reset}
-              isDirty={isDirty}
-              isLoading={isLoading}
-            />
-          </TabsContent>
+        {/* Profile Tab */}
+        <TabsContent value="profile" className="space-y-6">
+          <ProfileAvatarCard profile={profile} />
+          <ProfileBasicInfoForm
+            profile={profile}
+            register={register}
+            handleSubmit={handleSubmit}
+            onSubmit={onSubmit}
+            errors={errors}
+            reset={reset}
+            isDirty={isDirty}
+            isLoading={isLoading}
+          />
+        </TabsContent>
 
-          {/* Security Tab */}
-          <TabsContent value="security" className="space-y-6">
-            <ProfileSecurityTab
-              setChangePasswordOpen={setChangePasswordOpen}
-            />
-          </TabsContent>
+        {/* Security Tab */}
+        <TabsContent value="security" className="space-y-6">
+          <ProfileSecurityTab
+            setChangePasswordOpen={setChangePasswordOpen}
+          />
+        </TabsContent>
 
-          {/* Notifications Tab */}
-          <TabsContent value="notifications" className="space-y-6">
-            <ProfileNotificationsTab
-              notifSaving={notifSaving}
-              notifSettings={notifSettings}
-              handleNotifToggle={handleNotifToggle}
-            />
-          </TabsContent>
-        </Tabs>
-      </div>
+        {/* Notifications Tab */}
+        <TabsContent value="notifications" className="space-y-6">
+          <ProfileNotificationsTab
+            notifSaving={notifSaving}
+            notifSettings={notifSettings}
+            handleNotifToggle={handleNotifToggle}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Change Password Modal */}
       <ChangePasswordModal

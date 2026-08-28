@@ -1035,6 +1035,14 @@ function validateSePayBankObligation(payment, { reference, amount }) {
   return { valid: true, code: null };
 }
 
+function isExpectedSePayBankAccount(sepayService, accountNumber) {
+  const { bankAccountNumber } = sepayService.getBankInfo?.() || {};
+  return sepayWebhookService.isExpectedSePayBankAccount(
+    accountNumber,
+    bankAccountNumber,
+  );
+}
+
 async function processSePayBankWebhookWithDependencies(body, headers, rawBody, dependencies) {
   const {
     prisma,
@@ -1107,10 +1115,23 @@ async function processSePayBankWebhookWithDependencies(body, headers, rawBody, d
       sepayTransactionId,
       code,
       transferAmount,
+      accountNumber,
       gateway,
       transactionDate,
       referenceCode,
     } = parseResult.data;
+
+    if (!isExpectedSePayBankAccount(sepayService, accountNumber)) {
+      if (webhookLogId) {
+        await webhookLogService.markError({
+          transactionRef: code,
+          webhookLogId,
+          errorMsg: "SEPAY_BANK_ACCOUNT_MISMATCH",
+        });
+      }
+      logger.warn("SePay bank webhook received for another account", { code });
+      return sepayService.buildIpnSuccess();
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       const locked = await tx.$queryRaw`
@@ -1277,10 +1298,24 @@ async function processSePayRefundWebhookWithDependencies(body, headers = {}, raw
       code,
       payoutId,
       transferAmount,
+      accountNumber,
       gateway,
       transactionDate,
       referenceCode,
+      refundTransferReference,
     } = parseResult.data;
+
+    if (!isExpectedSePayBankAccount(sepayService, accountNumber)) {
+      if (webhookLogId) {
+        await webhookLogService.markError({
+          transactionRef: code,
+          webhookLogId,
+          errorMsg: "SEPAY_BANK_ACCOUNT_MISMATCH",
+        });
+      }
+      logger.warn("SePay outgoing webhook received for another account", { code });
+      return sepayService.buildIpnSuccess();
+    }
 
     const existingWebhook = await prisma.paymentWebhookLog.findFirst({
       where: {
@@ -1313,6 +1348,15 @@ async function processSePayRefundWebhookWithDependencies(body, headers = {}, raw
             return { type: "ALREADY_PROCESSED", transactionRef: code };
           }
 
+          if (payout.status !== "approved") {
+            logger.error("SePay payout webhook received an invalid payout state", {
+              payoutId,
+              status: payout.status,
+              sepayTransactionId,
+            });
+            return { type: "PAYOUT_INVALID_STATUS", transactionRef: code };
+          }
+
           if (Number(payout.amount) !== Number(transferAmount)) {
             logger.warn("SePay refund webhook payout amount mismatch", {
               payoutId,
@@ -1331,6 +1375,7 @@ async function processSePayRefundWebhookWithDependencies(body, headers = {}, raw
             data: {
               status: "transferred",
               transferredAt,
+              transferReference: `SEPAY-${sepayTransactionId}`,
               note: [
                 payout.note,
                 `SePay transfer ${sepayTransactionId}${referenceCode ? ` (${referenceCode})` : ""}`,
@@ -1370,6 +1415,49 @@ async function processSePayRefundWebhookWithDependencies(body, headers = {}, raw
             transactionRef: code,
           };
         }
+      }
+
+      if (refundTransferReference !== undefined) {
+        if (!refundTransferReference) {
+          return { type: "NOT_FOUND", transactionRef: code };
+        }
+
+        const replay = await tx.refundAttempt.findFirst({
+          where: {
+            gateway: "SEPAY_BANK",
+            externalRefundId: String(sepayTransactionId),
+          },
+        });
+        if (replay) {
+          if (
+            replay.amount !== Number(transferAmount) ||
+            replay.metadata?.transferReference !== refundTransferReference
+          ) {
+            return { type: "AMOUNT_MISMATCH", transactionRef: code };
+          }
+          return { type: "ALREADY_PROCESSED", transactionRef: code };
+        }
+
+        const attempt = await tx.refundAttempt.findFirst({
+          where: {
+            status: "pending",
+            gateway: "SEPAY_BANK",
+            amount: Number(transferAmount),
+            currency: "VND",
+            metadata: {
+              path: ["transferReference"],
+              equals: refundTransferReference,
+            },
+          },
+        });
+        if (!attempt) {
+          return { type: "AMOUNT_MISMATCH", transactionRef: code };
+        }
+        return {
+          type: "REFUND_PENDING",
+          transactionRef: code,
+          refundAttemptId: attempt.id,
+        };
       }
 
       if (code) {

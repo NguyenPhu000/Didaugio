@@ -55,22 +55,33 @@ export const useAuthStore = create((set, get) => ({
     let user = null;
 
     try {
-      const [storedAccessToken, storedRefreshToken, userJson] =
+      const [storedAccessToken, storedRefreshToken, secureUserJson, legacyUserJson] =
         await Promise.all([
           safeGetItem(ACCESS_TOKEN_KEY),
           safeGetItem(REFRESH_TOKEN_KEY),
+          safeGetItem(USER_KEY),
           safeAsyncStorage.getItem(USER_KEY),
         ]);
 
       accessToken = storedAccessToken || null;
       refreshToken = storedRefreshToken || null;
 
+      const userJson = secureUserJson || legacyUserJson;
       if (userJson) {
         try {
           user = JSON.parse(userJson);
+          if (user && !secureUserJson) {
+            await safeSetItem(USER_KEY, JSON.stringify(user));
+          }
+          if (legacyUserJson) {
+            await safeAsyncStorage.removeItem(USER_KEY);
+          }
         } catch {
           user = null;
-          await safeAsyncStorage.removeItem(USER_KEY);
+          await Promise.all([
+            safeDeleteItem(USER_KEY),
+            safeAsyncStorage.removeItem(USER_KEY),
+          ]);
         }
       }
 
@@ -105,7 +116,7 @@ export const useAuthStore = create((set, get) => ({
       hydrationError: null,
     });
 
-    const [accessTokenStored, refreshTokenStored] = await Promise.all([
+    const [accessTokenStored, refreshTokenStored, userStored] = await Promise.all([
       nextAccessToken
         ? safeSetItem(ACCESS_TOKEN_KEY, nextAccessToken)
         : safeDeleteItem(ACCESS_TOKEN_KEY),
@@ -113,11 +124,16 @@ export const useAuthStore = create((set, get) => ({
         ? safeSetItem(REFRESH_TOKEN_KEY, nextRefreshToken)
         : safeDeleteItem(REFRESH_TOKEN_KEY),
       nextUser
-        ? safeAsyncStorage.setItem(USER_KEY, JSON.stringify(nextUser))
-        : safeAsyncStorage.removeItem(USER_KEY),
+        ? safeSetItem(USER_KEY, JSON.stringify(nextUser))
+        : safeDeleteItem(USER_KEY),
+      safeAsyncStorage.removeItem(USER_KEY),
     ]);
 
-    if ((nextAccessToken && !accessTokenStored) || (nextRefreshToken && !refreshTokenStored)) {
+    if (
+      (nextAccessToken && !accessTokenStored) ||
+      (nextRefreshToken && !refreshTokenStored) ||
+      (nextUser && !userStored)
+    ) {
       set({ user: null, accessToken: null, refreshToken: null, isGuest: false, hydrationError: "AUTH_PERSIST_FAILED" });
       throw new Error("AUTH_PERSIST_FAILED");
     }
@@ -129,14 +145,14 @@ export const useAuthStore = create((set, get) => ({
       accessToken: null,
       refreshToken: null,
       isGuest: false,
-      // Reset hydration để hydrate() chạy lại nếu cần (vd login xong rồi logout rồi login user khác).
-      isHydrated: false,
+      isHydrated: true,
       hydrationError: null,
     });
 
     await Promise.all([
       safeDeleteItem(ACCESS_TOKEN_KEY),
       safeDeleteItem(REFRESH_TOKEN_KEY),
+      safeDeleteItem(USER_KEY),
       safeAsyncStorage.removeItem(USER_KEY),
     ]);
   },

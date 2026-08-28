@@ -113,6 +113,10 @@ export function verifyReturn(query) {
     vnp_SecureHash,
   } = query;
 
+  if (!VNPAY_HASH_SECRET) {
+    return { valid: false, data: null, error: "VNPay is not configured" };
+  }
+
   if (!vnp_SecureHash) {
     return { valid: false, data: null, error: "Missing secure hash" };
   }

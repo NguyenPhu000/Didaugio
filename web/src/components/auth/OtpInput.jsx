@@ -26,7 +26,7 @@ const OtpInput = ({ value, onChange, disabled = false, error = false }) => {
           if (error) {
             stateClass = "border-rose-400 bg-rose-50/40";
           } else if (active || digit) {
-            stateClass = "border-[#c9bc00] ring-2 ring-[#F3E600]/30 bg-white";
+            stateClass = "border-emerald-700 ring-2 ring-emerald-700/15 bg-white";
           }
 
           return (

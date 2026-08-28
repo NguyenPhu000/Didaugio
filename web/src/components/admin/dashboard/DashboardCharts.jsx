@@ -1,3 +1,4 @@
+import React from "react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -9,8 +10,8 @@ import {
   Cell,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
+  CartesianGrid,
   Legend,
 } from "recharts";
 import {
@@ -20,37 +21,37 @@ import {
 } from "./dashboardChartConfigs";
 import DashboardSystemHealth from "./DashboardSystemHealth";
 import { useTranslation } from "react-i18next";
-import { BRAND_COLORS } from "@/constants/brand";
 
 /**
- * ChartPanel - Wrapper with T.I.M style header
+ * ChartPanel - Modern Clean SaaS Card
  */
 const ChartPanel = ({ title, subtitle, children }) => (
-  <div className="border-2 border-black bg-white shadow-sm">
-    <div className="bg-black text-white p-4 border-b-2 border-black">
-      <div className="flex items-center gap-3">
-        <div className="w-1 h-8 bg-tim-yellow"></div>
-        <div>
-          <h3 className="tim-meta text-white mb-1">{title}</h3>
-          <p className="text-xs text-gray-400 uppercase font-mono">
-            {subtitle}
-          </p>
-        </div>
-      </div>
+  <div className="bg-white rounded-3xl border border-black/[0.04] shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden flex flex-col">
+    <div className="p-5 sm:p-6 border-b border-black/[0.04] bg-[#FAF9F5]">
+      <h3 className="text-sm font-extrabold text-slate-950 tracking-tight">{title}</h3>
+      <p className="text-xs text-slate-500 font-medium mt-0.5">
+        {subtitle}
+      </p>
     </div>
-    {children}
+    <div className="flex-1">{children}</div>
   </div>
 );
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-black text-white p-2.5 border-2 border-[#F3E600] font-mono text-xs shadow-lg">
-        {label && <p className="font-bold text-[#F3E600] mb-1">{label}</p>}
+      <div className="bg-slate-900 text-white p-3 rounded-2xl text-xs shadow-xl border border-slate-800">
+        {label && <p className="font-bold text-slate-200 mb-1.5">{label}</p>}
         {payload.map((entry, index) => (
-          <p key={`item-${index}`} className="flex justify-between gap-3 text-slate-200">
-            <span>{entry.name}:</span>
-            <span className="font-bold text-white">{entry.value}</span>
+          <p key={`item-${index}`} className="flex justify-between items-center gap-4 text-slate-300 py-0.5">
+            <span className="flex items-center gap-1.5">
+              <span
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: entry.color || entry.stroke || "#3b82f6" }}
+              />
+              {entry.name}:
+            </span>
+            <span className="font-bold text-white font-mono">{entry.value}</span>
           </p>
         ))}
       </div>
@@ -69,7 +70,7 @@ const DashboardCharts = ({ stats, categories, places }) => {
   const categoryBarData = getCategoryBarData(categories, places);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Activity Chart */}
       <ChartPanel
         title={t("dashboard.charts.activityAnalytics")}
@@ -78,38 +79,38 @@ const DashboardCharts = ({ stats, categories, places }) => {
         <div className="p-6 h-[350px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={activityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
                 dataKey="day"
-                tick={{ fontFamily: "monospace", fontSize: 11, fill: "#000000", fontWeight: "bold" }}
-                axisLine={{ stroke: "#000000", strokeWidth: 2 }}
+                tick={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }}
+                axisLine={{ stroke: "#e2e8f0" }}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fontFamily: "monospace", fontSize: 11, fill: "#666" }}
-                axisLine={{ stroke: "#000000", strokeWidth: 2 }}
+                tick={{ fontSize: 11, fill: "#94a3b8", fontFamily: "monospace" }}
+                axisLine={{ stroke: "#e2e8f0" }}
                 tickLine={false}
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend
-                wrapperStyle={{ fontFamily: "monospace", fontSize: 11, fontWeight: "bold", paddingTop: 8 }}
+                wrapperStyle={{ fontSize: 11, fontWeight: 600, paddingTop: 12 }}
               />
               <Line
                 type="monotone"
-                name="NGƯỜI DÙNG HOẠT ĐỘNG"
+                name="Người dùng hoạt động"
                 dataKey="activeUsers"
-                stroke="#F3E600"
-                strokeWidth={3}
-                dot={{ r: 4, stroke: "#000000", strokeWidth: 2, fill: "#F3E600" }}
-                activeDot={{ r: 6 }}
+                stroke="#0f172a"
+                strokeWidth={2.5}
+                dot={{ r: 3.5, stroke: "#0f172a", strokeWidth: 1.5, fill: "#ffffff" }}
+                activeDot={{ r: 5 }}
               />
               <Line
                 type="monotone"
-                name="LƯỢT XEM"
+                name="Lượt xem"
                 dataKey="views"
-                stroke="#000000"
+                stroke="#64748b"
                 strokeWidth={2}
-                dot={{ r: 3, stroke: "#F3E600", strokeWidth: 2, fill: "#000000" }}
+                dot={{ r: 3, stroke: "#64748b", strokeWidth: 1.5, fill: "#ffffff" }}
                 activeDot={{ r: 5 }}
               />
             </LineChart>
@@ -131,21 +132,21 @@ const DashboardCharts = ({ stats, categories, places }) => {
                 cy="50%"
                 innerRadius={65}
                 outerRadius={105}
-                paddingAngle={3}
+                paddingAngle={4}
                 dataKey="value"
               >
                 {placeStatusData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
                     fill={entry.color}
-                    stroke="#000000"
+                    stroke="#ffffff"
                     strokeWidth={2}
                   />
                 ))}
               </Pie>
               <Tooltip content={<CustomTooltip />} />
               <Legend
-                wrapperStyle={{ fontFamily: "monospace", fontSize: 11, fontWeight: "bold" }}
+                wrapperStyle={{ fontSize: 11, fontWeight: 600 }}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -160,27 +161,26 @@ const DashboardCharts = ({ stats, categories, places }) => {
         <div className="p-6 h-[350px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={categoryBarData} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
                 dataKey="name"
-                tick={{ fontFamily: "monospace", fontSize: 10, fill: "#000000", fontWeight: "bold" }}
-                axisLine={{ stroke: "#000000", strokeWidth: 2 }}
+                tick={{ fontSize: 10, fill: "#64748b", fontWeight: 600 }}
+                axisLine={{ stroke: "#e2e8f0" }}
                 tickLine={false}
-                angle={-30}
+                angle={-25}
                 textAnchor="end"
               />
               <YAxis
-                tick={{ fontFamily: "monospace", fontSize: 11, fill: "#666" }}
-                axisLine={{ stroke: "#000000", strokeWidth: 2 }}
+                tick={{ fontSize: 11, fill: "#94a3b8", fontFamily: "monospace" }}
+                axisLine={{ stroke: "#e2e8f0" }}
                 tickLine={false}
               />
               <Tooltip content={<CustomTooltip />} />
               <Bar
-                name="SỐ LƯỢNG ĐỊA ĐIỂM"
+                name="Số lượng địa điểm"
                 dataKey="count"
-                fill={BRAND_COLORS.PRIMARY}
-                stroke="#000000"
-                strokeWidth={2}
+                fill="#0f172a"
+                radius={[6, 6, 0, 0]}
               />
             </BarChart>
           </ResponsiveContainer>

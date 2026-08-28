@@ -1,5 +1,7 @@
 .env
 .env.e2e
+.env*.local
+
 # Logs
 logs
 *.log
@@ -32,22 +34,29 @@ e2e
 .gemini/
 .agent/
 .cursorrules
+
+# Test directories & files
 test/
-types
-vitest.config.js
-
-# Playwright
-playwright-report/
-test-results/
-blob-report/
-playwright/.cache/
-
-**/__tests__/
+tests/
+__tests__/
 **/*.test.js
 **/*.test.jsx
 **/*.test.ts
 **/*.test.tsx
+**/*.test.cjs
+**/*.test.mjs
+!src/components/business/AetherBentoCard.test.jsx
 **/*.spec.js
 **/*.spec.jsx
 **/*.spec.ts
 **/*.spec.tsx
+**/*.spec.cjs
+**/*.spec.mjs
+types
+coverage/
+
+# Playwright & test reports
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/

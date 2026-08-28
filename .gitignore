@@ -1,28 +1,11 @@
-docs/
-server/test/
-*.test.js
-*.test.jsx
-*.test.ts
-*.test.tsx
-web/src/test/
-didaugio.code-workspace
-.agent
-.cursor
-data
-awesome-design-md
-.md
-.vscode
-skills
-.env
-.agents/skills
-.vscode
-.github\workflows
-.agents
-.git_bk
-.agent
-.env
+# Dependencies
+node_modules/
+dist/
+dist-ssr/
+*.local
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -30,207 +13,110 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Environment & Credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.jks
+*.p8
+*.p12
+*.mobileprovision
 
-# Editor directories and files
+# Editor & System
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.tsbuildinfo
+bash.exe.stackdump
+didaugio.code-workspace
 
-# AI Agent skills directories (React Best Practices)
+# AI Agent & Tools
 .cursor/
 .claude/
 .gemini/
 .agent/
+.agents/
 .cursorrules
-node_modules
-# Keep environment variables out of version control
-thunder-collection.json
-.env
-scripts
-/generated/prisma
-prisma/migrations
-tests
-scripts
-check_db.js 
+.codex/
+agent-skills/
+skills/
+skills-lock.json
+awesome-design-md/
+understand-anything-plugin/
+.understand-anything/
+.gitnexus/
+.git_bk/
+.scannerwork/
+.sonarlint/
+.superpowers/
+benchmarks/
+scratch/
+plans/
+specs/
+
+# Build & Native generated
+.expo/
+web-build/
+expo-env.d.ts
+.kotlin/
+*.orig.*
+.metro-health-check*
+/ios/
+/android/
+/server/.backups/
+/generated/prisma/
+storage/sensitive/*
+!storage/sensitive/.gitkeep
+
+# Local DB & Scripts
+check_db.js
 debug_turf.js
-import_boundaries.js 
+import_boundaries.js
 inspect_geojson.js
 inspect_ward_geojson.js
 test_lookup.js
-scripts
 thunder-collection.json
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+data/
 
-# dependencies
-node_modules/
-
-# Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
-
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
-# generated native folders
-/ios
-/android
-
-.env.development
-.env.production
-.env
-.env
-bash.exe.stackdump
-
-# Understand Anything (Cursor): thư mục clone/build nặng — giữ .cursor-plugin/plugin.json trong git
-understand-anything-plugin/
-.gitnexus
-.github/workflows
-AGENTS.md
-CLAUDE.md
-agent-skills
-.codex
-skills-lock.json
-benchmarks
-.understand-anything
-D:/didaugio/.understand-anything
-superpowers
-plans
-specs
-.cursor/plans
-2026-07-11-place-spoken-guide.md
-2026-07-11-place-spoken-guide-design.md
-scratch
-sonar_comparison.md
-.scannerwork
-.sonarlint
-/server/.backups/
-
-# Version the production quality gate. The broader workflow ignore above is legacy.
+# Documentation & Markdown
+/docs/
+/server/docs/
+*.md
 !.github/
 !.github/workflows/
 !.github/workflows/quality.yml
 
-# Source tests are part of the release contract and must be available to CI.
-!server/test/
-!server/test/**
-!app/test/
-!app/test/**
-!app/contract/
-!app/contract/**
-!app/src/**/__tests__/
-!app/src/**/__tests__/**
-!app/src/**/*.test.js
-!app/src/**/*.test.jsx
-!app/src/**/*.test.ts
-!app/src/**/*.test.tsx
-!web/test/
-!web/test/**
-!web/src/**/__tests__/
-!web/src/**/__tests__/**
-!web/src/**/*.test.js
-!web/src/**/*.test.jsx
-!web/src/**/*.test.ts
-!web/src/**/*.test.tsx
-.superpowers/sdd/progress.md
-.superpowers/sdd/task-1-brief.md
-.superpowers/sdd/task-1-report.md
-app/src/constants/storage.test.js
-app/src/modules/ai/components/genie/AIPlannerComposition.test.js
-app/src/modules/ai/hooks/useGenieVoiceController.test.js
-app/src/modules/map/components/MapScreenOverlays.test.js
-app/src/modules/map/components/MapScreenCanvas.test.js
-app/src/modules/map/hooks/useMapActiveTripNavigationUtils.test.js
-app/src/modules/map/hooks/useMapDiscoveryStateUtils.test.js
-app/src/modules/map/hooks/useMapPlaceRoutingUtils.test.js
-app/src/modules/map/hooks/useMapPlacesQueryOptions.test.js
-app/src/modules/map/hooks/useMapRouteParams.test.js
-app/src/modules/map/hooks/useMapTripExperience.test.js
-app/src/modules/map/hooks/useMapTripPreview.test.js
-app/src/modules/map/utils/mapViewport.test.js
-app/src/modules/map/utils/mapViewportValidation.test.js
-app/src/modules/map/utils/routeEngine.test.js
-app/src/modules/map/utils/userHeadingMarker.test.js
-app/src/modules/map/utils/routeEngine.test.js
-app/src/modules/trips/utils/tripHelpers.test.js
-server/ops/sql/place-v2-concurrent-indexes.sql
-server/test/cacheKey.test.js
-server/test/dbMetrics.test.js
-server/test/health.service.test.js
-server/test/httpMetrics.test.js
-server/test/loadScriptContract.test.js
-server/test/metricsRoutes.test.js
-server/test/placeCursor.test.js
-server/test/placeV2Dto.test.js
-server/test/rateLimitStore.test.js
-server/test/redisClient.test.js
-server/test/schedulerLeader.test.js
-server/test/spatialError.test.js
-server/test/validateSchema.test.js
-.superpowers/brainstorm/.last-port
-.superpowers/brainstorm/.last-token
-.superpowers/brainstorm/636-1784556270/state/server-instance-id
-.superpowers/brainstorm/636-1784556270/state/server.pid
-.superpowers/brainstorm/codex-map-focus-20260720/content/ward-focus-v1.html
-.superpowers/brainstorm/codex-map-focus-20260720/content/ward-focus-v2.html
-.superpowers/brainstorm/codex-map-focus-20260720/state/server-info
-/.worktrees/
-
-# Local planning, audit, and generated documentation are not source artifacts.
-/.superpowers/
-/docs/
-/server/docs/
-*.md
-
-# Test suites are retained locally and are not published with this branch.
+# Test directories & files (Hidden from commits)
+test/
+tests/
+__tests__/
+*.test.js
+*.test.jsx
+*.test.ts
+*.test.tsx
+*.test.cjs
+*.test.mjs
+*.spec.js
+*.spec.jsx
+*.spec.ts
+*.spec.tsx
+*.spec.cjs
+*.spec.mjs
 server/test/
 app/test/
 web/test/
-app/contract/
-**/__tests__/
-**/*.test.js
-**/*.test.jsx
-**/*.test.ts
-**/*.test.tsx
-**/*.spec.js
-**/*.spec.jsx
-**/*.spec.ts
-**/*.spec.tsx
-
-.github/workflows/quality.yml
-server/docker-compose.high-load.yml
+web/src/test/
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/

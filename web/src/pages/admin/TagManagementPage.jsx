@@ -118,157 +118,130 @@ export default function TagManagementPage() {
   };
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-transparent relative font-sans">
-      {/* Enhanced grid background with dots */}
-      <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none" />
-      <div className="absolute inset-0 bg-grid-dots opacity-40 pointer-events-none" />
+    <div className="space-y-6 text-slate-900 antialiased max-w-[1560px] mx-auto">
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-black/[0.04]">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Hệ thống Phân loại & Gắn thẻ
+          </p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
+            {t("tags.title")}
+          </h1>
+          <p className="text-xs text-slate-500 font-medium">
+            {t("tags.subtitle")}
+          </p>
+        </div>
+        <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            className="h-10 w-10 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center shadow-sm cursor-pointer"
+          >
+            <RefreshCw className="h-4 w-4 text-slate-700" />
+          </Button>
+          <Button
+            onClick={handleAdd}
+            className="flex-1 sm:flex-initial h-10 px-5 rounded-full bg-slate-950 hover:bg-black text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Plus className="h-4 w-4 text-white" />
+            <span>{t("tags.createTag")}</span>
+          </Button>
+        </div>
+      </header>
 
-      <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-black pb-6 gap-4">
-          <div className="flex items-center gap-4 sm:gap-6">
-            <div className="accent-bar h-16 shrink-0"></div>
-            <div>
-              <h1 className="tim-title">{t("tags.title")}</h1>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1 shrink-0">
-                  SYSTEM // TAGS
-                </span>
-                <p className="tim-meta">{t("tags.subtitle")}</p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-              className="h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white shrink-0"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-            <Button
-              onClick={handleAdd}
-              className="flex-1 sm:flex-initial justify-center h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              {t("tags.createTag")}
-            </Button>
-          </div>
+      {/* Thống kê nhanh */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <TimStatsCard
+          title={t("tags.stats.total")}
+          value={tags.length}
+          icon={Layers}
+        />
+        <TimStatsCard
+          title={t("tags.stats.active")}
+          value={tags.filter((tag) => tag.isActive).length}
+          icon={Activity}
+        />
+        <TimStatsCard
+          title={t("tags.stats.totalUsage")}
+          value={tags.reduce((sum, tag) => sum + (tag.usageCount || 0), 0)}
+          icon={BarChart3}
+        />
+        <TimStatsCard
+          title={t("tags.stats.tagTypes")}
+          value={new Set(tags.map((tag) => tag.tagType)).size}
+          icon={TagIcon}
+        />
+      </div>
+
+      {/* Control Panel */}
+      <div className="bg-white rounded-2xl border border-black/[0.04] p-3 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col md:flex-row gap-3 items-center">
+        <div className="w-full md:flex-1 relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder={t("tags.searchPlaceholder")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            className="w-full h-10 pl-10 pr-4 bg-slate-50 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-slate-300 placeholder:text-slate-400 transition-all border border-slate-200 focus:border-slate-400"
+          />
         </div>
 
-        {/* Thống kê nhanh */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <TimStatsCard
-            title={t("tags.stats.total")}
-            value={tags.length}
-            icon={Layers}
-            serial="TAG-001"
-          />
-          <TimStatsCard
-            title={t("tags.stats.active")}
-            value={tags.filter((tag) => tag.isActive).length}
-            icon={Activity}
-            serial="TAG-002"
-            textColor="text-emerald-600"
-          />
-          <TimStatsCard
-            title={t("tags.stats.totalUsage")}
-            value={tags.reduce((sum, tag) => sum + (tag.usageCount || 0), 0)}
-            icon={BarChart3}
-            serial="TAG-003"
-          />
-          <TimStatsCard
-            title={t("tags.stats.tagTypes")}
-            value={new Set(tags.map((tag) => tag.tagType)).size}
-            icon={TagIcon}
-            serial="TAG-004"
-            color="bg-yellow-50"
-          />
-        </div>
-
-        {/* Control Panel */}
-        <div className="bg-white border border-black p-4 flex flex-col md:flex-row gap-4 items-center rounded-none shadow-sm">
-          <div className="w-full md:flex-1 flex items-center gap-0">
-            <div className="h-10 w-10 bg-black flex items-center justify-center text-white shrink-0">
-              <Search className="h-4 w-4" />
-            </div>
-            <input
-              type="text"
-              placeholder={t("tags.searchPlaceholder")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              className="h-10 flex-1 px-4 border-y border-r border-black font-mono text-sm uppercase focus:outline-none focus:bg-black focus:text-primary placeholder:text-gray-400 min-w-0"
-            />
-            <Button
-              onClick={handleSearch}
-              className="h-10 rounded-none bg-primary text-black border border-black border-l-0 font-bold uppercase hover:bg-yellow-400 shrink-0"
-            >
-              {t("common.search")}
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-2 sm:flex gap-2.5 w-full md:w-auto">
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-full sm:w-[200px] rounded-none border-black font-mono text-xs uppercase h-10">
-                <Filter className="h-3 w-3 mr-2" />
-                <SelectValue placeholder={t("tags.filterByType")} />
-              </SelectTrigger>
-              <SelectContent className="rounded-none border-black">
-                {Object.entries(TAG_TYPES).map(([value, label]) => (
-                  <SelectItem
-                    key={value}
-                    value={value}
-                    className="font-mono text-xs uppercase focus:bg-primary focus:text-black"
-                  >
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full sm:w-[180px] rounded-none border-black font-mono text-xs uppercase h-10">
-                <SelectValue placeholder={t("tags.sortBy")} />
-              </SelectTrigger>
-              <SelectContent className="rounded-none border-black">
+        <div className="grid grid-cols-2 sm:flex gap-2.5 w-full md:w-auto">
+          <Select value={filterType} onValueChange={setFilterType}>
+            <SelectTrigger className="w-full sm:w-[180px] rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium h-10">
+              <Filter className="h-3.5 w-3.5 mr-2 text-slate-500" />
+              <SelectValue placeholder={t("tags.filterByType")} />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border border-slate-200">
+              {Object.entries(TAG_TYPES).map(([value, label]) => (
                 <SelectItem
-                  value="usageCount"
-                  className="font-mono text-xs uppercase focus:bg-primary focus:text-black"
+                  key={value}
+                  value={value}
+                  className="text-xs"
                 >
-                  {t("tags.sortOptions.mostUsed")}
+                  {label}
                 </SelectItem>
-                <SelectItem
-                  value="name"
-                  className="font-mono text-xs uppercase focus:bg-primary focus:text-black"
-                >
-                  {t("tags.sortOptions.nameAZ")}
-                </SelectItem>
-                <SelectItem
-                  value="newest"
-                  className="font-mono text-xs uppercase focus:bg-primary focus:text-black"
-                >
-                  {t("tags.sortOptions.newest")}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+              ))}
+            </SelectContent>
+          </Select>
 
-        {/* Data List */}
-        <div className="relative">
-          {/* Micro-typography decorative label */}
-          <div className="absolute -top-6 left-0 text-[10px] font-mono text-gray-400 uppercase tracking-widest">
-            DATA_VIEW // TABLE-01
-          </div>
-          <TagList
-            tags={tags}
-            onEdit={handleEdit}
-            onDelete={handleDeleteClick}
-            loading={isLoading}
-          />
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-full sm:w-[160px] rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium h-10">
+              <SelectValue placeholder={t("tags.sortBy")} />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border border-slate-200">
+              <SelectItem
+                value="usageCount"
+                className="text-xs"
+              >
+                {t("tags.sortOptions.mostUsed")}
+              </SelectItem>
+              <SelectItem
+                value="name"
+                className="text-xs"
+              >
+                {t("tags.sortOptions.nameAZ")}
+              </SelectItem>
+              <SelectItem
+                value="newest"
+                className="text-xs"
+              >
+                {t("tags.sortOptions.newest")}
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
+
+      {/* Data List */}
+      <TagList
+        tags={tags}
+        onEdit={handleEdit}
+        onDelete={handleDeleteClick}
+        loading={isLoading}
+      />
 
       {/* Form Dialog */}
       <TagFormDialog
@@ -282,36 +255,36 @@ export default function TagManagementPage() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="rounded-none border border-black p-0 overflow-hidden">
-          <DialogHeader className="p-6 bg-red-600 text-white">
-            <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-              <Activity className="h-6 w-6" /> {t("tags.deleteDialog.title")}
+        <DialogContent className="rounded-2xl border border-slate-200 bg-white p-6 max-w-md shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-950 flex items-center gap-2">
+              <Activity className="h-5 w-5 text-rose-600" /> {t("tags.deleteDialog.title")}
             </DialogTitle>
-            <DialogDescription className="text-red-100 font-mono text-xs mt-2 uppercase">
+            <DialogDescription className="text-xs text-slate-500 mt-1">
               {t("tags.deleteDialog.description")}
             </DialogDescription>
           </DialogHeader>
-          <div className="p-6 bg-white">
-            <p className="font-mono text-sm mb-4">
+          <div className="py-3">
+            <p className="text-sm text-slate-700">
               {t("tags.deleteDialog.message", { name: selectedTag?.name })}
             </p>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button
-                variant="outline"
-                onClick={() => setDeleteDialogOpen(false)}
-                className="rounded-none border-black hover:bg-gray-100"
-              >
-                {t("common.cancel")}
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteConfirm}
-                className="rounded-none bg-red-600 hover:bg-red-700 font-bold uppercase"
-              >
-                {t("common.confirmDelete")}
-              </Button>
-            </DialogFooter>
           </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              className="rounded-xl border-slate-200 text-xs font-semibold"
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              className="rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-semibold"
+            >
+              {t("common.confirmDelete")}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

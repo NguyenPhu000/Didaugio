@@ -130,16 +130,16 @@ export function RoleUsersTab({ role }) {
 
   if (loading) {
     return (
-      <div className="space-y-4 py-4">
-        {[...Array(5)].map((_, i) => (
+      <div className="space-y-3 py-4">
+        {[...Array(4)].map((_, i) => (
           <div
             key={i}
-            className="flex items-center gap-3 p-4 border border-black"
+            className="flex items-center gap-3 p-4 rounded-2xl border border-black/[0.04] bg-white shadow-xs"
           >
-            <Skeleton className="h-10 w-10 border border-gray-300" />
+            <Skeleton className="h-10 w-10 rounded-full" />
             <div className="flex-1">
-              <Skeleton className="h-4 w-48 mb-2 border border-gray-300" />
-              <Skeleton className="h-3 w-32 border border-gray-300" />
+              <Skeleton className="h-4 w-48 mb-2 rounded-md" />
+              <Skeleton className="h-3 w-32 rounded-md" />
             </div>
           </div>
         ))}
@@ -151,118 +151,116 @@ export function RoleUsersTab({ role }) {
     <div className="space-y-4 pb-4">
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
-          <div className="absolute left-0 top-0 h-full w-10 bg-black flex items-center justify-center text-white">
-            <Search className="h-4 w-4" />
-          </div>
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <Input
-            placeholder="TÌM USER THEO EMAIL HOẶC TÊN..."
+            placeholder="Tìm kiếm user theo email hoặc họ tên..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            className="pl-12 h-10 rounded-none border border-black bg-white focus-visible:ring-0 focus-visible:border-black focus:bg-yellow-50 uppercase text-xs font-mono"
+            className="pl-10 h-10 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-xs font-medium text-slate-900 focus-visible:ring-2 focus-visible:ring-slate-300"
           />
         </div>
         <Button
           onClick={handleSearch}
           variant="outline"
-          className="h-10 rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
+          className="h-10 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold cursor-pointer"
         >
-          TÌM
+          Tìm kiếm
         </Button>
       </div>
 
       {selectedUsers.size > 0 && (
-        <div className="flex items-center justify-between p-4 bg-[#F3E600]/20 border-2 border-[#F3E600]">
-          <p className="text-xs font-bold text-black uppercase tracking-wider font-mono">
-            ĐÃ CHỌN {selectedUsers.size} USER(S)
+        <div className="flex items-center justify-between p-3.5 bg-slate-900 text-white rounded-2xl shadow-sm">
+          <p className="text-xs font-semibold">
+            Đã chọn <strong className="font-mono text-emerald-400">{selectedUsers.size}</strong> thành viên
           </p>
           <div className="flex gap-2">
             <Button
               size="sm"
               onClick={handleBulkManage}
-              className="bg-black hover:bg-[#F3E600] hover:text-black text-white rounded-none border border-black uppercase text-xs font-bold"
+              className="bg-white hover:bg-slate-100 text-slate-900 rounded-xl text-xs font-semibold cursor-pointer shadow-xs"
             >
-              <UserCog className="h-3 w-3 mr-2" />
-              CHỈNH QUYỀN HÀNG LOẠT
+              <UserCog className="h-3.5 w-3.5 mr-1.5" />
+              Chỉnh quyền hàng loạt
             </Button>
             <Button
               size="sm"
               variant="outline"
               onClick={handleDeselectAll}
-              className="bg-white border border-black text-black hover:bg-gray-100 rounded-none uppercase text-xs font-bold"
+              className="bg-transparent border-white/20 text-white hover:bg-white/10 rounded-xl text-xs font-semibold cursor-pointer"
             >
-              BỎ CHỌN
+              Bỏ chọn
             </Button>
           </div>
         </div>
       )}
 
-      <div className="flex items-center justify-between border-b border-black pb-2">
-        <p className="text-xs font-mono font-bold text-black uppercase tracking-wider">
-          {users.length} USER(S)
+      <div className="flex items-center justify-between border-b border-black/[0.04] pb-2">
+        <p className="text-xs font-semibold text-slate-500">
+          Tổng cộng <strong className="text-slate-900 font-mono">{users.length}</strong> thành viên
         </p>
         <Button
           size="sm"
           variant="ghost"
           onClick={handleSelectAll}
           disabled={selectedUsers.size === users.filter((u) => canEditUser(u)).length}
-          className="text-black hover:bg-gray-100 border border-black rounded-none uppercase text-xs font-bold h-8"
+          className="text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-semibold h-8 cursor-pointer"
         >
-          CHỌN TẤT CẢ
+          Chọn tất cả
         </Button>
       </div>
 
       {users.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 bg-white border border-black border-dashed">
-          <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
-          <p className="uppercase font-mono text-xs">
-            CHƯA CÓ USER NÀO TRONG VAI TRÒ NÀY
+        <div className="text-center py-12 text-slate-400 bg-white rounded-2xl border border-black/[0.04]">
+          <Users className="h-10 w-10 mx-auto mb-2 opacity-30 stroke-[1.5]" />
+          <p className="text-xs font-semibold">
+            Chưa có thành viên nào trong vai trò này
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {users.map((user) => (
             <div
               key={user.id}
-              className="group flex items-center gap-3 p-4 bg-white border border-black hover:shadow-hard transition-all hover:border-l-4 hover:border-l-[#F3E600]"
+              className="group flex items-center gap-3.5 p-3.5 bg-white rounded-2xl border border-black/[0.04] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-md transition-all"
             >
               <Checkbox
                 checked={selectedUsers.has(user.id)}
                 onCheckedChange={() => handleToggleUser(user.id)}
                 disabled={!canEditUser(user)}
-                className="data-[state=checked]:bg-[#F3E600] data-[state=checked]:border-black data-[state=checked]:text-black rounded-none border-2 disabled:opacity-40"
+                className="rounded-md border-slate-300 data-[state=checked]:bg-slate-900 data-[state=checked]:border-slate-900 disabled:opacity-40"
               />
-              <Avatar className="h-10 w-10 border-2 border-black rounded-none">
+              <Avatar className="h-10 w-10 rounded-full border border-slate-100 shadow-2xs">
                 <AvatarImage
                   src={
                     resolveMediaUrl(user.avatar || user.profile?.avatar) ||
                     undefined
                   }
                 />
-                <AvatarFallback className="bg-gray-100 text-black font-bold rounded-none">
+                <AvatarFallback className="bg-slate-100 text-slate-700 text-xs font-bold rounded-full">
                   {getInitials(user.email, user.fullName)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-bold text-black truncate uppercase text-sm tracking-tight">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-semibold text-slate-900 truncate text-sm">
                     {user.fullName || user.email}
                   </p>
                   {isSelf(user) && (
                     <Badge
                       variant="secondary"
-                      className="text-[10px] bg-purple-500 text-white border border-purple-500 rounded-none uppercase font-mono flex items-center gap-1"
+                      className="text-[10px] bg-purple-50 text-purple-700 border-purple-200 rounded-full font-semibold flex items-center gap-1"
                     >
                       <Crown className="h-3 w-3" />
-                      BẠN
+                      Bạn
                     </Badge>
                   )}
                   {user.customPermissionCount > 0 && (
                     <Badge
                       variant="secondary"
-                      className="text-[10px] bg-[#F3E600] text-black border border-black rounded-none uppercase font-mono"
+                      className="text-[10px] bg-blue-50 text-blue-700 border-blue-200 rounded-full font-semibold"
                     >
-                      +{user.customPermissionCount} CUSTOM
+                      +{user.customPermissionCount} custom
                     </Badge>
                   )}
                   <Badge
@@ -271,14 +269,14 @@ export function RoleUsersTab({ role }) {
                     }
                     className={
                       user.status === "active"
-                        ? "text-[10px] bg-black text-white border border-black rounded-none uppercase font-mono"
-                        : "text-[10px] bg-red-500 text-white border border-black rounded-none uppercase font-mono"
+                        ? "text-[10px] bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border-emerald-200 rounded-full font-semibold"
+                        : "text-[10px] bg-rose-50 text-rose-700 hover:bg-rose-50 border-rose-200 rounded-full font-semibold"
                     }
                   >
-                    {user.status}
+                    {user.status === "active" ? "Hoạt động" : user.status}
                   </Badge>
                 </div>
-                <p className="text-xs text-gray-500 truncate font-mono">
+                <p className="text-xs text-slate-500 truncate font-mono">
                   {user.email}
                 </p>
               </div>
@@ -288,10 +286,10 @@ export function RoleUsersTab({ role }) {
                 onClick={() => handleManageUser(user)}
                 disabled={!canEditUser(user)}
                 title={!canEditUser(user) ? "Bạn không có quyền chỉnh sửa quyền của user này" : ""}
-                className="opacity-0 group-hover:opacity-100 transition-opacity rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="opacity-0 group-hover:opacity-100 transition-opacity rounded-xl border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Settings className="h-3 w-3 mr-2" />
-                QUẢN LÝ
+                <Settings className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
+                Quản lý
               </Button>
             </div>
           ))}

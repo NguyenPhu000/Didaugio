@@ -24,12 +24,12 @@ export function PermissionCheckbox({
   return (
     <div
       className={cn(
-        "flex items-start space-x-3 p-3 border transition-all duration-200",
+        "flex items-start space-x-3 p-3.5 rounded-xl border transition-all duration-150",
         checked
-          ? "bg-white border-black border-l-4 border-l-[#F3E600]"
-          : "bg-white border-gray-300 hover:border-black",
+          ? "bg-slate-50/60 border-slate-300 ring-1 ring-slate-200"
+          : "bg-white border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/40",
         disabled && "opacity-60 cursor-not-allowed",
-        isInherited && "border-l-4 border-l-black",
+        isInherited && "bg-slate-50/80 border-slate-300",
       )}
     >
       <Checkbox
@@ -37,14 +37,14 @@ export function PermissionCheckbox({
         checked={checked}
         onCheckedChange={onCheckedChange}
         disabled={disabled}
-        className="mt-1 data-[state=checked]:bg-[#F3E600] data-[state=checked]:border-black data-[state=checked]:text-black rounded-none border-2"
+        className="mt-0.5 rounded-md border-slate-300 data-[state=checked]:bg-slate-900 data-[state=checked]:border-slate-900 data-[state=checked]:text-white"
       />
       <div className="flex-1 space-y-1">
         <div className="flex items-center gap-2 flex-wrap">
           <Label
             htmlFor={`permission-${permission.id}`}
             className={cn(
-              "text-xs font-bold text-black cursor-pointer uppercase tracking-tight",
+              "text-xs font-semibold text-slate-900 cursor-pointer",
               disabled && "cursor-not-allowed",
             )}
           >
@@ -56,17 +56,17 @@ export function PermissionCheckbox({
                 <TooltipTrigger asChild>
                   <Badge
                     variant="outline"
-                    className="text-xs bg-black text-white border-black flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-none uppercase font-mono"
+                    className="text-[11px] bg-slate-100 text-slate-700 border-slate-200 flex items-center gap-1 px-2 py-0.5 rounded-full font-medium"
                   >
-                    <Shield className="h-3 w-3" />
+                    <Shield className="h-3 w-3 text-slate-500" />
                     {t("role.permissionCheckbox.roleBadge")}
                   </Badge>
                 </TooltipTrigger>
-                <TooltipContent className="bg-black text-white border-black rounded-none">
-                  <p className="uppercase font-mono text-xs">
+                <TooltipContent className="bg-slate-900 text-white rounded-xl text-xs">
+                  <p className="font-medium">
                     {t("role.permissionCheckbox.inheritedFromRole")}
                   </p>
-                  <p className="text-xs text-gray-300 font-mono">
+                  <p className="text-slate-400 text-[11px]">
                     {t("role.permissionCheckbox.deselectHint")}
                   </p>
                 </TooltipContent>
@@ -76,7 +76,7 @@ export function PermissionCheckbox({
           {showSource && !isInherited && checked && (
             <Badge
               variant="outline"
-              className="text-xs bg-[#F3E600] text-black border-black flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-none uppercase font-mono"
+              className="text-[11px] bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1 px-2 py-0.5 rounded-full font-medium"
             >
               <UserPlus className="h-3 w-3" />
               {t("role.permissionCheckbox.specialPermission")}
@@ -84,7 +84,7 @@ export function PermissionCheckbox({
           )}
         </div>
         {permission.description && (
-          <p className="text-xs text-gray-500 font-mono">
+          <p className="text-xs text-slate-500 leading-relaxed">
             {permission.description}
           </p>
         )}

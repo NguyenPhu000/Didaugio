@@ -100,6 +100,10 @@ export async function createPaymentUrl({ amount, transactionRef, orderInfo, retu
  * @returns {{ valid: boolean, error: string|null }}
  */
 export function verifyIpnSignature(body) {
+  if (!MOMO_PARTNER_CODE || !MOMO_ACCESS_KEY || !MOMO_SECRET_KEY) {
+    return { valid: false, error: "MoMo is not configured" };
+  }
+
   const {
     partnerCode,
     orderId,

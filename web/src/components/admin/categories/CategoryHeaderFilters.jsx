@@ -22,12 +22,9 @@ export const CategoryHeaderFilters = memo(
         {/* Editorial Header */}
         <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-black/[0.04]">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[#F3E600] shadow-[0_0_6px_#F3E600]" />
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Phân loại & Danh mục Địa điểm
-              </span>
-            </div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Phân loại & Danh mục Địa điểm
+            </p>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
               {t("categories.title")}
             </h1>
@@ -40,7 +37,7 @@ export const CategoryHeaderFilters = memo(
             <button
               type="button"
               onClick={handleRefresh}
-              className="h-10 w-10 rounded-full bg-white text-slate-900 hover:bg-[#F4F2EC] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/[0.04] transition-all flex items-center justify-center shrink-0 active:scale-95 cursor-pointer"
+              className="h-10 w-10 rounded-full bg-white text-slate-900 hover:bg-slate-50 shadow-sm border border-slate-200 transition-all flex items-center justify-center shrink-0 active:scale-95 cursor-pointer"
               title="Đồng bộ lại"
             >
               <RefreshCw
@@ -53,7 +50,7 @@ export const CategoryHeaderFilters = memo(
               onClick={handleAddRoot}
               className="flex-1 sm:flex-initial h-10 px-5 rounded-full bg-slate-950 hover:bg-black text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
             >
-              <Plus className="h-4 w-4 text-[#F3E600]" />
+              <Plus className="h-4 w-4 text-white" />
               <span>{t("categories.createRoot")}</span>
             </button>
           </div>

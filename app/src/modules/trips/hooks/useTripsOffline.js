@@ -14,6 +14,10 @@ import { QUERY_KEYS } from "../../../constants/query-keys";
 import { TRIP_OFFLINE_GC_MS } from "../../../constants/trip-offline-cache";
 import { OFFLINE_STORAGE_KEYS } from "../../../constants/storage";
 import { createRandomId } from "../../../utils/createRandomId";
+import {
+  dedupOfflineActions,
+  flushOfflineTripActions,
+} from "../utils/offlineSync";
 
 const TRIPS_CACHE_KEY = OFFLINE_STORAGE_KEYS.TRIPS_CACHE;
 const CACHE_VERSION = "v5";
@@ -333,30 +337,6 @@ export function useDeleteTripCached() {
   };
 }
 
-/**
- * Loại bỏ các cặp CREATE+DELETE triệt tiêu nhau và các action trung gian.
- * Kịch bản: User tạo trip offline → thêm destination → xóa trip offline.
- * Nếu chỉ gửi CREATE+DELETE sẽ lãng phí, còn action ADD_DESTINATION sẽ lỗi 404.
- */
-function dedupOfflineActions(actions) {
-  // Bước 1: Tìm tempId bị triệt tiêu (CREATE bị DELETE cancel)
-  const cancelledTempIds = new Set();
-  actions.forEach((action, i) => {
-    if (action.type === "DELETE_TRIP") {
-      const createIdx = actions.findIndex(
-        (c) => c.type === "CREATE_TRIP" && c.tempId && c.tempId === action.tempId,
-      );
-      if (createIdx !== -1 && createIdx < i) {
-        cancelledTempIds.add(action.tempId);
-      }
-    }
-  });
-
-  // Bước 2: Lọc bỏ tất cả action liên quan đến tempId bị triệt tiêu
-  if (cancelledTempIds.size === 0) return actions;
-  return actions.filter((action) => !cancelledTempIds.has(action.tempId));
-}
-
 export function useOfflineSync() {
   const queryClient = useQueryClient();
   const { isConnected } = useNetworkStatus();
@@ -383,34 +363,20 @@ export function useOfflineSync() {
           return;
         }
 
-        const remainingActions = [];
         const idMapRaw = await safeAsyncStorage.getItem(OFFLINE_STORAGE_KEYS.TRIP_ID_MAP);
         const idMap = idMapRaw ? JSON.parse(idMapRaw) : {};
 
-        for (const action of actions) {
-          try {
-            if (action.type === "CREATE_TRIP") {
-              const response = await createTripApi(action.data);
-              const serverId = response?.data?.id;
-              if (action.tempId && serverId) idMap[action.tempId] = serverId;
-            } else if (action.type === "DELETE_TRIP") {
-              const queuedId = action.data?.id || action.data;
-              const idToDelete = idMap[String(queuedId)] || queuedId;
-              await deleteTripApi(idToDelete);
-            } else if (action.type === "UPDATE_TRIP") {
-              await updateTripApi(action.data?.tripId, action.data?.data);
-            }
-          } catch (err) {
-            const isNetworkError = !err.response || err.message === "Network Error" || err.code === "ERR_NETWORK";
-            if (isNetworkError) {
-              remainingActions.push(action);
-            }
-          }
-        }
+        const { remainingActions, idMap: nextIdMap } =
+          await flushOfflineTripActions(actions, {
+            idMap,
+            createTrip: createTripApi,
+            updateTrip: updateTripApi,
+            deleteTrip: deleteTripApi,
+          });
 
         await safeAsyncStorage.setItem(
           OFFLINE_STORAGE_KEYS.TRIP_ID_MAP,
-          JSON.stringify(idMap),
+          JSON.stringify(nextIdMap),
         );
 
         if (remainingActions.length > 0) {

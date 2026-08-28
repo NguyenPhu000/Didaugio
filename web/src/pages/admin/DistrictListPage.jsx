@@ -31,10 +31,10 @@ const getStatusMap = (t) => ({
   },
   pending: {
     label: t("admin.districts.statusPending"),
-    cls: "bg-yellow-50 text-yellow-700 border-yellow-200",
+    cls: "bg-amber-50 text-amber-700 border-amber-200",
   },
-  rejected: { label: t("admin.districts.statusRejected"), cls: "bg-red-50 text-red-600 border-red-200" },
-  draft: { label: t("admin.districts.statusDraft"), cls: "bg-gray-50 text-gray-500 border-gray-200" },
+  rejected: { label: t("admin.districts.statusRejected"), cls: "bg-rose-50 text-rose-700 border-rose-200" },
+  draft: { label: t("admin.districts.statusDraft"), cls: "bg-slate-100 text-slate-600 border-slate-200" },
 });
 
 const STATUS_ICON = {
@@ -73,9 +73,9 @@ const PlaceRow = ({ place, serial }) => {
         </span>
       )}
       {place.averageRating > 0 && (
-        <div className="hidden md:flex items-center gap-1 shrink-0 bg-[#FFFDE6] px-2 py-0.5 rounded-full border border-[#F3E600]/80">
-          <Star className="h-3 w-3 text-slate-900 fill-current" />
-          <span className="text-[11px] font-mono font-bold text-slate-900 tabular-nums">
+        <div className="hidden md:flex items-center gap-1 shrink-0 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+          <Star className="h-3 w-3 text-amber-500 fill-current" />
+          <span className="text-[11px] font-mono font-bold text-amber-700 tabular-nums">
             {Number(place.averageRating).toFixed(1)}
           </span>
         </div>
@@ -135,7 +135,7 @@ const DistrictRow = ({ district, placeCount, maxCount }) => {
             className="w-full text-left bg-white hover:bg-[#FAF9F5] transition-all duration-200 group"
           >
             <div className="flex items-center gap-4 px-5 py-4">
-              <div className="shrink-0 w-6 h-6 rounded-lg bg-[#F8F7F3] group-hover:bg-[#FFFDE6] flex items-center justify-center transition-colors">
+              <div className="shrink-0 w-6 h-6 rounded-lg bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center transition-colors">
                 {open ? (
                   <ChevronDown className="h-3.5 w-3.5 text-slate-900" />
                 ) : (
@@ -173,8 +173,8 @@ const DistrictRow = ({ district, placeCount, maxCount }) => {
                 )}
               </div>
               <div
-                className={`shrink-0 min-w-[2.5rem] text-center font-mono font-black text-sm px-3 py-1 rounded-full border tabular-nums
-                ${placeCount > 0 ? "bg-slate-950 text-[#F3E600] border-slate-950 shadow-2xs" : "bg-slate-100 text-slate-400 border-slate-200"}`}
+                className={`shrink-0 min-w-[2.5rem] text-center font-mono font-bold text-sm px-3 py-1 rounded-full border tabular-nums
+                ${placeCount > 0 ? "bg-slate-900 text-white border-slate-900 shadow-sm" : "bg-slate-100 text-slate-400 border-slate-200"}`}
               >
                 {placeCount}
               </div>
@@ -281,15 +281,12 @@ const DistrictListPage = () => {
     );
 
   return (
-    <div className="space-y-6 text-slate-900 antialiased selection:bg-[#F3E600] selection:text-slate-950 max-w-[1560px] mx-auto">
+    <div className="space-y-6 text-slate-900 antialiased max-w-[1560px] mx-auto">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-black/[0.04]">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[#F3E600] shadow-[0_0_6px_#F3E600]" />
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Địa giới & Phân vùng Du lịch
-            </span>
-          </div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Địa giới & Phân vùng Du lịch
+          </p>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
             {t("admin.districts.title")}
           </h1>
@@ -333,7 +330,7 @@ const DistrictListPage = () => {
             placeholder={t("admin.districts.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-10 pl-10 pr-4 bg-[#F8F7F3] rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F3E600] placeholder:text-slate-400 transition-all border border-transparent focus:border-[#F3E600]/50"
+            className="w-full h-10 pl-10 pr-4 bg-slate-50 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-slate-300 placeholder:text-slate-400 transition-all border border-slate-200 focus:border-slate-400"
           />
         </div>
         <div className="flex gap-2 w-full sm:w-auto shrink-0">
@@ -341,12 +338,12 @@ const DistrictListPage = () => {
             type="button"
             onClick={() => toggleSort("name")}
             className={`flex-1 sm:flex-initial justify-center h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs
-              ${sort.startsWith("name") ? "bg-slate-950 text-white" : "bg-[#F8F7F3] text-slate-700 hover:bg-[#F4F2EC] border border-black/[0.04]"}`}
+              ${sort.startsWith("name") ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200"}`}
           >
             {sort === "name_desc" ? (
-              <SortDesc className="h-3.5 w-3.5 text-[#F3E600]" />
+              <SortDesc className="h-3.5 w-3.5 text-slate-400" />
             ) : (
-              <SortAsc className="h-3.5 w-3.5 text-[#F3E600]" />
+              <SortAsc className="h-3.5 w-3.5 text-slate-400" />
             )}
             {t("admin.districts.name")}
           </button>
@@ -354,12 +351,12 @@ const DistrictListPage = () => {
             type="button"
             onClick={() => toggleSort("count")}
             className={`flex-1 sm:flex-initial justify-center h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs
-              ${sort.startsWith("count") ? "bg-slate-950 text-white" : "bg-[#F8F7F3] text-slate-700 hover:bg-[#F4F2EC] border border-black/[0.04]"}`}
+              ${sort.startsWith("count") ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200"}`}
           >
             {sort === "count_desc" ? (
-              <SortDesc className="h-3.5 w-3.5 text-[#F3E600]" />
+              <SortDesc className="h-3.5 w-3.5 text-slate-400" />
             ) : (
-              <SortAsc className="h-3.5 w-3.5 text-[#F3E600]" />
+              <SortAsc className="h-3.5 w-3.5 text-slate-400" />
             )}
             {t("admin.districts.quantity")}
           </button>
@@ -368,7 +365,7 @@ const DistrictListPage = () => {
 
       {loading ? (
         <div className="py-24 text-center space-y-3">
-          <div className="w-9 h-9 border-3 border-slate-950 border-t-[#F3E600] rounded-full animate-spin mx-auto" />
+          <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mx-auto" />
           <span className="text-xs font-semibold text-slate-500">{t("admin.districts.loading")}</span>
         </div>
       ) : (

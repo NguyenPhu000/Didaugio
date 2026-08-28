@@ -182,7 +182,7 @@ export default function CategoryManagementPage() {
   };
 
   return (
-    <div className="space-y-6 text-slate-900 antialiased selection:bg-[#F3E600] selection:text-slate-950 max-w-[1560px] mx-auto">
+    <div className="space-y-6 text-slate-900 antialiased max-w-[1560px] mx-auto">
       {/* Header & Filter Controls */}
       <CategoryHeaderFilters
         handleRefresh={handleRefresh}

@@ -1,5 +1,6 @@
 import React, { memo } from "react";
 import { ArrowUpRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 /**
@@ -15,6 +16,7 @@ export const AetherBentoCard = memo(
     trendText,
     variant = "peach", // "peach" | "blue" | "gray" | "mint" | "rose"
     onClick,
+    href,
     actionIcon: ActionIcon = ArrowUpRight,
     className,
     children,
@@ -60,6 +62,9 @@ export const AetherBentoCard = memo(
 
     const theme = THEMES[variant] || THEMES.peach;
     const valString = String(value ?? "");
+    const hasHref = typeof href === "string" && href.length > 0;
+    const hasAction = hasHref || typeof onClick === "function";
+    const actionLabel = `Mở ${title}`;
 
     // Dynamic typography scaling based on string length (e.g. "12.001.000 ₫")
     const getValueTypography = (str) => {
@@ -78,7 +83,8 @@ export const AetherBentoCard = memo(
     return (
       <div
         className={cn(
-          "relative rounded-[32px] p-5 sm:p-6 min-h-[155px] sm:min-h-[165px] flex flex-col justify-between transition-all duration-300 group select-none shadow-xs hover:shadow-md",
+          "relative rounded-[32px] p-5 sm:p-6 min-h-[155px] sm:min-h-[165px] flex flex-col justify-between group shadow-xs",
+          hasAction && "select-none transition-shadow duration-300 hover:shadow-md",
           theme.cardBg,
           className
         )}
@@ -100,7 +106,7 @@ export const AetherBentoCard = memo(
 
         {/* Card Bottom: Big Value & Cutout Button */}
         <div className="flex items-end justify-between z-10 mt-3">
-          <div className="space-y-0.5 min-w-0 pr-11">
+          <div className={cn("space-y-0.5 min-w-0", hasAction && "pr-11")}>
             <span
               className={cn(
                 "font-black tracking-tight block whitespace-nowrap leading-none",
@@ -118,44 +124,54 @@ export const AetherBentoCard = memo(
           </div>
         </div>
 
-        {/* ── Signature Concave Cutout with Floating Action Circle ── */}
-        <div className="absolute right-0 bottom-0 pointer-events-auto">
-          {/* Top Inverted Fillet Curve */}
-          <div className="absolute -top-4 right-0 w-4 h-4 overflow-hidden pointer-events-none">
-            <svg
-              viewBox="0 0 20 20"
-              className={cn("w-full h-full rotate-0", theme.curveFill)}
-            >
-              <path d="M20,20 C20,8.954 11.046,0 0,0 L20,0 Z" />
-            </svg>
-          </div>
+        {hasAction && (
+          <div className="absolute right-0 bottom-0 pointer-events-auto">
+            <div className="absolute -top-4 right-0 w-4 h-4 overflow-hidden pointer-events-none">
+              <svg
+                viewBox="0 0 20 20"
+                className={cn("w-full h-full rotate-0", theme.curveFill)}
+              >
+                <path d="M20,20 C20,8.954 11.046,0 0,0 L20,0 Z" />
+              </svg>
+            </div>
 
-          {/* Left Inverted Fillet Curve */}
-          <div className="absolute bottom-0 -left-4 w-4 h-4 overflow-hidden pointer-events-none">
-            <svg
-              viewBox="0 0 20 20"
-              className={cn("w-full h-full rotate-0", theme.curveFill)}
-            >
-              <path d="M20,20 C8.954,20 0,11.046 0,0 L0,20 Z" />
-            </svg>
-          </div>
+            <div className="absolute bottom-0 -left-4 w-4 h-4 overflow-hidden pointer-events-none">
+              <svg
+                viewBox="0 0 20 20"
+                className={cn("w-full h-full rotate-0", theme.curveFill)}
+              >
+                <path d="M20,20 C8.954,20 0,11.046 0,0 L0,20 Z" />
+              </svg>
+            </div>
 
-          {/* Notch Base Cutout Container */}
-          <div className="w-[52px] h-[52px] bg-[#FAFAF8] dark:bg-background rounded-tl-[20px] flex items-center justify-center">
-            {/* The Floating Black Circle Action Button */}
-            <button
-              type="button"
-              onClick={onClick}
-              className={cn(
-                "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-xs transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 active:scale-95 cursor-pointer",
-                theme.btnBg
+            <div className="w-[52px] h-[52px] bg-[#FAFAF8] dark:bg-background rounded-tl-[20px] flex items-center justify-center">
+              {hasHref ? (
+                <Link
+                  to={href}
+                  className={cn(
+                    "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-xs transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 active:scale-95",
+                    theme.btnBg
+                  )}
+                  aria-label={actionLabel}
+                >
+                  <ActionIcon className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onClick}
+                  className={cn(
+                    "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-xs transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 active:scale-95 cursor-pointer",
+                    theme.btnBg
+                  )}
+                  aria-label={actionLabel}
+                >
+                  <ActionIcon className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
+                </button>
               )}
-              aria-label={title}
-            >
-              <ActionIcon className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
-            </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   }

@@ -15,6 +15,7 @@ import {
   CardContent,
   Button,
 } from "@/components/ui";
+import TimStatsCard from "@/components/admin/TimStatsCard";
 import { passwordResetService } from "@/apis";
 import { formatDate } from "@/utils/dateUtils";
 import { getTableSerialNumber } from "@/utils/tableSerial";
@@ -82,21 +83,21 @@ const PasswordResetPage = () => {
     if (reset.usedAt) {
       return {
         label: "Đã sử dụng",
-        color: "text-green-600 bg-green-100",
-        icon: <CheckCircle className="w-4 h-4" />,
+        color: "text-emerald-700 bg-emerald-50 border border-emerald-200",
+        icon: <CheckCircle className="w-3.5 h-3.5" />,
       };
     }
     if (expiresAt < now) {
       return {
         label: "Hết hạn",
-        color: "text-red-600 bg-red-100",
-        icon: <XCircle className="w-4 h-4" />,
+        color: "text-rose-700 bg-rose-50 border border-rose-200",
+        icon: <XCircle className="w-3.5 h-3.5" />,
       };
     }
     return {
       label: "Chờ sử dụng",
-      color: "text-yellow-600 bg-yellow-100",
-      icon: <Clock className="w-4 h-4" />,
+      color: "text-amber-700 bg-amber-50 border border-amber-200",
+      icon: <Clock className="w-3.5 h-3.5" />,
     };
   };
 
@@ -116,247 +117,218 @@ const PasswordResetPage = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-transparent relative font-sans">
-      {/* Enhanced grid background with dots */}
-      <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none" />
-      <div className="absolute inset-0 bg-grid-dots opacity-40 pointer-events-none" />
-
-      <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b-2 border-black pb-6 gap-4">
-          <div className="flex items-center gap-4 sm:gap-6">
-            <div className="accent-bar h-16 shrink-0"></div>
-            <div>
-              <h1 className="tim-title">RESET MẬT KHẨU</h1>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1 shrink-0">
-                  SYSTEM // PASSWORD RESET
-                </span>
-                <p className="tim-meta">QUẢN LÝ YÊU CẦU ĐẶT LẠI MẬT KHẨU</p>
-              </div>
-            </div>
-          </div>
+    <div className="space-y-6 text-slate-900 antialiased max-w-[1560px] mx-auto">
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-black/[0.04]">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Bảo mật & Quản lý Xác thực
+          </p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
+            Reset Mật khẩu
+          </h1>
+          <p className="text-xs text-slate-500 font-medium">
+            Quản lý và giám sát các yêu cầu đặt lại mật khẩu của người dùng hệ thống.
+          </p>
+        </div>
+        <div className="flex gap-2 w-full sm:w-auto justify-end">
           <Button
             onClick={() => fetchResets()}
             disabled={loading}
             variant="outline"
-            className="self-end sm:self-auto h-12 w-12 rounded-none border border-black hover:bg-black hover:text-white shrink-0"
+            className="h-10 w-10 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center shadow-sm cursor-pointer"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 text-slate-700 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
+      </header>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <span className="tim-meta">TỔNG SỐ</span>
-              <Key className="h-5 w-5 text-gray-400" />
-            </div>
-            <div className="text-4xl font-black tracking-tighter">
-              {stats.total}
-            </div>
-          </div>
-          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all border-l-4 border-l-[#F3E600]">
-            <div className="flex items-center justify-between mb-2">
-              <span className="tim-meta">CHỜ SỆ DỤNG</span>
-              <Clock className="h-5 w-5 text-[#F3E600]" />
-            </div>
-            <div className="text-4xl font-black tracking-tighter text-[#F3E600]">
-              {stats.pending}
-            </div>
-          </div>
-          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <span className="tim-meta">ĐÃ SỆ DỤNG</span>
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            </div>
-            <div className="text-4xl font-black tracking-tighter text-green-600">
-              {stats.used}
-            </div>
-          </div>
-          <div className="bg-white border border-black p-6 shadow-sm hover:shadow-hard transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <span className="tim-meta">HẾT HẠN</span>
-              <XCircle className="h-5 w-5 text-red-600" />
-            </div>
-            <div className="text-4xl font-black tracking-tighter text-red-600">
-              {stats.expired}
-            </div>
-          </div>
-        </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <TimStatsCard
+          title="TỔNG SỐ"
+          value={stats.total}
+          icon={Key}
+        />
+        <TimStatsCard
+          title="CHỜ SỬ DỤNG"
+          value={stats.pending}
+          icon={Clock}
+          textColor="text-amber-600"
+        />
+        <TimStatsCard
+          title="ĐÃ SỬ DỤNG"
+          value={stats.used}
+          icon={CheckCircle}
+          textColor="text-emerald-600"
+        />
+        <TimStatsCard
+          title="HẾT HẠN"
+          value={stats.expired}
+          icon={XCircle}
+          textColor="text-rose-600"
+        />
+      </div>
 
-        {/* Filter Bar */}
-        <div className="bg-white border border-black p-4 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <span className="tim-meta">BỘ LỌC DỮ LIỆU</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full sm:w-auto h-10 px-4 border border-black rounded-none bg-white tim-body uppercase focus:outline-none focus:bg-yellow-50"
-            >
-              <option value="all">TẤT CẢ TRẠNG THÁI</option>
-              <option value="pending">CHỜ SỆ DỤNG</option>
-              <option value="used">ĐÃ SỆ DỤNG</option>
-              <option value="expired">HẾT HẠN</option>
-            </select>
-          </div>
-        </div>
-        {/* Data Table */}
-        <div className="bg-white border border-black shadow-sm overflow-hidden">
-          {(() => {
-            if (loading) {
-              return (
-                <div className="flex flex-col items-center justify-center py-20 bg-gray-50">
-                  <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-2"></div>
-                  <span className="font-mono text-xs uppercase text-gray-500">
-                    LOADING DATA...
-                  </span>
-                </div>
-              );
-            }
+      {/* Filter Bar */}
+      <div className="bg-white rounded-2xl border border-black/[0.04] p-3 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          Bộ lọc dữ liệu
+        </span>
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="w-full sm:w-auto h-10 px-4 border border-slate-200 rounded-xl bg-slate-50 text-xs font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-slate-300"
+        >
+          <option value="all">Tất cả trạng thái</option>
+          <option value="pending">Chờ sử dụng</option>
+          <option value="used">Đã sử dụng</option>
+          <option value="expired">Hết hạn</option>
+        </select>
+      </div>
 
-            if (resets.length === 0) {
-              return (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <Key className="h-12 w-12 text-gray-300 mb-4" />
-                  <div className="font-bold uppercase text-gray-400">
-                    KHÔNG TÌM THẤY DỮ LIỆU
-                  </div>
-                </div>
-              );
-            }
-
+      {/* Data Table */}
+      <div className="bg-white rounded-3xl border border-black/[0.04] shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden">
+        {(() => {
+          if (loading) {
             return (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-black text-white tim-table-header">
-                      <th className="p-4 border-r border-black/20 w-[60px]">
-                        STT
-                      </th>
-                      <th className="p-4 border-r border-black/20">EMAIL</th>
-                      <th className="p-4 border-r border-black/20">USER</th>
-                      <th className="p-4 border-r border-black/20">
-                        IP ADDRESS
-                      </th>
-                      <th className="p-4 border-r border-black/20">
-                        TRẠNG THÁI
-                      </th>
-                      <th className="p-4 border-r border-black/20">NGÀY TẠO</th>
-                      <th className="p-4 border-r border-black/20">HẾT HẠN</th>
-                      <th className="p-4 border-r border-black/20">CÒN LẠI</th>
-                      <th className="p-4">ĐÃ DÙNG</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-black/5">
-                    {resets.map((reset, index) => {
-                      const statusInfo = getStatusInfo(reset);
-                      return (
-                        <tr
-                          key={reset.id}
-                          className="hover:bg-yellow-50 group transition-colors"
-                        >
-                          <td className="p-4 font-mono text-sm text-gray-400 border-r border-black/5">
-                            {getTableSerialNumber(
-                              totalItems || resets.length,
-                              index,
-                              currentPage,
-                              itemsPerPage,
-                            )}
-                          </td>
-                          <td className="p-4 border-r border-black/5">
-                            <div className="font-mono text-sm font-medium">
-                              {reset.email}
-                            </div>
-                          </td>
-                          <td className="p-4 border-r border-black/5">
-                            <div className="font-mono text-sm text-gray-600">
-                              {reset.user?.email || "—"}
-                            </div>
-                          </td>
-                          <td className="p-4 border-r border-black/5">
-                            <div className="flex items-center gap-1 font-mono text-sm text-gray-600">
-                              <MapPin className="w-3 h-3 text-gray-400" />
-                              {reset.ipAddress}
-                            </div>
-                          </td>
-                          <td className="p-4 border-r border-black/5">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-none border border-black text-[10px] font-bold uppercase font-mono ${statusInfo.color}`}
-                            >
-                              {statusInfo.icon}
-                              {statusInfo.label}
-                            </span>
-                          </td>
-                          <td className="p-4 border-r border-black/5">
-                            <div className="font-mono text-sm text-gray-500">
-                              {formatDate(reset.createdAt)}
-                            </div>
-                          </td>
-                          <td className="p-4 border-r border-black/5">
-                            <div className="font-mono text-sm text-gray-500">
-                              {formatDate(reset.expiresAt)}
-                            </div>
-                          </td>
-                          <td className="p-4 border-r border-black/5">
-                            {!reset.usedAt && (
-                              <span
-                                className={`font-mono text-sm font-bold ${new Date(reset.expiresAt) > new Date() ? "text-[#F3E600]" : "text-red-600"}`}
-                              >
-                                {getTimeRemaining(reset.expiresAt)}
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-4">
-                            <div className="font-mono text-sm text-gray-500">
-                              {reset.usedAt ? formatDate(reset.usedAt) : "—"}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div className="flex flex-col items-center justify-center py-20">
+                <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mb-2"></div>
+                <span className="text-xs font-semibold text-slate-500">
+                  Đang tải dữ liệu...
+                </span>
               </div>
             );
-          })()}
+          }
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between p-4 border-t border-black bg-gray-50 font-mono text-xs uppercase">
-              <div>HIỂN THỊ {resets.length} KẾT QUẢ</div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="rounded-none border-black h-8 hover:bg-black hover:text-white"
-                >
-                  TRƯỚC
-                </Button>
-                <span className="flex items-center px-4 font-bold">
-                  {currentPage}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setCurrentPage((p) => Math.min(totalPages, p + 1))
-                  }
-                  disabled={currentPage === totalPages}
-                  className="rounded-none border-black h-8 hover:bg-black hover:text-white"
-                >
-                  SAU
-                </Button>
+          if (resets.length === 0) {
+            return (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <Key className="h-12 w-12 text-slate-300 mb-4" />
+                <div className="font-semibold text-slate-500 text-sm">
+                  Không tìm thấy yêu cầu đặt lại mật khẩu nào
+                </div>
               </div>
+            );
+          }
+
+          return (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-[#FAF9F5] text-slate-500 font-semibold border-b border-black/[0.04]">
+                    <th className="p-4 w-[50px]">STT</th>
+                    <th className="p-4">Email</th>
+                    <th className="p-4">Tài khoản</th>
+                    <th className="p-4">IP Address</th>
+                    <th className="p-4">Trạng thái</th>
+                    <th className="p-4">Ngày tạo</th>
+                    <th className="p-4">Hết hạn</th>
+                    <th className="p-4">Còn lại</th>
+                    <th className="p-4">Đã dùng</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-black/[0.04]">
+                  {resets.map((reset, index) => {
+                    const statusInfo = getStatusInfo(reset);
+                    return (
+                      <tr
+                        key={reset.id}
+                        className="hover:bg-slate-50/80 transition-colors"
+                      >
+                        <td className="p-4 font-mono text-slate-400">
+                          {getTableSerialNumber(
+                            totalItems || resets.length,
+                            index,
+                            currentPage,
+                            itemsPerPage,
+                          )}
+                        </td>
+                        <td className="p-4">
+                          <div className="font-medium text-slate-900">
+                            {reset.email}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="text-slate-600">
+                            {reset.user?.email || "—"}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-1 text-slate-600 font-mono">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                            {reset.ipAddress}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${statusInfo.color}`}
+                          >
+                            {statusInfo.icon}
+                            {statusInfo.label}
+                          </span>
+                        </td>
+                        <td className="p-4 text-slate-500 font-mono">
+                          {formatDate(reset.createdAt)}
+                        </td>
+                        <td className="p-4 text-slate-500 font-mono">
+                          {formatDate(reset.expiresAt)}
+                        </td>
+                        <td className="p-4">
+                          {!reset.usedAt && (
+                            <span
+                              className={`text-xs font-semibold ${new Date(reset.expiresAt) > new Date() ? "text-amber-600" : "text-rose-600"}`}
+                            >
+                              {getTimeRemaining(reset.expiresAt)}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-4 text-slate-500 font-mono">
+                          {reset.usedAt ? formatDate(reset.usedAt) : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          )}
-        </div>
+          );
+        })()}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between p-4 border-t border-black/[0.04] bg-[#FAF9F5] text-xs font-medium text-slate-600">
+            <div>Hiển thị {resets.length} kết quả</div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="rounded-xl border-slate-200 h-8"
+              >
+                Trước
+              </Button>
+              <span className="flex items-center px-3 font-semibold text-slate-900">
+                {currentPage} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={currentPage === totalPages}
+                className="rounded-xl border-slate-200 h-8"
+              >
+                Sau
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

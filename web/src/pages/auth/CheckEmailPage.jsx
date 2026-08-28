@@ -87,8 +87,6 @@ const CheckEmailPage = () => {
     >
       {/* ── Main card ── */}
       <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_16px_48px_-12px_rgba(15,23,42,0.16),0_4px_16px_-4px_rgba(15,23,42,0.08)]">
-        <div className="h-[3px] w-full bg-[#F3E600]" />
-
         <div className="px-8 py-8 sm:px-10">
           {/* Header — centered */}
           <div className="mb-8 text-center">
@@ -184,7 +182,7 @@ const CheckEmailPage = () => {
               {resent ? (
                 <motion.div
                   key="resent"
-                  className="flex items-center justify-center gap-2 rounded-xl border border-[#F3E600]/40 bg-[#FEFCE8] py-3 text-sm font-medium text-slate-700"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 py-3 text-sm font-medium text-emerald-800"
                   initial={{ opacity: 0, scale: 0.97 }}
                   animate={{ opacity: 1, scale: 1 }}
                 >
@@ -229,7 +227,7 @@ const CheckEmailPage = () => {
             {!email && (
               <Link
                 to="/resend-verification"
-                className="block text-center text-sm font-medium text-slate-600 underline underline-offset-4 decoration-[#F3E600] decoration-2 hover:decoration-slate-400 transition-colors"
+                className="block text-center text-sm font-medium text-slate-600 underline underline-offset-4 decoration-emerald-600/70 decoration-2 hover:decoration-slate-400 transition-colors"
               >
                 Nhập email để gửi lại xác thực
               </Link>

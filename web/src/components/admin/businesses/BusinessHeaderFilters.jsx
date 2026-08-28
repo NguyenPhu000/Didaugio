@@ -21,12 +21,9 @@ export const BusinessHeaderFilters = memo(
         {/* Top App Header */}
         <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-black/[0.04]">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[#F3E600] shadow-[0_0_6px_#F3E600]" />
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Hệ thống Quản trị Đối tác
-              </span>
-            </div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Hệ thống Quản trị Đối tác
+            </p>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
               Đối tác doanh nghiệp
             </h1>
@@ -45,7 +42,7 @@ export const BusinessHeaderFilters = memo(
                 placeholder="Tìm doanh nghiệp, email..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full h-10 pl-10 pr-4 bg-white rounded-full text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#F3E600] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-black/[0.04] placeholder:text-slate-400 transition-all"
+                className="w-full h-10 pl-10 pr-4 bg-white rounded-full text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300 shadow-sm border border-slate-200 placeholder:text-slate-400 transition-all"
               />
             </div>
 

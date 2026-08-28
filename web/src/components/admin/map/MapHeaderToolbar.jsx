@@ -33,16 +33,15 @@ export const MapHeaderToolbar = memo(
     return (
       <div className="min-h-14 py-2.5 sm:py-0 sm:h-14 bg-[#FAF9F5] border-b border-black/[0.04] flex flex-wrap sm:flex-nowrap items-center justify-between px-3 sm:px-5 gap-2.5 flex-shrink-0">
         <div className="flex items-center gap-2.5 sm:gap-3">
-          <div className="w-8 h-8 bg-slate-950 text-[#F3E600] flex items-center justify-center rounded-xl shadow-2xs shrink-0">
+          <div className="w-8 h-8 bg-slate-900 text-white flex items-center justify-center rounded-xl shadow-sm shrink-0">
             <MapIcon className="h-4 w-4" />
           </div>
           <div>
-            <div className="text-xs font-black uppercase tracking-tight text-slate-950">
+            <div className="text-xs font-bold text-slate-950">
               {t("admin.map.title")}
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 bg-[#F3E600] rounded-full shadow-[0_0_6px_#F3E600]" />
-              <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider">
+              <span className="text-[10px] text-slate-500 font-medium">
                 {t("admin.map.cityDistricts", { count: districtCount || 9 })}
               </span>
             </div>
@@ -56,7 +55,7 @@ export const MapHeaderToolbar = memo(
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t("admin.map.searchPlaceholder")}
-              className="w-full h-9 pl-9 pr-8 bg-white rounded-xl text-xs font-medium text-slate-900 border border-black/[0.06] focus:outline-none focus:ring-2 focus:ring-[#F3E600] placeholder:text-slate-400 transition-all shadow-2xs"
+              className="w-full h-9 pl-9 pr-8 bg-white rounded-xl text-xs font-medium text-slate-900 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 placeholder:text-slate-400 transition-all shadow-sm"
             />
             {searchQuery && (
               <button
@@ -84,10 +83,10 @@ export const MapHeaderToolbar = memo(
           <button
             type="button"
             onClick={() => setRoutingMode((v) => !v)}
-            className={`h-8 w-8 rounded-full flex items-center justify-center transition-all shadow-2xs cursor-pointer ${
+            className={`h-8 w-8 rounded-full flex items-center justify-center transition-all shadow-sm cursor-pointer ${
               routingMode
-                ? "bg-slate-950 text-[#F3E600]"
-                : "bg-white border border-black/[0.05] text-slate-700 hover:bg-[#F4F2EC]"
+                ? "bg-slate-900 text-white"
+                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
             }`}
             title={t("admin.map.routing")}
             aria-label={t("admin.map.ariaLabels.routingMode")}

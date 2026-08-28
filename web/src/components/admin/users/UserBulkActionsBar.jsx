@@ -8,10 +8,10 @@ export const UserBulkActionsBar = memo(
     return (
       <div className="bg-slate-950 text-white px-5 py-3 rounded-2xl flex items-center justify-between shadow-lg animate-in fade-in slide-in-from-top-2">
         <div className="flex items-center gap-2.5 text-xs font-semibold">
-          <span className="h-2 w-2 rounded-full bg-[#F3E600] animate-pulse" />
+          <span className="h-2 w-2 rounded-full bg-emerald-400" />
           <span>
             Đã chọn{" "}
-            <strong className="text-[#F3E600] font-mono tabular-nums">
+            <strong className="text-white font-mono tabular-nums">
               {selectedCount}
             </strong>{" "}
             người dùng
@@ -23,7 +23,7 @@ export const UserBulkActionsBar = memo(
             className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white text-white hover:text-slate-950 font-semibold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
             onClick={onOpenBulkRole}
           >
-            <UserCog className="h-3.5 w-3.5 text-[#F3E600]" />
+            <UserCog className="h-3.5 w-3.5 text-slate-300" />
             Gán vai trò
           </button>
           <button

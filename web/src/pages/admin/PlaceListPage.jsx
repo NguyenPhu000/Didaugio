@@ -310,16 +310,13 @@ const PlaceListPage = ({
   }, [places]);
 
   return (
-    <div className="space-y-6 text-slate-900 antialiased selection:bg-[#F3E600] selection:text-slate-950 max-w-[1560px] mx-auto">
+    <div className="space-y-6 text-slate-900 antialiased max-w-[1560px] mx-auto">
       {/* Editorial Header */}
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-black/[0.04]">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[#F3E600] shadow-[0_0_6px_#F3E600]" />
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Hệ thống Dữ liệu Địa điểm
-            </span>
-          </div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Hệ thống Dữ liệu Địa điểm
+          </p>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
             {resolvedPageTitle}
           </h1>
@@ -333,9 +330,9 @@ const PlaceListPage = ({
             <button
               type="button"
               onClick={handleCreate}
-              className="w-full sm:w-auto justify-center h-10 px-5 rounded-full bg-slate-950 hover:bg-black text-white font-bold text-xs shadow-xs transition-all flex items-center gap-2 active:scale-95"
+              className="w-full sm:w-auto justify-center h-10 px-5 rounded-full bg-slate-950 hover:bg-black text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 active:scale-95"
             >
-              <Plus className="h-4 w-4 text-[#F3E600]" />
+              <Plus className="h-4 w-4 text-white" />
               <span>{t("places.createPlace")}</span>
             </button>
           )}
@@ -385,7 +382,7 @@ const PlaceListPage = ({
       {/* Content Grid/List */}
       {isLoading ? (
         <div className="py-28 text-center space-y-3">
-          <div className="w-10 h-10 border-3 border-slate-950 border-t-[#F3E600] rounded-full animate-spin mx-auto" />
+          <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mx-auto" />
           <p className="text-xs font-semibold text-slate-500">{t("common.loading")}</p>
         </div>
       ) : places.length === 0 ? (

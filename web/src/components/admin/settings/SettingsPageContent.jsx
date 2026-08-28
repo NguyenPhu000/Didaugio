@@ -257,74 +257,68 @@ const SettingsPageContent = () => {
   ]);
 
   return (
-      <div className={cn("min-h-screen p-4 sm:p-6 lg:p-8 bg-[#F4F4F4] relative font-sans", isDirty && "pb-28")}>
-        <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none" />
+    <div className={cn("space-y-6 text-slate-900 antialiased max-w-[1560px] mx-auto", isDirty && "pb-28")}>
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-black/[0.04]">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Hệ thống & Cấu hình
+          </p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
+            Cài đặt Hệ thống
+          </h1>
+          <p className="text-xs text-slate-500 font-medium">
+            Quản lý cấu hình chung, thông báo, bảo mật, tính năng và tích hợp hệ thống
+          </p>
+        </div>
+      </header>
 
-        <div className="relative z-10 max-w-[1550px] mx-auto">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b-2 border-black pb-6 mb-6">
-            <div className="flex items-center gap-6">
-              <div className="accent-bar h-16" />
-              <div>
-                <h1 className="tim-title">CÀI ĐẶT HỆ THỐNG</h1>
-                <div className="flex items-center gap-4 mt-2">
-                  <span className="tim-system bg-black text-white px-2 py-1">
-                    HỆ THỐNG // CẤU HÌNH
-                  </span>
-                  <p className="tim-meta hidden sm:block">
-                    Chung, thông báo, bảo mật, tính năng, tích hợp, nhật ký
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="w-full md:w-56 shrink-0">
-              <div className="flex flex-row md:flex-col overflow-x-auto pb-2 md:pb-0 gap-1 sticky top-6 custom-scrollbar">
-                {TABS.map((tab) => {
-                  const Icon = tab.icon;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      aria-current={activeTab === tab.id ? "page" : undefined}
-                      className={cn(
-                        "flex items-center gap-3 whitespace-nowrap rounded-xl px-4 py-3 text-left font-mono text-sm uppercase tracking-wide transition-all border shrink-0 w-auto md:w-full",
-                        activeTab === tab.id
-                          ? "bg-black text-white border-black shadow-sm"
-                          : "bg-white text-black border-gray-200 hover:border-black hover:bg-gray-50"
-                      )}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="rounded-2xl border border-black/80 bg-white p-4 shadow-[4px_4px_0_rgba(0,0,0,0.12)] sm:p-6">
-                {tabContent}
-              </div>
-            </div>
+      <div className="flex flex-col md:flex-row gap-6">
+        <div className="w-full md:w-60 shrink-0">
+          <div className="flex flex-row md:flex-col overflow-x-auto pb-2 md:pb-0 gap-1.5 sticky top-6 custom-scrollbar bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/80">
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  aria-current={activeTab === tab.id ? "page" : undefined}
+                  className={cn(
+                    "flex items-center gap-3 whitespace-nowrap rounded-xl px-3.5 py-2.5 text-left text-xs font-semibold tracking-wide transition-all shrink-0 w-auto md:w-full cursor-pointer",
+                    activeTab === tab.id
+                      ? "bg-white text-slate-950 shadow-sm"
+                      : "text-slate-600 hover:text-slate-950 hover:bg-white/50"
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <SettingsSaveBar
-          variant="admin"
-          isDirty={isDirty}
-          isSaving={isSaving}
-          onSave={handleSave}
-          onUndo={handleUndo}
-          labels={{
-            save: t("settings.save"),
-            saving: t("settings.saving"),
-            undo: t("settings.undo"),
-            unsaved: t("settings.unsaved"),
-          }}
-        />
+        <div className="flex-1 min-w-0">
+          <div className="rounded-3xl border border-black/[0.04] bg-white p-6 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
+            {tabContent}
+          </div>
+        </div>
       </div>
+
+      <SettingsSaveBar
+        variant="admin"
+        isDirty={isDirty}
+        isSaving={isSaving}
+        onSave={handleSave}
+        onUndo={handleUndo}
+        labels={{
+          save: t("settings.save"),
+          saving: t("settings.saving"),
+          undo: t("settings.undo"),
+          unsaved: t("settings.unsaved"),
+        }}
+      />
+    </div>
   );
 };
 

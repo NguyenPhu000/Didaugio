@@ -32,7 +32,7 @@ export const UserBulkRoleDialog = ({
       <DialogContent className="rounded-3xl border border-black/[0.06] bg-white p-6 shadow-2xl sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-lg font-extrabold text-slate-950 flex items-center gap-2">
-            <UserCog className="h-5 w-5 text-[#F3E600]" />
+            <UserCog className="h-5 w-5 text-slate-700" />
             Gán vai trò hàng loạt
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500 mt-1">

@@ -140,9 +140,6 @@ const LoginPage = () => {
     <AuthShell>
       {/* ── Main card ── */}
       <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_16px_48px_-12px_rgba(15,23,42,0.16),0_4px_16px_-4px_rgba(15,23,42,0.08)]">
-        {/* Yellow accent top stripe */}
-        <div className="h-[3px] w-full bg-[#F3E600]" />
-
         <div className="px-8 py-8 sm:px-10">
           {/* Header */}
           <div className="mb-8">
@@ -263,7 +260,7 @@ const LoginPage = () => {
 
       {/* ── Register CTA card ── */}
       <motion.div
-        className="mt-3 flex items-center justify-between rounded-xl border border-[#F3E600]/50 bg-[#FEFCE8] px-5 py-4"
+        className="mt-3 flex items-center justify-between rounded-xl border border-slate-200/80 bg-slate-50 px-5 py-4"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}

@@ -23,9 +23,9 @@ const DashboardRecentPlaces = ({ places }) => {
     },
     pending: {
       label: t("dashboard.recentPlaces.pending"),
-      cls: "bg-yellow-50 text-yellow-700 border-yellow-200",
+      cls: "bg-amber-50 text-amber-700 border-amber-200",
     },
-    rejected: { label: t("dashboard.recentPlaces.cancelled"), cls: "bg-red-50 text-red-600 border-red-200" },
+    rejected: { label: t("dashboard.recentPlaces.cancelled"), cls: "bg-rose-50 text-rose-700 border-rose-200" },
   };
 
   const recent = [...places]
@@ -33,85 +33,79 @@ const DashboardRecentPlaces = ({ places }) => {
     .slice(0, 6);
 
   return (
-    <div className="border border-black bg-white shadow-sm">
+    <div className="rounded-3xl border border-black/[0.04] bg-white shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-black bg-black text-white">
-        <div className="flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-primary" />
-          <h3 className="font-bold font-mono text-sm uppercase tracking-widest">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-black/[0.04] bg-[#FAF9F5]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-slate-900 text-white flex items-center justify-center shadow-xs">
+            <MapPin className="h-3.5 w-3.5" />
+          </div>
+          <h3 className="font-extrabold text-sm text-slate-950 tracking-tight">
             {t("dashboard.recentPlaces.title")}
           </h3>
         </div>
         <Link
           to={ADMIN_ROUTES.PLACES}
-          className="flex items-center gap-1 text-[10px] font-mono uppercase text-gray-400 hover:text-primary transition-colors"
+          className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-950 transition-colors"
         >
-          {t("dashboard.recentPlaces.viewAll")} <ExternalLink className="h-3 w-3" />
+          {t("dashboard.recentPlaces.viewAll")} <ExternalLink className="h-3.5 w-3.5" />
         </Link>
       </div>
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-gray-100 bg-gray-50">
-              <th className="text-left px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                #
-              </th>
-              <th className="text-left px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                {t("dashboard.recentPlaces.placeName")}
-              </th>
-              <th className="text-left px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hidden sm:table-cell">
-                {t("dashboard.recentPlaces.rating")}
-              </th>
-              <th className="text-left px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hidden md:table-cell">
-                {t("dashboard.recentPlaces.createdDate")}
-              </th>
-              <th className="text-left px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                {t("dashboard.recentPlaces.status")}
-              </th>
+            <tr className="border-b border-black/[0.04] bg-[#FAF9F5]/50 text-slate-500 font-semibold">
+              <th className="text-left px-5 py-3 w-12">#</th>
+              <th className="text-left px-5 py-3">{t("dashboard.recentPlaces.placeName")}</th>
+              <th className="text-left px-5 py-3 hidden sm:table-cell">{t("dashboard.recentPlaces.rating")}</th>
+              <th className="text-left px-5 py-3 hidden md:table-cell">{t("dashboard.recentPlaces.createdDate")}</th>
+              <th className="text-left px-5 py-3">{t("dashboard.recentPlaces.status")}</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-black/[0.04]">
             {recent.map((place, idx) => {
               const badge = STATUS_MAP[place.status] || STATUS_MAP.pending;
               return (
                 <tr
                   key={place.id}
-                  className="border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors group"
+                  className="hover:bg-slate-50/80 transition-colors group"
                 >
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                  <td className="px-5 py-3 font-mono text-slate-400">
                     {formatTableSerial(recent.length, idx)}
                   </td>
-                  <td className="px-4 py-3">
-                    <Link
-                      to={`${ADMIN_ROUTES.PLACES}/${place.id}`}
-                      className="font-semibold text-sm hover:text-primary transition-colors line-clamp-1"
-                    >
-                      {place.name}
-                    </Link>
-                    {place.isFeatured && (
-                      <span className="ml-2 text-[9px] font-mono uppercase bg-primary text-black px-1 py-0.5">
-                        {t("dashboard.recentPlaces.hot")}
-                      </span>
-                    )}
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to={`${ADMIN_ROUTES.PLACES}/${place.id}`}
+                        className="font-semibold text-slate-900 hover:text-blue-600 transition-colors line-clamp-1"
+                      >
+                        {place.name}
+                      </Link>
+                      {place.isFeatured && (
+                        <span className="text-[10px] font-semibold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md">
+                          {t("dashboard.recentPlaces.hot")}
+                        </span>
+                      )}
+                    </div>
                   </td>
-                  <td className="px-4 py-3 hidden sm:table-cell">
-                    <div className="flex items-center gap-1 text-yellow-500">
+                  <td className="px-5 py-3 hidden sm:table-cell">
+                    <div className="flex items-center gap-1 text-amber-500">
                       <Star className="h-3.5 w-3.5 fill-current" />
-                      <span className="font-mono text-xs text-foreground">
+                      <span className="font-mono text-xs font-semibold text-slate-700">
                         {place.averageRating
                           ? Number(place.averageRating).toFixed(1)
                           : "—"}
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground hidden md:table-cell">
+                  <td className="px-5 py-3 font-mono text-slate-500 hidden md:table-cell">
                     {formatDate(place.createdAt)}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-3">
                     <span
-                      className={`text-[10px] font-bold font-mono border px-1.5 py-0.5 uppercase ${badge.cls}`}
+                      className={`inline-flex items-center text-[10px] font-semibold border px-2 py-0.5 rounded-full ${badge.cls}`}
                     >
                       {badge.label}
                     </span>
@@ -121,7 +115,7 @@ const DashboardRecentPlaces = ({ places }) => {
             })}
             {recent.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center tim-meta">
+                <td colSpan={5} className="px-5 py-8 text-center text-slate-400 font-medium">
                   {t("dashboard.recentPlaces.noData")}
                 </td>
               </tr>

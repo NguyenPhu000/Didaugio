@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 /**
  * AuthShell — khung chung cho tất cả trang auth.
  * Editorial split: ảnh thật bên trái + form bên phải.
- * Tokens: #F3E600 yellow, slate-900, Geist-inspired sans.
+ * Tokens: deep slate, quiet neutral surfaces, and restrained brand accents.
  */
 const AuthShell = ({
   children,
@@ -26,9 +26,6 @@ const AuthShell = ({
         {/* Vignette */}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/40 to-slate-950/10" />
         <div className="absolute inset-x-0 top-0 h-52 bg-gradient-to-b from-black/60 to-transparent" />
-        {/* Yellow accent bar */}
-        <div className="absolute inset-x-0 top-0 h-[3px] bg-[#F3E600]" />
-
         <div className="relative z-10 flex h-full flex-col justify-between p-10 xl:p-14">
           {/* Logo pill — glassmorphism */}
           <Link
