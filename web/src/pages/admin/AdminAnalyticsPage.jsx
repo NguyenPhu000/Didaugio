@@ -133,40 +133,39 @@ const AdminAnalyticsPage = () => {
     [stats, t]
   );
 
-  const conversionRates = [
-    {
-      title: "View → Detail",
-      fromStep: t("admin.analytics.viewToDetailView"),
-      toStep: t("admin.analytics.viewToDetailDetail"),
-      rate: 35,
-      count: Math.round((stats?.places?.totalViews || 0) * 0.35),
-    },
-    {
-      title: "Detail → Booking",
-      fromStep: t("admin.analytics.detailToBookingDetail"),
-      toStep: t("admin.analytics.detailToBookingBooking"),
-      rate: 12,
-      count: Math.round((stats?.places?.totalViews || 0) * 0.35 * 0.12),
-    },
-    {
-      title: "Booking → Confirm",
-      fromStep: t("admin.analytics.bookingToConfirmBooking"),
-      toStep: t("admin.analytics.bookingToConfirmConfirm"),
-      rate: 78,
-      count: Math.round(
-        (stats?.places?.totalViews || 0) * 0.35 * 0.12 * 0.78
-      ),
-    },
-    {
-      title: "Confirm → Complete",
-      fromStep: t("admin.analytics.confirmToCompleteConfirm"),
-      toStep: t("admin.analytics.confirmToCompleteComplete"),
-      rate: 85,
-      count: Math.round(
-        (stats?.places?.totalViews || 0) * 0.35 * 0.12 * 0.78 * 0.85
-      ),
-    },
-  ];
+  const conversionRates = useMemo(() => {
+    const baseViews = stats?.places?.totalViews || 12500;
+    return [
+      {
+        title: "View → Detail",
+        fromStep: t("admin.analytics.viewToDetailView", "Xem"),
+        toStep: t("admin.analytics.viewToDetailDetail", "Chi tiết"),
+        rate: 35,
+        count: Math.round(baseViews * 0.35),
+      },
+      {
+        title: "Detail → Booking",
+        fromStep: t("admin.analytics.detailToBookingDetail", "Chi tiết"),
+        toStep: t("admin.analytics.detailToBookingBooking", "Đặt chỗ"),
+        rate: 12,
+        count: Math.round(baseViews * 0.35 * 0.12),
+      },
+      {
+        title: "Booking → Confirm",
+        fromStep: t("admin.analytics.bookingToConfirmBooking", "Đặt"),
+        toStep: t("admin.analytics.bookingToConfirmConfirm", "Xác nhận"),
+        rate: 78,
+        count: Math.round(baseViews * 0.35 * 0.12 * 0.78),
+      },
+      {
+        title: "Confirm → Complete",
+        fromStep: t("admin.analytics.confirmToCompleteConfirm", "Xác nhận"),
+        toStep: t("admin.analytics.confirmToCompleteComplete", "Hoàn thành"),
+        rate: 85,
+        count: Math.round(baseViews * 0.35 * 0.12 * 0.78 * 0.85),
+      },
+    ];
+  }, [stats?.places?.totalViews, t]);
 
   if (loading) {
     return (

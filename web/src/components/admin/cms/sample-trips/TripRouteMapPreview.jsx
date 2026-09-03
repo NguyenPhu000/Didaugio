@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapPin, Route } from "lucide-react";
 import { MapGL, Marker, Source, Layer, NavigationControl } from "@/modules/map/adapters";
 import { MAP_STYLES, MAP_CONFIGS, CAN_THO_CENTER } from "@/modules/map/config/mapConfig";
@@ -54,6 +54,7 @@ function buildBounds(points) {
 }
 
 export function TripRouteMapPreview({ destinations = [], activeDay = null, className = "" }) {
+  const mapRef = useRef(null);
   const [roadRoute, setRoadRoute] = useState(null);
   const points = useMemo(() => {
     const scoped = activeDay
@@ -72,6 +73,20 @@ export function TripRouteMapPreview({ destinations = [], activeDay = null, class
     : straightRouteGeoJson;
   const bounds = useMemo(() => buildBounds(points), [points]);
   const firstPoint = points[0];
+
+  // Tự động fitBounds hoặc di chuyển camera tới tọa độ điểm dừng
+  useEffect(() => {
+    if (!mapRef.current) return;
+    if (bounds) {
+      mapRef.current.fitBounds(bounds, { padding: 56, maxZoom: 14, duration: 800 });
+    } else if (firstPoint) {
+      mapRef.current.flyTo({
+        center: [firstPoint.longitude, firstPoint.latitude],
+        zoom: 13,
+        duration: 800,
+      });
+    }
+  }, [bounds, firstPoint]);
 
   useEffect(() => {
     if (points.length < 2) return undefined;
@@ -111,26 +126,14 @@ export function TripRouteMapPreview({ destinations = [], activeDay = null, class
     return () => controller.abort();
   }, [pointSignature, points.length]);
 
-  if (!points.length) {
-    return (
-      <div className={`flex min-h-[300px] items-center justify-center rounded-xl border border-dashed bg-slate-50 ${className}`}>
-        <div className="text-center text-sm text-slate-500">
-          <MapPin className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-          Chua co toa do diem dung de xem ban do
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={`relative overflow-hidden rounded-xl border bg-slate-100 ${className}`}>
       <MapGL
+        ref={mapRef}
         initialViewState={{
           latitude: firstPoint?.latitude || CAN_THO_CENTER.lat,
           longitude: firstPoint?.longitude || CAN_THO_CENTER.lng,
-          zoom: points.length > 1 ? 11 : 13,
-          bounds,
-          fitBoundsOptions: { padding: 56, maxZoom: 14 },
+          zoom: points.length > 1 ? 11 : points.length === 1 ? 13 : 12,
         }}
         mapStyle={MAP_STYLES.OSM}
         minZoom={MAP_CONFIGS.CONSTRAINTS.minZoom}
@@ -162,7 +165,11 @@ export function TripRouteMapPreview({ destinations = [], activeDay = null, class
       <div className="pointer-events-none absolute left-3 top-3 rounded-lg border bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur">
         <div className="flex items-center gap-1.5">
           <Route className="h-3.5 w-3.5 text-violet-600" />
-          {points.length} diem trong tuyen
+          {points.length > 0 ? (
+            <span>{points.length} điểm trong tuyến {activeDay ? `(Ngày ${activeDay})` : ""}</span>
+          ) : (
+            <span className="text-slate-500 font-normal">Chưa có điểm dừng nào trong lịch trình</span>
+          )}
         </div>
       </div>
     </div>

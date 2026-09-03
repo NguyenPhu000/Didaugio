@@ -1,8 +1,10 @@
 import React, { memo } from "react";
+import { useTranslation } from "react-i18next";
 import { UserCog } from "lucide-react";
 
 export const UserBulkActionsBar = memo(
   ({ selectedCount, onOpenBulkRole, onClearSelection }) => {
+    const { t } = useTranslation();
     if (selectedCount === 0) return null;
 
     return (
@@ -10,11 +12,10 @@ export const UserBulkActionsBar = memo(
         <div className="flex items-center gap-2.5 text-xs font-semibold">
           <span className="h-2 w-2 rounded-full bg-emerald-400" />
           <span>
-            Đã chọn{" "}
-            <strong className="text-white font-mono tabular-nums">
-              {selectedCount}
-            </strong>{" "}
-            người dùng
+            {t("users.bulk.selected", {
+              count: selectedCount,
+              defaultValue: `Đã chọn ${selectedCount} người dùng`,
+            })}
           </span>
         </div>
         <div className="flex gap-2">
@@ -24,14 +25,14 @@ export const UserBulkActionsBar = memo(
             onClick={onOpenBulkRole}
           >
             <UserCog className="h-3.5 w-3.5 text-slate-300" />
-            Gán vai trò
+            {t("users.bulk.assignRole", "Gán vai trò")}
           </button>
           <button
             type="button"
             className="px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/15 text-slate-300 text-xs font-medium transition-all cursor-pointer"
             onClick={onClearSelection}
           >
-            Bỏ chọn
+            {t("users.bulk.clearSelection", "Bỏ chọn")}
           </button>
         </div>
       </div>

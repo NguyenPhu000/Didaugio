@@ -1,6 +1,6 @@
 import React, { memo } from "react";
 import { Search, X } from "lucide-react";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -165,7 +165,7 @@ export const EarningsPayoutHistoryTable = memo(
 
                   <div className="flex items-center justify-between sm:justify-end gap-4">
                     <span className="text-lg font-black text-slate-950 dark:text-white tracking-tight">
-                      {formatVND(p.amount)}
+                      {formatMoney(p.amount)}
                     </span>
 
                     {p.status === "pending" && (

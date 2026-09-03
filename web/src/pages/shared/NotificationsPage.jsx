@@ -23,15 +23,16 @@ import { normalizeNotification } from "@/hooks/useNotifications";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 import { resolveRoleId } from "@/utils/authRouting";
+import { useTranslation } from "react-i18next";
 
 const NOTIFICATION_LIMIT = 50;
 const REVIEW_NOTIFICATION_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF];
 
-function formatTime(value) {
+function formatTime(value, locale) {
   if (!value) return "";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("vi-VN", {
+  return d.toLocaleString(locale, {
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",
@@ -39,7 +40,7 @@ function formatTime(value) {
   });
 }
 
-function formatRelativeTime(value) {
+function formatRelativeTime(value, t, locale) {
   if (!value) return "";
   const now = new Date();
   const d = new Date(value);
@@ -50,11 +51,11 @@ function formatRelativeTime(value) {
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
 
-  if (minutes < 1) return "Vừa xong";
-  if (minutes < 60) return `${minutes} phút trước`;
-  if (hours < 24) return `${hours} giờ trước`;
-  if (days < 7) return `${days} ngày trước`;
-  return formatTime(value);
+  if (minutes < 1) return t("notificationsPage.time.justNow");
+  if (minutes < 60) return t("notificationsPage.time.minutesAgo", { count: minutes });
+  if (hours < 24) return t("notificationsPage.time.hoursAgo", { count: hours });
+  if (days < 7) return t("notificationsPage.time.daysAgo", { count: days });
+  return formatTime(value, locale);
 }
 
 const normalizeNotificationsResponse = (response) => {
@@ -127,7 +128,7 @@ const getIconConfig = (type) => {
   return { Icon: Bell, className: "text-slate-700 bg-slate-100" };
 };
 
-const NotificationItem = ({ notification, onMarkRead, onNavigate, currentRoleId }) => {
+const NotificationItem = ({ notification, onMarkRead, onNavigate, currentRoleId, t, locale }) => {
   const unread = !notification.readAt;
   const { route, params } = resolveNotificationRoute(notification, currentRoleId);
   const { Icon, className } = getIconConfig(notification.metadata?.type);
@@ -158,7 +159,7 @@ const NotificationItem = ({ notification, onMarkRead, onNavigate, currentRoleId 
               unread ? "text-slate-950" : "text-slate-700",
             )}
           >
-            {notification.title || "Thông báo"}
+            {notification.title || t("notificationsPage.title")}
           </span>
           <span className="flex shrink-0 items-center gap-2 pt-1">
             {unread && <span className="h-2 w-2 rounded-full bg-sky-600" />}
@@ -170,7 +171,7 @@ const NotificationItem = ({ notification, onMarkRead, onNavigate, currentRoleId 
         </span>
         <span className="mt-2 flex items-center justify-between gap-3">
           <span className="text-xs text-slate-400">
-            {formatRelativeTime(notification.createdAt)}
+            {formatRelativeTime(notification.createdAt, t, locale)}
           </span>
           {unread && (
             <span className="text-xs font-medium text-sky-700 opacity-0 transition group-hover:opacity-100">
@@ -184,6 +185,7 @@ const NotificationItem = ({ notification, onMarkRead, onNavigate, currentRoleId 
 };
 
 const NotificationsPage = () => {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -309,12 +311,12 @@ const NotificationsPage = () => {
             <Bell className="h-8 w-8 text-slate-400" />
           </div>
           <p className="mt-4 text-sm font-semibold text-slate-700">
-            {activeTab === "unread" ? "Không có thông báo chưa đọc" : "Không có thông báo"}
+            {activeTab === "unread" ? t("notificationsPage.empty.unreadTitle") : t("notificationsPage.empty.allTitle")}
           </p>
           <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">
             {activeTab === "unread"
-              ? "Thông báo mới sẽ hiện ở đây và cập nhật ngay khi server gửi."
-              : "Booking, địa điểm, doanh nghiệp và hệ thống sẽ được gom tại đây."}
+              ? t("notificationsPage.empty.unreadDescription")
+              : t("notificationsPage.empty.allDescription")}
           </p>
           {activeTab === "unread" && (
             <Button
@@ -323,7 +325,7 @@ const NotificationsPage = () => {
               onClick={() => setActiveTab("all")}
               className="mt-3"
             >
-              Xem tất cả
+              {t("common.viewAll")}
             </Button>
           )}
         </div>
@@ -339,6 +341,8 @@ const NotificationsPage = () => {
             onMarkRead={(id) => markReadMutation.mutate(id)}
             onNavigate={handleNavigate}
             currentRoleId={currentRoleId}
+            t={t}
+            locale={i18n.language === "vi" ? "vi-VN" : "en-US"}
           />
         ))}
       </div>
@@ -360,9 +364,9 @@ const NotificationsPage = () => {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div className="min-w-0">
-                <h1 className="text-lg font-bold text-slate-950">Thông báo</h1>
+                <h1 className="text-lg font-bold text-slate-950">{t("notificationsPage.title")}</h1>
                 <p className="text-xs text-slate-500">
-                  {unreadCount > 0 ? `${unreadCount} chưa đọc` : "Đã cập nhật"}
+                  {unreadCount > 0 ? t("notificationsPage.unreadCount", { count: unreadCount }) : t("notificationsPage.upToDate")}
                 </p>
               </div>
             </div>
@@ -377,7 +381,7 @@ const NotificationsPage = () => {
                   className="h-8 text-xs"
                 >
                   <Check className="mr-1 h-3.5 w-3.5" />
-                  Đọc hết
+                  {t("notificationsPage.markAllRead")}
                 </Button>
               )}
               <Button
@@ -403,7 +407,7 @@ const NotificationsPage = () => {
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200",
               )}
             >
-              Chưa đọc
+              {t("notificationsPage.tabs.unread")}
               {unreadCount > 0 && (
                 <span
                   className={cn(
@@ -425,7 +429,7 @@ const NotificationsPage = () => {
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200",
               )}
             >
-              Tất cả
+              {t("notificationsPage.tabs.all")}
             </button>
           </div>
         </div>

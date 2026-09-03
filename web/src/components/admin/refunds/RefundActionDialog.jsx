@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatCurrency } from "./refundConstants";
+import { formatMoney } from "@/utils/formatters";
 
 export const RefundActionDialog = ({
   open,
@@ -63,13 +63,13 @@ export const RefundActionDialog = ({
               <div>
                 <div className="text-muted-foreground text-xs">Tổng thanh toán</div>
                 <div className="font-semibold text-foreground">
-                  {formatCurrency(paymentAmount)}
+                  {formatMoney(paymentAmount)}
                 </div>
               </div>
               <div>
                 <div className="text-muted-foreground text-xs">Còn có thể hoàn</div>
                 <div className="font-semibold text-emerald-600">
-                  {formatCurrency(refundableAmount)}
+                  {formatMoney(refundableAmount)}
                 </div>
               </div>
             </div>
@@ -113,15 +113,32 @@ export const RefundActionDialog = ({
                     type="number"
                     min={1}
                     max={refundableAmount || paymentAmount}
+                    step={1}
                     value={refundAmount}
-                    onChange={(e) => setRefundAmount(e.target.value)}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      // Chỉ chấp nhận chuỗi rỗng hoặc số nguyên dương
+                      if (raw === "" || /^\d+$/.test(raw)) {
+                        setRefundAmount(raw);
+                      }
+                    }}
                     placeholder="Nhập số tiền cần hoàn"
                     className="rounded-2xl text-xs h-10"
                   />
                   <p className="text-xs text-muted-foreground">
                     Để trống sẽ hoàn toàn bộ phần còn lại. Đã hoàn trước đó:{" "}
-                    {formatCurrency(alreadyRefunded)}.
+                    {formatMoney(alreadyRefunded)}. Tối đa có thể hoàn:{" "}
+                    <span className="font-bold text-emerald-600">
+                      {formatMoney(refundableAmount)}
+                    </span>
+                    .
                   </p>
+                  {refundAmount &&
+                    Number(refundAmount) > Number(refundableAmount || 0) && (
+                      <p className="text-xs text-rose-600 font-bold">
+                        Số tiền vượt quá mức cho phép ({formatMoney(refundAmount)})
+                      </p>
+                    )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="refund-reason" className="text-xs font-bold">
@@ -146,7 +163,11 @@ export const RefundActionDialog = ({
                   </Button>
                   <Button
                     onClick={onApprove}
-                    disabled={actionLoading}
+                    disabled={
+                      actionLoading ||
+                      (refundAmount !== "" &&
+                        Number(refundAmount) > Number(refundableAmount || 0))
+                    }
                     className="rounded-2xl text-xs font-bold bg-slate-950 text-white dark:bg-primary dark:text-primary-foreground"
                   >
                     {actionLoading && (

@@ -142,17 +142,6 @@ function BusinessHeader() {
             {pageLabel}
           </span>
         </div>
-
-        {/* Search */}
-        <div className="relative hidden w-full max-w-[340px] xl:block ml-4">
-          <Input
-            type="text"
-            placeholder={t("header.searchPlaceholder")}
-            aria-label={t("header.searchPlaceholder")}
-            className="h-9 w-full rounded-full border-zinc-200 bg-zinc-50 pl-5 pr-10 text-sm text-zinc-700 placeholder:text-zinc-400 focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:placeholder:text-zinc-500 dark:focus-visible:bg-zinc-900"
-          />
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500" />
-        </div>
       </div>
 
       {/* Right: date, bell, profile */}

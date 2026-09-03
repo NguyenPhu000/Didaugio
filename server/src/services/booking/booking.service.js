@@ -2107,14 +2107,17 @@ export const refund = async (bookingId, payload = {}, userId) => {
     throw new ServiceError("Booking chưa có giao dịch thanh toán để hoàn tiền", 422, ERROR_CODES.VALIDATION_ERROR);
   }
 
+  const refundReason = (payload.refundReason || "").trim() || "Hoàn tiền đơn đặt chỗ";
+  const idempotencyKey = (payload.idempotencyKey || "").trim() || `booking_refund_${id}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
   const intent = await refundTransition.createRefundIntent({
     paymentId: existing.payment.id,
     amount: Number(payload.refundAmount),
     currency: existing.payment.currency,
     source: "manual",
     actorUserId: userId,
-    reason: payload.refundReason,
-    idempotencyKey: payload.idempotencyKey,
+    reason: refundReason,
+    idempotencyKey,
     metadata: { channel: "booking", requestedAt: payload.refundedAt || null },
   });
   await refundTransition.succeedRefundAttempt({ refundAttemptId: intent.attempt.id });

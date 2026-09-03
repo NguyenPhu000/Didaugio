@@ -328,13 +328,15 @@ export function NotificationProvider({ children }) {
   useEffect(() => {
     if (!Notifications) return;
 
+    let coldStartTimeoutId = null;
+
     const handleColdStart = async () => {
       try {
         const response = await Notifications.getLastNotificationResponseAsync();
         const data = response?.notification?.request?.content?.data;
         const route = resolveNotificationRoute(data);
         if (route) {
-          setTimeout(() => router.push(route), 500);
+          coldStartTimeoutId = setTimeout(() => router.push(route), 500);
         }
       } catch {
         // Non-critical: route will still work for warm responses.
@@ -351,6 +353,7 @@ export function NotificationProvider({ children }) {
       });
 
     return () => {
+      if (coldStartTimeoutId) clearTimeout(coldStartTimeoutId);
       responseSubscription.remove();
     };
   }, [router]);

@@ -1,8 +1,22 @@
 const ESRI_SATELLITE_TILES = [
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
 ];
+
+const ESRI_GRAY_BASE_TILES = [
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+];
+
+const ESRI_GRAY_REF_TILES = [
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+];
+
+const ESRI_PLACES_LABELS = [
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+];
+
 const ESRI_ATTRIBUTION =
   "© Esri, Maxar, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN";
+const ESRI_CANVAS_ATTRIBUTION = "© Esri, HERE, Garmin, © OpenStreetMap contributors";
 
 const GLYPHS_URL =
   "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf";
@@ -22,34 +36,29 @@ export const MAP_STYLES = {
     ],
   },
 
+  // Bản đồ đường phố sạch (Clean Base + Street Names - Không icon POI rác)
   OSM: {
     version: 8,
     name: "Bản đồ",
     glyphs: GLYPHS_URL,
     sources: {
-      voyager_base: {
+      clean_base: {
         type: "raster",
-        tiles: [
-          "https://a.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
-          "https://b.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
-          "https://c.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
-        ],
+        tiles: ESRI_GRAY_BASE_TILES,
         tileSize: 256,
-        attribution: "&copy; CartoDB &copy; OpenStreetMap contributors",
+        attribution: ESRI_CANVAS_ATTRIBUTION,
+        maxzoom: 18,
       },
-      voyager_labels: {
+      clean_labels: {
         type: "raster",
-        tiles: [
-          "https://a.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
-          "https://b.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
-          "https://c.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
-        ],
+        tiles: ESRI_GRAY_REF_TILES,
         tileSize: 256,
+        maxzoom: 18,
       },
     },
     layers: [
-      { id: "voyager-base", type: "raster", source: "voyager_base" },
-      { id: "voyager-labels", type: "raster", source: "voyager_labels" },
+      { id: "clean-base", type: "raster", source: "clean_base" },
+      { id: "clean-labels", type: "raster", source: "clean_labels" },
     ],
   },
 
@@ -58,17 +67,24 @@ export const MAP_STYLES = {
     name: "Tối giản",
     glyphs: GLYPHS_URL,
     sources: {
-      carto: {
+      gray_base: {
         type: "raster",
-        tiles: [
-          "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-          "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-        ],
+        tiles: ESRI_GRAY_BASE_TILES,
         tileSize: 256,
-        attribution: "&copy; CartoDB &copy; OSM contributors",
+        attribution: ESRI_CANVAS_ATTRIBUTION,
+        maxzoom: 16,
+      },
+      gray_ref: {
+        type: "raster",
+        tiles: ESRI_GRAY_REF_TILES,
+        tileSize: 256,
+        maxzoom: 16,
       },
     },
-    layers: [{ id: "carto", type: "raster", source: "carto" }],
+    layers: [
+      { id: "gray-base", type: "raster", source: "gray_base" },
+      { id: "gray-ref", type: "raster", source: "gray_ref" },
+    ],
   },
 
   ADMIN: {
@@ -76,22 +92,20 @@ export const MAP_STYLES = {
     name: "Hành chính",
     glyphs: GLYPHS_URL,
     sources: {
-      carto_nl: {
+      admin_base: {
         type: "raster",
-        tiles: [
-          "https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
-          "https://b.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
-        ],
+        tiles: ESRI_GRAY_BASE_TILES,
         tileSize: 256,
-        attribution: "&copy; CartoDB &copy; OSM contributors",
+        attribution: ESRI_CANVAS_ATTRIBUTION,
+        maxzoom: 16,
       },
     },
     layers: [
       {
-        id: "carto_nl",
+        id: "admin_base",
         type: "raster",
-        source: "carto_nl",
-        paint: { "raster-opacity": 0.55, "raster-saturation": -0.6 },
+        source: "admin_base",
+        paint: { "raster-opacity": 0.65, "raster-saturation": -0.4 },
       },
     ],
   },
@@ -106,6 +120,7 @@ export const MAP_STYLES = {
         tiles: ESRI_SATELLITE_TILES,
         tileSize: 256,
         attribution: ESRI_ATTRIBUTION,
+        maxzoom: 19,
       },
     },
     layers: [{ id: "satellite", type: "raster", source: "satellite" }],
@@ -121,13 +136,13 @@ export const MAP_STYLES = {
         tiles: ESRI_SATELLITE_TILES,
         tileSize: 256,
         attribution: ESRI_ATTRIBUTION,
+        maxzoom: 19,
       },
       labels: {
         type: "raster",
-        tiles: [
-          "https://basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
-        ],
+        tiles: ESRI_PLACES_LABELS,
         tileSize: 256,
+        maxzoom: 19,
       },
     },
     layers: [

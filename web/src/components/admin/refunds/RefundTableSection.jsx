@@ -20,8 +20,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Search, Eye, Wallet } from "lucide-react";
+import { formatMoney } from "@/utils/formatters";
 import {
-  formatCurrency,
   formatDate,
   getGatewayBadge,
   getPaymentStatus,
@@ -135,11 +135,11 @@ export const RefundTableSection = memo(
                   </TableCell>
                   <TableCell>
                     <div className="font-black text-xs">
-                      {formatCurrency(payment.amount)}
+                      {formatMoney(payment.amount)}
                     </div>
                     {payment.refundAmount ? (
                       <div className="text-[10px] text-blue-600 font-bold">
-                        Đã hoàn: {formatCurrency(payment.refundAmount)}
+                        Đã hoàn: {formatMoney(payment.refundAmount)}
                       </div>
                     ) : null}
                   </TableCell>

@@ -1,5 +1,5 @@
 import React from "react";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -46,7 +46,7 @@ export const EarningsWithdrawalWizardModal = ({
           <DialogDescription className="text-xs text-slate-500">
             Số dư khả dụng có thể rút:{" "}
             <strong className="text-slate-900 dark:text-white">
-              {formatVND(earnings.availableBalance || 0)}
+              {formatMoney(earnings.availableBalance || 0)}
             </strong>
           </DialogDescription>
         </DialogHeader>
@@ -85,7 +85,7 @@ export const EarningsWithdrawalWizardModal = ({
                 />
                 {form.amount && (
                   <p className="text-xs font-bold text-amber-600">
-                    = {formatVND(parseInt(form.amount, 10) || 0)}
+                    = {formatMoney(parseInt(form.amount, 10) || 0)}
                   </p>
                 )}
               </div>
@@ -108,7 +108,7 @@ export const EarningsWithdrawalWizardModal = ({
               </div>
 
               <p className="text-[11px] text-slate-400">
-                Số tiền rút tối thiểu: {formatVND(MIN_WITHDRAWAL_AMOUNT)} / lần.
+                Số tiền rút tối thiểu: {formatMoney(MIN_WITHDRAWAL_AMOUNT)} / lần.
               </p>
             </div>
           )}
@@ -174,7 +174,7 @@ export const EarningsWithdrawalWizardModal = ({
                 <div className="flex justify-between">
                   <span className="text-slate-400">Số tiền rút:</span>
                   <span className="font-black text-sm text-slate-900 dark:text-white">
-                    {formatVND(parseInt(form.amount, 10) || 0)}
+                    {formatMoney(parseInt(form.amount, 10) || 0)}
                   </span>
                 </div>
                 <div className="flex justify-between">

@@ -65,12 +65,12 @@ const styles = StyleSheet.create({
   placeholder: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#EAE6DF" },
   content: { flex: 1, paddingTop: 3, paddingRight: 26 },
   eyebrowRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 6 },
-  eyebrow: { color: "#181819", fontSize: 9, fontFamily: TOKENS.font.bold, letterSpacing: 0.75 },
+  eyebrow: { color: "#181819", fontSize: 11, fontFamily: TOKENS.font.bold, letterSpacing: 0.75 },
   title: { color: "#181819", fontFamily: TOKENS.font.semibold, fontSize: 14, lineHeight: 19, letterSpacing: -0.2 },
-  description: { color: "rgba(24,24,25,0.56)", fontFamily: TOKENS.font.medium, fontSize: 11, marginTop: 4 },
+  description: { color: "rgba(24,24,25,0.56)", fontFamily: TOKENS.font.medium, fontSize: 12, marginTop: 4 },
   metaRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 10 },
   meta: { flexDirection: "row", alignItems: "center", gap: 4 },
-  metaText: { color: "rgba(24,24,25,0.7)", fontFamily: TOKENS.font.semibold, fontSize: 10 },
+  metaText: { color: "rgba(24,24,25,0.7)", fontFamily: TOKENS.font.semibold, fontSize: 12 },
   arrow: { position: "absolute", right: 10, bottom: 10, width: 38, height: 38, borderRadius: 19, backgroundColor: "#000000", alignItems: "center", justifyContent: "center" },
 });
 

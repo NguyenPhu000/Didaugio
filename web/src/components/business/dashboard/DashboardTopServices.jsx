@@ -1,6 +1,6 @@
 import React, { memo } from "react";
 import { cn } from "@/lib/utils";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 
 export const DashboardTopServices = memo(({ topServices }) => {
   if (!topServices || topServices.length === 0) return null;
@@ -75,7 +75,7 @@ export const DashboardTopServices = memo(({ topServices }) => {
                     />
                   </div>
                   <span className="text-[10px] font-medium text-slate-400 font-mono shrink-0">
-                    {formatVND(s.revenue || 0)}
+                    {formatMoney(s.revenue || 0)}
                   </span>
                 </div>
               </div>

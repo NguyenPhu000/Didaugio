@@ -1,4 +1,5 @@
-import { View } from "react-native";
+import { Modal, Pressable, Text, View } from "react-native";
+import { Check } from "lucide-react-native";
 import StartNavigationModal from "./navigation/StartNavigationModal";
 import TripCompleteModal from "./navigation/TripCompleteModal";
 import NavigationStatusBanner from "./navigation/NavigationStatusBanner";
@@ -9,6 +10,9 @@ import MapFabStack from "./MapFabStack";
 import MapStatusPill from "./MapStatusPill";
 import MapPlacePreviewCard from "./MapPlacePreviewCard";
 import FilterPickerModal from "./filters/FilterPickerModal";
+import { MAP_STYLES } from "../config/mapConfig";
+
+const MAP_STYLE_OPTIONS = [MAP_STYLES.OSM, MAP_STYLES.HYBRID];
 
 export function MapScreenOverlays({ mapState, mapHandlers }) {
   const {
@@ -37,15 +41,14 @@ export function MapScreenOverlays({ mapState, mapHandlers }) {
     isActiveTripMode,
     isCompactPreviewCard,
     isMomentUploading,
+    layerModalVisible,
+    mapStyle,
     isPlacesLoading,
     isRouteFetching,
     isScreenDimmed,
     isTripPreviewMode,
-    layerModalVisible,
     mapFabTopOffset,
     mapStatusTopOffset,
-    mapStyle,
-    mapStyles,
     mapText,
     previewTravelLoading,
     routeDistanceLabel,
@@ -172,12 +175,8 @@ export function MapScreenOverlays({ mapState, mapHandlers }) {
         <MapFabStack
           visible={hasMeasuredTopControls}
           topOffset={mapFabTopOffset}
-          mapStyle={mapStyle}
-          mapStyles={mapStyles}
-          layerModalVisible={layerModalVisible}
-          setLayerModalVisible={setLayerModalVisible}
-          setMapStyle={setMapStyle}
           onLocate={handleLocate}
+          onMapStylePress={() => setLayerModalVisible(true)}
           t={t}
         />
 
@@ -267,6 +266,61 @@ export function MapScreenOverlays({ mapState, mapHandlers }) {
         onSelectFilterGroup={filterHandlers.selectFilterGroup}
         onSelectOption={handleSelectFilterOption}
       />
+
+      <Modal
+        transparent
+        animationType="fade"
+        visible={layerModalVisible}
+        onRequestClose={() => setLayerModalVisible(false)}
+      >
+        <Pressable
+          style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(15,23,42,0.28)" }}
+          onPress={() => setLayerModalVisible(false)}
+        >
+          <View
+            style={{
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              backgroundColor: "#FFFFFF",
+              padding: 20,
+              paddingBottom: Math.max((insets.bottom || 0) + 16, 32),
+              gap: 10,
+            }}
+          >
+            <Text style={{ color: "#0F172A", fontSize: 17, fontWeight: "700" }}>
+              {mapText.layerSwitcher.title}
+            </Text>
+            {MAP_STYLE_OPTIONS.map((styleOption) => {
+              const isSelected = mapStyle.key === styleOption.key;
+              return (
+                <Pressable
+                  key={styleOption.key}
+                  onPress={() => {
+                    setMapStyle(styleOption);
+                    setLayerModalVisible(false);
+                  }}
+                  style={{
+                    minHeight: 52,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    borderRadius: 14,
+                    paddingHorizontal: 14,
+                    backgroundColor: isSelected ? "#ECFDF5" : "#F8FAFC",
+                    borderWidth: 1,
+                    borderColor: isSelected ? "#99F6E4" : "#E2E8F0",
+                  }}
+                >
+                  <Text style={{ color: "#0F172A", fontSize: 15, fontWeight: "600" }}>
+                    {styleOption.label}
+                  </Text>
+                  {isSelected ? <Check size={19} color="#0F766E" strokeWidth={3} /> : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        </Pressable>
+      </Modal>
     </>
   );
 }

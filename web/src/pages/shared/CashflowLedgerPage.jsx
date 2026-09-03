@@ -14,26 +14,28 @@ import FinancialSubNav from "@/components/business/FinancialSubNav";
 import AetherBentoCard from "@/components/business/AetherBentoCard";
 import { cn } from "@/lib/utils";
 import { exportToCsv, slugifyFilename } from "@/utils/csvExport";
-import { formatVND, formatDateTime } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
+import { formatDateTime } from "@/components/business/dashboardWidgetHelpers";
+import { useTranslation } from "react-i18next";
 
 const TYPE_CONFIG = {
   money_in: {
-    label: "Tiền vào",
+    labelKey: "cashflowLedger.types.moneyIn",
     className: "bg-[#F0FDF4] text-emerald-800 border-[#BBF7D0]",
     dot: "bg-emerald-500",
   },
   refund: {
-    label: "Hoàn tiền",
+    labelKey: "cashflowLedger.types.refund",
     className: "bg-rose-50 text-rose-800 border-rose-200",
     dot: "bg-rose-500",
   },
   payout: {
-    label: "Rút tiền",
+    labelKey: "cashflowLedger.types.payout",
     className: "bg-[#F2F7FF] text-blue-800 border-[#BED6FF]",
     dot: "bg-blue-500",
   },
   ledger: {
-    label: "Sổ cái",
+    labelKey: "cashflowLedger.types.ledger",
     className: "bg-slate-100 text-slate-700 border-slate-200",
     dot: "bg-slate-400",
   },
@@ -45,7 +47,9 @@ export default function CashflowLedgerPage({
   useSummary,
   useRows,
   exportFilename = "cashflow",
+  showSubNav = false,
 }) {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState({
     type: "all",
     gateway: "all",
@@ -78,32 +82,32 @@ export default function CashflowLedgerPage({
   const statCards = useMemo(
     () => [
       {
-        title: "Tổng tiền vào",
-        value: formatVND(summary.totalIn),
+        title: t("cashflowLedger.stats.totalIn"),
+        value: formatMoney(summary.totalIn),
         bgClass: "bg-[#DCFCE7] dark:bg-emerald-950/30 border-[#BBF7D0] dark:border-emerald-900/40 text-slate-800 dark:text-emerald-200",
         dotColor: "bg-emerald-500",
-        subtitle: `${summary.counts?.paidPayments || 0} giao dịch nhận tiền`,
+        subtitle: t("cashflowLedger.stats.receivedTransactions", { count: summary.counts?.paidPayments || 0 }),
       },
       {
-        title: "Hoàn tiền",
-        value: formatVND(summary.totalRefunded),
+        title: t("cashflowLedger.stats.refunds"),
+        value: formatMoney(summary.totalRefunded),
         bgClass: "bg-[#FFE4E6] dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/40 text-slate-800 dark:text-rose-200",
         dotColor: "bg-rose-500",
-        subtitle: `${summary.counts?.refunds || 0} giao dịch hoàn trả`,
+        subtitle: t("cashflowLedger.stats.refundTransactions", { count: summary.counts?.refunds || 0 }),
       },
       {
-        title: "Đã rút / Chuyển",
-        value: formatVND(summary.totalPayouts),
+        title: t("cashflowLedger.stats.payouts"),
+        value: formatMoney(summary.totalPayouts),
         bgClass: "bg-[#D7E5FF] dark:bg-blue-950/30 border-[#BED6FF] dark:border-blue-900/40 text-slate-800 dark:text-blue-200",
         dotColor: "bg-blue-500",
-        subtitle: `${summary.counts?.transferredPayouts || 0} lần payout`,
+        subtitle: t("cashflowLedger.stats.payoutTransactions", { count: summary.counts?.transferredPayouts || 0 }),
       },
       {
-        title: "Số dư ví khả dụng",
-        value: formatVND(summary.walletBalance),
+        title: t("cashflowLedger.stats.walletBalance"),
+        value: formatMoney(summary.walletBalance),
         bgClass: "bg-[#FEE8D3] dark:bg-amber-950/30 border-[#FCD4AF] dark:border-amber-900/40 text-slate-800 dark:text-amber-200",
         dotColor: "bg-amber-500",
-        subtitle: `Tạm giữ: ${formatVND(summary.frozenBalance || 0)}`,
+        subtitle: t("cashflowLedger.stats.frozenBalance", { amount: formatMoney(summary.frozenBalance || 0) }),
       },
     ],
     [
@@ -131,13 +135,13 @@ export default function CashflowLedgerPage({
     exportToCsv({
       filename: slugifyFilename(exportFilename),
       columns: [
-        { key: "occurredAt", label: "Thời gian" },
-        { key: "type", label: "Loại" },
-        { key: "amount", label: "Số tiền" },
-        { key: "status", label: "Trạng thái" },
-        { key: "gateway", label: "Kênh" },
-        { key: "transactionRef", label: "Mã đối soát" },
-        { key: "description", label: "Mô tả" },
+        { key: "occurredAt", label: t("cashflowLedger.csv.time") },
+        { key: "type", label: t("cashflowLedger.csv.type") },
+        { key: "amount", label: t("cashflowLedger.csv.amount") },
+        { key: "status", label: t("cashflowLedger.csv.status") },
+        { key: "gateway", label: t("cashflowLedger.csv.gateway") },
+        { key: "transactionRef", label: t("cashflowLedger.csv.transactionRef") },
+        { key: "description", label: t("cashflowLedger.csv.description") },
       ],
       data: rows.map((row) => ({
         ...row,
@@ -166,7 +170,7 @@ export default function CashflowLedgerPage({
             onClick={refresh}
             className="flex-1 sm:flex-initial justify-center rounded-2xl h-10 px-4 text-xs font-bold border-slate-200 dark:border-border/80 shadow-xs"
           >
-            <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Làm mới
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> {t("common.refresh")}
           </Button>
           <Button
             variant="outline"
@@ -174,13 +178,13 @@ export default function CashflowLedgerPage({
             onClick={handleExport}
             className="flex-1 sm:flex-initial justify-center rounded-2xl h-10 px-4 text-xs font-bold border-slate-200 dark:border-border/80 shadow-xs"
           >
-            <Download className="w-3.5 h-3.5 mr-1.5" /> Xuất CSV
+            <Download className="w-3.5 h-3.5 mr-1.5" /> {t("cashflowLedger.exportCsv")}
           </Button>
         </div>
       </div>
 
-      {/* ── Sub Navigation ── */}
-      <FinancialSubNav activeTab="cashflow" />
+      {/* ── Sub Navigation (chỉ hiện khi showSubNav là true) ── */}
+      {showSubNav && <FinancialSubNav activeTab="cashflow" />}
 
       {/* ── Top Bento KPI Metrics (Signature Notched Corners) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
@@ -191,27 +195,27 @@ export default function CashflowLedgerPage({
           : (
               <>
                 <AetherBentoCard
-                  title="Tổng tiền vào"
-                  subtitle={`${summary.counts?.paidPayments || 0} giao dịch nhận tiền`}
-                  value={formatVND(summary.totalIn)}
+                  title={t("cashflowLedger.stats.totalIn")}
+                  subtitle={t("cashflowLedger.stats.receivedTransactions", { count: summary.counts?.paidPayments || 0 })}
+                  value={formatMoney(summary.totalIn)}
                   variant="mint"
                 />
                 <AetherBentoCard
-                  title="Hoàn tiền"
-                  subtitle={`${summary.counts?.refunds || 0} giao dịch hoàn trả`}
-                  value={formatVND(summary.totalRefunded)}
+                  title={t("cashflowLedger.stats.refunds")}
+                  subtitle={t("cashflowLedger.stats.refundTransactions", { count: summary.counts?.refunds || 0 })}
+                  value={formatMoney(summary.totalRefunded)}
                   variant="rose"
                 />
                 <AetherBentoCard
-                  title="Đã rút / Chuyển"
-                  subtitle={`${summary.counts?.transferredPayouts || 0} lần payout`}
-                  value={formatVND(summary.totalPayouts)}
+                  title={t("cashflowLedger.stats.payouts")}
+                  subtitle={t("cashflowLedger.stats.payoutTransactions", { count: summary.counts?.transferredPayouts || 0 })}
+                  value={formatMoney(summary.totalPayouts)}
                   variant="blue"
                 />
                 <AetherBentoCard
-                  title="Số dư ví khả dụng"
-                  subtitle={`Tạm giữ: ${formatVND(summary.frozenBalance || 0)}`}
-                  value={formatVND(summary.walletBalance)}
+                  title={t("cashflowLedger.stats.walletBalance")}
+                  subtitle={t("cashflowLedger.stats.frozenBalance", { amount: formatMoney(summary.frozenBalance || 0) })}
+                  value={formatMoney(summary.walletBalance)}
                   variant="peach"
                 />
               </>
@@ -223,10 +227,10 @@ export default function CashflowLedgerPage({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
-              Sổ Nhật Ký Giao Dịch
+              {t("cashflowLedger.ledgerTitle")}
             </h3>
             <p className="text-xs text-slate-500 dark:text-muted-foreground mt-0.5">
-              Theo dõi chi tiết tất cả biến động số dư và nguồn thu chi trong hệ thống
+              {t("cashflowLedger.ledgerDescription")}
             </p>
           </div>
 
@@ -237,14 +241,14 @@ export default function CashflowLedgerPage({
               onValueChange={(value) => setFilter("type", value)}
             >
               <SelectTrigger className="w-[140px] h-9 rounded-2xl text-xs border-slate-200 dark:border-border/80">
-                <SelectValue placeholder="Loại dòng tiền" />
+                <SelectValue placeholder={t("cashflowLedger.filters.type")} />
               </SelectTrigger>
               <SelectContent className="rounded-2xl">
-                <SelectItem value="all">Tất cả loại</SelectItem>
-                <SelectItem value="money_in">Tiền vào</SelectItem>
-                <SelectItem value="refund">Hoàn tiền</SelectItem>
-                <SelectItem value="payout">Rút tiền</SelectItem>
-                <SelectItem value="ledger">Sổ cái</SelectItem>
+                <SelectItem value="all">{t("cashflowLedger.filters.allTypes")}</SelectItem>
+                <SelectItem value="money_in">{t("cashflowLedger.types.moneyIn")}</SelectItem>
+                <SelectItem value="refund">{t("cashflowLedger.types.refund")}</SelectItem>
+                <SelectItem value="payout">{t("cashflowLedger.types.payout")}</SelectItem>
+                <SelectItem value="ledger">{t("cashflowLedger.types.ledger")}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -253,10 +257,10 @@ export default function CashflowLedgerPage({
               onValueChange={(value) => setFilter("gateway", value)}
             >
               <SelectTrigger className="w-[140px] h-9 rounded-2xl text-xs border-slate-200 dark:border-border/80">
-                <SelectValue placeholder="Cổng thanh toán" />
+                <SelectValue placeholder={t("cashflowLedger.filters.gateway")} />
               </SelectTrigger>
               <SelectContent className="rounded-2xl">
-                <SelectItem value="all">Tất cả cổng</SelectItem>
+                <SelectItem value="all">{t("cashflowLedger.filters.allGateways")}</SelectItem>
                 <SelectItem value="SEPAY">SePay</SelectItem>
                 <SelectItem value="VNPAY">VNPay</SelectItem>
                 <SelectItem value="MOMO">MoMo</SelectItem>
@@ -287,7 +291,7 @@ export default function CashflowLedgerPage({
           </div>
         ) : rows.length === 0 ? (
           <div className="py-14 text-center text-xs text-slate-400">
-            Chưa có dòng tiền phù hợp với bộ lọc này.
+            {t("cashflowLedger.empty")}
           </div>
         ) : (
           <div className="space-y-3 pt-1">
@@ -309,7 +313,7 @@ export default function CashflowLedgerPage({
                         )}
                       >
                         <span className={cn("w-1.5 h-1.5 rounded-full", config.dot)} />
-                        {config.label}
+                        {t(config.labelKey)}
                       </span>
                       <span className="font-mono text-xs font-bold text-slate-500">
                         {row.transactionRef || row.transactionId || "—"}
@@ -322,11 +326,11 @@ export default function CashflowLedgerPage({
                     </div>
 
                     <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
-                      {row.description || "Giao dịch thanh toán dịch vụ"}
+                      {row.description || t("cashflowLedger.defaultDescription")}
                     </p>
 
                     <p className="text-[11px] text-slate-400">
-                      {formatDateTime(row.occurredAt)} • Kênh: <strong className="text-slate-700 dark:text-slate-300">{row.gateway || "Nội bộ"}</strong>
+                      {t("cashflowLedger.channel", { date: formatDateTime(row.occurredAt) })} <strong className="text-slate-700 dark:text-slate-300">{row.gateway || t("cashflowLedger.internal")}</strong>
                     </p>
                   </div>
 
@@ -338,7 +342,7 @@ export default function CashflowLedgerPage({
                       )}
                     >
                       {isOut ? "-" : "+"}
-                      {formatVND(row.amount)}
+                      {formatMoney(row.amount)}
                     </span>
                   </div>
                 </div>
@@ -351,7 +355,7 @@ export default function CashflowLedgerPage({
         {pagination.totalPages > 1 && (
           <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-border/60">
             <p className="text-xs text-slate-400">
-              Trang {pagination.page} / {pagination.totalPages} ({pagination.total} giao dịch)
+              {t("cashflowLedger.pagination", { page: pagination.page, totalPages: pagination.totalPages, total: pagination.total })}
             </p>
             <div className="flex gap-2">
               <Button
@@ -361,7 +365,7 @@ export default function CashflowLedgerPage({
                 onClick={() => setFilters((prev) => ({ ...prev, page: prev.page - 1 }))}
                 className="rounded-2xl h-8 px-4 text-xs font-bold"
               >
-                Trước
+                {t("common.previous")}
               </Button>
               <Button
                 variant="outline"
@@ -370,7 +374,7 @@ export default function CashflowLedgerPage({
                 onClick={() => setFilters((prev) => ({ ...prev, page: prev.page + 1 }))}
                 className="rounded-2xl h-8 px-4 text-xs font-bold"
               >
-                Sau
+                {t("common.nextPage")}
               </Button>
             </div>
           </div>

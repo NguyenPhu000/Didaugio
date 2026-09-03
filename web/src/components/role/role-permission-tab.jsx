@@ -48,30 +48,40 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
         roleService.getRolePermissions(role.id),
       ]);
 
-      const permData = permissionsResponse?.data || permissionsResponse;
-      if (permData && permData.permissions) {
-        setAllPermissions(permData.permissions);
+      // 1. Parse toàn bộ quyền hệ thống nhóm theo module
+      const rawPermData = permissionsResponse?.data ?? permissionsResponse;
+      const groupedPerms = rawPermData?.permissions ?? rawPermData ?? {};
+      setAllPermissions(groupedPerms);
 
-        const currentPermissionIds = new Set();
-        const rolePermData = rolePermissionsResponse?.data || rolePermissionsResponse;
-        if (
-          rolePermData?.success &&
-          rolePermData.data?.permissions
-        ) {
-          Object.values(rolePermData.data.permissions).forEach(
-            (perms) => {
-              perms.forEach((p) => currentPermissionIds.add(p.id));
-            },
-          );
-        }
+      // 2. Parse danh sách quyền hiện tại của vai trò này
+      const currentPermissionIds = new Set();
+      const rawRoleData = rolePermissionsResponse?.data ?? rolePermissionsResponse;
+      const rolePerms = rawRoleData?.permissions ?? rawRoleData ?? {};
 
-        setSelectedPermissions(currentPermissionIds);
-        setInitialPermissions(currentPermissionIds);
-
-        const modules = Object.keys(permData.permissions);
-        setExpandedModules(new Set(modules.slice(0, 3)));
+      if (Array.isArray(rolePerms)) {
+        rolePerms.forEach((p) => {
+          if (p?.id != null) currentPermissionIds.add(p.id);
+          else if (typeof p === "number") currentPermissionIds.add(p);
+        });
+      } else if (rolePerms && typeof rolePerms === "object") {
+        Object.values(rolePerms).forEach((perms) => {
+          if (Array.isArray(perms)) {
+            perms.forEach((p) => {
+              if (p?.id != null) currentPermissionIds.add(p.id);
+              else if (typeof p === "number") currentPermissionIds.add(p);
+            });
+          }
+        });
       }
+
+      setSelectedPermissions(currentPermissionIds);
+      setInitialPermissions(new Set(currentPermissionIds));
+
+      // Mở rộng tất cả các module để người dùng xem được ngay
+      const modules = Object.keys(groupedPerms);
+      setExpandedModules(new Set(modules));
     } catch (error) {
+      console.error("Lỗi tải quyền của vai trò:", error);
       const errorMsg =
         error.response?.data?.message ||
         error.message ||

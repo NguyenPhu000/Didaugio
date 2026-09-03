@@ -65,28 +65,28 @@ const assertVoucherUsable = (voucher, context) => {
   const { businessId, serviceId, placeId, originalPrice } = context;
 
   if (!voucher) {
-    throw new ServiceError("MÃ£ voucher khÃ´ng há»£p lá» hoáº·c ÄÃ£ bá» vÃ´ hiá»u hÃ³a", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError("Mã voucher không hợp lệ hoặc đã bị vô hiệu hóa", 400, ERROR_CODES.VALIDATION_ERROR);
   }
 
   if (!voucherAppliesToContext(voucher, { businessId, serviceId, placeId })) {
-    throw new ServiceError("MÃ£ voucher khÃ´ng Ã¡p dá»¥ng cho dá»ch vá»¥ nÃ y", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError("Mã voucher không áp dụng cho dịch vụ này", 400, ERROR_CODES.VALIDATION_ERROR);
   }
 
   const now = new Date();
   if (voucher.startDate && now < voucher.startDate) {
-    throw new ServiceError("MÃ£ voucher chÆ°a cÃ³ hiá»u lá»±c", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError("Mã voucher chưa có hiệu lực", 400, ERROR_CODES.VALIDATION_ERROR);
   }
   if (voucher.endDate && now > voucher.endDate) {
-    throw new ServiceError("MÃ£ voucher ÄÃ£ háº¿t háº¡n", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError("Mã voucher đã hết hạn", 400, ERROR_CODES.VALIDATION_ERROR);
   }
 
   if (voucher.usageLimit !== null && voucher.usageLimit > 0 && voucher.usageCount >= voucher.usageLimit) {
-    throw new ServiceError("MÃ£ voucher ÄÃ£ háº¿t lÆ°á»£t sá»­ dá»¥ng", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError("Mã voucher đã hết lượt sử dụng", 400, ERROR_CODES.VALIDATION_ERROR);
   }
 
   if (voucher.minOrderValue && originalPrice < voucher.minOrderValue) {
     throw new ServiceError(
-      `GiÃ¡ trá» ÄÆ¡n hÃ ng tá»i thiá»u lÃ  ${voucher.minOrderValue.toLocaleString("vi-VN")}Ä`,
+      `Giá trị đơn hàng tối thiểu là ${voucher.minOrderValue.toLocaleString("vi-VN")}đ`,
       400,
       ERROR_CODES.VALIDATION_ERROR,
     );
@@ -96,7 +96,7 @@ const assertVoucherUsable = (voucher, context) => {
 const resolveVoucherContext = async (tx, { serviceId, businessId, originalPrice }) => {
   const normalizedServiceId = Number(serviceId);
   if (!Number.isInteger(normalizedServiceId) || normalizedServiceId <= 0) {
-    throw new ServiceError("Dá»ch vá»¥ khÃ´ng há»£p lá»", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError("Dịch vụ không hợp lệ", 400, ERROR_CODES.VALIDATION_ERROR);
   }
 
   const service = await tx.businessService.findUnique({
@@ -109,17 +109,17 @@ const resolveVoucherContext = async (tx, { serviceId, businessId, originalPrice 
   });
 
   if (!service) {
-    throw new ServiceError("Dá»ch vá»¥ khÃ´ng tá»n táº¡i", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError("Dịch vụ không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
   const resolvedBusinessId = Number(businessId || service.place?.businessId);
   if (!Number.isInteger(resolvedBusinessId) || resolvedBusinessId <= 0) {
-    throw new ServiceError("Doanh nghiá»p khÃ´ng há»£p lá»", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError("Doanh nghiệp không hợp lệ", 400, ERROR_CODES.VALIDATION_ERROR);
   }
 
   const amount = Number(originalPrice);
   if (!Number.isFinite(amount) || amount < 0) {
-    throw new ServiceError("GiÃ¡ trá» ÄÆ¡n hÃ ng khÃ´ng há»£p lá»", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError("Giá trị đơn hàng không hợp lệ", 400, ERROR_CODES.VALIDATION_ERROR);
   }
 
   return {
@@ -181,7 +181,7 @@ export async function validateAndApplyVoucher(tx, params) {
 
   const perUserLimit = voucher.perUserLimit ?? 1;
   if (userUsageCount >= perUserLimit) {
-    throw new ServiceError("B?n ?? s? d?ng m? voucher n?y r?i", 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError("Bạn đã sử dụng mã voucher này rồi", 400, ERROR_CODES.VALIDATION_ERROR);
   }
 
   const discountAmount = calculateVoucherDiscount(voucher, context.originalPrice);
@@ -235,7 +235,7 @@ export async function getPublicVouchers(params = {}) {
 export async function validatePublicVoucher(params = {}) {
   const code = normalizeVoucherCode(params.code);
   if (!code) {
-    throw new ServiceError('Vui l?ng nh?p m? voucher', 400, ERROR_CODES.VALIDATION_ERROR);
+    throw new ServiceError('Vui lòng nhập mã voucher', 400, ERROR_CODES.VALIDATION_ERROR);
   }
 
   const context = await resolveVoucherContext(prisma, {
@@ -354,14 +354,41 @@ export const getAll = async (params = {}, userId, roleId) => {
     where.businessId = parseInt(params.businessId);
   }
 
+  const andClauses = [];
+
   if (params.search) {
-    where.OR = [
-      { code: { contains: params.search, mode: "insensitive" } },
-      { name: { contains: params.search, mode: "insensitive" } },
-    ];
+    andClauses.push({
+      OR: [
+        { code: { contains: params.search, mode: "insensitive" } },
+        { name: { contains: params.search, mode: "insensitive" } },
+      ],
+    });
   }
-  if (params.isActive !== undefined) {
+
+  if (params.status && params.status !== "all") {
+    const now = new Date();
+    if (params.status === "active") {
+      where.isActive = true;
+      andClauses.push({
+        OR: [{ endDate: null }, { endDate: { gte: now } }],
+      });
+      andClauses.push({
+        OR: [{ startDate: null }, { startDate: { lte: now } }],
+      });
+    } else if (params.status === "draft") {
+      where.isActive = false;
+    } else if (params.status === "scheduled") {
+      where.isActive = true;
+      where.startDate = { gt: now };
+    } else if (params.status === "expired") {
+      where.endDate = { lt: now };
+    }
+  } else if (params.isActive !== undefined) {
     where.isActive = params.isActive === "true" || params.isActive === true;
+  }
+
+  if (andClauses.length > 0) {
+    where.AND = andClauses;
   }
 
   const [data, total] = await Promise.all([
@@ -397,7 +424,7 @@ export const getById = async (id, options = {}) => {
   });
 
   if (!voucher) {
-    throw new ServiceError("Voucher khÃ´ng tá»n táº¡i", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError("Voucher không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
   return serializeVoucher(voucher);
@@ -411,7 +438,7 @@ export const create = async (data, userId) => {
 
   if (!business) {
     throw new ServiceError(
-      "Báº¡n chÆ°a ÄÄng kÃ½ doanh nghiá»p",
+      "Bạn chưa đăng ký doanh nghiệp",
       403,
       ERROR_CODES.FORBIDDEN,
     );
@@ -421,7 +448,7 @@ export const create = async (data, userId) => {
     where: { code: data.code, businessId: business.id },
   });
   if (existing) {
-    throw new ServiceError("MÃ£ voucher ÄÃ£ tá»n táº¡i", 400, ERROR_CODES.EXISTED);
+    throw new ServiceError("Mã voucher đã tồn tại", 400, ERROR_CODES.EXISTED);
   }
 
   const mappedData = mapVoucherInputToPrisma(data, true);
@@ -463,7 +490,7 @@ export const remove = async (id) => {
 
   if (bookingCount > 0) {
     throw new ServiceError(
-      "KhÃ´ng thá» xÃ³a voucher Äang ÄÆ°á»£c sá»­ dá»¥ng",
+      "Không thể xóa voucher đang được sử dụng",
       400,
       ERROR_CODES.VALIDATION_ERROR,
     );
@@ -486,7 +513,7 @@ export const getUsageStats = async (id) => {
   });
 
   if (!voucher) {
-    throw new ServiceError("Voucher khÃ´ng tá»n táº¡i", 404, ERROR_CODES.NOT_FOUND);
+    throw new ServiceError("Voucher không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
   const serialized = serializeVoucher(voucher);

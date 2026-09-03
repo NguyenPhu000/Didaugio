@@ -7,7 +7,7 @@ export const fieldLabel =
   "flex items-center gap-1.5 text-sm font-medium text-slate-700";
 
 export const fieldInput =
-  "h-12 rounded-xl border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:border-emerald-700 focus-visible:ring-4 focus-visible:ring-emerald-700/15";
+  "h-12 rounded-xl border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus-visible:border-slate-900 focus-visible:ring-4 focus-visible:ring-slate-900/10";
 
 export const fieldError = "text-xs font-medium text-rose-600";
 

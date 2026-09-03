@@ -5,7 +5,6 @@ import { Image } from "expo-image";
 import { MaterialIconsRounded } from "../../../components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../constants/design-tokens";
 import { resolveMediaUrl, resolvePlaceImageUri } from "../../../lib/media-url";
-import { ContextualBoundaryLayer } from "./BoundaryLayer";
 import MapView from "./MapView";
 import RoutePolyline from "./RoutePolyline";
 import SnapLine from "./SnapLine";
@@ -336,15 +335,12 @@ const ActiveRoutePolylines = memo(function ActiveRoutePolylines({
 });
 
 export function MapScreenCanvas({
-  activeArea,
   activeMapPadding,
   activePlace,
   activeRouteCoordinates,
   activeRouteSource,
   activeTrip,
   activeTripLocation,
-  allAreasKey,
-  districtGeo,
   error,
   handleMapPress,
   handleSelectPlace,
@@ -391,23 +387,14 @@ export function MapScreenCanvas({
         onSelectPlace={handleSelectPlace}
         onPressMap={handleMapPress}
         onRegionChangeComplete={setMapRegion}
-        tileUrls={mapStyle.urls}
-        mapType={mapStyle.mapType || "standard"}
-        useNativeCleanStyle={mapStyle.useNativeCleanStyle === true}
+        mapType={mapStyle.mapType}
+        useNativeCleanStyle={mapStyle.useNativeCleanStyle}
         mapPadding={activeMapPadding}
         courseUpEnabled={courseUpEnabled}
         showsUserLocation={shouldShowNativeUserLocation && !isActiveTripMode}
         showsMyLocationButton={false}
         style={mapCanvasStyle}
       >
-        <ContextualBoundaryLayer
-          geojson={districtGeo}
-          activeArea={activeArea}
-          allAreasKey={allAreasKey}
-          showIslandMask={mapStyle?.showIslandMask ?? true}
-          showDistrictBorders={mapStyle?.showDistrictBorders ?? true}
-          showDistrictLabels={mapStyle?.showDistrictLabels ?? true}
-        />
 
         <TripPreviewRoutesAndStops
           isTripPreviewMode={isTripPreviewMode}

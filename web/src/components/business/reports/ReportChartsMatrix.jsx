@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 
 export const ReportChartsMatrix = memo(
   ({
@@ -86,7 +86,7 @@ export const ReportChartsMatrix = memo(
                   <Tooltip
                     contentStyle={{ borderRadius: "18px", border: "1px solid #E2E8F0", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.05)" }}
                     formatter={(value, name) => [
-                      reportType === "revenue" ? formatVND(value) : `${value} lượt`,
+                      reportType === "revenue" ? formatMoney(value) : `${value} lượt`,
                       name === "netRevenue" ? "Doanh thu thực nhận" : name === "revenue" ? "Doanh thu gộp" : "Lượt đặt",
                     ]}
                   />
@@ -131,7 +131,7 @@ export const ReportChartsMatrix = memo(
                   <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#94A3B8" }} />
                   <Tooltip
                     contentStyle={{ borderRadius: "18px", border: "1px solid #E2E8F0", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.05)" }}
-                    formatter={(value, name) => [name === "revenue" ? formatVND(value) : `${value} đơn`, name === "revenue" ? "Doanh thu" : "Lượt đặt"]}
+                    formatter={(value, name) => [name === "revenue" ? formatMoney(value) : `${value} đơn`, name === "revenue" ? "Doanh thu" : "Lượt đặt"]}
                   />
                   <Bar dataKey="bookings" fill="#3B82F6" radius={[12, 12, 0, 0]} />
                 </BarChart>
@@ -154,7 +154,7 @@ export const ReportChartsMatrix = memo(
                   <Tooltip
                     contentStyle={{ borderRadius: "18px", border: "1px solid #E2E8F0", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.05)" }}
                     formatter={(value) => [
-                      reportType === "revenue" ? formatVND(value) : `${value} lượt`,
+                      reportType === "revenue" ? formatMoney(value) : `${value} lượt`,
                       reportType === "revenue" ? "Phí sàn" : "Lượt đặt",
                     ]}
                   />

@@ -28,6 +28,10 @@ import LoginHistoryFilterBar from "@/components/admin/login-history/LoginHistory
 import LoginHistoryTableView from "@/components/admin/login-history/LoginHistoryTableView";
 import LoginHistoryDetailModal from "@/components/admin/login-history/LoginHistoryDetailModal";
 
+/** Chuyển statusFilter UI sang giá trị API: undefined | true | false */
+const resolveStatusFilter = (filter) =>
+  filter === "all" ? undefined : filter === "active";
+
 const LoginHistoryPage = () => {
   const { t } = useTranslation();
   const { user: currentUser } = useAuthStore();
@@ -58,12 +62,7 @@ const LoginHistoryPage = () => {
       const params = {
         page: currentPage,
         limit: itemsPerPage,
-        isActive:
-          statusFilter === "all"
-            ? undefined
-            : statusFilter === "active"
-              ? true
-              : false,
+        isActive: resolveStatusFilter(statusFilter),
         search: searchQuery.trim() || undefined,
       };
       const response = await loginHistoryService.getAll(params);
@@ -173,12 +172,7 @@ const LoginHistoryPage = () => {
         const res = await loginHistoryService.getAll({
           page,
           limit: 100,
-          isActive:
-            statusFilter === "all"
-              ? undefined
-              : statusFilter === "active"
-                ? true
-                : false,
+          isActive: resolveStatusFilter(statusFilter),
           search: searchQuery.trim() || undefined,
         });
         return {

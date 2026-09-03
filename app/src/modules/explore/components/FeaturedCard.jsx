@@ -100,6 +100,17 @@ function FeaturedCardInner({ place, onPress, onSave, isSaved }) {
           <PosterMedia uri={rawImageUri} width={MEDIA_W} />
         </Animated.View>
 
+        {/* Grain texture overlay: tạo cảm giác film/emulsion, tránh ảnh trông
+            quá "kỹ thuật số". Rất nhẹ, không ảnh hưởng readability của scrim. */}
+        <View
+          pointerEvents="none"
+          style={{
+            ...StyleSheet.absoluteFillObject,
+            backgroundColor: "rgba(255,255,255,0.04)",
+            opacity: 0.6,
+          }}
+        />
+
         <PosterScrim bottomHeight="62%" topHeight="26%" strength={0.82} />
 
         {/* Hàng chip trên: flex-row nên không còn phụ thuộc toạ độ cứng
@@ -231,7 +242,7 @@ function FeaturedCardInner({ place, onPress, onSave, isSaved }) {
                     <Text
                       style={{
                         color: "rgba(255,255,255,0.62)",
-                        fontSize: 11,
+                        fontSize: 12,
                         fontFamily: TOKENS.font.medium,
                       }}
                     >
@@ -243,7 +254,7 @@ function FeaturedCardInner({ place, onPress, onSave, isSaved }) {
               <Text
                 style={{
                   color: "rgba(255,255,255,0.58)",
-                  fontSize: 10.5,
+                  fontSize: 12,
                   letterSpacing: 0.3,
                   fontFamily: TOKENS.font.semibold,
                 }}

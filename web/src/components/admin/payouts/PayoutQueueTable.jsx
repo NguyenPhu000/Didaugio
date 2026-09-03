@@ -7,7 +7,8 @@ import {
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { STATUS_TABS, STATUS_BADGE_MAP, formatVND } from "./payoutConstants";
+import { STATUS_TABS, STATUS_BADGE_MAP } from "./payoutConstants";
+import { formatMoney } from "@/utils/formatters";
 import { cn } from "@/lib/utils";
 
 export const PayoutQueueTable = memo(
@@ -128,7 +129,7 @@ export const PayoutQueueTable = memo(
                               </div>
                             </td>
                             <td className="p-4 text-right font-mono font-bold text-slate-950 tabular-nums">
-                              {formatVND(p.amount)}
+                              {formatMoney(p.amount)}
                             </td>
                             <td className="p-4">
                               <div className="text-xs">

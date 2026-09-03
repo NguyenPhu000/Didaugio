@@ -181,7 +181,18 @@ const ProtectedAdminPermission = ({
   const requiredPermissions = permission ? [permission, ...permissions] : permissions;
   const permissionsLoaded = Array.isArray(user?.permissions);
 
-  if (isLoading) return null;
+  if (isLoading) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="min-h-[40vh] grid place-items-center bg-[#FAF9F5]"
+      >
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
+        <span className="sr-only">Đang kiểm tra quyền truy cập</span>
+      </div>
+    );
+  }
 
   if (
     requiredPermissions.length > 0 &&
@@ -209,8 +220,8 @@ const ProtectedStaffOperations = ({ children }) => {
     <ProtectedRoute roles={[ROLES.BUSINESS, ROLES.STAFF]}>
       <BusinessLayout>
         <GlobalErrorBoundary
-          title="Booking operations unavailable"
-          description="Unable to load booking operations."
+          title="Không thể tải khu vực vận hành đặt chỗ"
+          description="Vui lòng tải lại trang hoặc thử lại sau ít phút."
         >
           {isStaff ? children : <BusinessGuard>{children}</BusinessGuard>}
         </GlobalErrorBoundary>

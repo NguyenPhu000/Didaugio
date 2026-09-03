@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -27,22 +28,32 @@ export const UserBulkRoleDialog = ({
   onSubmit,
   bulkSubmitting,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-3xl border border-black/[0.06] bg-white p-6 shadow-2xl sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-lg font-extrabold text-slate-950 flex items-center gap-2">
             <UserCog className="h-5 w-5 text-slate-700" />
-            Gán vai trò hàng loạt
+            {t("users.bulk.dialogTitle", "Gán vai trò hàng loạt")}
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500 mt-1">
-            Cập nhật vai trò cho {selectedCount} người dùng đã chọn
+            {t("users.bulk.dialogDesc", {
+              count: selectedCount,
+              defaultValue: `Cập nhật vai trò cho ${selectedCount} người dùng đã chọn`,
+            })}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-3">
           <Select value={bulkRoleId} onValueChange={setBulkRoleId}>
             <SelectTrigger className="rounded-xl border border-black/[0.06] bg-[#F8F7F3] text-xs font-semibold h-10">
-              <SelectValue placeholder="Chọn vai trò mới" />
+              <SelectValue
+                placeholder={t(
+                  "users.bulk.selectRolePlaceholder",
+                  "Chọn vai trò mới"
+                )}
+              />
             </SelectTrigger>
             <SelectContent className="rounded-xl border border-black/[0.06] shadow-md">
               {assignableRoleOptions.map((opt) => (
@@ -59,14 +70,16 @@ export const UserBulkRoleDialog = ({
             onClick={() => onOpenChange(false)}
             className="rounded-full text-xs font-semibold h-9 px-4"
           >
-            Hủy
+            {t("users.bulk.cancel", "Hủy")}
           </Button>
           <Button
             onClick={onSubmit}
             disabled={!bulkRoleId || bulkSubmitting}
             className="rounded-full bg-slate-950 hover:bg-black text-white font-bold text-xs h-9 px-5 shadow-sm"
           >
-            {bulkSubmitting ? "Đang cập nhật..." : "Áp dụng"}
+            {bulkSubmitting
+              ? t("users.bulk.applying", "Đang cập nhật...")
+              : t("users.bulk.apply", "Áp dụng")}
           </Button>
         </DialogFooter>
       </DialogContent>

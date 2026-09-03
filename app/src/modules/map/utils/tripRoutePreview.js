@@ -332,5 +332,9 @@ export function shouldHideFloatingTabBar(currentKey, tripPreviewId) {
   const previewId = Array.isArray(tripPreviewId)
     ? tripPreviewId[0]
     : tripPreviewId;
-  return currentKey === "ai" || (currentKey === "map" && Boolean(previewId));
+  return (
+    currentKey === "ai" ||
+    currentKey === "profile" ||
+    (currentKey === "map" && Boolean(previewId))
+  );
 }

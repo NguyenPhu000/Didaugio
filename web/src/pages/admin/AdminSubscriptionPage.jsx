@@ -46,7 +46,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { formatVND, formatDate } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
+import { formatDate } from "@/components/business/dashboardWidgetHelpers";
 import {
   useAdminSubscriptions,
   useAdminSubscriptionStats,
@@ -131,7 +132,7 @@ export default function AdminSubscriptionPage() {
     () => [
       {
         title: t("subscription.admin.mrr"),
-        value: formatVND(stats.mrr),
+        value: formatMoney(stats.mrr),
         icon: DollarSign,
         tone: "in",
       },
@@ -149,7 +150,7 @@ export default function AdminSubscriptionPage() {
       },
       {
         title: t("subscription.admin.revenue"),
-        value: formatVND(stats.totalRevenue),
+        value: formatMoney(stats.totalRevenue),
         icon: CreditCard,
         tone: "default",
       },
@@ -315,7 +316,7 @@ export default function AdminSubscriptionPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                      {formatVND(sub.amount || sub.plan?.priceMonthly)}
+                      {formatMoney(sub.amount || sub.plan?.priceMonthly)}
                     </TableCell>
                     <TableCell>{formatDate(sub.currentPeriodEnd)}</TableCell>
                     <TableCell className="text-right">

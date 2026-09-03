@@ -3,19 +3,20 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useAuthStore } from "@/stores/authStore";
 import { ROLES } from "@/constants/constants";
+import { resolveRoleId } from "@/utils/authRouting";
 
 const isDev = import.meta.env.DEV;
 
 function TanstackDevtoolsController() {
-  const { user } = useAuthStore();
-  const [isBusinessRoute, setIsBusinessRoute] = useState(() => {
+  const { user, isAuthenticated } = useAuthStore();
+  const [isAdminRoute, setIsAdminRoute] = useState(() => {
     if (typeof window === "undefined") return false;
-    return window.location.pathname.startsWith("/business");
+    return window.location.pathname.startsWith("/admin");
   });
 
   useEffect(() => {
     const handleLocationChange = () => {
-      setIsBusinessRoute(window.location.pathname.startsWith("/business"));
+      setIsAdminRoute(window.location.pathname.startsWith("/admin"));
     };
 
     window.addEventListener("popstate", handleLocationChange);
@@ -27,14 +28,11 @@ function TanstackDevtoolsController() {
     };
   }, []);
 
-  // Ẩn icon Tanstack Devtools ở tất cả trang /business hoặc đối với tài khoản Business / Staff
-  const isBusinessUser =
-    user?.roleId === ROLES.BUSINESS ||
-    user?.roleId === ROLES.STAFF ||
-    user?.role?.name?.toLowerCase().includes("business") ||
-    user?.role?.name?.toLowerCase().includes("staff");
+  const roleId = resolveRoleId(user);
+  const isAdmin = roleId === ROLES.SUPER_ADMIN || roleId === ROLES.ADMIN;
 
-  if (!isDev || isBusinessRoute || isBusinessUser) {
+  // Chỉ hiển thị Tanstack Devtools ở môi trường Dev, đã đăng nhập và đang ở cổng /admin của Admin/Super Admin
+  if (!isDev || !isAuthenticated || !isAdmin || !isAdminRoute) {
     return null;
   }
 

@@ -10,7 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { formatVND, formatDateTime } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
+import { formatDateTime } from "@/components/business/dashboardWidgetHelpers";
 import {
   INVOICE_STATUS_STYLES,
   INVOICE_STATUS_KEYS,
@@ -110,7 +111,7 @@ export const SubscriptionInvoicesCard = memo(
                       {invoice.plan?.name || invoice.description || "-"}
                     </td>
                     <td className="py-3.5 font-bold text-slate-800 dark:text-slate-200">
-                      {formatVND(invoice.amount)}
+                      {formatMoney(invoice.amount)}
                     </td>
                     <td className="py-3.5 font-mono text-slate-400">
                       {invoice.transactionRef || invoice.id?.slice(0, 8) || "-"}

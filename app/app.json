@@ -6,7 +6,8 @@
     "version": "1.0.0",
     "runtimeVersion": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
+    "platforms": ["ios", "android"],
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
@@ -116,11 +117,6 @@
         "NSPhotoLibraryUsageDescription": "iPoint Genie cần truy cập thư viện ảnh để bạn tải lên ảnh đại diện và bài viết.",
         "NSCameraUsageDescription": "iPoint Genie cần truy cập máy ảnh để bạn chụp hình trực tiếp."
       }
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/icon.png"
     },
     "extra": {
       "router": {},

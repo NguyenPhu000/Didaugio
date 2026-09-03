@@ -25,6 +25,8 @@ import { processPaymentLedger } from "../booking/financialCore.service.js";
 import { createPaymentTransition } from "./paymentTransition.service.js";
 import { createRefundTransition } from "./refundTransition.service.js";
 
+import { isSubscriptionReference, processSubscriptionWebhook } from "../subscription/subscription.service.js";
+
 const PAYMENT_CODE_PREFIX = process.env.PAYMENT_CODE_PREFIX || "DDG";
 const PAYMENT_CODE_RANDOM_LENGTH = 7;
 
@@ -1066,6 +1068,7 @@ async function processSePayBankWebhookWithDependencies(body, headers, rawBody, d
         bodyForSignature,
         signature,
         timestamp,
+        headers,
       );
     } catch (error) {
       webhookLogId = (await webhookLogService.logWebhook(
@@ -1131,6 +1134,23 @@ async function processSePayBankWebhookWithDependencies(body, headers, rawBody, d
       }
       logger.warn("SePay bank webhook received for another account", { code });
       return sepayService.buildIpnSuccess();
+    }
+
+    // Tự động phân loại: Nếu là mã Subscription -> xử lý kích hoạt gói hội viên & hạch toán doanh thu
+    if (isSubscriptionReference(code)) {
+      const subResult = await processSubscriptionWebhook(body, headers, rawBody);
+      if (webhookLogId) {
+        if (subResult.success) {
+          await webhookLogService.markProcessed({ transactionRef: code, webhookLogId });
+        } else {
+          await webhookLogService.markError({
+            transactionRef: code,
+            webhookLogId,
+            errorMsg: subResult.message || "SUBSCRIPTION_PROCESS_FAILED",
+          });
+        }
+      }
+      return subResult.success ? sepayService.buildIpnSuccess() : sepayService.buildIpnError(subResult.message);
     }
 
     const result = await prisma.$transaction(async (tx) => {

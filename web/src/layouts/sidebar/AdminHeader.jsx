@@ -186,17 +186,6 @@ function AdminHeader() {
             {pageLabel}
           </span>
         </div>
-
-        {/* Search */}
-        <div className="relative hidden w-full max-w-[340px] xl:block ml-4">
-          <Input
-            type="text"
-            placeholder={t("header.searchPlaceholder")}
-            aria-label={t("header.searchPlaceholder")}
-            className="h-9 w-full rounded-full border-0 bg-sidebar-accent/50 pl-5 pr-10 text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/40 focus-visible:bg-sidebar-accent focus-visible:ring-1 focus-visible:ring-sidebar-ring"
-          />
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-sidebar-foreground/40" />
-        </div>
       </div>
 
       {/* Right: date, bell, profile */}

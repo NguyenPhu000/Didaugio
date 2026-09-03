@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 import FinancialSubNav from "@/components/business/FinancialSubNav";
 import AetherBentoCard from "@/components/business/AetherBentoCard";
 import { getDashboard, getMyPlaces } from "@/apis/businessApi";
@@ -211,9 +211,9 @@ const BusinessReportCenterPage = memo(() => {
     }
     if (reportType === "revenue") {
       return [
-        { title: "Doanh thu thực nhận", value: formatVND(mappedStats.revenue.net), subtitle: "Đã trừ phí dịch vụ sàn", variant: "mint" },
-        { title: "Tổng doanh thu gộp", value: formatVND(mappedStats.revenue.total), subtitle: "Giá trị đơn hàng ban đầu", variant: "blue" },
-        { title: "Phí dịch vụ nền tảng", value: formatVND(mappedStats.revenue.commission), subtitle: "Phí vận hành kết nối (5%)", variant: "peach" },
+        { title: "Doanh thu thực nhận", value: formatMoney(mappedStats.revenue.net), subtitle: "Đã trừ phí dịch vụ sàn", variant: "mint" },
+        { title: "Tổng doanh thu gộp", value: formatMoney(mappedStats.revenue.total), subtitle: "Giá trị đơn hàng ban đầu", variant: "blue" },
+        { title: "Phí dịch vụ nền tảng", value: formatMoney(mappedStats.revenue.commission), subtitle: "Phí vận hành kết nối (5%)", variant: "peach" },
         { title: "Biên thực nhận ròng", value: `${mappedStats.revenue.margin}%`, subtitle: "Tỷ suất dòng tiền về ví", variant: "gray" },
       ];
     }
@@ -228,7 +228,7 @@ const BusinessReportCenterPage = memo(() => {
     if (reportType === "customers") {
       return [
         { title: "Khách hàng phục vụ", value: mappedStats.customers.totalServed, subtitle: "Lượt khách hoàn tất trải nghiệm", variant: "blue" },
-        { title: "Chi tiêu trung bình (AOV)", value: formatVND(mappedStats.customers.avgOrderValue), subtitle: "Doanh thu trung bình / đơn", variant: "mint" },
+        { title: "Chi tiêu trung bình (AOV)", value: formatMoney(mappedStats.customers.avgOrderValue), subtitle: "Doanh thu trung bình / đơn", variant: "mint" },
         { title: "Dịch vụ được đặt nhiều nhất", value: mappedStats.customers.topServiceName, subtitle: "Gói trải nghiệm thịnh hành", variant: "peach" },
         { title: "Tổng số gói cung cấp", value: statsData?.topServices?.length || 0, subtitle: "Danh mục dịch vụ đang bán", variant: "gray" },
       ];

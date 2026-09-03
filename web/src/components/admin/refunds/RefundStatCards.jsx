@@ -2,7 +2,7 @@ import React, { memo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Clock, RefreshCw, Check, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatCurrency } from "./refundConstants";
+import { formatMoney } from "@/utils/formatters";
 
 function StatCard({ title, value, icon: Icon, tone = "default", subtitle }) {
   const toneMap = {
@@ -43,28 +43,28 @@ export const RefundStatCards = memo(({ stats }) => {
       <StatCard
         title="Chờ xử lý"
         value={stats.pendingCount}
-        subtitle={formatCurrency(stats.pendingAmount)}
+        subtitle={formatMoney(stats.pendingAmount)}
         icon={Clock}
         tone="warning"
       />
       <StatCard
         title="Đã hoàn một phần"
         value={stats.partiallyCount}
-        subtitle={formatCurrency(stats.partiallyAmount)}
+        subtitle={formatMoney(stats.partiallyAmount)}
         icon={RefreshCw}
         tone="default"
       />
       <StatCard
         title="Đã hoàn thành công"
         value={stats.fullyCount}
-        subtitle={formatCurrency(stats.fullyAmount)}
+        subtitle={formatMoney(stats.fullyAmount)}
         icon={Check}
         tone="success"
       />
       <StatCard
         title="Đã từ chối"
         value={stats.rejectedCount}
-        subtitle={formatCurrency(stats.rejectedAmount)}
+        subtitle={formatMoney(stats.rejectedAmount)}
         icon={AlertTriangle}
         tone="danger"
       />

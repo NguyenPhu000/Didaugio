@@ -47,14 +47,14 @@ export function RoleManagementModal({ open, onOpenChange, role, onUpdated, readO
           <TabsList className="grid w-full grid-cols-2 mb-4 bg-gray-100 border border-black rounded-none p-1 gap-1">
             <TabsTrigger
               value="permissions"
-              className="flex items-center gap-2 rounded-none data-[state=active]:bg-black data-[state=active]:text-white transition-all font-bold uppercase tracking-wider data-[state=active]:shadow-none"
+              className="flex items-center gap-2 rounded-none data-[state=active]:bg-black data-[state=active]:text-white transition-all font-bold uppercase tracking-wider data-[state=active]:shadow-none cursor-pointer"
             >
               <Shield className="h-4 w-4" />
               Quyền hạn
             </TabsTrigger>
             <TabsTrigger
               value="users"
-              className="flex items-center gap-2 rounded-none data-[state=active]:bg-black data-[state=active]:text-white transition-all font-bold uppercase tracking-wider data-[state=active]:shadow-none"
+              className="flex items-center gap-2 rounded-none data-[state=active]:bg-black data-[state=active]:text-white transition-all font-bold uppercase tracking-wider data-[state=active]:shadow-none cursor-pointer"
             >
               <Users className="h-4 w-4" />
               Users ({role.userCount || 0})

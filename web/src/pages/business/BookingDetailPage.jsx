@@ -138,9 +138,11 @@ const BookingDetailPage = memo(() => {
   const handleRefund = async () => {
     setActionLoading(true);
     try {
+      const idempotencyKey = `booking-refund-${id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       await bookingApi.refund(id, {
-        refundReason,
+        refundReason: (refundReason || "").trim() || "Hoàn tiền theo yêu cầu khách hàng",
         refundAmount: Number(refundAmount),
+        idempotencyKey,
         refundedAt: new Date().toISOString(),
       });
       toast.success("Đã xử lý hoàn tiền thành công");
@@ -370,6 +372,7 @@ const BookingDetailPage = memo(() => {
         setRefundReason={setRefundReason}
         refundAmount={refundAmount}
         setRefundAmount={setRefundAmount}
+        refundMaxAmount={booking.finalPrice}
         onConfirmRefund={handleRefund}
         actionLoading={actionLoading}
       />

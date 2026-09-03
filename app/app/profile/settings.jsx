@@ -261,8 +261,6 @@ export default function SettingsScreen() {
   const language = useUIStore((s) => s.language || "device");
   const setLanguage = useUIStore((s) => s.setLanguage);
   const getResolvedLanguage = useUIStore((s) => s.getResolvedLanguage);
-  const themePreference = useUIStore((s) => s.themePreference || "auto");
-  const setTheme = useUIStore((s) => s.setTheme);
   const profileSettings = useUIStore((s) => s.profileSettings);
   const updateProfileSettings = useUIStore((s) => s.updateProfileSettings);
   const clearSession = useAuthStore((s) => s.clearSession);
@@ -283,7 +281,6 @@ export default function SettingsScreen() {
   const legalUrls = getLegalUrls();
 
   // Derived states
-  const darkModeEnabled = themePreference === "dark";
   const pushEnabled = isLoggedIn && profile
     ? (profile?.notificationSettings?.push?.bookingConfirmed ?? true)
     : (profileSettings?.pushEnabled ?? true);
@@ -294,11 +291,6 @@ export default function SettingsScreen() {
   const isPushPending = updateNotifSettingsMutation.isPending;
 
   // Handlers
-  const handleToggleTheme = useCallback(
-    (enabled) => setTheme(enabled ? "dark" : "light"),
-    [setTheme]
-  );
-
   const handleTogglePush = useCallback(
     async (enabled) => {
       // Lưu ở local store trước
@@ -460,22 +452,6 @@ export default function SettingsScreen() {
         {/* ==================== PREFERENCES SECTION ==================== */}
         <SectionHeader text={t("settings.preferences")} />
         <View style={styles.settingsCard}>
-          {/* Dark mode */}
-          <SettingRow
-            icon="dark-mode"
-            iconBg="rgba(99,102,241,0.1)"
-            iconColor="#6366F1"
-            title={t("settings.darkMode")}
-            subtitle={darkModeEnabled ? t("settings.darkModeOn") : t("settings.darkModeOff")}
-            rightElement={
-              <Switch
-                value={darkModeEnabled}
-                onValueChange={handleToggleTheme}
-                trackColor={{ false: "#CBD5E1", true: ACCENT_BLUE + "88" }}
-                thumbColor="#FFFFFF"
-              />
-            }
-          />
           <View style={styles.divider} />
 
           {/* Language */}

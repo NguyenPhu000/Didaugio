@@ -21,13 +21,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import FileUploader from "@/components/business/FileUploader";
 import { SERVICE_TYPE_LABELS, EMPTY_FORM } from "./servicesConstants";
 
 export const ServiceFormModal = ({ service, open, onClose, onSave, places }) => {
   const { t } = useTranslation();
   const [form, setForm] = useState(EMPTY_FORM);
-  const [thumbnailFiles, setThumbnailFiles] = useState([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -42,26 +40,12 @@ export const ServiceFormModal = ({ service, open, onClose, onSave, places }) => 
         serviceType: service.serviceType || "tour",
         placeId: service.placeId ? String(service.placeId) : "",
         isActive: service.isActive ?? true,
-        thumbnail: service.thumbnail || "",
       });
-      if (service.thumbnail) {
-        setThumbnailFiles([
-          {
-            id: "existing-thumb",
-            preview: service.thumbnail,
-            base64: service.thumbnail,
-            name: "Ảnh đại diện hiện tại",
-          },
-        ]);
-      } else {
-        setThumbnailFiles([]);
-      }
     } else {
       setForm({
         ...EMPTY_FORM,
         placeId: places.length > 0 ? String(places[0].id) : "",
       });
-      setThumbnailFiles([]);
     }
   }, [service, open, places]);
 
@@ -92,7 +76,6 @@ export const ServiceFormModal = ({ service, open, onClose, onSave, places }) => 
         serviceType: form.serviceType,
         placeId: Number(form.placeId),
         isActive: form.isActive,
-        thumbnail: thumbnailFiles[0]?.base64 || form.thumbnail || null,
       };
 
       await onSave(payload, service?.id);
@@ -238,23 +221,7 @@ export const ServiceFormModal = ({ service, open, onClose, onSave, places }) => 
             </div>
           </div>
 
-          {/* Section 3: Upload ảnh đại diện */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-muted/40 border border-slate-100 dark:border-border/60 space-y-3">
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              3. Ảnh Đại Diện Gói Dịch Vụ
-            </h4>
-            <FileUploader
-              label="Chọn ảnh đẹp hiển thị cho du khách"
-              maxFiles={1}
-              maxFileSize={5 * 1024 * 1024}
-              acceptTypes={["image/jpeg", "image/png", "image/webp"]}
-              value={thumbnailFiles}
-              onChange={setThumbnailFiles}
-              disabled={saving}
-            />
-          </div>
-
-          {/* Section 4: Trạng thái mở bán */}
+          {/* Section 3: Trạng thái mở bán */}
           <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-muted/40 border border-slate-100 dark:border-border/60">
             <Checkbox
               id="svc-active"

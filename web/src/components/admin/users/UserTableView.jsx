@@ -47,7 +47,9 @@ export const UserTableView = memo(
                       <SelectAllIcon className="h-4 w-4" />
                     </button>
                   </th>
-                  <th className="p-4 w-[60px] hidden sm:table-cell">STT</th>
+                  <th className="p-4 w-[60px] hidden sm:table-cell">
+                    {t("users.table.serial", "STT")}
+                  </th>
                   <th className="p-4">{t("users.table.basicInfo")}</th>
                   <th className="p-4 hidden md:table-cell">
                     {t("users.table.contact")}
@@ -92,10 +94,13 @@ export const UserTableView = memo(
                     <td colSpan={8} className="p-20 text-center">
                       <UserX className="h-12 w-12 mx-auto mb-3 text-slate-300 stroke-[1.5]" />
                       <div className="font-bold text-slate-800">
-                        {t("common.noData")}
+                        {t("users.table.noDataTitle", t("common.noData"))}
                       </div>
                       <p className="text-xs text-slate-500 mt-1">
-                        Không tìm thấy tài khoản nào khớp với bộ lọc.
+                        {t(
+                          "users.table.noDataDesc",
+                          "Không tìm thấy tài khoản nào khớp với bộ lọc."
+                        )}
                       </p>
                     </td>
                   </tr>
@@ -109,15 +114,11 @@ export const UserTableView = memo(
         {pagination && pagination.totalPages > 1 && (
           <div className="flex items-center justify-between p-4 border-t border-black/[0.04] bg-[#FAF9F5] text-xs">
             <div className="text-slate-500 font-medium">
-              Hiển thị{" "}
-              <span className="font-bold text-slate-900 font-mono tabular-nums">
-                {users.length}
-              </span>{" "}
-              /{" "}
-              <span className="font-mono tabular-nums">
-                {pagination.total}
-              </span>{" "}
-              người dùng
+              {t("users.table.showing", {
+                count: users.length,
+                total: pagination.total,
+                defaultValue: `Hiển thị ${users.length} / ${pagination.total} người dùng`,
+              })}
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -126,7 +127,7 @@ export const UserTableView = memo(
                 onClick={() => handlePageChange(filters.page - 1)}
                 className="rounded-full text-xs font-semibold h-8 px-3.5 bg-white border border-black/[0.05] shadow-2xs hover:bg-[#F5F4F0] disabled:opacity-40 transition-all flex items-center gap-1 text-slate-900 cursor-pointer"
               >
-                ← Trước
+                {t("users.table.previous", "← Trước")}
               </button>
               <span className="font-bold text-slate-950 px-2 font-mono tabular-nums">
                 {filters.page} / {pagination.totalPages}
@@ -137,7 +138,7 @@ export const UserTableView = memo(
                 onClick={() => handlePageChange(filters.page + 1)}
                 className="rounded-full text-xs font-semibold h-8 px-3.5 bg-white border border-black/[0.05] shadow-2xs hover:bg-[#F5F4F0] disabled:opacity-40 transition-all flex items-center gap-1 text-slate-900 cursor-pointer"
               >
-                Sau →
+                {t("users.table.next", "Sau →")}
               </button>
             </div>
           </div>

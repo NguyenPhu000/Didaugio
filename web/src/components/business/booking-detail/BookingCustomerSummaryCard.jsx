@@ -1,6 +1,7 @@
 import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { formatDate, formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatDate } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 import { cn } from "@/lib/utils";
 
 export const InfoItem = ({
@@ -135,24 +136,24 @@ export const BookingCustomerSummaryCard = memo(
           <div className="space-y-1 pt-1">
             <InfoItem
               label={t("business.bookingDetail.originalPrice")}
-              value={formatVND(booking.originalPrice)}
+              value={formatMoney(booking.originalPrice)}
             />
             {booking.discountAmount > 0 && (
               <InfoItem
                 label={t("business.bookingDetail.discount")}
-                value={`-${formatVND(booking.discountAmount)}`}
+                value={`-${formatMoney(booking.discountAmount)}`}
                 isSuccess
               />
             )}
             <InfoItem
               label={t("business.bookingDetail.finalAmount")}
-              value={formatVND(booking.finalPrice)}
+              value={formatMoney(booking.finalPrice)}
               highlight
             />
             {booking.commissionAmount > 0 && (
               <InfoItem
                 label={t("business.bookingDetail.systemCommission")}
-                value={`-${formatVND(booking.commissionAmount)}`}
+                value={`-${formatMoney(booking.commissionAmount)}`}
                 isDanger
               />
             )}

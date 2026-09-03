@@ -398,7 +398,7 @@ export async function generateItinerary(
     console.warn(
       `[Itinerary AI] Invalid output from provider (${parseError.message}). Using candidate places fallback.`
     );
-    parsed = buildFallbackItinerary(places, totalDays, preferences);
+    parsed = generateFallbackItinerary(preferences, places);
   }
 
   // 1. Validate và co kéo thời gian khớp giờ mở cửa thực tế

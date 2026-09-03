@@ -6,7 +6,8 @@ import {
   Loader2,
   MapPin,
 } from "lucide-react";
-import { formatVND, formatDate } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
+import { formatDate } from "@/components/business/dashboardWidgetHelpers";
 import { BOOKING_STATUS } from "@/constants/constants";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -250,7 +251,7 @@ export const BookingCard = memo(({
 
           <div className="text-right">
             <span className="text-xl sm:text-2xl font-black text-slate-950 dark:text-white tracking-tight">
-              {formatVND(booking.finalPrice)}
+              {formatMoney(booking.finalPrice)}
             </span>
           </div>
         </div>

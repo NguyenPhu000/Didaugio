@@ -11,7 +11,7 @@ import {
   Tooltip as RechartsTooltip,
   CartesianGrid,
 } from "recharts";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 
 const STATUS_DONUT_COLORS = {
   pending: "#F59E0B",
@@ -38,7 +38,7 @@ const CustomAreaTooltip = ({ active, payload, label }) => {
               <span className="text-slate-400 font-medium">{item.name}:</span>
             </div>
             <span className="font-black text-white font-mono">
-              {item.dataKey === "revenue" ? formatVND(item.value) : `${item.value} đơn`}
+              {item.dataKey === "revenue" ? formatMoney(item.value) : `${item.value} đơn`}
             </span>
           </div>
         ))}

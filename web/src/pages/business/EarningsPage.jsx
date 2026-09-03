@@ -13,7 +13,7 @@ import {
   useCancelPayout,
 } from "@/hooks/queries/usePayoutQueries";
 import FinancialSubNav from "@/components/business/FinancialSubNav";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -105,7 +105,7 @@ const EarningsPage = memo(() => {
         return;
       }
       if (amount < MIN_WITHDRAWAL_AMOUNT) {
-        toast.error(`Số tiền rút tối thiểu là ${formatVND(MIN_WITHDRAWAL_AMOUNT)}`);
+        toast.error(`Số tiền rút tối thiểu là ${formatMoney(MIN_WITHDRAWAL_AMOUNT)}`);
         return;
       }
     }

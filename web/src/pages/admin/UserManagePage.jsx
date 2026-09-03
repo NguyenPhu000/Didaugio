@@ -72,7 +72,7 @@ const UserManagePage = () => {
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-black/[0.04]">
         <div className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Quản trị Tài khoản & Phân quyền
+            {t("users.eyebrow", "Quản trị Tài khoản & Phân quyền")}
           </p>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
             {t("users.title")}
@@ -89,14 +89,14 @@ const UserManagePage = () => {
             className="flex-1 sm:flex-initial justify-center h-10 px-4 rounded-full text-xs font-semibold bg-white text-slate-900 hover:bg-slate-50 shadow-sm border border-slate-200 transition-all flex items-center gap-2 shrink-0 active:scale-95 cursor-pointer"
           >
             <Download className="h-3.5 w-3.5 text-slate-700" />
-            <span>Xuất CSV</span>
+            <span>{t("users.exportCsv", "Xuất CSV")}</span>
           </button>
 
           <button
             type="button"
             onClick={fetchUsers}
             className="h-10 w-10 rounded-full bg-white text-slate-900 hover:bg-slate-50 shadow-sm border border-slate-200 transition-all flex items-center justify-center shrink-0 active:scale-95 cursor-pointer"
-            title="Đồng bộ lại"
+            title={t("users.sync", "Đồng bộ lại")}
           >
             <RefreshCw
               className={`h-4 w-4 text-slate-800 ${loading ? "animate-spin" : ""}`}

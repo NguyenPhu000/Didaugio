@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -49,6 +50,7 @@ export function VoucherFormModal({ open, onClose, voucher, places = [], onSave }
       appliesToPlaceId: "all",
       startDate: "",
       endDate: "",
+      isActive: true,
     },
   });
 
@@ -69,6 +71,7 @@ export function VoucherFormModal({ open, onClose, voucher, places = [], onSave }
           : "all",
         startDate: voucher.startDate ? voucher.startDate.slice(0, 10) : "",
         endDate: voucher.endDate ? voucher.endDate.slice(0, 10) : "",
+        isActive: voucher.isActive ?? true,
       });
     } else {
       reset({
@@ -84,11 +87,13 @@ export function VoucherFormModal({ open, onClose, voucher, places = [], onSave }
         appliesToPlaceId: "all",
         startDate: "",
         endDate: "",
+        isActive: true,
       });
     }
   }, [voucher, reset, open]);
 
   const discountType = watch("discountType");
+  const isActive = watch("isActive");
 
   const onSubmit = async (formData) => {
     setSaving(true);
@@ -107,6 +112,7 @@ export function VoucherFormModal({ open, onClose, voucher, places = [], onSave }
             : null,
         startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
         endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null,
+        isActive: formData.isActive ?? true,
       };
       await onSave(data);
       onClose();
@@ -345,6 +351,19 @@ export function VoucherFormModal({ open, onClose, voucher, places = [], onSave }
                 />
               </div>
             </div>
+          </div>
+
+          {/* Trạng thái kích hoạt */}
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-muted/40 border border-slate-100 dark:border-border/60">
+            <Checkbox
+              id="vc-active"
+              checked={isActive}
+              onCheckedChange={(checked) => setValue("isActive", !!checked)}
+              className="rounded-lg"
+            />
+            <Label htmlFor="vc-active" className="cursor-pointer text-xs font-bold text-slate-800 dark:text-slate-200">
+              Kích hoạt mở sử dụng mã khuyến mãi này ngay
+            </Label>
           </div>
         </form>
 

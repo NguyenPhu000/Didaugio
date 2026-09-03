@@ -1,23 +1,29 @@
 import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { Edit2, Trash2 } from "lucide-react";
+import { Edit2, Trash2, Compass, Sparkles, Utensils, Car, Palette, Heart, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 import { SERVICE_TYPE_LABELS } from "./servicesConstants";
 
+const SERVICE_ICONS = {
+  tour: Compass,
+  activity: Sparkles,
+  dining: Utensils,
+  rental: Car,
+  workshop: Palette,
+  wellness: Heart,
+  other: Layers,
+};
+
 export const ServiceBentoCard = memo(({ svc, onEdit, onDelete }) => {
+  const IconComponent = SERVICE_ICONS[svc.serviceType] || Layers;
+
   return (
     <div className="p-4 sm:p-5 rounded-[24px] bg-white dark:bg-card border border-slate-200/80 dark:border-border/80 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div className="flex items-start gap-3.5 min-w-0 flex-1">
-        {/* Thumbnail / Monogram */}
-        <div className="h-16 w-16 rounded-2xl border border-slate-200/60 dark:border-border/60 overflow-hidden bg-slate-100 dark:bg-muted shrink-0 flex items-center justify-center">
-          {svc.thumbnail ? (
-            <img src={svc.thumbnail} alt={svc.name} className="h-full w-full object-cover" />
-          ) : (
-            <span className="text-lg font-black text-slate-400">
-              {svc.name?.charAt(0)?.toUpperCase() || "S"}
-            </span>
-          )}
+        {/* Service Type Icon */}
+        <div className="h-14 w-14 rounded-2xl border border-slate-200/70 dark:border-border/60 bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/40 dark:to-indigo-950/30 shrink-0 flex items-center justify-center text-violet-600 dark:text-violet-400 shadow-xs">
+          <IconComponent className="h-6 w-6" />
         </div>
 
         <div className="min-w-0 space-y-1.5 flex-1">
@@ -45,11 +51,11 @@ export const ServiceBentoCard = memo(({ svc, onEdit, onDelete }) => {
             <span className="font-black text-slate-950 dark:text-white text-sm">
               {svc.discountPrice ? (
                 <>
-                  <span className="text-emerald-600 mr-1.5">{formatVND(svc.discountPrice)}</span>
-                  <span className="line-through text-xs text-slate-400">{formatVND(svc.price)}</span>
+                  <span className="text-emerald-600 mr-1.5">{formatMoney(svc.discountPrice)}</span>
+                  <span className="line-through text-xs text-slate-400">{formatMoney(svc.price)}</span>
                 </>
               ) : (
-                formatVND(svc.price)
+                formatMoney(svc.price)
               )}
             </span>
             {svc.duration && (

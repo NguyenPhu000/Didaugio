@@ -7,12 +7,10 @@ import { toast } from "sonner";
 import paymentService from "@/apis/paymentService";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw } from "lucide-react";
+import { formatMoney } from "@/utils/formatters";
 
 // Extracted Sub-Components & Constants
-import {
-  formatCurrency,
-  getPaymentStatus,
-} from "@/components/admin/refunds/refundConstants";
+import { getPaymentStatus } from "@/components/admin/refunds/refundConstants";
 import RefundStatCards from "@/components/admin/refunds/RefundStatCards";
 import RefundChartsSection from "@/components/admin/refunds/RefundChartsSection";
 import RefundTableSection from "@/components/admin/refunds/RefundTableSection";
@@ -233,16 +231,18 @@ export default function AdminRefundManagementPage() {
     }
     if (refundAmount && amount > refundableAmount) {
       toast.error(
-        `Số tiền hoàn không được vượt quá ${formatCurrency(refundableAmount)}`
+        `Số tiền hoàn không được vượt quá ${formatMoney(refundableAmount)}`
       );
       return;
     }
 
     try {
       setActionLoading(true);
+      const idempotencyKey = `refund-${selectedPayment.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const payload = {
         amount: refundAmount ? Number(refundAmount) : undefined,
-        reason: refundReason.trim() || undefined,
+        reason: refundReason.trim() || "Hoàn tiền theo yêu cầu quản trị viên",
+        idempotencyKey,
       };
       await paymentService.refund(selectedPayment.id, payload);
       toast.success("Hoàn tiền thành công");

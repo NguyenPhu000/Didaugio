@@ -3,7 +3,8 @@ import { Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { getTimeOfDay } from "@/components/booking/BookingCard";
-import { formatDate, formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatDate } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 import { cn } from "@/lib/utils";
 
 export const QuickProcessPendingCard = memo(
@@ -85,7 +86,7 @@ export const QuickProcessPendingCard = memo(
         {/* Right: Price & Quick 1-Click Actions */}
         <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-border/60">
           <span className="text-lg sm:text-xl font-black text-slate-950 dark:text-white tracking-tight">
-            {formatVND(booking.finalPrice)}
+            {formatMoney(booking.finalPrice)}
           </span>
 
           <div className="flex items-center gap-2">

@@ -35,7 +35,6 @@ import { sendLocalNotification } from "../../lib/local-notifications";
 import { useAuthStore } from "../../stores/authStore";
 import {
   CAN_THO_CENTER,
-  MAP_STYLES,
   DEFAULT_MAP_STYLE,
 } from "./config/mapConfig";
 import { TOKENS } from "../../constants/design-tokens";
@@ -143,7 +142,6 @@ export default function MapScreen() {
     activeFilterGroupMeta,
     activePlace,
     allPlaces,
-    districtGeo,
     error,
     filterHandlers,
     filterPickerOptions,
@@ -708,15 +706,14 @@ export default function MapScreen() {
     isActiveTripMode,
     isCompactPreviewCard,
     isMomentUploading,
+    layerModalVisible,
+    mapStyle,
     isPlacesLoading,
     isRouteFetching,
     isScreenDimmed,
     isTripPreviewMode,
-    layerModalVisible,
     mapFabTopOffset,
     mapStatusTopOffset,
-    mapStyle,
-    mapStyles: MAP_STYLES,
     mapText: MAP_TEXT,
     previewTravelLoading,
     routeDistanceLabel,
@@ -778,8 +775,6 @@ export default function MapScreen() {
         activeRouteSource={activeRouteSource}
         activeTrip={activeTrip}
         activeTripLocation={activeTripLocation}
-        allAreasKey={ALL_AREAS_KEY}
-        districtGeo={districtGeo}
         error={error}
         handleMapPress={handleMapPress}
         handleSelectPlace={handleSelectPlace}

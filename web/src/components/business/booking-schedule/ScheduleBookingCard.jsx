@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 import { BOOKING_STATUS } from "@/constants/constants";
 import { cn } from "@/lib/utils";
 import { STATUS_CONFIGS } from "./scheduleConstants";
@@ -26,7 +26,7 @@ export const ScheduleBookingCard = memo(({ booking, onClick }) => {
       <div className="flex items-center justify-between gap-1 text-[11px] text-slate-500 dark:text-slate-400">
         <span className="truncate">{booking.service?.name || "Dịch vụ"}</span>
         <span className="font-mono font-bold text-slate-900 dark:text-white">
-          {formatVND(booking.finalPrice)}
+          {formatMoney(booking.finalPrice)}
         </span>
       </div>
 

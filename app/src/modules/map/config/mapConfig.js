@@ -47,14 +47,15 @@ export const MAP_STYLES = {
     label: MAP_TEXT.mapConfig.mapStyles.hybrid,
     urls: [],
     mapType: "hybrid",
-    useNativeCleanStyle: false,
+    useNativeCleanStyle: true,
     showIslandMask: false,
     showDistrictBorders: false,
     showDistrictLabels: false,
   },
 };
 
-export const DEFAULT_MAP_STYLE = MAP_STYLES.ISLAND;
+// Tạm dùng nền vệ tinh native; lớp Đảo Cần Thơ không còn là mặc định.
+export const DEFAULT_MAP_STYLE = MAP_STYLES.HYBRID;
 
 export const MAP_THEME = {
   PRIMARY: COLORS.primary,

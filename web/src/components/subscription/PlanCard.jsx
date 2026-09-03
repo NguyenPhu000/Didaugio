@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 
 const PLAN_ICONS = {
   basic: Zap,
@@ -61,7 +61,7 @@ export default function PlanCard({
         <div className="text-center space-y-1">
           <div className="flex items-baseline justify-center gap-1">
             <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground font-mono">
-              {formatVND(price)}
+              {formatMoney(price)}
             </span>
           </div>
           <span className="text-xs font-medium text-muted-foreground block">

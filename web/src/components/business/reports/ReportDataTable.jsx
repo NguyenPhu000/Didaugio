@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 
 export const ReportDataTable = memo(
   ({
@@ -38,12 +38,12 @@ export const ReportDataTable = memo(
                     #{i + 1} {service.name}
                   </span>
                   <p className="text-xs text-slate-500 font-medium">
-                    Tổng lượt đặt: <strong className="text-slate-800 dark:text-slate-200">{service.bookingCount} đơn</strong> • Đóng góp doanh thu: <strong className="text-emerald-600">{formatVND(service.revenue)}</strong>
+                    Tổng lượt đặt: <strong className="text-slate-800 dark:text-slate-200">{service.bookingCount} đơn</strong> • Đóng góp doanh thu: <strong className="text-emerald-600">{formatMoney(service.revenue)}</strong>
                   </p>
                 </div>
 
                 <span className="text-base font-black text-slate-950 dark:text-white">
-                  {formatVND(service.revenue)}
+                  {formatMoney(service.revenue)}
                 </span>
               </div>
             ))}
@@ -88,7 +88,7 @@ export const ReportDataTable = memo(
                     Lượt đặt: <strong className="text-slate-800 dark:text-slate-200">{row.bookings} đơn</strong>
                     {reportType === "revenue" && (
                       <>
-                        {" "}• Phí sàn 5%: <strong className="text-amber-600">{formatVND(row.commission)}</strong>
+                        {" "}• Phí sàn 5%: <strong className="text-amber-600">{formatMoney(row.commission)}</strong>
                       </>
                     )}
                   </p>
@@ -97,7 +97,7 @@ export const ReportDataTable = memo(
                 <div className="flex items-center justify-between sm:justify-end gap-3">
                   <div className="text-right">
                     <span className="text-lg font-black text-slate-950 dark:text-white tracking-tight">
-                      {formatVND(reportType === "revenue" ? row.netRevenue : row.revenue)}
+                      {formatMoney(reportType === "revenue" ? row.netRevenue : row.revenue)}
                     </span>
                     {reportType === "revenue" && (
                       <p className="text-[10px] text-slate-400 font-bold">Thực nhận về ví</p>

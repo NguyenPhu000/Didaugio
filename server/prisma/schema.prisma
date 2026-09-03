@@ -254,7 +254,7 @@ model SystemConfig {
 model ApiKeyManagement {
   id           Int       @id @default(autoincrement())
   serviceName  String    @unique @map("service_name")
-  apiKey       String    @map("api_key")
+  apiKey       String    @map("api_key") @db.Text
   monthlyLimit Int       @default(1000) @map("monthly_limit")
   currentUsage Int       @default(0) @map("current_usage")
   resetDay     Int       @default(1) @map("reset_day")

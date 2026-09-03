@@ -1,9 +1,7 @@
 import { Clock, ArrowUpRight, CheckCircle2, XCircle } from "lucide-react";
+import { formatMoney } from "@/utils/formatters";
 
-export const formatVND = (value) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-    value || 0
-  );
+export { formatMoney };
 
 export const STATUS_TABS = [
   { value: "pending", label: "Chờ duyệt", icon: Clock },

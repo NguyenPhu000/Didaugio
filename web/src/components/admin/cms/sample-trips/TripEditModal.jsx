@@ -373,7 +373,7 @@ function TripEditModalContent({ open, onClose, item, onSave, loading }) {
             <Card className="border-violet-100">
               <CardHeader className="border-b p-4">
                 <CardTitle className="text-sm font-semibold text-violet-800">
-                  Thong tin chuyen di mau
+                  {t("admin.cms.sampleTripInfo", "Thông tin chuyến đi mẫu")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 p-4">
@@ -470,7 +470,7 @@ function TripEditModalContent({ open, onClose, item, onSave, loading }) {
                 <CardHeader className="border-b p-4">
                   <CardTitle className="flex items-center gap-2 text-sm font-semibold text-violet-800">
                     <Plus className="h-4 w-4" />
-                    Them diem vao lich trinh
+                    {t("admin.cms.addPlaceToItinerary", "Thêm điểm vào lịch trình")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 p-4">
@@ -489,7 +489,7 @@ function TripEditModalContent({ open, onClose, item, onSave, loading }) {
                   </Button>
                   {!isEdit ? (
                     <p className="text-[11px] text-muted-foreground">
-                      Diem moi se duoc tao vao ngay dang chon: ngay {activeDay}.
+                      Điểm mới sẽ được thêm vào ngày đang chọn: Ngày {activeDay}.
                     </p>
                   ) : null}
                 </CardContent>

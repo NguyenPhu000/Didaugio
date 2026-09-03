@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { BOOKING_STATUS } from "@/constants/constants";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 
 const STATUS_CONFIG = {
   [BOOKING_STATUS.PENDING]: {
@@ -112,7 +112,7 @@ export const DashboardRecentBookings = memo(({ recentBookings, bookingsLoading }
                         {b.useDate ? b.useDate.slice(0, 10) : "Chưa xác định"}
                       </td>
                       <td className="py-3.5 font-bold text-slate-900 dark:text-white font-mono">
-                        {formatVND(b.finalPrice ?? b.totalPrice ?? 0)}
+                        {formatMoney(b.finalPrice ?? b.totalPrice ?? 0)}
                       </td>
                       <td className="py-3.5 text-right">
                         <span

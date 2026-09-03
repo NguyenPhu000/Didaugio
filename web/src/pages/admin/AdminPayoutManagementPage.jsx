@@ -128,12 +128,13 @@ export default function AdminPayoutManagementPage() {
   const lineChartData = useMemo(() => {
     const groups = {};
     payouts.forEach((p) => {
-      const dateStr = new Date(
-        p.requestedAt || p.createdAt || Date.now()
-      ).toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-      });
+      const rawDate = p.requestedAt || p.createdAt;
+      const dateStr = rawDate
+        ? new Date(rawDate).toLocaleDateString("vi-VN", {
+            day: "2-digit",
+            month: "2-digit",
+          })
+        : "N/A";
       groups[dateStr] = (groups[dateStr] || 0) + Number(p.amount || 0);
     });
 

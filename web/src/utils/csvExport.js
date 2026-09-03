@@ -5,6 +5,7 @@
  */
 
 import i18n from "@/i18n";
+import { toast } from "sonner";
 
 const BOM = "﻿";
 
@@ -29,8 +30,8 @@ function escapeCsvValue(value) {
  */
 export function exportToCsv({ columns, data, filename }) {
   if (!data || data.length === 0) {
-    alert(i18n.t("csvExport.noData"));
-    return;
+    toast.info(i18n.t("csvExport.noData"));
+    return false;
   }
 
   // Header row
@@ -60,6 +61,7 @@ export function exportToCsv({ columns, data, filename }) {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+  return true;
 }
 
 /**

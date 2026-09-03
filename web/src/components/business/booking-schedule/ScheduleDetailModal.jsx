@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, getTimeOfDay } from "@/components/booking/BookingCard";
-import { formatDate, formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatDate } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 import { cn } from "@/lib/utils";
 
 export const ScheduleDetailModal = ({ booking, open, onClose }) => {
@@ -85,7 +86,7 @@ export const ScheduleDetailModal = ({ booking, open, onClose }) => {
               Tổng tiền thanh toán
             </span>
             <span className="font-black text-lg text-slate-950 dark:text-white">
-              {formatVND(booking.finalPrice)}
+              {formatMoney(booking.finalPrice)}
             </span>
           </div>
         </div>

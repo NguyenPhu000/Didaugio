@@ -13,7 +13,8 @@ import {
 } from "@/hooks/queries/useRevenueQueries";
 import FinancialSubNav from "@/components/business/FinancialSubNav";
 import AetherBentoCard from "@/components/business/AetherBentoCard";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
+import { formatDateTime } from "@/components/business/dashboardWidgetHelpers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -70,7 +71,7 @@ const CustomChartTooltip = ({ active, payload, label }) => {
         {payload.map((item, idx) => (
           <div key={idx} className="flex items-center justify-between gap-3">
             <span className="text-slate-400">{item.name}:</span>
-            <span className="font-bold text-white">{formatVND(item.value)}</span>
+            <span className="font-bold text-white">{formatMoney(item.value)}</span>
           </div>
         ))}
       </div>
@@ -207,7 +208,7 @@ const RevenuePage = memo(() => {
         <AetherBentoCard
           title="Tổng Doanh Thu Gộp (GMV)"
           subtitle={t("business.revenue.gmvDescription")}
-          value={overviewLoading ? "..." : formatVND(overview.gmv)}
+          value={overviewLoading ? "..." : formatMoney(overview.gmv)}
           trendText={overview.gmvChange !== undefined && overview.gmvChange !== null ? (overview.gmvChange >= 0 ? `+${overview.gmvChange}% so kỳ trước` : `${overview.gmvChange}% so kỳ trước`) : null}
           variant="peach"
         />
@@ -215,7 +216,7 @@ const RevenuePage = memo(() => {
         <AetherBentoCard
           title={t("business.revenue.netRevenue")}
           subtitle={t("business.revenue.netRevenueDescription")}
-          value={overviewLoading ? "..." : formatVND(overview.netRevenue)}
+          value={overviewLoading ? "..." : formatMoney(overview.netRevenue)}
           trendText={overview.netRevenueChange !== undefined && overview.netRevenueChange !== null ? (overview.netRevenueChange >= 0 ? `+${overview.netRevenueChange}% so kỳ trước` : `${overview.netRevenueChange}% so kỳ trước`) : null}
           variant="blue"
         />
@@ -223,7 +224,7 @@ const RevenuePage = memo(() => {
         <AetherBentoCard
           title={t("business.revenue.platformFees")}
           subtitle={t("business.revenue.platformFeesDescription")}
-          value={overviewLoading ? "..." : formatVND(overview.platformFees)}
+          value={overviewLoading ? "..." : formatMoney(overview.platformFees)}
           trendText={overview.platformFeesChange !== undefined && overview.platformFeesChange !== null ? (overview.platformFeesChange >= 0 ? `+${overview.platformFeesChange}%` : `${overview.platformFeesChange}%`) : null}
           variant="gray"
         />
@@ -231,7 +232,7 @@ const RevenuePage = memo(() => {
         <AetherBentoCard
           title={t("business.revenue.refund")}
           subtitle={t("business.revenue.refundDescription")}
-          value={overviewLoading ? "..." : formatVND(overview.refundAmount)}
+          value={overviewLoading ? "..." : formatMoney(overview.refundAmount)}
           trendText={overview.refundAmountChange !== undefined && overview.refundAmountChange !== null ? (overview.refundAmountChange >= 0 ? `+${overview.refundAmountChange}%` : `${overview.refundAmountChange}%`) : null}
           variant="rose"
         />
@@ -245,7 +246,7 @@ const RevenuePage = memo(() => {
               {t("business.revenue.chartTitle")}
             </h2>
             <p className="text-xs text-slate-500 dark:text-muted-foreground mt-0.5">
-              Diễn biến chi tiết doanh thu gộp và thực nhận theo chu kỳ đã chọn
+              {t("business.revenue.chartSubtitle")}
             </p>
           </div>
 
@@ -333,7 +334,7 @@ const RevenuePage = memo(() => {
               {t("business.revenue.byPlaceTitle")}
             </h3>
             <p className="text-xs text-slate-500 dark:text-muted-foreground mt-0.5">
-              Phân bổ doanh thu theo từng địa điểm kinh doanh
+              {t("business.revenue.byPlaceSubtitle")}
             </p>
           </div>
 
@@ -358,12 +359,12 @@ const RevenuePage = memo(() => {
                       {item.placeName}
                     </span>
                     <span className="font-bold text-xs text-emerald-600 dark:text-emerald-400">
-                      {formatVND(item.totalRevenue)}
+                      {formatMoney(item.totalRevenue)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-slate-500">
                     <span>{item.bookingCount} lượt đặt</span>
-                    <span>Đơn TB: {formatVND(item.avgOrderValue)}</span>
+                    <span>Đơn TB: {formatMoney(item.avgOrderValue)}</span>
                   </div>
                 </div>
               ))}
@@ -378,14 +379,14 @@ const RevenuePage = memo(() => {
               {t("business.revenue.txTitle")}
             </h3>
             <p className="text-xs text-slate-500 dark:text-muted-foreground mt-0.5">
-              Nhật ký giao dịch tài chính gần nhất
+              {t("business.revenue.txSubtitle")}
             </p>
           </div>
 
           <div className="overflow-x-auto">
             {txLoading ? (
               <div className="py-8 text-center text-xs text-muted-foreground">
-                Đang tải dữ liệu giao dịch...
+                {t("common.loading")}
               </div>
             ) : transactions.length === 0 ? (
               <div className="py-8 text-center text-xs text-muted-foreground">
@@ -395,7 +396,7 @@ const RevenuePage = memo(() => {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-slate-400 dark:text-muted-foreground text-left border-b border-slate-100 dark:border-border/60">
-                    <th className="pb-3 font-semibold">Mã GD</th>
+                    <th className="pb-3 font-semibold">{t("business.revenue.txColId")}</th>
                     <th className="pb-3 font-semibold">{t("business.revenue.txColPlace")}</th>
                     <th className="pb-3 font-semibold">{t("business.revenue.txColDate")}</th>
                     <th className="pb-3 font-semibold">{t("business.revenue.txColAmount")}</th>
@@ -409,17 +410,18 @@ const RevenuePage = memo(() => {
                       dotClass: "bg-slate-400",
                       textClass: "text-slate-500",
                     };
+                    const dateValue = tx.createdAt || tx.completedAt || tx.date;
                     return (
                       <tr key={tx.id} className="hover:bg-slate-50/80 dark:hover:bg-muted/40 transition-colors">
                         <td className="py-3.5 font-mono text-slate-500">#{tx.id}</td>
                         <td className="py-3.5 font-bold text-slate-900 dark:text-foreground">
                           {tx.placeName || "Dịch vụ"}
                         </td>
-                        <td className="py-3.5 text-slate-500">
-                          {tx.date ? tx.date.slice(0, 10) : "N/A"}
+                        <td className="py-3.5 text-slate-500 font-mono">
+                          {dateValue ? formatDateTime(dateValue) : "—"}
                         </td>
                         <td className="py-3.5 font-bold text-slate-800 dark:text-slate-200">
-                          {formatVND(tx.amount)}
+                          {formatMoney(tx.amount)}
                         </td>
                         <td className="py-3.5 text-right">
                           <span className={cn("inline-flex items-center gap-1.5 font-bold", status.textClass)}>

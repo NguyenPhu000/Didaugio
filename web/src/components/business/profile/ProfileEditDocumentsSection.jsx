@@ -42,7 +42,7 @@ export const ProfileEditDocumentsSection = ({
               hint={t("business.profile.licenseHint")}
               fallbackPreview={
                 existingDocumentPreviews.businessLicense ||
-                DOCUMENT_SAMPLE_IMAGES.portrait
+                DOCUMENT_SAMPLE_IMAGES.businessLicense
               }
               previewAlt={t("business.profile.altBusinessLicense")}
               previewClassName="h-[300px] sm:h-[360px]"

@@ -127,7 +127,7 @@ const GpsSignalLostBanner = memo(function GpsSignalLostBanner({
             <Text
               style={{
                 color: "#94A3B8",
-                fontSize: 11,
+                fontSize: 12,
                 fontFamily: TOKENS.font.medium,
                 marginTop: 1,
               }}
@@ -245,7 +245,7 @@ const JourneyPausedBanner = memo(function JourneyPausedBanner({
             <Text
               style={{
                 color: "rgba(255,255,255,0.6)",
-                fontSize: 11,
+                fontSize: 12,
                 fontFamily: TOKENS.font.medium,
                 marginTop: 1,
               }}
@@ -377,7 +377,7 @@ const ActiveDestinationHUD = memo(function ActiveDestinationHUD({
               <Text
                 style={{
                   color: "#FFFFFF",
-                  fontSize: 10.5,
+                  fontSize: 12,
                   fontFamily: TOKENS.font.bold,
                 }}
               >
@@ -406,7 +406,7 @@ const ActiveDestinationHUD = memo(function ActiveDestinationHUD({
                 <Text
                   style={{
                     color: "#F5C451",
-                    fontSize: 11,
+                    fontSize: 12,
                     fontFamily: TOKENS.font.bold,
                   }}
                 >
@@ -418,7 +418,7 @@ const ActiveDestinationHUD = memo(function ActiveDestinationHUD({
                 <Text
                   style={{
                     color: "rgba(255,255,255,0.7)",
-                    fontSize: 11,
+                    fontSize: 12,
                     fontFamily: TOKENS.font.medium,
                   }}
                 >

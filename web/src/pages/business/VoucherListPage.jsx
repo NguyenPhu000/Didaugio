@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -38,7 +39,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { MetricCard } from "@/components/business/ui/MetricCard";
 import { EmptyState } from "@/components/business/ui/EmptyState";
 import { BUSINESS_TOKENS } from "@/components/business/tokens";
-import { formatVND, formatDate } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
+import { formatDate } from "@/components/business/dashboardWidgetHelpers";
 import { cn } from "@/lib/utils";
 import { getMyPlaces } from "@/apis/businessApi";
 import {
@@ -55,13 +57,13 @@ const getStatusBadgeMap = (t) => ({
   active: { label: t("business.vouchers.statusBadge.active"), bg: "bg-emerald-50 dark:bg-emerald-950/50", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500" },
   draft: { label: t("business.vouchers.statusBadge.draft"), bg: "bg-zinc-100 dark:bg-zinc-800", text: "text-zinc-600 dark:text-zinc-400", dot: "bg-zinc-400" },
   scheduled: { label: t("business.vouchers.statusBadge.scheduled"), bg: "bg-blue-50 dark:bg-blue-950/50", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-500" },
-  expired: { label: t("business.vouchers.statusBadge.expired"), bg: "bg-rose-50 dark:bg-rose-950/50", text: "text-rose-700 dark:text-rose-400", dot: "bg-rose-500" },
+  expired: { label: t("business.vouchers.statusBadge.expired"), bg: "bg-zinc-200/80 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400", dot: "bg-zinc-400" },
 });
 
 const resolveVoucherStatus = (voucher) => {
   const now = new Date();
-  if (!voucher.isActive) return "draft";
   if (voucher.endDate && new Date(voucher.endDate) < now) return "expired";
+  if (!voucher.isActive) return "draft";
   if (voucher.startDate && new Date(voucher.startDate) > now) return "scheduled";
   return "active";
 };
@@ -168,7 +170,7 @@ export default function VoucherListPage() {
         />
         <MetricCard
           title={t("business.vouchers.metrics.totalDiscounted")}
-          value={formatVND(stats.totalDiscountAmount ?? 0)}
+          value={formatMoney(stats.totalDiscountAmount ?? 0)}
           icon={TrendingUp}
           color="purple"
         />
@@ -219,13 +221,26 @@ export default function VoucherListPage() {
             const badgeMap = getStatusBadgeMap(t);
             const badge = badgeMap[statusKey] || badgeMap.active;
 
+            const isExpired = statusKey === "expired";
+
             return (
-              <Card key={vc.id} className="bg-white border-zinc-200 dark:bg-zinc-950 dark:border-zinc-800">
+              <Card
+                key={vc.id}
+                className={cn(
+                  "transition-all duration-200 border",
+                  isExpired
+                    ? "bg-zinc-100/70 border-zinc-200/70 dark:bg-zinc-900/40 dark:border-zinc-800/60 opacity-60 grayscale-[50%]"
+                    : "bg-white border-zinc-200 dark:bg-zinc-950 dark:border-zinc-800 hover:shadow-xs"
+                )}
+              >
                 <CardContent className="p-5 space-y-4">
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-base text-zinc-950 dark:text-zinc-100">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={cn(
+                          "font-mono font-bold text-base",
+                          isExpired ? "text-zinc-500 dark:text-zinc-400 line-through" : "text-zinc-950 dark:text-zinc-100"
+                        )}>
                           {vc.code}
                         </span>
                         <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium", badge.bg, badge.text)}>
@@ -233,45 +248,76 @@ export default function VoucherListPage() {
                           {badge.label}
                         </span>
                       </div>
-                      <p className="text-xs text-zinc-500 mt-1 dark:text-zinc-400">
+                      <p className="text-xs text-zinc-500 mt-1 dark:text-zinc-400 line-clamp-1">
                         {vc.name || vc.description || "—"}
                       </p>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => { setEditingVoucher(vc); setModalOpen(true); }}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          {t("common.edit")}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDuplicate(vc.id)}>
-                          <Copy className="h-4 w-4 mr-2" />
-                          {t("business.vouchers.actions.duplicate")}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleToggleActive(vc)}>
-                          <Power className="h-4 w-4 mr-2" />
-                          {vc.isActive ? t("business.vouchers.actions.deactivate") : t("business.vouchers.actions.activate")}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleDelete(vc.id)} className="text-red-600 dark:text-red-400">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          {t("common.delete")}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="flex items-center gap-1.5"
+                        title={
+                          isExpired
+                            ? "Mã voucher đã hết hạn, không thể sử dụng hay kích hoạt"
+                            : vc.isActive
+                            ? "Đang bật (Nhấn để tắt)"
+                            : "Đang tắt (Nhấn để bật)"
+                        }
+                      >
+                        <Switch
+                          disabled={isExpired}
+                          checked={isExpired ? false : !!vc.isActive}
+                          onCheckedChange={() => handleToggleActive(vc)}
+                          className="data-[state=checked]:bg-emerald-600 scale-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => { setEditingVoucher(vc); setModalOpen(true); }}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            {t("common.edit")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDuplicate(vc.id)}>
+                            <Copy className="h-4 w-4 mr-2" />
+                            {t("business.vouchers.actions.duplicate")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={isExpired}
+                            onClick={() => handleToggleActive(vc)}
+                          >
+                            <Power className="h-4 w-4 mr-2" />
+                            {vc.isActive ? t("business.vouchers.actions.deactivate") : t("business.vouchers.actions.activate")}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleDelete(vc.id)} className="text-red-600 dark:text-red-400">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            {t("common.delete")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
 
-                  <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                    {vc.discountType === "percentage" ? `${vc.discountValue}%` : formatVND(vc.discountValue)}
+                  <div className={cn(
+                    "text-2xl font-bold",
+                    isExpired ? "text-zinc-400 dark:text-zinc-500 line-through text-xl font-medium" : "text-emerald-600 dark:text-emerald-400"
+                  )}>
+                    {vc.discountType === "percentage" ? `${vc.discountValue}%` : formatMoney(vc.discountValue)}
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-zinc-500 pt-2 border-t border-zinc-100 dark:border-zinc-900">
                     <span>{t("business.vouchers.used")}: {vc.usedCount ?? 0} / {vc.maxUsage ?? "∞"}</span>
-                    <span>{vc.endDate ? formatDate(vc.endDate) : t("business.vouchers.noExpiry")}</span>
+                    {isExpired ? (
+                      <span className="text-rose-600 dark:text-rose-400 font-semibold">
+                        Đã hết hạn ({formatDate(vc.endDate)})
+                      </span>
+                    ) : (
+                      <span>{vc.endDate ? formatDate(vc.endDate) : t("business.vouchers.noExpiry")}</span>
+                    )}
                   </div>
                 </CardContent>
               </Card>

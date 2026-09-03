@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 import {
   useCurrentSubscription,
   useDowngradeSubscription,
@@ -163,7 +163,7 @@ export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPl
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">{t("subscription.changePlan.remainingCredit")}</span>
                       <span className="text-emerald-600">
-                        -{formatVND(proration.unusedCredit)}
+                        -{formatMoney(proration.unusedCredit)}
                       </span>
                     </div>
                   )}
@@ -175,7 +175,7 @@ export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPl
                       {isDowngrade ? t("subscription.changePlan.payNow") : t("subscription.changePlan.totalPayment")}
                     </span>
                     <span className="text-lg font-bold">
-                      {formatVND(
+                      {formatMoney(
                         proration.chargeAmount
                         ?? (billingCycle === "yearly" ? targetPlan?.priceYearly : targetPlan?.priceMonthly)
                         ?? 0,
@@ -234,7 +234,7 @@ export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPl
 
               <div className="text-center">
                 <p className="text-sm text-muted-foreground">{t("subscription.changePlan.amount")}</p>
-                <p className="text-2xl font-bold">{formatVND(invoice?.amount || 0)}</p>
+                <p className="text-2xl font-bold">{formatMoney(invoice?.amount || 0)}</p>
               </div>
 
               {invoice?.transactionRef && (

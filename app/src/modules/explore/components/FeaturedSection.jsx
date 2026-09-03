@@ -1,5 +1,11 @@
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, View, useWindowDimensions } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { FeaturedCard, getFeaturedCardWidth } from "./FeaturedCard";
@@ -14,7 +20,74 @@ function Separator() {
   return <View style={{ width: CARD_SEP }} />;
 }
 
-function FeaturedSectionInner({ places, onPressPlace, onSavePlace, savedPlaceIds }) {
+const SegmentBar = memo(function SegmentBar({ active }) {
+  const width = useSharedValue(active ? 26 : 7);
+  const opacity = useSharedValue(active ? 1 : 0.5);
+
+  useEffect(() => {
+    width.value = withTiming(active ? 26 : 7, {
+      duration: 320,
+      easing: Easing.bezier(0.22, 1, 0.36, 1),
+    });
+    opacity.value = withTiming(active ? 1 : 0.5, { duration: 220 });
+  }, [active, width, opacity]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    width: width.value,
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          height: 3,
+          borderRadius: 999,
+          backgroundColor: INK,
+        },
+        animatedStyle,
+      ]}
+    />
+  );
+});
+
+function SegmentedIndicator({ count, activeIndex }) {
+  const segments = useMemo(() => {
+    if (count <= 1) return [];
+    const visible = Math.min(count, 5);
+    return Array.from({ length: visible }, (_, index) => ({
+      key: `seg-${index}`,
+      active: index === Math.min(activeIndex, visible - 1),
+    }));
+  }, [count, activeIndex]);
+
+  if (segments.length <= 1) return null;
+
+  return (
+    <View
+      style={{
+        paddingHorizontal: TAB_SCREEN_PADDING,
+        marginTop: 16,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+      }}
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: segments.length, now: activeIndex + 1 }}
+    >
+      {segments.map((segment) => (
+        <SegmentBar key={segment.key} active={segment.active} />
+      ))}
+    </View>
+  );
+}
+
+function FeaturedSectionInner({
+  places,
+  onPressPlace,
+  onSavePlace,
+  savedPlaceIds,
+}) {
   const { t } = useTranslation();
   const { width: SCREEN_W } = useWindowDimensions();
   const CARD_W = getFeaturedCardWidth(SCREEN_W);
@@ -22,14 +95,12 @@ function FeaturedSectionInner({ places, onPressPlace, onSavePlace, savedPlaceIds
 
   const [activeIndex, setActiveIndex] = useState(0);
   const count = places?.length || 0;
-  const dotCount = useMemo(() => Math.min(count, 5), [count]);
 
   const getItemLayout = useCallback(
     (_, index) => ({ length: ITEM_LENGTH, offset: ITEM_LENGTH * index, index }),
     [ITEM_LENGTH],
   );
 
-  /** Snap tuyệt đối, bù phần padding đầu của contentContainer. */
   const snapToOffsets = useMemo(
     () => Array.from({ length: count }, (_, index) => index * ITEM_LENGTH),
     [count, ITEM_LENGTH],
@@ -58,9 +129,46 @@ function FeaturedSectionInner({ places, onPressPlace, onSavePlace, savedPlaceIds
   if (!count) return null;
 
   return (
-    <View style={{ marginTop: 26 }}>
-      <View style={{ paddingHorizontal: TAB_SCREEN_PADDING, marginBottom: 14 }}>
-        <SectionHeading title={t("explore.sections.featured")} />
+    <View style={{ marginTop: 30 }}>
+      <View style={{ paddingHorizontal: TAB_SCREEN_PADDING, marginBottom: 16 }}>
+        <SectionHeading
+          title={t("explore.sections.featured")}
+          right={
+            <View
+              style={{
+                height: 32,
+                paddingHorizontal: 12,
+                borderRadius: 16,
+                backgroundColor: "rgba(11,11,12,0.04)",
+                borderWidth: 1,
+                borderColor: "rgba(11,11,12,0.08)",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <View
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: "#16A34A",
+                }}
+              />
+              <Animated.Text
+                style={{
+                  color: INK,
+                  fontSize: 12,
+                  fontFamily: "System",
+                  fontWeight: "600",
+                  letterSpacing: -0.1,
+                }}
+              >
+                {`${Math.min(activeIndex + 1, count)} / ${count}`}
+              </Animated.Text>
+            </View>
+          }
+        />
       </View>
 
       <FlatList
@@ -81,32 +189,22 @@ function FeaturedSectionInner({ places, onPressPlace, onSavePlace, savedPlaceIds
         onMomentumScrollEnd={handleMomentumEnd}
       />
 
-      {dotCount > 1 ? (
+      <SegmentedIndicator count={count} activeIndex={activeIndex} />
+
+      <View
+        style={{
+          paddingHorizontal: TAB_SCREEN_PADDING,
+          marginTop: 10,
+        }}
+      >
         <View
           style={{
-            paddingHorizontal: TAB_SCREEN_PADDING,
-            marginTop: 14,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 5,
+            height: 1,
+            backgroundColor: "rgba(11,11,12,0.05)",
+            borderRadius: 999,
           }}
-        >
-          {Array.from({ length: dotCount }).map((_, index) => {
-            const active = index === Math.min(activeIndex, dotCount - 1);
-            return (
-              <View
-                key={`featured-dot-${index}`}
-                style={{
-                  height: 3,
-                  width: active ? 26 : 7,
-                  borderRadius: 999,
-                  backgroundColor: active ? INK : "rgba(11,11,12,0.16)",
-                }}
-              />
-            );
-          })}
-        </View>
-      ) : null}
+        />
+      </View>
     </View>
   );
 }

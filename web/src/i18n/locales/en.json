@@ -381,60 +381,112 @@
       "checkInbox": "Please check your inbox and click the verification link.",
       "autoRedirect": "Redirecting to login page in 5 seconds...",
       "emailFromAccount": "Email from your logged-in account"
+    },
+    "resetPassword": {
+      "pageTitle": "Reset Password — iPoint Genie",
+      "eyebrow": "RESET PASSWORD",
+      "title": "RESET PASSWORD",
+      "subtitle": "Create a new password for your account",
+      "newPassword": "NEW PASSWORD",
+      "newPasswordPlaceholder": "Enter new password (min. 8 characters)",
+      "confirmPassword": "CONFIRM PASSWORD",
+      "confirmPasswordPlaceholder": "Re-enter new password",
+      "submit": "RESET PASSWORD",
+      "submitting": "UPDATING...",
+      "backToLogin": "BACK TO LOGIN",
+      "loginNow": "LOG IN NOW",
+      "resendRequest": "RESEND REQUEST",
+      "success": "Password reset successfully!",
+      "successMessage": "Your new password has been saved. You can now log in.",
+      "failed": "Password reset failed. Please try again.",
+      "invalidToken": "INVALID OR EXPIRED LINK",
+      "invalidTokenMessage": "Your password reset link is invalid or has expired. Please request a new one.",
+      "tokenExpired": "Password reset link has expired or is invalid.",
+      "strengthLabel": "Password strength:",
+      "strengthWeak": "Weak",
+      "strengthFair": "Fair",
+      "strengthGood": "Good",
+      "strengthStrong": "Strong",
+      "strengthVeryStrong": "Very Strong",
+      "hidePassword": "Hide password",
+      "showPassword": "Show password",
+      "shellTitle": "Create a new password for your account",
+      "shellSubtitle": "Choose a strong password to keep your travel workspace secure.",
+      "shellSuccessTitle": "All done! Your account is ready",
+      "shellSuccessSubtitle": "Your new password has been saved. You can now log in.",
+      "shellErrorTitle": "Your account security is our priority",
+      "shellErrorSubtitle": "Password reset links are only valid for a limited time for your protection."
     }
   },
   "users": {
-    "title": "USER MANAGEMENT",
-    "subtitle": "ACCOUNT & PERMISSION MANAGEMENT",
-    "addUser": "ADD USER",
-    "searchPlaceholder": "SEARCH BY NAME, EMAIL, PHONE...",
+    "eyebrow": "Account Management & RBAC",
+    "title": "User Management",
+    "subtitle": "View, add, edit, and assign roles to user accounts in the system",
+    "addUser": "Add User",
+    "exportCsv": "Export CSV",
+    "sync": "Sync",
+    "searchPlaceholder": "Search by name, email, username...",
+    "filters": {
+      "allRoles": "All Roles",
+      "allStatuses": "All Statuses",
+      "active": "Active",
+      "locked": "Locked"
+    },
     "table": {
       "id": "ID",
-      "basicInfo": "BASIC INFO",
-      "contact": "CONTACT",
-      "role": "ROLE",
-      "status": "STATUS",
-      "actions": "ACTIONS"
-    },
-    "status": {
-      "active": "ACTIVE",
-      "locked": "LOCKED"
+      "serial": "#",
+      "basicInfo": "Basic Info",
+      "contact": "Contact",
+      "role": "Role",
+      "connection": "Connection",
+      "account": "Account",
+      "status": "Status",
+      "actions": "Actions",
+      "online": "Online",
+      "offline": "Offline",
+      "detail": "Details",
+      "noDataTitle": "No data available",
+      "noDataDesc": "No user accounts match the selected filters.",
+      "showing": "Showing {{count}} / {{total}} users",
+      "previous": "← Previous",
+      "next": "Next →"
     },
     "actions": {
-      "detail": "DETAILS",
-      "edit": "EDIT",
-      "changePassword": "CHANGE PASSWORD",
-      "delete": "DELETE USER"
+      "detail": "Details",
+      "edit": "Edit",
+      "changePassword": "Change Password",
+      "delete": "Delete",
+      "lock": "Lock Account",
+      "unlock": "Unlock Account",
+      "lockAccount": "Lock Account",
+      "unlockAccount": "Unlock Account"
     },
-    "deleteDialog": {
-      "title": "WARNING: DELETE PROCESS",
-      "description": "This action is permanent and cannot be undone",
-      "message": "Delete user \"{{username}}\"? All associated data will be permanently removed."
+    "status": {
+      "active": "Active",
+      "locked": "Locked",
+      "inactive": "Inactive"
     },
     "pagination": {
-      "showing": "SHOWING {{count}} / {{total}} RESULTS",
-      "previous": "PREVIOUS",
-      "next": "NEXT"
-    },
-    "stats": {
-      "total": "TOTAL USERS",
-      "active": "ACTIVE",
-      "locked": "LOCKED",
-      "perPage": "RECORDS / PAGE"
+      "showing": "Showing {{count}} / {{total}} users",
+      "previous": "Previous",
+      "next": "Next"
     },
     "errors": {
       "loadFailed": "Failed to load user list",
-      "saveFailed": "Failed to save user"
+      "saveFailed": "Failed to save user information"
     },
     "messages": {
       "deleteSuccess": "User deleted successfully",
       "updateSuccess": "User updated successfully",
-      "createSuccess": "User created successfully"
+      "createSuccess": "User created successfully",
+      "lockSuccess": "Account locked successfully",
+      "unlockSuccess": "Account unlocked successfully",
+      "changePasswordSuccess": "Password changed successfully"
     },
     "export": {
-      "loading": "Exporting CSV...",
+      "loading": "Exporting CSV data...",
       "success": "Exported {{count}} users successfully",
-      "error": "Failed to export CSV"
+      "error": "Error exporting CSV"
     },
     "csv": {
       "fullName": "Full Name",
@@ -443,8 +495,27 @@
       "status": "Status",
       "createdAt": "Created At"
     },
-    "filters": {
-      "allRoles": "All Roles"
+    "deleteDialog": {
+      "title": "Delete Account",
+      "description": "This action will soft-delete this user account.",
+      "message": "Are you sure you want to delete user {{username}}?"
+    },
+    "stats": {
+      "total": "Total Accounts",
+      "active": "Active",
+      "locked": "Locked",
+      "perPage": "On this page"
+    },
+    "bulk": {
+      "selected": "Selected {{count}} users",
+      "assignRole": "Assign Role",
+      "clearSelection": "Clear",
+      "dialogTitle": "Bulk Role Assignment",
+      "dialogDesc": "Update role for {{count}} selected users",
+      "selectRolePlaceholder": "Select a new role",
+      "applying": "Updating...",
+      "apply": "Apply",
+      "cancel": "Cancel"
     }
   },
   "roles": {
@@ -1115,10 +1186,15 @@
       "noData": "No data yet",
       "vsLastWeek": "vs last week",
       "funnelViews": "Views",
+      "funnelDetail": "Detail",
       "funnelDetails": "Details",
+      "funnelBooking": "Booking",
       "funnelBookings": "Bookings",
+      "funnelConfirm": "Confirm",
       "funnelConfirmed": "Confirmed",
+      "funnelComplete": "Complete",
       "funnelCompleted": "Completed",
+      "conversions": "conversions",
       "chartViews": "Views",
       "chartBookings": "Bookings",
       "orders": "orders",
@@ -1207,8 +1283,8 @@
       "next": "Next"
     },
     "cashflow": {
-      "title": "System Cash Flow",
-      "description": "Track incoming payments, refunds, payouts, and ledger for SePay reconciliation."
+      "title": "System Cashflow",
+      "description": "Monitor money in, refunds, payouts and ledger for SePay reconciliation."
     },
     "cms": {
       "events": "Events",
@@ -1725,23 +1801,36 @@
       "businessLicense": "Business License",
       "idFront": "ID Front",
       "idBack": "ID Back",
-      "close": "Close"
+      "close": "Close",
+      "viewContractPdf": "View Contract PDF",
+      "highRiskReview": "High-Risk Review",
+      "systemCommission": "System Commission",
+      "totalRevenue": "Total Revenue",
+      "netRevenue": "Net Revenue",
+      "commissionRate": "Commission Rate",
+      "valid": "Valid",
+      "missing": "Missing",
+      "subtitle": "Verification documents, contracts, and business performance"
     },
     "schedule": {
       "title": "Booking Schedule",
-      "resourceModel": "Resource Model (tables/rooms)",
-      "capacityModel": "Capacity Model",
+      "resourceModel": "Model: Resource (table/room)",
+      "capacityModel": "Model: Capacity",
       "today": "Today",
       "refresh": "Refresh",
-      "allPlaces": "All places",
-      "pending": "pending",
-      "confirmed": "confirmed",
-      "completed": "completed",
+      "allPlaces": "All Places",
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "rejected": "Rejected",
+      "expired": "Expired",
+      "noShow": "No Show",
       "block": "Block",
       "guest": "Guest",
       "guests": "guests",
       "detail": "Booking Details",
-      "customerInfo": "Customer Info",
+      "customerInfo": "Customer",
       "name": "Name",
       "phone": "Phone",
       "email": "Email",
@@ -1749,13 +1838,14 @@
       "date": "Date",
       "time": "Time",
       "numGuests": "Guests",
-      "totalAmount": "Total",
+      "totalAmount": "Total Amount",
       "serviceAndPlace": "Service & Place",
       "duration": "min",
       "capacity": "Capacity:",
       "notes": "Notes",
       "close": "Close",
-      "viewDetail": "View details",
+      "viewDetail": "View Details",
+      "processing": "Processing...",
       "legend": {
         "pending": "Pending",
         "confirmed": "Confirmed",
@@ -1842,16 +1932,12 @@
       "confirmDialogTitle": "Cancel Booking",
       "confirmDialogDesc": "Please enter cancellation reason (at least 5 characters).",
       "confirmPaymentTitle": "Confirm Payment",
-      "confirmPaymentDesc": "Mark booking as manually paid.",
       "paymentNoteLabel": "Note (optional)",
-      "paymentNotePlaceholder": "e.g: Customer transferred",
       "confirmPaidBtn": "Confirm Paid",
       "refundTitle": "Refund",
-      "refundDesc": "Enter refund amount and reason to save transaction history.",
       "refundAmountLabel": "Refund Amount (VND)",
       "refundReasonMinLength": "Refund reason must be at least 5 characters",
       "refundAmountZero": "Refund amount must be greater than 0",
-      "refundExceedsPayment": "Refund amount exceeds payment value",
       "confirmRefundBtn": "Confirm Refund",
       "qrCodePresent": "Customer presents this code when arriving",
       "voucherDiscount": "Discount",
@@ -1964,7 +2050,7 @@
     "staff": {
       "title": "Staff Management",
       "addStaff": "Add Staff",
-      "searchPlaceholder": "Search staff...",
+      "searchPlaceholder": "Search by staff name, email...",
       "name": "Name",
       "email": "Email",
       "role": "Role",
@@ -1980,9 +2066,9 @@
       "roleUpdated": "Role updated",
       "roleUpdateFailed": "Cannot update role",
       "inviteSent": "Invitation sent",
-      "inviteFailed": "Cannot send invitation",
-      "noStaff": "No staff yet",
-      "loadFailed": "Cannot load staff list",
+      "inviteFailed": "Failed to send staff invitation",
+      "noStaff": "No staff members in the list",
+      "loadFailed": "Failed to load staff list",
       "locked": "Locked",
       "pending": "Pending",
       "accepted": "Accepted",
@@ -2007,24 +2093,17 @@
       "inviteRevokeError": "Revoke invitation error",
       "linkCopied": "Invite link copied",
       "subtitle": "Manage staff accounts and permissions",
-      "title": "Staff Management",
       "inviteStaff": "Invite Staff",
       "inviteSubtitle": "Send an invitation to a new staff member to join your management system.",
       "totalStaff": "Total Staff",
       "activeStaff": "Active Staff",
-      "locked": "Locked",
-      "active": "Active",
       "lock": "Lock Account",
       "unlock": "Unlock Account",
-      "searchPlaceholder": "Search by staff name, email...",
-      "noStaff": "No staff members in the list",
       "selectRolePlaceholder": "Select a role for the staff member",
       "defaultRole": "No role assigned",
       "note": "Note",
       "notePlaceholder": "Add an optional note with the invitation...",
-      "inviteFailed": "Failed to send staff invitation",
       "inviteLinkCreated": "Invitation link created successfully! Copy the link below to share with staff:",
-      "loadFailed": "Failed to load staff list",
       "statusSuccess": "Updated staff status successfully",
       "statusFailed": "Failed to update staff status",
       "pendingInvitations": "Pending Invitations",
@@ -2108,26 +2187,86 @@
         }
       },
       "metrics": {
-        "totalBookings": { "label": "Total Bookings", "subtitle": "bookings" },
-        "confirmationRate": { "label": "Confirmation Rate", "subtitle": "confirmed/successful" },
-        "cancellationRate": { "label": "Cancellation Rate", "subtitle": "cancelled" },
-        "bookingsRevenue": { "label": "Revenue", "subtitle": "total revenue" },
-        "totalRevenue": { "label": "Total Revenue", "subtitle": "before commission" },
-        "netRevenue": { "label": "Net Revenue", "subtitle": "after commission" },
-        "commission": { "label": "Commission", "subtitle": "platform fee" },
-        "growth": { "label": "Growth", "subtitle": "vs last period" },
-        "reviewCount": { "label": "Review Count", "subtitle": "reviews" },
-        "avgScore": { "label": "Avg Score", "subtitle": "out of 5 stars" },
-        "responseRate": { "label": "Response Rate", "subtitle": "responded" },
-        "newReviews": { "label": "New Reviews", "subtitle": "this week" },
-        "newCustomers": { "label": "New Customers", "subtitle": "customers" },
-        "returningCustomers": { "label": "Returning Customers", "subtitle": "customers" },
-        "avgValue": { "label": "Avg Value", "subtitle": "per booking" },
-        "bookingFrequency": { "label": "Booking Frequency", "subtitle": "average" },
-        "serviceRate": { "label": "Service Rate", "subtitle": "completed" },
-        "waitTime": { "label": "Wait Time", "subtitle": "average" },
-        "satisfactionScore": { "label": "Satisfaction Score", "subtitle": "out of 5" },
-        "noShow": { "label": "No-show", "subtitle": "not arrived" }
+        "totalBookings": {
+          "label": "Total Bookings",
+          "subtitle": "bookings"
+        },
+        "confirmationRate": {
+          "label": "Confirmation Rate",
+          "subtitle": "confirmed/successful"
+        },
+        "cancellationRate": {
+          "label": "Cancellation Rate",
+          "subtitle": "cancelled"
+        },
+        "bookingsRevenue": {
+          "label": "Revenue",
+          "subtitle": "total revenue"
+        },
+        "totalRevenue": {
+          "label": "Total Revenue",
+          "subtitle": "before commission"
+        },
+        "netRevenue": {
+          "label": "Net Revenue",
+          "subtitle": "after commission"
+        },
+        "commission": {
+          "label": "Commission",
+          "subtitle": "platform fee"
+        },
+        "growth": {
+          "label": "Growth",
+          "subtitle": "vs last period"
+        },
+        "reviewCount": {
+          "label": "Review Count",
+          "subtitle": "reviews"
+        },
+        "avgScore": {
+          "label": "Avg Score",
+          "subtitle": "out of 5 stars"
+        },
+        "responseRate": {
+          "label": "Response Rate",
+          "subtitle": "responded"
+        },
+        "newReviews": {
+          "label": "New Reviews",
+          "subtitle": "this week"
+        },
+        "newCustomers": {
+          "label": "New Customers",
+          "subtitle": "customers"
+        },
+        "returningCustomers": {
+          "label": "Returning Customers",
+          "subtitle": "customers"
+        },
+        "avgValue": {
+          "label": "Avg Value",
+          "subtitle": "per booking"
+        },
+        "bookingFrequency": {
+          "label": "Booking Frequency",
+          "subtitle": "average"
+        },
+        "serviceRate": {
+          "label": "Service Rate",
+          "subtitle": "completed"
+        },
+        "waitTime": {
+          "label": "Wait Time",
+          "subtitle": "average"
+        },
+        "satisfactionScore": {
+          "label": "Satisfaction Score",
+          "subtitle": "out of 5"
+        },
+        "noShow": {
+          "label": "No-show",
+          "subtitle": "not arrived"
+        }
       },
       "minuteUnit": "min",
       "vsLastWeek": "vs last week",
@@ -2583,56 +2722,57 @@
     },
     "revenue": {
       "title": "Revenue",
-      "subtitle": "Detailed revenue report",
-      "overview": "Overview",
-      "totalRevenue": "Total Revenue",
-      "systemCommission": "System Commission",
-      "netRevenue": "Net Revenue",
-      "totalBookings": "Total Bookings",
-      "status": "Status",
-      "quantity": "Quantity",
-      "ratio": "Ratio",
-      "completed": "Completed",
-      "confirmed": "Confirmed",
-      "pending": "Pending",
-      "cancelled": "Cancelled",
-      "noShow": "No Show",
-      "reportExported": "Report exported",
+      "description": "Financial statistics, sales and transaction details.",
       "today": "Today",
-      "days7": "7 days",
-      "days30": "30 days",
-      "days90": "90 days",
-      "grossRevenueLabel": "Gross Revenue",
-      "netRevenueLabel": "Net Revenue",
-      "pendingProcessing": "Pending",
-      "toastNoData": "No data to export",
-      "csvPlace": "Place",
-      "csvBookings": "Bookings",
-      "csvAvgValue": "Avg Value",
-      "toastExported": "CSV report exported",
-      "gmvDescription": "Total booking value",
-      "netRevenueDescription": "After platform discount",
-      "platformFees": "Platform Fees",
-      "platformFeesDescription": "Total commission paid",
-      "refund": "Refund",
-      "refundDescription": "Total refund amount",
-      "headerTitle": "Revenue & Income",
-      "headerDesc": "Revenue overview and time-based analysis",
-      "chartTitle": "Revenue Chart",
+      "days7": "Last 7 days",
+      "days30": "Last 30 days",
+      "days90": "Last 90 days",
+      "refresh": "Refresh",
+      "exportCsv": "Export CSV",
+      "exportSuccess": "CSV exported successfully",
+      "exportError": "Failed to export CSV",
+      "totalRevenueCard": "Gross Revenue (GMV)",
+      "netRevenueCard": "Net Revenue",
+      "avgOrderCard": "Avg Order Value",
+      "completedBookingsCard": "Completed Bookings",
+      "chartTitle": "Revenue Trends",
+      "chartSubtitle": "Detailed trend of gross and net revenue over the selected period",
       "groupByDay": "By Day",
       "groupByWeek": "By Week",
       "groupByMonth": "By Month",
-      "noTimelineData": "No timeline data",
-      "revenueByPlace": "Revenue by Place",
-      "recentTransactions": "Recent Transactions",
-      "noDataByPlace": "No revenue data yet",
-      "viewAll": "View All",
-      "noTransactions": "No transactions yet",
-      "amount": "Amount"
+      "noTimelineData": "No revenue data for this period",
+      "grossRevenueLabel": "Gross Revenue",
+      "netRevenueLabel": "Net Revenue",
+      "byPlaceTitle": "Revenue by Location",
+      "byPlaceSubtitle": "Revenue breakdown per business location",
+      "noPlaceData": "No place revenue data available",
+      "txTitle": "Recent Transactions",
+      "txSubtitle": "Latest financial transaction log",
+      "noTransactions": "No transactions found in this period",
+      "txColId": "Tx ID",
+      "txColPlace": "Location",
+      "txColDate": "Date & Time",
+      "txColAmount": "Amount",
+      "txColStatus": "Status",
+      "headerTitle": "Revenue Overview",
+      "headerDesc": "Track sales, net revenue, platform fees and transaction history.",
+      "toastNoData": "No data to export",
+      "toastExported": "CSV exported successfully",
+      "csvPlace": "Location",
+      "totalRevenue": "Total Revenue",
+      "csvBookings": "Bookings",
+      "csvAvgValue": "Avg Value",
+      "gmvDescription": "Total gross booking value completed",
+      "netRevenue": "Net Revenue",
+      "netRevenueDescription": "After deducting platform commission",
+      "platformFees": "Platform Fees",
+      "platformFeesDescription": "iPoint Genie platform commission",
+      "refund": "Refunds",
+      "refundDescription": "Refunded to customers upon cancellation"
     },
     "cashflow": {
-      "title": "Cash Flow",
-      "description": "Track customer payments, refunds, and business withdrawals."
+      "title": "Cashflow Ledger",
+      "description": "Track all financial movements and business cashflow."
     },
     "reviews": {
       "title": "Reviews",
@@ -2646,50 +2786,6 @@
         "apologize": "Sorry for the bad experience",
         "thankPositive": "Thank you for the great review!",
         "thankNeutral": "Thank you for your feedback"
-      }
-    },
-    "schedule": {
-      "title": "Booking Schedule",
-      "resourceModel": "Model: Resource (table/room)",
-      "capacityModel": "Model: Capacity",
-      "today": "Today",
-      "refresh": "Refresh",
-      "allPlaces": "All Places",
-      "pending": "Pending",
-      "confirmed": "Confirmed",
-      "completed": "Completed",
-      "cancelled": "Cancelled",
-      "rejected": "Rejected",
-      "expired": "Expired",
-      "noShow": "No Show",
-      "block": "Block",
-      "guest": "Guest",
-      "guests": "guests",
-      "detail": "Booking Details",
-      "customerInfo": "Customer",
-      "name": "Name",
-      "phone": "Phone",
-      "email": "Email",
-      "bookingInfo": "Booking",
-      "date": "Date",
-      "time": "Time",
-      "numGuests": "Guests",
-      "totalAmount": "Total Amount",
-      "serviceAndPlace": "Service & Place",
-      "duration": "min",
-      "capacity": "Capacity:",
-      "notes": "Notes",
-      "close": "Close",
-      "viewDetail": "View Details",
-      "processing": "Processing...",
-      "legend": {
-        "pending": "Pending",
-        "confirmed": "Confirmed",
-        "completed": "Completed",
-        "cancelled": "Cancelled",
-        "rejected": "Rejected",
-        "expired": "Expired",
-        "noShow": "No Show"
       }
     },
     "quickProcess": {
@@ -3159,14 +3255,25 @@
       "close": "Close"
     },
     "changePassword": {
+      "title": "Change Password",
+      "description": "Update your password periodically to keep your admin account secure.",
+      "currentPasswordLabel": "Current Password",
+      "currentPasswordPlaceholder": "Enter current password",
+      "newPasswordLabel": "New Password",
+      "newPasswordPlaceholder": "Enter new password (min. 8 characters)",
+      "confirmPasswordLabel": "Confirm New Password",
+      "confirmPasswordPlaceholder": "Re-enter new password",
+      "cancel": "Cancel",
+      "submit": "Change Password",
+      "submitting": "Updating...",
       "currentPasswordRequired": "Please enter your current password",
-      "newPasswordMin": "New password must be at least 6 characters",
-      "newPasswordComplexity": "Password must have at least 1 uppercase, 1 lowercase letter and 1 number",
-      "confirmPasswordRequired": "Please confirm password",
+      "newPasswordMin": "New password must be at least 8 characters",
+      "newPasswordComplexity": "Password must contain at least 1 uppercase, 1 lowercase letter, 1 number, and 1 special character",
+      "confirmPasswordRequired": "Please confirm your password",
       "passwordMismatch": "Passwords do not match",
       "sameAsOld": "New password must be different from current password",
-      "success": "Password changed successfully! Please log in again.",
-      "failed": "Failed to change password"
+      "success": "Password changed successfully! Redirecting to login...",
+      "failed": "Failed to change password. Please verify your current password."
     },
     "form": {
       "processing": "Processing...",
@@ -3194,75 +3301,6 @@
       "address": "Detailed Address",
       "addressPlaceholder": "House number, street name...",
       "cancel": "Cancel"
-    }
-  },
-  "users": {
-    "title": "User Management",
-    "subtitle": "View, add, edit, and assign roles to user accounts in the system",
-    "addUser": "Add User",
-    "searchPlaceholder": "Search by name, email, username...",
-    "filters": {
-      "allRoles": "All Roles"
-    },
-    "table": {
-      "id": "ID",
-      "basicInfo": "Basic Info",
-      "contact": "Contact",
-      "role": "Role",
-      "status": "Status",
-      "actions": "Actions"
-    },
-    "actions": {
-      "detail": "Detail",
-      "edit": "Edit",
-      "changePassword": "Change Password",
-      "delete": "Delete",
-      "lock": "Lock Account",
-      "unlock": "Activate"
-    },
-    "status": {
-      "active": "Active",
-      "locked": "Locked"
-    },
-    "pagination": {
-      "showing": "Showing {{count}} of {{total}} users",
-      "previous": "Previous",
-      "next": "Next"
-    },
-    "errors": {
-      "loadFailed": "Failed to load user list",
-      "saveFailed": "Failed to save user information"
-    },
-    "messages": {
-      "deleteSuccess": "User deleted successfully",
-      "updateSuccess": "User updated successfully",
-      "createSuccess": "User created successfully",
-      "lockSuccess": "Account locked successfully",
-      "unlockSuccess": "Account activated successfully",
-      "changePasswordSuccess": "Password changed successfully"
-    },
-    "export": {
-      "loading": "Exporting CSV data...",
-      "success": "Exported {{count}} users successfully",
-      "error": "Error exporting CSV"
-    },
-    "csv": {
-      "fullName": "Full Name",
-      "phone": "Phone Number",
-      "role": "Role",
-      "status": "Status",
-      "createdAt": "Created At"
-    },
-    "deleteDialog": {
-      "title": "Delete Account",
-      "description": "This action will soft delete this user account.",
-      "message": "Are you sure you want to delete user {{username}}?"
-    },
-    "stats": {
-      "total": "Total Accounts",
-      "active": "Active",
-      "locked": "Locked",
-      "perPage": "On this page"
     }
   },
   "map": {
@@ -3824,5 +3862,48 @@
       "noPermission": "You do not have permission to open this area",
       "retry": "Retry"
     }
+  },
+  "notificationsPage": {
+    "title": "Notifications",
+    "unreadCount": "{{count}} unread",
+    "upToDate": "Up to date",
+    "markAllRead": "Mark all read",
+    "tabs": { "unread": "Unread", "all": "All" },
+    "time": { "justNow": "Just now", "minutesAgo": "{{count}} minutes ago", "hoursAgo": "{{count}} hours ago", "daysAgo": "{{count}} days ago" },
+    "empty": {
+      "unreadTitle": "No unread notifications",
+      "allTitle": "No notifications",
+      "unreadDescription": "New notifications will appear here as soon as the server sends them.",
+      "allDescription": "Bookings, places, businesses, and system updates are collected here."
+    }
+  },
+  "legal": {
+    "shellTitle": "iPoint Genie - travel made practical.",
+    "shellSubtitle": "Public information and account controls for iPoint Genie users.",
+    "backToLogin": "Back to sign in",
+    "lastUpdated": "Last updated: August 10, 2026.",
+    "links": { "privacy": "Privacy", "terms": "Terms", "deleteAccount": "Delete account" },
+    "privacy": { "title": "Privacy policy", "intro": "How iPoint Genie handles personal data and privacy choices.", "sections": [["Data collected", "Account and profile information, content you post, booking and payment data, service-use data, and location when you grant permission to show nearby places."], ["How we use data", "To operate the service, process bookings, improve the experience, maintain safety, support customers, and meet legal obligations."], ["Data sharing", "Data is only shared with providers needed to operate the service, payments, maps or location, storage, and where required by law."], ["Retention and deletion", "You can delete your account in the app or submit a request on this page. Personal profiles, sessions, saved data, and trips are deleted. Booking and payment records that must be retained are anonymized."], ["Contact", "For personal-data support, email {{supportEmail}}."]] },
+    "terms": { "title": "Terms of service", "intro": "The rules for using iPoint Genie services.", "sections": [["Using the service", "You are responsible for the information you provide, keeping your account secure, and following the law while using iPoint Genie."], ["Bookings and payments", "Bookings, vouchers, and payments follow the service business conditions. iPoint Genie may retain transaction records for support, disputes, and legal obligations."], ["User content", "You must not upload unlawful content, infringe others' rights, or disrupt the system."], ["Service changes", "We may update the service and these terms when needed. The latest version is published on this page."], ["Contact", "Questions about these terms can be sent to {{supportEmail}}."]] },
+    "deletion": { "title": "Request account deletion", "intro": "Use this form when you cannot access the mobile app. We verify ownership before processing a deletion request.", "error": "Unable to send the request. Please try again.", "successTitle": "Your request has been received.", "successDescription": "Our support team will verify ownership through the email address provided before deleting personal data.", "email": "Account email", "notice": "Deletion removes your personal profile, sessions, saved data and trips. Booking and payment records that must be retained by law are anonymized.", "submit": "Send deletion request" }
+  },
+  "cashflowLedger": {
+    "exportCsv": "Export CSV",
+    "ledgerTitle": "Transaction journal",
+    "ledgerDescription": "Track every balance movement and revenue or expense source across the system.",
+    "types": { "moneyIn": "Money in", "refund": "Refund", "payout": "Payout", "ledger": "Ledger" },
+    "stats": {
+      "totalIn": "Total received", "receivedTransactions": "{{count}} received transactions",
+      "refunds": "Refunds", "refundTransactions": "{{count}} refunded transactions",
+      "payouts": "Withdrawn / transferred", "payoutTransactions": "{{count}} payouts",
+      "walletBalance": "Available wallet balance", "frozenBalance": "On hold: {{amount}}"
+    },
+    "filters": { "type": "Cash flow type", "allTypes": "All types", "gateway": "Payment gateway", "allGateways": "All gateways" },
+    "csv": { "time": "Time", "type": "Type", "amount": "Amount", "status": "Status", "gateway": "Gateway", "transactionRef": "Reconciliation reference", "description": "Description" },
+    "empty": "No cash-flow entries match these filters.",
+    "defaultDescription": "Service payment transaction",
+    "channel": "{{date}} · Channel:",
+    "internal": "Internal",
+    "pagination": "Page {{page}} / {{totalPages}} ({{total}} transactions)"
   }
 }

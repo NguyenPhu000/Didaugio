@@ -1,5 +1,4 @@
-export const formatCurrency = (amount) =>
-  `${new Intl.NumberFormat("vi-VN").format(Number(amount) || 0)}đ`;
+import { formatMoney } from "@/utils/formatters";
 
 export const formatDate = (dateStr) => {
   if (!dateStr) return "-";
@@ -78,7 +77,7 @@ export function buildTimeline(payment) {
       title: "Thanh toán thành công",
       date: payment.paidAt,
       tone: "bg-emerald-500",
-      description: `${formatCurrency(payment.amount)} qua ${payment.paymentMethod || "cổng thanh toán"}`,
+      description: `${formatMoney(payment.amount)} qua ${payment.paymentMethod || "cổng thanh toán"}`,
     });
   }
 
@@ -101,7 +100,7 @@ export function buildTimeline(payment) {
           : "Hoàn tiền toàn phần",
       date: payment.refundedAt,
       tone: "bg-blue-500",
-      description: `${formatCurrency(payment.refundAmount)}${payment.refundReason ? ` - ${payment.refundReason}` : ""}`,
+      description: `${formatMoney(payment.refundAmount)}${payment.refundReason ? ` - ${payment.refundReason}` : ""}`,
     });
   }
 

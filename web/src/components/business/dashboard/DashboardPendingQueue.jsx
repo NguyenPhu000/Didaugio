@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, Check, X as XIcon, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BUSINESS_ROUTES } from "@/constants/routes";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 
 export const DashboardPendingQueue = memo(
   ({ pendingQueue, queueLoading, approveMutation, rejectMutation }) => {
@@ -77,7 +77,7 @@ export const DashboardPendingQueue = memo(
                           #{item.id}
                         </span>
                         <span className="font-mono text-xs font-black text-emerald-600 dark:text-emerald-400">
-                          {formatVND(price)}
+                          {formatMoney(price)}
                         </span>
                       </div>
                       <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">

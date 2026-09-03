@@ -118,12 +118,12 @@ const RegisterPage = () => {
         }
 
         if (emailVerificationRequired) {
-          toast.success("Đăng ký thành công! Vui lòng kiểm tra email để xác thực.");
+          toast.success(t("auth.register.success"));
           navigate(`/check-email?email=${encodeURIComponent(data.email.toLowerCase())}`, { replace: true });
           return;
         }
 
-        toast.success("Đăng ký thành công! Vui lòng đăng ký doanh nghiệp.");
+        toast.success(t("auth.register.continueBusinessRegistration"));
         navigate(BUSINESS_ROUTES.REGISTER, { replace: true });
       }
     } catch (error) {
@@ -135,8 +135,8 @@ const RegisterPage = () => {
 
   return (
     <AuthShell
-      title="Đưa doanh nghiệp du lịch của bạn lên bản đồ"
-      subtitle="Tạo tài khoản để quản lý địa điểm, tour và tiếp cận du khách trên toàn khu vực."
+      title={t("auth.register.heroTitle")}
+      subtitle={t("auth.register.heroDesc")}
       maxWidth="max-w-[480px]"
     >
       {/* ── Main card ── */}
@@ -157,7 +157,7 @@ const RegisterPage = () => {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="fullName" className={fieldLabel}>
-                  Họ và tên
+                  {t("auth.register.fullName")}
                 </Label>
                 <div className="relative">
                   <User className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
@@ -180,7 +180,7 @@ const RegisterPage = () => {
 
               <div className="space-y-1.5">
                 <Label htmlFor="username" className={fieldLabel}>
-                  Tên đăng nhập
+                  {t("auth.register.username")}
                 </Label>
                 <div className="relative">
                   <AtSign className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
@@ -259,7 +259,7 @@ const RegisterPage = () => {
 
               <div className="space-y-1.5">
                 <Label htmlFor="confirmPassword" className={fieldLabel}>
-                  Xác nhận
+                  {t("auth.register.confirmPassword")}
                 </Label>
                 <div className="relative">
                   <Lock className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />

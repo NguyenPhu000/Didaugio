@@ -56,30 +56,40 @@ export function RolePermissionModal({
         roleService.getRolePermissions(role.id),
       ]);
 
-      console.warn("Permissions response:", permissionsResponse);
-      console.warn("Role permissions response:", rolePermissionsResponse);
+      // 1. Parse all system permissions
+      const rawPermData = permissionsResponse?.data ?? permissionsResponse;
+      const groupedPerms = rawPermData?.permissions ?? rawPermData ?? {};
+      setAllPermissions(groupedPerms);
 
-      if (permissionsResponse && permissionsResponse.permissions) {
-        setAllPermissions(permissionsResponse.permissions);
+      // 2. Parse current role permissions
+      const currentPermissionIds = new Set();
+      const rawRoleData = rolePermissionsResponse?.data ?? rolePermissionsResponse;
+      const rolePerms = rawRoleData?.permissions ?? rawRoleData ?? {};
 
-        const currentPermissionIds = new Set();
-        if (rolePermissionsResponse && rolePermissionsResponse.permissions) {
-          Object.values(rolePermissionsResponse.permissions).forEach(
-            (perms) => {
-              perms.forEach((p) => currentPermissionIds.add(p.id));
-            },
-          );
-        }
-
-        setSelectedPermissions(currentPermissionIds);
-        setInitialPermissions(currentPermissionIds);
-
-        const modules = Object.keys(permissionsResponse.permissions);
-        setExpandedModules(new Set(modules.slice(0, 3)));
+      if (Array.isArray(rolePerms)) {
+        rolePerms.forEach((p) => {
+          if (p?.id != null) currentPermissionIds.add(p.id);
+          else if (typeof p === "number") currentPermissionIds.add(p);
+        });
+      } else if (rolePerms && typeof rolePerms === "object") {
+        Object.values(rolePerms).forEach((perms) => {
+          if (Array.isArray(perms)) {
+            perms.forEach((p) => {
+              if (p?.id != null) currentPermissionIds.add(p.id);
+              else if (typeof p === "number") currentPermissionIds.add(p);
+            });
+          }
+        });
       }
+
+      setSelectedPermissions(currentPermissionIds);
+      setInitialPermissions(new Set(currentPermissionIds));
+
+      const modules = Object.keys(groupedPerms);
+      setExpandedModules(new Set(modules));
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);
-      toast.error(t("role.permissionModal.loadFailed"));
+      toast.error(t("role.permissionModal.loadFailed") || "Không thể tải danh sách quyền");
     } finally {
       setLoading(false);
     }
@@ -138,7 +148,7 @@ export function RolePermissionModal({
 
       await roleService.updateRolePermissions(role.id, permissionIds);
 
-      toast.success(t("role.permissionModal.saveSuccess"));
+      toast.success(t("role.permissionModal.saveSuccess") || "Lưu quyền thành công");
       setInitialPermissions(new Set(selectedPermissions));
 
       if (onPermissionsUpdated) {
@@ -148,7 +158,7 @@ export function RolePermissionModal({
       onOpenChange(false);
     } catch (error) {
       console.error("Lỗi khi cập nhật quyền:", error);
-      toast.error(error.response?.data?.message || t("role.permissionModal.saveFailed"));
+      toast.error(error.response?.data?.message || t("role.permissionModal.saveFailed") || "Không thể lưu quyền");
     } finally {
       setSaving(false);
     }
@@ -169,7 +179,8 @@ export function RolePermissionModal({
         const matched = perms.filter(
           (p) =>
             p.name.toLowerCase().includes(lowerSearch) ||
-            p.displayName.toLowerCase().includes(lowerSearch),
+            p.displayName.toLowerCase().includes(lowerSearch) ||
+            (p.description && p.description.toLowerCase().includes(lowerSearch))
         );
         if (matched.length > 0) {
           filtered[module] = matched;
@@ -189,7 +200,7 @@ export function RolePermissionModal({
     Object.values(filteredPermissions).forEach((perms) => {
       totalFiltered += perms.length;
       selectedFiltered += perms.filter((p) =>
-        selectedPermissions.has(p.id),
+        selectedPermissions.has(p.id)
       ).length;
     });
 
@@ -209,16 +220,6 @@ export function RolePermissionModal({
     return false;
   }, [selectedPermissions, initialPermissions]);
 
-  const getSuggestionForRole = () => {
-    const suggestions = {
-      admin: t("role.permissionModal.suggestionAdmin"),
-      business: t("role.permissionModal.suggestionBusiness"),
-      staff: t("role.permissionModal.suggestionStaff"),
-      guest: t("role.permissionModal.suggestionGuest"),
-    };
-    return suggestions[role?.name] || null;
-  };
-
   const toggleModuleExpand = (module) => {
     setExpandedModules((prev) => {
       const newSet = new Set(prev);
@@ -233,183 +234,181 @@ export function RolePermissionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-xl">
-            {t("role.permissionModal.title")} - {role?.displayName}
+          <DialogTitle className="flex items-center gap-2">
+            <span>{t("role.permissionModal.title")}</span>
+            <Badge variant="outline">{role?.displayName}</Badge>
           </DialogTitle>
           <DialogDescription>
-            {role?.description || t("role.permissionModal.defaultDescription")}
+            {t("role.permissionModal.description")}
           </DialogDescription>
         </DialogHeader>
+
+        {role?.isSystem && (
+          <Alert>
+            <Lightbulb className="h-4 w-4" />
+            <AlertDescription>
+              {t("role.permissionModal.systemRoleWarning")}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <div className="flex gap-3 items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder={t("role.permissionModal.searchPlaceholder")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={moduleFilter} onValueChange={setModuleFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder={t("role.permissionModal.filterModule")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("role.permissionModal.allModules")}</SelectItem>
+              {Object.keys(allPermissions).map((module) => (
+                <SelectItem key={module} value={module}>
+                  {MODULE_DISPLAY_NAMES[module] || module}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
+          <div className="flex items-center justify-between text-sm">
+            <span>
+              {t("role.permissionModal.selected")}: {stats.selected} / {stats.total} (
+              {stats.percentage.toFixed(0)}%)
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSelectAll}
+                disabled={stats.selected === stats.total}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-1" />
+                {t("role.permissionModal.selectAll")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDeselectAll}
+                disabled={stats.selected === 0}
+              >
+                <XCircle className="h-4 w-4 mr-1" />
+                {t("role.permissionModal.deselectAll")}
+              </Button>
+            </div>
+          </div>
+          <Progress value={stats.percentage} className="h-2" />
+        </div>
 
         {loading ? (
           <div className="space-y-4 py-4">
             <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-40 w-full" />
-            <Skeleton className="h-40 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
           </div>
         ) : (
-          <>
+          <ScrollArea className="flex-1 pr-4">
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder={t("role.permissionModal.searchPlaceholder")}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-                <Select value={moduleFilter} onValueChange={setModuleFilter}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder={t("role.permissionModal.filterByModule")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t("role.permissionModal.allModules")}</SelectItem>
-                    {Object.keys(allPermissions).map((module) => (
-                      <SelectItem key={module} value={module}>
-                        {MODULE_DISPLAY_NAMES[module] || module}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {Object.entries(filteredPermissions).map(([module, permissions]) => {
+                const moduleSelected = permissions.filter((p) =>
+                  selectedPermissions.has(p.id)
+                ).length;
+                const moduleTotal = permissions.length;
+                const isExpanded = expandedModules.has(module);
+                const allModuleSelected = moduleSelected === moduleTotal;
+                const someModuleSelected = moduleSelected > 0 && !allModuleSelected;
 
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">
-                    {t("role.permissionModal.selectedCount", { selected: stats.selected, total: stats.total })}
-                  </p>
-                  <Progress
-                    value={stats.percentage}
-                    className="h-2 w-[200px]"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSelectAll}
-                    disabled={stats.selected === stats.total}
+                return (
+                  <div
+                    key={module}
+                    className="border rounded-lg p-4 space-y-3 bg-card"
                   >
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    {t("role.permissionModal.selectAll")}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDeselectAll}
-                    disabled={stats.selected === 0}
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    {t("role.permissionModal.deselectAll")}
-                  </Button>
-                </div>
-              </div>
-
-              {getSuggestionForRole() && (
-                <Alert>
-                  <Lightbulb className="h-4 w-4" />
-                  <AlertDescription>{getSuggestionForRole()}</AlertDescription>
-                </Alert>
-              )}
-            </div>
-
-            <ScrollArea className="flex-1 pr-4 h-[calc(90vh-380px)]">
-              <div className="space-y-3 pb-4">
-                {Object.keys(filteredPermissions).length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    {t("role.permissionModal.noPermissionsFound")}
-                  </div>
-                ) : (
-                  Object.entries(filteredPermissions).map(
-                    ([module, permissions]) => {
-                      const moduleSelected = permissions.filter((p) =>
-                        selectedPermissions.has(p.id),
-                      ).length;
-                      const moduleTotal = permissions.length;
-                      const isExpanded = expandedModules.has(module);
-
-                      return (
-                        <div
-                          key={module}
-                          className="border rounded-lg overflow-hidden"
-                        >
-                          <div
-                            className="flex items-center justify-between p-4 bg-muted/50 cursor-pointer hover:bg-muted"
-                            onClick={() => toggleModuleExpand(module)}
-                          >
-                            <div className="flex items-center gap-3">
-                              <Checkbox
-                                checked={moduleSelected === moduleTotal}
-                                onCheckedChange={() =>
-                                  handleToggleModule(module)
-                                }
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                              <div>
-                                <Label className="font-semibold cursor-pointer">
-                                  {MODULE_DISPLAY_NAMES[module] || module}
-                                </Label>
-                                <p className="text-xs text-muted-foreground">
-                                  {t("role.permissionModal.modulePermissionCount", { selected: moduleSelected, total: moduleTotal })}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary">{module}</Badge>
-                              {isExpanded ? (
-                                <ChevronUp className="h-4 w-4" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4" />
-                              )}
-                            </div>
-                          </div>
-
-                          {isExpanded && (
-                            <div className="p-4 space-y-2 bg-background">
-                              {permissions.map((permission) => (
-                                <PermissionCheckbox
-                                  key={permission.id}
-                                  permission={permission}
-                                  checked={selectedPermissions.has(
-                                    permission.id,
-                                  )}
-                                  onCheckedChange={() =>
-                                    handleTogglePermission(permission.id)
-                                  }
-                                />
-                              ))}
-                            </div>
-                          )}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={
+                            allModuleSelected
+                              ? true
+                              : someModuleSelected
+                              ? "indeterminate"
+                              : false
+                          }
+                          onCheckedChange={() => handleToggleModule(module)}
+                        />
+                        <div>
+                          <Label className="font-semibold text-base">
+                            {MODULE_DISPLAY_NAMES[module] || module}
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            {moduleSelected} / {moduleTotal} {t("role.permissionModal.permissions")}
+                          </p>
                         </div>
-                      );
-                    },
-                  )
-                )}
-              </div>
-            </ScrollArea>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleModuleExpand(module)}
+                      >
+                        {isExpanded ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                {t("role.permissionModal.cancel")}
-              </Button>
-              <Button onClick={handleSave} disabled={!hasChanges || saving}>
-                {saving ? (
-                  <>{t("role.permissionModal.saving")}</>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    {t("role.permissionModal.save")}
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </>
+                    {isExpanded && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2 border-t">
+                        {permissions.map((permission) => (
+                          <PermissionCheckbox
+                            key={permission.id}
+                            permission={permission}
+                            checked={selectedPermissions.has(permission.id)}
+                            onCheckedChange={() =>
+                              handleTogglePermission(permission.id)
+                            }
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
         )}
+
+        <DialogFooter className="flex items-center justify-between">
+          <div className="text-xs text-muted-foreground">
+            {hasChanges && (
+              <span className="text-amber-500 font-medium">
+                {t("role.permissionModal.unsavedChanges")}
+              </span>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={saving}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button onClick={handleSave} disabled={!hasChanges || saving}>
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? t("common.saving") : t("common.save")}
+            </Button>
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

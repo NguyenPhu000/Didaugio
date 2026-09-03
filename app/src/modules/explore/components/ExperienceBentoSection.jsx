@@ -10,6 +10,7 @@ import { getPlaceLocation } from "../utils/exploreHelpers";
 import {
   CREAM,
   Eyebrow,
+  INK,
   POSTER_MEDIA_RADIUS,
   PosterMedia,
   PosterScrim,
@@ -60,8 +61,16 @@ function BentoTile({ place, large = false, onPress, defaultCategoryLabel, defaul
         />
       </Animated.View>
 
-      {/* Bản cũ phủ một lớp đen phẳng bg-black/45 lên toàn ảnh khiến hình xỉn
-          màu. Scrim có hướng giữ nguyên vùng sáng phía trên. */}
+      {/* Grain texture để ảnh editorial có cảm giác film, không quá digital. */}
+      <View
+        pointerEvents="none"
+        style={{
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: "rgba(255,255,255,0.05)",
+          opacity: 0.55,
+        }}
+      />
+
       <PosterScrim
         bottomHeight={large ? "58%" : "72%"}
         topHeight="22%"
@@ -135,14 +144,44 @@ function ExperienceBentoSectionInner({ places, onPressPlace }) {
   const defaultExperienceLabel = t("explore.card.defaultExperience");
 
   return (
-    <View style={{ paddingHorizontal: TAB_SCREEN_PADDING, marginTop: 34 }}>
-      <View style={{ marginBottom: 14 }}>
-        <SectionHeading title={t("explore.sections.culinary")} />
+    <View style={{ paddingHorizontal: TAB_SCREEN_PADDING, marginTop: 38 }}>
+      <View style={{ marginBottom: 18 }}>
+        <SectionHeading
+          title={t("explore.sections.culinary")}
+          right={
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 5,
+                paddingHorizontal: 11,
+                height: 26,
+                borderRadius: 13,
+                backgroundColor: "rgba(11,11,12,0.04)",
+                borderWidth: 1,
+                borderColor: "rgba(11,11,12,0.07)",
+              }}
+            >
+              <MaterialIconsRounded
+                name="auto-awesome"
+                size={13}
+                color={INK}
+              />
+              <Text
+                style={{
+                  color: INK,
+                  fontSize: 11,
+                  fontFamily: TOKENS.font.semibold,
+                  letterSpacing: 0.2,
+                }}
+              >
+                {t("explore.bento.curated", { defaultValue: "Tuyển chọn" })}
+              </Text>
+            </View>
+          }
+        />
       </View>
 
-      {/* Không còn khung trắng bọc ngoài: mỗi ô ăn thẳng ra mép content,
-          rộng thêm ~20px mỗi bên so với bản cũ. Cố ý không đổ bóng —
-          overflow:hidden cần cho bo góc sẽ cắt mất shadow trên iOS. */}
       <View style={{ flexDirection: "row", gap: TILE_GAP, height: BENTO_H }}>
         <BentoTile
           place={hero}

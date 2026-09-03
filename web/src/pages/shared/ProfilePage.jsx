@@ -1,6 +1,6 @@
 // MAP: ProfilePage
-// ├── UI: @/components/profile/{ProfileAvatarCard, ProfileBasicInfoForm, ProfileSecurityTab, ProfileNotificationsTab}
-// └── API: @/apis/userService, @/apis/authApi
+// ├── UI: @/components/profile/{ProfileAvatarCard, ProfileBasicInfoForm, ProfileSecurityTab, ProfileNotificationsTab, ProfileRolesTab}
+// └── API: @/apis/profileService
 
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -11,7 +11,7 @@ import {
   User,
   Shield,
   Bell,
-  Activity,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Tabs,
@@ -30,10 +30,11 @@ import ProfileAvatarCard from "@/components/profile/ProfileAvatarCard";
 import ProfileBasicInfoForm from "@/components/profile/ProfileBasicInfoForm";
 import ProfileSecurityTab from "@/components/profile/ProfileSecurityTab";
 import ProfileNotificationsTab from "@/components/profile/ProfileNotificationsTab";
+import ProfileRolesTab from "@/components/profile/ProfileRolesTab";
 
 const ProfilePage = () => {
   const { t } = useTranslation();
-  const { setUser } = useAuthStore();
+  const { setUser, user: authUser } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [profile, setProfile] = useState(null);
@@ -96,7 +97,7 @@ const ProfilePage = () => {
     try {
       const updateData = {};
       Object.keys(data).forEach((key) => {
-        if (data[key] && data[key] !== "") {
+        if (data[key] !== undefined) {
           updateData[key] = data[key];
         }
       });
@@ -109,7 +110,12 @@ const ProfilePage = () => {
 
       if (response.success) {
         setProfile(response.data);
-        setUser(response.data);
+        if (authUser) {
+          setUser({
+            ...authUser,
+            profile: response.data.profile,
+          });
+        }
         toast.success(t("profile.success.updated"));
         reset(data);
       }
@@ -118,6 +124,17 @@ const ProfilePage = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleAvatarUpdated = (newAvatarUrl) => {
+    setProfile((prev) => ({
+      ...prev,
+      avatar: newAvatarUrl,
+      profile: {
+        ...prev?.profile,
+        avatar: newAvatarUrl,
+      },
+    }));
   };
 
   const handleNotifToggle = async (group, key, value) => {
@@ -141,9 +158,9 @@ const ProfilePage = () => {
 
   if (isFetching) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
-        <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
-        <span className="text-xs font-semibold text-slate-500">
+      <div className="flex flex-col items-center justify-center min-h-[500px] gap-3">
+        <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
+        <span className="text-xs font-semibold text-slate-500 tracking-wide font-mono">
           {t("profile.loading")}
         </span>
       </div>
@@ -151,49 +168,63 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="space-y-6 text-slate-900 antialiased max-w-[1400px] mx-auto">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-black/[0.04]">
+    <div className="space-y-6 text-slate-900 antialiased max-w-[1360px] mx-auto pb-12">
+      {/* Editorial Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-black/[0.04]">
         <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Hồ sơ & Thiết lập Cá nhân
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">
+            HỒ SƠ ĐỊNH DANH & PHÂN QUYỀN
           </p>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
-            Cài đặt Tài khoản
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950">
+            Hồ sơ Quản trị viên
           </h1>
-          <p className="text-xs text-slate-500 font-medium">{t("profile.subtitle")}</p>
+          <p className="text-xs text-slate-500 font-medium">
+            Quản lý thông tin định danh, tùy chọn bảo mật và phân quyền tài khoản trên toàn hệ thống
+          </p>
         </div>
       </header>
 
+      {/* Main Avatar & Profile Banner */}
+      <ProfileAvatarCard
+        profile={profile}
+        onAvatarUpdated={handleAvatarUpdated}
+      />
+
+      {/* Tabs Navigation */}
       <Tabs defaultValue="profile" className="space-y-6">
-        {/* Tabs */}
-        <TabsList className="bg-slate-100 p-1 rounded-xl h-auto flex flex-wrap sm:flex-nowrap border border-slate-200/80">
+        <TabsList className="bg-[#FAF9F5] p-1 rounded-2xl h-auto flex flex-wrap sm:flex-nowrap border border-black/[0.06] gap-1 shadow-2xs">
           <TabsTrigger
             value="profile"
-            className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm font-semibold text-xs px-5 h-9 cursor-pointer transition-all text-slate-600"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm font-bold text-xs px-5 h-10 cursor-pointer transition-all text-slate-600"
           >
-            <User className="h-4 w-4" />
-            {t("profile.tabs.info")}
+            <User className="h-3.5 w-3.5" />
+            <span>{t("profile.tabs.info")}</span>
           </TabsTrigger>
           <TabsTrigger
             value="security"
-            className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm font-semibold text-xs px-5 h-9 cursor-pointer transition-all text-slate-600"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm font-bold text-xs px-5 h-10 cursor-pointer transition-all text-slate-600"
           >
-            <Shield className="h-4 w-4" />
-            {t("profile.tabs.security")}
+            <Shield className="h-3.5 w-3.5" />
+            <span>{t("profile.tabs.security")}</span>
           </TabsTrigger>
           <TabsTrigger
             value="notifications"
-            className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm font-semibold text-xs px-5 h-9 cursor-pointer transition-all text-slate-600"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm font-bold text-xs px-5 h-10 cursor-pointer transition-all text-slate-600"
           >
-            <Bell className="h-4 w-4" />
-            {t("profile.tabs.notifications")}
+            <Bell className="h-3.5 w-3.5" />
+            <span>{t("profile.tabs.notifications")}</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="roles"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm font-bold text-xs px-5 h-10 cursor-pointer transition-all text-slate-600"
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span>Vai trò & Phân quyền</span>
           </TabsTrigger>
         </TabsList>
 
-        {/* Profile Tab */}
-        <TabsContent value="profile" className="space-y-6">
-          <ProfileAvatarCard profile={profile} />
+        {/* Profile Tab Content */}
+        <TabsContent value="profile" className="space-y-6 focus:outline-none">
           <ProfileBasicInfoForm
             profile={profile}
             register={register}
@@ -206,20 +237,25 @@ const ProfilePage = () => {
           />
         </TabsContent>
 
-        {/* Security Tab */}
-        <TabsContent value="security" className="space-y-6">
+        {/* Security Tab Content */}
+        <TabsContent value="security" className="space-y-6 focus:outline-none">
           <ProfileSecurityTab
             setChangePasswordOpen={setChangePasswordOpen}
           />
         </TabsContent>
 
-        {/* Notifications Tab */}
-        <TabsContent value="notifications" className="space-y-6">
+        {/* Notifications Tab Content */}
+        <TabsContent value="notifications" className="space-y-6 focus:outline-none">
           <ProfileNotificationsTab
             notifSaving={notifSaving}
             notifSettings={notifSettings}
             handleNotifToggle={handleNotifToggle}
           />
+        </TabsContent>
+
+        {/* Roles & Permissions Tab Content */}
+        <TabsContent value="roles" className="space-y-6 focus:outline-none">
+          <ProfileRolesTab profile={profile} />
         </TabsContent>
       </Tabs>
 

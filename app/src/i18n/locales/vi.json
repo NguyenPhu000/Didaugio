@@ -123,6 +123,18 @@
     }
   },
   "onboarding": {
+    "welcomeTitle": "Chào mừng đến với iPoint Genie!",
+    "welcomeSubtitle": "Khám phá Cần Thơ theo cách của riêng bạn cùng trợ lý AI thông minh.",
+    "stepLabel": "Bước {{current}}/{{total}}",
+    "features": {
+      "aiTitle": "Trợ lý AI Genie",
+      "aiDesc": "Lên kế hoạch thông minh, gợi ý địa điểm phù hợp",
+      "mapTitle": "Bản đồ trực quan",
+      "mapDesc": "Khám phá địa điểm với bản đồ chi tiết và chỉ đường",
+      "exploreTitle": "Khám phá đa dạng",
+      "exploreDesc": "Ăn uống, du lịch, vui chơi, mua sắm và nhiều hơn nữa"
+    },
+    "selectMultiple": "Có thể chọn nhiều phong cách",
     "travelStyleTitle": "Bạn thích du lịch kiểu gì? 🌴",
     "travelStyleSubtitle": "Chọn những phong cách bạn yêu thích (có thể chọn nhiều)",
     "groupTitle": "Đi du lịch với ai? 👥",

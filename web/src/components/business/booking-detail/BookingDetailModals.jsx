@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { formatMoney } from "@/utils/formatters";
 
 export const BookingDetailModals = ({
   cancelOpen,
@@ -30,6 +31,7 @@ export const BookingDetailModals = ({
   setRefundReason,
   refundAmount,
   setRefundAmount,
+  refundMaxAmount,
   onConfirmRefund,
   actionLoading,
 }) => {
@@ -139,11 +141,28 @@ export const BookingDetailModals = ({
               </Label>
               <Input
                 type="number"
+                min={1}
+                max={refundMaxAmount}
+                step={1}
                 value={refundAmount}
-                onChange={(e) => setRefundAmount(e.target.value)}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  // Chỉ chấp nhận chuỗi rỗng hoặc số nguyên dương
+                  if (raw === "" || /^\d+$/.test(raw)) {
+                    setRefundAmount(raw);
+                  }
+                }}
                 placeholder="VD: 150000"
                 className="rounded-2xl text-xs h-10 bg-slate-50 dark:bg-muted/50 border-slate-200"
               />
+              <p className="text-[11px] text-slate-500 font-medium">
+                Tối đa: {formatMoney(refundMaxAmount)} (VNĐ)
+              </p>
+              {refundAmount && Number(refundAmount) > Number(refundMaxAmount || 0) && (
+                <p className="text-[11px] text-rose-600 font-bold">
+                  Số tiền vượt quá mức cho phép ({formatMoney(refundAmount)})
+                </p>
+              )}
             </div>
             <div className="space-y-1.5 text-left">
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -168,7 +187,12 @@ export const BookingDetailModals = ({
             </Button>
             <Button
               onClick={onConfirmRefund}
-              disabled={actionLoading || !refundAmount}
+              disabled={
+                actionLoading ||
+                !refundAmount ||
+                Number(refundAmount) < 1 ||
+                Number(refundAmount) > Number(refundMaxAmount || 0)
+              }
               className="rounded-2xl h-9 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white"
             >
               {actionLoading ? "Đang xử lý..." : "Xác nhận hoàn tiền"}

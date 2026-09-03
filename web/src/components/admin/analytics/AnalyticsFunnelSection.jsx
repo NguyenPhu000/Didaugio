@@ -61,7 +61,7 @@ const ConversionCard = ({ title, fromStep, toStep, rate, count, t }) => (
       <span className="font-semibold text-slate-600">{toStep}</span>
     </div>
     <p className="text-[11px] font-mono text-slate-500 tabular-nums pt-1 border-t border-black/[0.03]">
-      ~{count.toLocaleString()} {t("admin.analytics.conversions")}
+      ~{count.toLocaleString()} {t ? t("admin.analytics.conversions", "lượt chuyển đổi") : "lượt chuyển đổi"}
     </p>
   </div>
 );
@@ -75,7 +75,7 @@ export const AnalyticsFunnelSection = memo(
           <div className="flex items-center gap-2 pb-3 border-b border-black/[0.04]">
             <Layers className="h-4 w-4 text-slate-800" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              {t("admin.analytics.productFunnel")}
+              {t ? t("admin.analytics.productFunnel", "Phễu chuyển đổi sản phẩm") : "Phễu chuyển đổi sản phẩm"}
             </h3>
           </div>
           <FunnelChart data={funnelData} />

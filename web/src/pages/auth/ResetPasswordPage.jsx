@@ -2,13 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import i18n from "@/i18n";
 import { Lock, Eye, EyeOff, CheckCircle2, XCircle } from "lucide-react";
 import { Button, Input, Label } from "@/components/ui";
 import { authService } from "@/apis";
+import { resetPasswordSchema } from "@/schemas/auth";
 import AuthShell from "@/components/auth/AuthShell";
 import {
   fieldLabel,
@@ -18,22 +17,6 @@ import {
   eyeButton,
   authCard,
 } from "@/components/auth/authStyles";
-
-const resetPasswordSchema = z
-  .object({
-    newPassword: z
-      .string()
-      .min(8, i18n.t("validation.passwordMin", { min: 8 }))
-      .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])/,
-        i18n.t("validation.passwordPattern")
-      ),
-    confirmPassword: z.string().min(1, i18n.t("validation.confirmPasswordRequired")),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: i18n.t("validation.passwordMismatch"),
-    path: ["confirmPassword"],
-  });
 
 const ResetPasswordPage = () => {
   const { t } = useTranslation();
@@ -57,6 +40,10 @@ const ResetPasswordPage = () => {
   });
 
   const newPassword = watch("newPassword");
+
+  useEffect(() => {
+    document.title = t("auth.resetPassword.pageTitle", "Đặt lại mật khẩu — iPoint Genie");
+  }, [t]);
 
   useEffect(() => {
     if (!token) {
@@ -86,7 +73,7 @@ const ResetPasswordPage = () => {
       }, 3000);
     } catch (error) {
       toast.error(error.message || t("auth.resetPassword.failed"));
-      if (error.message.includes("token")) {
+      if (error.message && error.message.toLowerCase().includes("token")) {
         setTokenError(error.message);
       }
     } finally {
@@ -121,9 +108,9 @@ const ResetPasswordPage = () => {
   if (tokenError && !token) {
     return (
       <AuthShell
-        eyebrow="Đặt lại mật khẩu"
-        title="Bảo mật tài khoản của bạn luôn được ưu tiên"
-        subtitle="Liên kết đặt lại mật khẩu chỉ có hiệu lực trong thời gian giới hạn để đảm bảo an toàn."
+        eyebrow={t("auth.resetPassword.eyebrow")}
+        title={t("auth.resetPassword.shellErrorTitle")}
+        subtitle={t("auth.resetPassword.shellErrorSubtitle")}
       >
         <div className={`${authCard} space-y-4 text-center`}>
           <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 text-rose-600">
@@ -149,9 +136,9 @@ const ResetPasswordPage = () => {
   if (resetSuccess) {
     return (
       <AuthShell
-        eyebrow="Đặt lại mật khẩu"
-        title="Xong rồi! Tài khoản của bạn đã sẵn sàng"
-        subtitle="Mật khẩu mới đã được lưu. Bạn có thể đăng nhập ngay bây giờ."
+        eyebrow={t("auth.resetPassword.eyebrow")}
+        title={t("auth.resetPassword.shellSuccessTitle")}
+        subtitle={t("auth.resetPassword.shellSuccessSubtitle")}
       >
         <div className={`${authCard} space-y-4 text-center`}>
           <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
@@ -176,9 +163,9 @@ const ResetPasswordPage = () => {
 
   return (
     <AuthShell
-      eyebrow="Đặt lại mật khẩu"
-      title="Tạo mật khẩu mới cho tài khoản của bạn"
-      subtitle="Chọn một mật khẩu mạnh để giữ cho không gian làm việc du lịch của bạn an toàn."
+      eyebrow={t("auth.resetPassword.eyebrow")}
+      title={t("auth.resetPassword.shellTitle")}
+      subtitle={t("auth.resetPassword.shellSubtitle")}
     >
       <div className="mb-7">
         <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F3E600]/20 text-slate-900">
@@ -188,7 +175,7 @@ const ResetPasswordPage = () => {
           {t("auth.resetPassword.title")}
         </h1>
         <p className="mt-2 text-sm text-slate-500">
-          {t("auth.resetPassword.newPasswordPlaceholder")}
+          {t("auth.resetPassword.subtitle")}
         </p>
       </div>
 
@@ -213,7 +200,11 @@ const ResetPasswordPage = () => {
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className={eyeButton}
-              aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              aria-label={
+                showPassword
+                  ? t("auth.resetPassword.hidePassword")
+                  : t("auth.resetPassword.showPassword")
+              }
             >
               {showPassword ? (
                 <EyeOff className="h-5 w-5" />
@@ -270,7 +261,11 @@ const ResetPasswordPage = () => {
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               className={eyeButton}
-              aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              aria-label={
+                showConfirmPassword
+                  ? t("auth.resetPassword.hidePassword")
+                  : t("auth.resetPassword.showPassword")
+              }
             >
               {showConfirmPassword ? (
                 <EyeOff className="h-5 w-5" />
@@ -291,7 +286,9 @@ const ResetPasswordPage = () => {
           disabled={isLoading}
         >
           <Lock className="mr-1 h-4 w-4" />
-          {t("auth.resetPassword.submit")}
+          {isLoading
+            ? t("auth.resetPassword.submitting")
+            : t("auth.resetPassword.submit")}
         </Button>
       </form>
 

@@ -32,7 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 import {
   useAdminPlans,
   useAdminUpdatePlan,
@@ -302,13 +302,13 @@ function PlanCard({ plan, onEdit, onToggleActive }) {
         {/* Pricing */}
         <div className="rounded-lg bg-muted/30 p-3">
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold">{formatVND(plan.priceMonthly)}</span>
+            <span className="text-2xl font-bold">{formatMoney(plan.priceMonthly)}</span>
             <span className="text-xs text-muted-foreground">{t("subscription.admin.card.perMonth")}</span>
           </div>
           {plan.priceYearly > 0 && (
             <div className="mt-1 flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">
-                {formatVND(plan.priceYearly)} {t("subscription.admin.card.perYear")}
+                {formatMoney(plan.priceYearly)} {t("subscription.admin.card.perYear")}
               </span>
               {savings > 0 && (
                 <Badge variant="secondary" className="text-[10px] bg-emerald-50 text-emerald-700">

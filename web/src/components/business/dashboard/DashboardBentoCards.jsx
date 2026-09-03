@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 import AetherBentoCard from "@/components/business/AetherBentoCard";
 import { BUSINESS_ROUTES } from "@/constants/routes";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 
 export const DashboardBentoCards = memo(
   ({
@@ -41,7 +41,7 @@ export const DashboardBentoCards = memo(
         <AetherBentoCard
           title="Doanh Thu Thực Nhận"
           subtitle={`Tỷ lệ chuyển đổi: ${conversionRate}%`}
-          value={formatVND(netRevenue)}
+          value={formatMoney(netRevenue)}
           variant="gray"
           onClick={() => navigate(BUSINESS_ROUTES.REVENUE)}
         />

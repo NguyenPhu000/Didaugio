@@ -59,7 +59,7 @@ export const verifyQRSchema = z
           value.text,
       ),
     {
-      message: "Thiáº¿u dá»¯ liá»‡u QR booking",
+      message: "Thiếu dữ liệu QR booking",
       path: ["bookingCode"],
     },
   );
@@ -88,8 +88,14 @@ export const markPaidSchema = z.object({
   paymentMethod: z.string().trim().min(2).max(50),
   transactionRef: z.string().trim().min(1).max(255),
   amount: z.coerce.number().int().positive(),
-  idempotencyKey: z.string().trim().min(1).max(128),
-  reason: z.string().trim().min(1).max(500),
+  idempotencyKey: z
+    .string()
+    .trim()
+    .min(1)
+    .max(128)
+    .optional()
+    .default(() => `mark_paid_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`),
+  reason: z.string().trim().max(500).optional().default("Xác nhận thanh toán thủ công"),
   paidAt: z.string().max(100).optional().nullable(),
 });
 
@@ -98,8 +104,18 @@ export const refundBookingSchema = z.object({
     .number({ required_error: "Số tiền hoàn là bắt buộc" })
     .int("Số tiền hoàn phải là số nguyên")
     .positive("Số tiền hoàn phải lớn hơn 0"),
-  refundReason: z.string().min(5).max(500),
-  idempotencyKey: z.string().trim().min(1).max(128),
+  refundReason: z
+    .string()
+    .max(500, "Lý do tối đa 500 ký tự")
+    .optional()
+    .default("Hoàn tiền theo yêu cầu khách hàng"),
+  idempotencyKey: z
+    .string()
+    .trim()
+    .min(1)
+    .max(128)
+    .optional()
+    .default(() => `booking_refund_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`),
   refundedAt: z.string().max(100).optional().nullable(),
 });
 

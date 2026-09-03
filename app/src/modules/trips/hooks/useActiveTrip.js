@@ -29,6 +29,8 @@ const pausedKey = (tripId) => `${PAUSED_PREFIX}${tripId}`;
 const generateOperationId = () =>
   `op_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
+const MAX_CONFLICT_RETRIES = 3;
+
 async function readSessionOutbox() {
   try {
     const raw = await safeAsyncStorage.getItem(SESSION_OUTBOX_KEY);
@@ -52,6 +54,7 @@ async function runSessionOutboxFlush() {
   const remaining = [...queue];
   while (remaining.length > 0) {
     const operation = remaining[0];
+    operation.conflictRetries = operation.conflictRetries || 0;
     try {
       if (operation.baseVersion == null) {
         const session = await getTripSessionApi(operation.tripId);
@@ -68,14 +71,21 @@ async function runSessionOutboxFlush() {
     } catch (error) {
       const status = error?.status || error?.response?.status;
       if (status === 409) {
+        if (operation.conflictRetries >= MAX_CONFLICT_RETRIES) {
+          remaining.shift();
+          await writeSessionOutbox(remaining);
+          continue;
+        }
+        operation.conflictRetries += 1;
         operation.baseVersion = null;
         await writeSessionOutbox(remaining);
       } else if (status >= 400 && status < 500) {
         remaining.shift();
         await writeSessionOutbox(remaining);
         continue;
+      } else {
+        break;
       }
-      break;
     }
   }
 }

@@ -123,6 +123,18 @@
     }
   },
   "onboarding": {
+    "welcomeTitle": "Welcome to iPoint Genie!",
+    "welcomeSubtitle": "Discover Can Tho your way with our smart AI assistant.",
+    "stepLabel": "Step {{current}}/{{total}}",
+    "features": {
+      "aiTitle": "Genie AI Assistant",
+      "aiDesc": "Smart planning and personalized place suggestions",
+      "mapTitle": "Visual Map",
+      "mapDesc": "Explore places with detailed map and directions",
+      "exploreTitle": "Diverse Exploration",
+      "exploreDesc": "Food, travel, entertainment, shopping and more"
+    },
+    "selectMultiple": "You can select multiple styles",
     "travelStyleTitle": "What kind of travel do you like? 🌴",
     "travelStyleSubtitle": "Select the styles you love (you can choose multiple)",
     "groupTitle": "Who do you travel with? 👥",

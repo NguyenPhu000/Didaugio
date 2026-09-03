@@ -33,7 +33,7 @@ export const DocumentUploadStep = memo(
                 }));
               }}
               hint={t("business.register.licenseHint")}
-              fallbackPreview={DOCUMENT_SAMPLE_IMAGES.portrait}
+              fallbackPreview={DOCUMENT_SAMPLE_IMAGES.businessLicense}
               previewAlt={t("business.register.altBusinessLicense")}
               previewClassName="h-[300px] sm:h-[360px]"
               error={documentErrors.businessLicense}

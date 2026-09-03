@@ -9,8 +9,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { formatMoney } from "@/utils/formatters";
 import {
-  formatCurrency,
   formatDate,
   getGatewayBadge,
   buildTimeline,
@@ -105,13 +105,13 @@ export const PaymentDetailDrawer = ({ open, onOpenChange, payment }) => {
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-muted-foreground">Số tiền</span>
                   <span className="font-semibold text-sm">
-                    {formatCurrency(payment?.amount)}
+                    {formatMoney(payment?.amount)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-muted-foreground">Đã hoàn</span>
                   <span className="font-semibold text-blue-600 text-sm">
-                    {formatCurrency(payment?.refundAmount)}
+                    {formatMoney(payment?.refundAmount)}
                   </span>
                 </div>
                 <div>

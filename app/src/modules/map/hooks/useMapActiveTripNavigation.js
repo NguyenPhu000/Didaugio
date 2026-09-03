@@ -153,8 +153,6 @@ export function useMapActiveTripNavigation({
     isActiveTripMode,
     activeEventId,
     activeTripLocation,
-    activeTripLocation?.latitude,
-    activeTripLocation?.longitude,
     activeNextDestination?.placeId,
     activeTrip.isPaused,
   ]);

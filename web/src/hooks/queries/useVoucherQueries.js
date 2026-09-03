@@ -83,14 +83,19 @@ export function useCreateVoucher() {
 export function useUpdateVoucher() {
   const queryClient = useQueryClient();
   return useApiMutation(
-    ({ id, data }) => voucherService.update(id, data),
+    ({ id, data, ...rest }) => {
+      const payload = data !== undefined ? data : rest;
+      return voucherService.update(id, payload);
+    },
     {
-      onMutate: async ({ id, data }) => {
+      onMutate: async ({ id, data, ...rest }) => {
+        const payload = data !== undefined ? data : rest;
+        await queryClient.cancelQueries({ queryKey: queryKeys.vouchers.all() });
         await queryClient.cancelQueries({ queryKey: queryKeys.vouchers.detail(id) });
         const previous = queryClient.getQueryData(queryKeys.vouchers.detail(id));
         queryClient.setQueryData(queryKeys.vouchers.detail(id), (old) => ({
           ...old,
-          data: { ...old?.data, ...data },
+          data: { ...old?.data, ...payload },
         }));
         return { previous };
       },

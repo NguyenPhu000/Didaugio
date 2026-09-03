@@ -192,9 +192,11 @@ export default function EventDetailScreen() {
       const manipulated = await ImageManipulator.manipulateAsync(
         result.assets[0].uri,
         [{ resize: { width: 400, height: 400 } }],
-        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG },
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true },
       );
-      const imageUrl = await imageUriToBase64(manipulated.uri);
+      const imageUrl = manipulated.base64
+        ? `data:image/jpeg;base64,${manipulated.base64}`
+        : await imageUriToBase64(manipulated.uri);
       await createMomentMutation.mutateAsync({
         id,
         payload: {

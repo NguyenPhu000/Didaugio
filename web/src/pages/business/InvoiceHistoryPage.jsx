@@ -12,7 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { formatVND, formatDateTime } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
+import { formatDateTime } from "@/components/business/dashboardWidgetHelpers";
 import FinancialSubNav from "@/components/business/FinancialSubNav";
 import AetherBentoCard from "@/components/business/AetherBentoCard";
 import {
@@ -230,7 +231,7 @@ export default function InvoiceHistoryPage() {
 
                   <div className="flex items-center justify-between sm:justify-end gap-4">
                     <span className="text-lg sm:text-xl font-black text-slate-950 dark:text-white tracking-tight">
-                      {formatVND(invoice.amount)}
+                      {formatMoney(invoice.amount)}
                     </span>
 
                     {invoice.status === "pending" && (

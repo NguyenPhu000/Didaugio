@@ -278,14 +278,9 @@ const LoginPage = () => {
           className="ml-4 inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.97]"
         >
           <Building2 className="h-3.5 w-3.5" />
-          Đăng ký
+          {t("auth.register.submit")}
         </Link>
       </motion.div>
-
-      {/* Security note */}
-      <p className="mt-4 text-center text-[11px] tracking-wide text-slate-400">
-        {t("auth.login.secureNote")}
-      </p>
     </AuthShell>
   );
 };

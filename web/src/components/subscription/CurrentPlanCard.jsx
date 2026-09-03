@@ -2,7 +2,8 @@ import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
 import PlanBadge from "./PlanBadge";
 import { cn } from "@/lib/utils";
-import { formatVND, formatDate } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
+import { formatDate } from "@/components/business/dashboardWidgetHelpers";
 import { STATUS_LABELS } from "./subscriptionConstants";
 
 function UsageMeter({ label, used, limit }) {
@@ -56,7 +57,7 @@ export const CurrentPlanCard = memo(
               </span>
             </div>
             <span className="text-2xl font-black text-slate-950 dark:text-white">
-              {formatVND(
+              {formatMoney(
                 sub.billingCycle === "yearly"
                   ? plan.priceYearly ?? plan.priceMonthly
                   : plan.priceMonthly

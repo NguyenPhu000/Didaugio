@@ -14,7 +14,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { formatVND } from "./payoutConstants";
+import { formatMoney, formatMoneyCompact } from "@/utils/formatters";
 
 const StatCard = ({ title, value, icon: Icon, subtitle }) => {
   return (
@@ -47,13 +47,13 @@ export const PayoutStatsAndCharts = memo(
     const statCards = [
       {
         title: "Tổng chờ duyệt",
-        value: formatVND(stats.totalPendingAmount),
+        value: formatMoney(stats.totalPendingAmount),
         icon: Clock,
         subtitle: `${stats.pendingCount || 0} yêu cầu`,
       },
       {
         title: "Đã xử lý hôm nay",
-        value: formatVND(stats.processedTodayAmount),
+        value: formatMoney(stats.processedTodayAmount),
         icon: CheckCircle2,
         subtitle: `${stats.processedTodayCount || 0} yêu cầu`,
       },
@@ -128,13 +128,7 @@ export const PayoutStatsAndCharts = memo(
                     <YAxis
                       tickLine={false}
                       tick={{ fontSize: 11, fill: "#64748b" }}
-                      tickFormatter={(val) =>
-                        val >= 1000000
-                          ? `${(val / 1000000).toFixed(1)}M`
-                          : val >= 1000
-                          ? `${(val / 1000).toFixed(0)}k`
-                          : val
-                      }
+                      tickFormatter={formatMoneyCompact}
                     />
                     <Tooltip
                       contentStyle={{
@@ -142,10 +136,7 @@ export const PayoutStatsAndCharts = memo(
                         border: "1px solid rgba(0,0,0,0.05)",
                         boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
                       }}
-                      formatter={(value) => [
-                        `${Number(value).toLocaleString("vi-VN")} đ`,
-                        "Số tiền",
-                      ]}
+                      formatter={(value) => [formatMoney(value), "Số tiền"]}
                     />
                     <Line
                       type="monotone"
@@ -187,6 +178,7 @@ export const PayoutStatsAndCharts = memo(
                         borderRadius: "12px",
                         border: "1px solid rgba(0,0,0,0.05)",
                       }}
+                      formatter={(value, name) => [`${value} yêu cầu`, name]}
                     />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                   </PieChart>
