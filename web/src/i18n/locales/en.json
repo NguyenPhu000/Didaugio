@@ -3877,6 +3877,23 @@
       "allDescription": "Bookings, places, businesses, and system updates are collected here."
     }
   },
+  "header": {
+    "notifications": "Notifications",
+    "unreadCount": "{{count}} unread",
+    "notificationSubtitle": "Latest system and operational updates",
+    "markAllRead": "Mark all read",
+    "noNotifications": "No notifications yet",
+    "noNotificationsDesc": "All updates regarding bookings and operations will appear here.",
+    "notification": "Notification",
+    "enableBrowserNotifications": "Enable browser notifications",
+    "browserNotificationsEnabled": "Push notifications active",
+    "viewAllNotifications": "Open notification center",
+    "account": "Account",
+    "profile": "My Profile",
+    "businessProfile": "Business Profile",
+    "systemSettings": "System Settings",
+    "logout": "Sign Out"
+  },
   "legal": {
     "shellTitle": "iPoint Genie - travel made practical.",
     "shellSubtitle": "Public information and account controls for iPoint Genie users.",

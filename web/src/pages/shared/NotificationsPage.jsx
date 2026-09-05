@@ -2,16 +2,16 @@ import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  ArrowLeft,
   Bell,
   CalendarCheck,
   Check,
+  CheckCheck,
   ExternalLink,
-  FileText,
   MapPin,
   RefreshCw,
   Star,
   Store,
+  Filter,
 } from "lucide-react";
 import { notificationService } from "@/apis/notificationService";
 import { Button } from "@/components/ui/button";
@@ -24,39 +24,12 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 import { resolveRoleId } from "@/utils/authRouting";
 import { useTranslation } from "react-i18next";
+import {
+  getNotificationMeta,
+  formatNotificationRelativeTime,
+} from "@/components/common/HeaderNotificationDropdown";
 
 const NOTIFICATION_LIMIT = 50;
-const REVIEW_NOTIFICATION_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF];
-
-function formatTime(value, locale) {
-  if (!value) return "";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString(locale, {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function formatRelativeTime(value, t, locale) {
-  if (!value) return "";
-  const now = new Date();
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-
-  const diff = now - d;
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-
-  if (minutes < 1) return t("notificationsPage.time.justNow");
-  if (minutes < 60) return t("notificationsPage.time.minutesAgo", { count: minutes });
-  if (hours < 24) return t("notificationsPage.time.hoursAgo", { count: hours });
-  if (days < 7) return t("notificationsPage.time.daysAgo", { count: days });
-  return formatTime(value, locale);
-}
 
 const normalizeNotificationsResponse = (response) => {
   const data = response?.data || response || [];
@@ -68,140 +41,61 @@ const normalizeNotificationsResponse = (response) => {
   };
 };
 
-const resolveNotificationRoute = (notification, currentRoleId) => {
-  const metadata = notification?.metadata || {};
-  const type = String(metadata.type || "");
+function formatExactTime(value, locale = "vi-VN") {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString(locale, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
-  if (REVIEW_NOTIFICATION_ROLES.includes(currentRoleId)) {
-    if (type.includes("place") || metadata.placeId) {
-      return {
-        route: ADMIN_ROUTES.PLACES_PENDING,
-        params: { placeId: metadata.placeId },
-      };
-    }
-    if (type.includes("business") || metadata.businessId) {
-      return {
-        route: ADMIN_ROUTES.BUSINESS_LIST,
-        params: { businessId: metadata.businessId },
-      };
-    }
-    if (type.includes("review") || metadata.reviewId) {
-      return {
-        route: ADMIN_ROUTES.REVIEWS_MODERATION,
-        params: { reviewId: metadata.reviewId },
-      };
-    }
-    return { route: ADMIN_ROUTES.DASHBOARD, params: {} };
-  }
+function getTimeGroupKey(dateString) {
+  if (!dateString) return "older";
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return "older";
 
-  if ((type.includes("booking") || metadata.bookingId) && metadata.bookingId) {
-    return {
-      route: BUSINESS_ROUTES.BOOKING_DETAIL(metadata.bookingId),
-      params: { bookingId: metadata.bookingId },
-    };
-  }
-  if ((type.includes("place") || metadata.placeId) && metadata.placeId) {
-    return {
-      route: BUSINESS_ROUTES.PLACES_EDIT(metadata.placeId),
-      params: { placeId: metadata.placeId },
-    };
-  }
-  if (type.includes("business") || type.includes("document") || metadata.businessId) {
-    return {
-      route: BUSINESS_ROUTES.PROFILE,
-      params: { businessId: metadata.businessId },
-    };
-  }
-  if (type.includes("review") || metadata.reviewId) {
-    return { route: BUSINESS_ROUTES.REVIEWS, params: { reviewId: metadata.reviewId } };
-  }
-  return { route: BUSINESS_ROUTES.DASHBOARD, params: {} };
-};
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const itemDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
-const getIconConfig = (type) => {
-  const t = String(type || "");
-  if (t.includes("booking")) return { Icon: CalendarCheck, className: "text-sky-700 bg-sky-50" };
-  if (t.includes("place")) return { Icon: MapPin, className: "text-emerald-700 bg-emerald-50" };
-  if (t.includes("business")) return { Icon: Store, className: "text-amber-700 bg-amber-50" };
-  if (t.includes("review")) return { Icon: Star, className: "text-yellow-700 bg-yellow-50" };
-  if (t.includes("document")) return { Icon: FileText, className: "text-violet-700 bg-violet-50" };
-  return { Icon: Bell, className: "text-slate-700 bg-slate-100" };
-};
+  const diffDays = Math.round((today - itemDate) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return "today";
+  if (diffDays === 1) return "yesterday";
+  return "older";
+}
 
-const NotificationItem = ({ notification, onMarkRead, onNavigate, currentRoleId, t, locale }) => {
-  const unread = !notification.readAt;
-  const { route, params } = resolveNotificationRoute(notification, currentRoleId);
-  const { Icon, className } = getIconConfig(notification.metadata?.type);
+const CATEGORY_TABS = [
+  { id: "all", label: "Tất cả danh mục" },
+  { id: "booking", label: "Đặt chỗ" },
+  { id: "place", label: "Địa điểm" },
+  { id: "business", label: "Doanh nghiệp" },
+  { id: "review", label: "Đánh giá" },
+  { id: "system", label: "Hệ thống" },
+];
 
-  const handleClick = () => {
-    if (unread) onMarkRead(notification.id);
-    onNavigate(route, params);
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className={cn(
-        "group flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3.5 text-left transition hover:bg-slate-50 last:border-0",
-        unread && "bg-sky-50/60 hover:bg-sky-50",
-      )}
-    >
-      <span className={cn("mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", className)}>
-        <Icon className="h-5 w-5" />
-      </span>
-
-      <span className="min-w-0 flex-1">
-        <span className="flex items-start justify-between gap-3">
-          <span
-            className={cn(
-              "line-clamp-1 text-sm font-semibold leading-5",
-              unread ? "text-slate-950" : "text-slate-700",
-            )}
-          >
-            {notification.title || t("notificationsPage.title")}
-          </span>
-          <span className="flex shrink-0 items-center gap-2 pt-1">
-            {unread && <span className="h-2 w-2 rounded-full bg-sky-600" />}
-            <ExternalLink className="h-3.5 w-3.5 text-slate-300 transition group-hover:text-slate-500" />
-          </span>
-        </span>
-        <span className="mt-1 line-clamp-2 text-[13px] leading-5 text-slate-500">
-          {notification.message || notification.body || ""}
-        </span>
-        <span className="mt-2 flex items-center justify-between gap-3">
-          <span className="text-xs text-slate-400">
-            {formatRelativeTime(notification.createdAt, t, locale)}
-          </span>
-          {unread && (
-            <span className="text-xs font-medium text-sky-700 opacity-0 transition group-hover:opacity-100">
-              Đánh dấu đã đọc
-            </span>
-          )}
-        </span>
-      </span>
-    </button>
-  );
-};
-
-const NotificationsPage = () => {
+export const NotificationsPage = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const user = useAuthStore((state) => state.user);
   const currentRoleId = resolveRoleId(user);
-  const [activeTab, setActiveTab] = useState(
+
+  const [activeStatusTab, setActiveStatusTab] = useState(
     searchParams.get("tab") === "read" ? "all" : "unread",
   );
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
   const queryParams = useMemo(
     () => ({
       limit: NOTIFICATION_LIMIT,
       page: 1,
-      ...(activeTab === "unread" ? { unreadOnly: "true" } : {}),
+      ...(activeStatusTab === "unread" ? { unreadOnly: "true" } : {}),
     }),
-    [activeTab],
+    [activeStatusTab],
   );
 
   const listKey = queryKeys.notifications.list(queryParams);
@@ -222,7 +116,7 @@ const NotificationsPage = () => {
     staleTime: 20 * 1000,
   });
 
-  const notifications = notificationsQuery.data?.items || [];
+  const rawNotifications = notificationsQuery.data?.items || [];
   const unreadCount =
     unreadQuery.data ?? notificationsQuery.data?.unreadCount ?? 0;
   const loading = notificationsQuery.isLoading || notificationsQuery.isFetching;
@@ -238,7 +132,9 @@ const NotificationsPage = () => {
         const normalized = normalizeNotificationsResponse(current);
         return {
           ...(current && typeof current === "object" ? current : {}),
-          data: normalized.items.filter((item) => item.id !== id),
+          data: normalized.items.map((item) =>
+            item.id === id ? { ...item, readAt: new Date().toISOString() } : item,
+          ),
           unreadCount: Math.max(0, normalized.unreadCount - 1),
         };
       });
@@ -258,7 +154,7 @@ const NotificationsPage = () => {
         return {
           ...(current && typeof current === "object" ? current : {}),
           data:
-            activeTab === "unread"
+            activeStatusTab === "unread"
               ? []
               : normalized.items.map((item) => ({
                   ...item,
@@ -274,172 +170,304 @@ const NotificationsPage = () => {
     onSettled: invalidateNotifications,
   });
 
-  const handleNavigate = useCallback(
-    (route, params) => {
-      const query = new URLSearchParams();
-      Object.entries(params).forEach(([key, value]) => {
-        if (value) query.set(key, value);
-      });
-      const queryString = query.toString();
-      navigate(`${route}${queryString ? `?${queryString}` : ""}`);
-    },
-    [navigate],
-  );
+  // Filter notifications by selected category
+  const filteredNotifications = useMemo(() => {
+    if (selectedCategory === "all") return rawNotifications;
+    return rawNotifications.filter((n) => {
+      const meta = getNotificationMeta(n, currentRoleId);
+      return meta.category === selectedCategory;
+    });
+  }, [rawNotifications, selectedCategory, currentRoleId]);
 
-  const renderContent = () => {
-    if (loading && notifications.length === 0) {
-      return (
-        <div className="divide-y divide-slate-100">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="flex items-start gap-3 px-4 py-4">
-              <Skeleton className="h-10 w-10 rounded-xl" />
+  // Group notifications by Time
+  const groupedNotifications = useMemo(() => {
+    const groups = { today: [], yesterday: [], older: [] };
+    filteredNotifications.forEach((item) => {
+      const groupKey = getTimeGroupKey(item.createdAt);
+      groups[groupKey].push(item);
+    });
+    return groups;
+  }, [filteredNotifications]);
+
+  const handleOpenItem = (notification) => {
+    if (!notification.readAt) {
+      markReadMutation.mutate(notification.id);
+    }
+    const meta = getNotificationMeta(notification, currentRoleId);
+    navigate(meta.route);
+  };
+
+  const handleQuickMarkRead = (e, id) => {
+    e.stopPropagation();
+    markReadMutation.mutate(id);
+  };
+
+  const locale = i18n.language === "vi" ? "vi-VN" : "en-US";
+
+  return (
+    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      {/* Top Header Card */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              {t("notificationsPage.title", "Trung tâm thông báo")}
+            </h1>
+            {unreadCount > 0 && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/60">
+                {unreadCount} chưa đọc
+              </span>
+            )}
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            Theo dõi kịp thời các thông báo đặt chỗ, phê duyệt địa điểm và vận hành hệ thống.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {unreadCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => markAllMutation.mutate()}
+              disabled={markAllMutation.isPending}
+              className="h-8.5 px-3 rounded-full text-xs font-medium border-black/[0.08] dark:border-white/[0.1] hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <CheckCheck className="mr-1.5 h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              {t("notificationsPage.markAllRead", "Đọc hết")}
+            </Button>
+          )}
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={invalidateNotifications}
+            disabled={loading}
+            className="h-8.5 w-8.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+            title="Làm mới thông báo"
+          >
+            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+          </Button>
+        </div>
+      </div>
+
+      {/* Filter Toolbar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
+        {/* Status Switcher Tabs */}
+        <div className="flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-black/[0.04] dark:border-white/[0.04]">
+          <button
+            type="button"
+            onClick={() => setActiveStatusTab("all")}
+            className={cn(
+              "px-4 py-1.5 rounded-full text-xs font-semibold transition-all",
+              activeStatusTab === "all"
+                ? "bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100 shadow-sm"
+                : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200",
+            )}
+          >
+            {t("notificationsPage.tabs.all", "Tất cả")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveStatusTab("unread")}
+            className={cn(
+              "flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all",
+              activeStatusTab === "unread"
+                ? "bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100 shadow-sm"
+                : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200",
+            )}
+          >
+            <span>{t("notificationsPage.tabs.unread", "Chưa đọc")}</span>
+            {unreadCount > 0 && (
+              <span
+                className={cn(
+                  "px-1.5 py-0.2 rounded-full text-[10px] font-bold",
+                  activeStatusTab === "unread"
+                    ? "bg-rose-500 text-white"
+                    : "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400",
+                )}
+              >
+                {unreadCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Category Filter Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-none">
+          {CATEGORY_TABS.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setSelectedCategory(cat.id)}
+              className={cn(
+                "px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all",
+                selectedCategory === cat.id
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm"
+                  : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-black/[0.05] dark:border-white/[0.06]",
+              )}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Notifications Content */}
+      {loading && filteredNotifications.length === 0 ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={index}
+              className="flex items-start gap-4 p-4 rounded-2xl border border-black/[0.05] dark:border-white/[0.06] bg-white dark:bg-slate-900"
+            >
+              <Skeleton className="h-11 w-11 rounded-2xl shrink-0" />
               <div className="flex-1 space-y-2 pt-1">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-1/2" />
+                <Skeleton className="h-4 w-1/3 rounded" />
+                <Skeleton className="h-3 w-3/4 rounded" />
+                <Skeleton className="h-3 w-1/4 rounded" />
               </div>
             </div>
           ))}
         </div>
-      );
-    }
-
-    if (notifications.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center px-8 py-16 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
-            <Bell className="h-8 w-8 text-slate-400" />
+      ) : filteredNotifications.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 px-4 text-center rounded-3xl border border-black/[0.04] dark:border-white/[0.04] bg-white dark:bg-slate-900">
+          <div className="h-16 w-16 rounded-3xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 mb-4">
+            <Bell className="h-8 w-8 stroke-[1.5]" />
           </div>
-          <p className="mt-4 text-sm font-semibold text-slate-700">
-            {activeTab === "unread" ? t("notificationsPage.empty.unreadTitle") : t("notificationsPage.empty.allTitle")}
+          <p className="text-base font-semibold text-slate-800 dark:text-slate-200">
+            {activeStatusTab === "unread"
+              ? "Không có thông báo chưa đọc"
+              : "Hộp thông báo trống"}
           </p>
-          <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">
-            {activeTab === "unread"
-              ? t("notificationsPage.empty.unreadDescription")
-              : t("notificationsPage.empty.allDescription")}
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-md">
+            {activeStatusTab === "unread"
+              ? "Tuyệt vời! Bạn đã xem hết mọi thông báo và cập nhật mới nhất từ hệ thống."
+              : "Các thông tin về đặt chỗ, xét duyệt địa điểm và hoạt động vận hành sẽ hiển thị tại đây."}
           </p>
-          {activeTab === "unread" && (
+          {activeStatusTab === "unread" && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              onClick={() => setActiveTab("all")}
-              className="mt-3"
+              onClick={() => setActiveStatusTab("all")}
+              className="mt-5 rounded-full text-xs font-semibold px-4 h-8"
             >
-              {t("common.viewAll")}
+              Xem tất cả thông báo
             </Button>
           )}
         </div>
-      );
-    }
+      ) : (
+        <div className="space-y-6">
+          {[
+            { key: "today", title: "Hôm nay", list: groupedNotifications.today },
+            { key: "yesterday", title: "Hôm qua", list: groupedNotifications.yesterday },
+            { key: "older", title: "Trước đó", list: groupedNotifications.older },
+          ]
+            .filter((g) => g.list.length > 0)
+            .map((group) => (
+              <div key={group.key} className="space-y-3">
+                <div className="flex items-center gap-2 px-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    {group.title}
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-300 dark:text-slate-700">
+                    ({group.list.length})
+                  </span>
+                </div>
 
-    return (
-      <div className="divide-y divide-slate-100">
-        {notifications.map((notification) => (
-          <NotificationItem
-            key={notification.id}
-            notification={notification}
-            onMarkRead={(id) => markReadMutation.mutate(id)}
-            onNavigate={handleNavigate}
-            currentRoleId={currentRoleId}
-            t={t}
-            locale={i18n.language === "vi" ? "vi-VN" : "en-US"}
-          />
-        ))}
-      </div>
-    );
-  };
+                <div className="space-y-2.5">
+                  {group.list.map((notification) => {
+                    const unread = !notification.readAt;
+                    const meta = getNotificationMeta(notification, currentRoleId);
+                    const IconComponent = meta.Icon;
 
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto max-w-3xl px-4 py-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate(-1)}
-                className="h-9 w-9 shrink-0 rounded-full"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <div className="min-w-0">
-                <h1 className="text-lg font-bold text-slate-950">{t("notificationsPage.title")}</h1>
-                <p className="text-xs text-slate-500">
-                  {unreadCount > 0 ? t("notificationsPage.unreadCount", { count: unreadCount }) : t("notificationsPage.upToDate")}
-                </p>
+                    return (
+                      <div
+                        key={notification.id}
+                        onClick={() => handleOpenItem(notification)}
+                        className={cn(
+                          "group relative flex items-start gap-4 p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer",
+                          unread
+                            ? "border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-slate-900 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:border-black/[0.16] dark:hover:border-white/[0.2]"
+                            : "border-black/[0.04] dark:border-white/[0.04] bg-white/70 dark:bg-slate-900/60 hover:bg-white dark:hover:bg-slate-900 hover:border-black/[0.09] dark:hover:border-white/[0.09]",
+                        )}
+                      >
+                        {/* Icon đại diện */}
+                        <div
+                          className={cn(
+                            "h-10 w-10 sm:h-11 sm:w-11 rounded-2xl flex items-center justify-center shrink-0 mt-0.5",
+                            meta.iconBg,
+                          )}
+                        >
+                          <IconComponent className="h-5 w-5" />
+                        </div>
+
+                        {/* Nội dung thông báo */}
+                        <div className="flex-1 min-w-0 pr-6 sm:pr-8">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span
+                              className={cn(
+                                "text-sm sm:text-base leading-snug",
+                                unread
+                                  ? "font-bold text-slate-950 dark:text-slate-50"
+                                  : "font-semibold text-slate-700 dark:text-slate-300",
+                              )}
+                            >
+                              {notification.title || t("notificationsPage.title", "Thông báo")}
+                            </span>
+
+                            {/* Category Badge */}
+                            <span
+                              className={cn(
+                                "px-2 py-0.5 rounded-full text-[10px] font-semibold border",
+                                meta.badgeClass,
+                              )}
+                            >
+                              {meta.label}
+                            </span>
+                          </div>
+
+                          <p className="text-xs sm:text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">
+                            {notification.message || notification.body || ""}
+                          </p>
+
+                          <div className="flex items-center gap-3 mt-2.5">
+                            <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                              {formatNotificationRelativeTime(notification.createdAt, locale)}
+                              {" · "}
+                              {formatExactTime(notification.createdAt, locale)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Action Corner */}
+                        <div className="absolute right-4 top-4 sm:top-5 flex items-center gap-1.5">
+                          {unread && (
+                            <>
+                              <span className="h-2.5 w-2.5 rounded-full bg-rose-500 group-hover:hidden" />
+                              <button
+                                type="button"
+                                onClick={(e) => handleQuickMarkRead(e, notification.id)}
+                                title="Đánh dấu đã đọc"
+                                className="hidden group-hover:flex h-7 px-2.5 items-center gap-1 rounded-full bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-emerald-950 dark:hover:text-emerald-300 text-xs font-medium transition-colors"
+                              >
+                                <Check className="h-3 w-3" />
+                                <span>Đã đọc</span>
+                              </button>
+                            </>
+                          )}
+                          <div className="hidden sm:flex h-7 w-7 items-center justify-center text-slate-300 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {unreadCount > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => markAllMutation.mutate()}
-                  disabled={markAllMutation.isPending}
-                  className="h-8 text-xs"
-                >
-                  <Check className="mr-1 h-3.5 w-3.5" />
-                  {t("notificationsPage.markAllRead")}
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={invalidateNotifications}
-                disabled={loading}
-                className="h-9 w-9 rounded-full"
-              >
-                <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab("unread")}
-              className={cn(
-                "flex h-9 items-center gap-2 rounded-full px-4 text-sm font-medium transition",
-                activeTab === "unread"
-                  ? "bg-slate-950 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200",
-              )}
-            >
-              {t("notificationsPage.tabs.unread")}
-              {unreadCount > 0 && (
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
-                    activeTab === "unread" ? "bg-white/20" : "bg-sky-600 text-white",
-                  )}
-                >
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("all")}
-              className={cn(
-                "h-9 rounded-full px-4 text-sm font-medium transition",
-                activeTab === "all"
-                  ? "bg-slate-950 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200",
-              )}
-            >
-              {t("notificationsPage.tabs.all")}
-            </button>
-          </div>
+            ))}
         </div>
-      </div>
-
-      <main className="mx-auto max-w-3xl px-4 py-4">
-        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          {renderContent()}
-        </section>
-      </main>
+      )}
     </div>
   );
 };

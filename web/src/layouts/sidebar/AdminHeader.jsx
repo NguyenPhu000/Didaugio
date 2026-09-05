@@ -1,14 +1,11 @@
 import { SidebarTrigger } from "@/components/animate-ui/components/radix/sidebar";
 import {
   Search,
-  Bell,
   ChevronDown,
   User,
   LogOut,
   Settings,
   Calendar,
-  Check,
-  ExternalLink,
   Store,
 } from "lucide-react";
 import {
@@ -28,36 +25,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/animate-ui/components/radix/dropdown-menu";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/animate-ui/components/radix/popover";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { useLogout } from "@/hooks/useLogout";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
-import { useWebPush } from "@/hooks/useWebPush";
-import { useNotifications } from "@/hooks/useNotifications";
 import { resolveRoleId } from "@/utils/authRouting";
 import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { LanguageSelector } from "@/components/common/LanguageSelector";
+import { HeaderNotificationDropdown } from "@/components/common/HeaderNotificationDropdown";
 import { useTranslation } from "react-i18next";
-
-const REVIEW_NOTIFICATION_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
-
-function formatTime(value) {
-  if (!value) return "";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function AdminHeader() {
   const user = useAuthStore((state) => state.user);
@@ -65,9 +41,6 @@ function AdminHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const { handleLogout, isLoggingOut } = useLogout();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } =
-    useNotifications();
-  const { permission, isSubscribed, requestPermissionAndSubscribe } = useWebPush();
 
   const getInitials = (name) => (name ? name.charAt(0).toUpperCase() : "U");
 
@@ -93,37 +66,6 @@ function AdminHeader() {
 
   const roleLabel = resolveRoleLabel();
   const avatarSrc = resolveMediaUrl(user?.avatar || user?.profile?.avatar);
-
-  const resolveNotificationRoute = (notification) => {
-    const metadata = notification?.metadata || {};
-    const type = String(metadata.type || "");
-
-    if (REVIEW_NOTIFICATION_ROLES.includes(currentRoleId)) {
-      if (type.includes("place") || metadata.placeId) {
-        return ADMIN_ROUTES.PLACES_PENDING;
-      }
-      if (type.includes("business") || metadata.businessId) {
-        return ADMIN_ROUTES.BUSINESS_LIST;
-      }
-      if (type.includes("review") || metadata.reviewId) {
-        return ADMIN_ROUTES.REVIEWS_MODERATION;
-      }
-      return ADMIN_ROUTES.DASHBOARD;
-    }
-
-    if ((type.includes("booking") || metadata.bookingId) && metadata.bookingId) {
-      return BUSINESS_ROUTES.BOOKING_DETAIL(metadata.bookingId);
-    }
-    if (type.includes("booking")) return BUSINESS_ROUTES.BOOKINGS;
-    if (type.includes("review")) return BUSINESS_ROUTES.REVIEWS;
-    if (type.includes("business") || type.includes("document")) {
-      return BUSINESS_ROUTES.PROFILE;
-    }
-    if ((type.includes("place") || metadata.placeId) && metadata.placeId) {
-      return BUSINESS_ROUTES.PLACES_EDIT(metadata.placeId);
-    }
-    return BUSINESS_ROUTES.DASHBOARD;
-  };
 
   const { t, i18n } = useTranslation();
   const locale = i18n.language === "vi" ? "vi-VN" : "en-US";
@@ -200,135 +142,7 @@ function AdminHeader() {
         <LanguageSelector />
 
         {/* Notifications */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t("header.notifications")}
-              className="relative h-9 w-9 rounded-full hover:bg-accent text-sidebar-foreground"
-            >
-              <Bell className="h-4 w-4" />
-              {unreadCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-sidebar bg-red-600 px-1 text-[10px] font-black leading-none text-white shadow-sm">
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="end"
-            sideOffset={8}
-            className="w-[calc(100vw-32px)] sm:w-[360px] p-0 overflow-hidden !bg-white border border-gray-200 shadow-xl rounded-2xl"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">{t("header.notifications")}</p>
-                <p className="text-[11px] text-gray-400 mt-0.5">
-                  {unreadCount > 0
-                    ? t("header.unreadCount", { count: unreadCount })
-                    : t("header.notificationSubtitle")}
-                </p>
-              </div>
-              {unreadCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => markAllAsRead()}
-                  className="h-7 px-2 text-[11px] text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                >
-                  <Check className="mr-1 h-3 w-3" />
-                  {t("header.markAllRead")}
-                </Button>
-              )}
-            </div>
-
-            {/* List */}
-            <ScrollArea className="max-h-[360px]">
-              {notifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 gap-2">
-                  <Bell className="h-8 w-8 text-gray-200" />
-                  <p className="text-sm font-medium text-gray-400">{t("header.noNotifications")}</p>
-                  <p className="text-[11px] text-gray-300 text-center px-4">
-                    {t("header.noNotificationsDesc")}
-                  </p>
-                </div>
-              ) : (
-                <div className="flex flex-col">
-                  {notifications.map((n) => {
-                    const unread = !n.readAt;
-                    return (
-                      <button
-                        key={n.id}
-                        onClick={() => {
-                          markAsRead(n.id);
-                          navigate(resolveNotificationRoute(n));
-                        }}
-                        className={cn(
-                          "flex flex-col gap-0.5 px-4 py-3 text-left transition-colors hover:bg-gray-50 border-b border-gray-50 last:border-0",
-                          unread && "bg-blue-50/50 hover:bg-blue-50"
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-[13px] font-semibold text-gray-900 leading-tight line-clamp-1">
-                            {n.title || t("header.notification")}
-                          </span>
-                          {unread && (
-                            <span className="shrink-0 mt-1 h-2 w-2 rounded-full bg-blue-500" />
-                          )}
-                        </div>
-                        <span className="text-[12px] text-gray-500 line-clamp-2 leading-relaxed">
-                          {n.message || n.body || ""}
-                        </span>
-                        <span className="text-[10px] text-gray-300 font-mono mt-0.5">
-                          {formatTime(n.createdAt)}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </ScrollArea>
-
-            {/* Web Push toggle */}
-            {!isSubscribed && permission !== "denied" && (
-              <>
-                <div className="border-t border-gray-100 px-4 py-2.5">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => requestPermissionAndSubscribe()}
-                    className="w-full justify-start h-8 text-[11px] text-gray-400 hover:text-gray-600 hover:bg-gray-50"
-                  >
-                    <Bell className="mr-2 h-3 w-3" />
-                    {t("header.enableBrowserNotifications")}
-                  </Button>
-                </div>
-              </>
-            )}
-            {isSubscribed && (
-              <div className="border-t border-gray-100 px-4 py-2">
-                <div className="flex items-center gap-1.5 text-[11px] text-emerald-600">
-                  <Check className="h-3 w-3" /> {t("header.browserNotificationsEnabled")}
-                </div>
-              </div>
-            )}
-            {notifications.length > 0 && (
-              <div className="border-t border-gray-100 px-4 py-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate(ADMIN_ROUTES.NOTIFICATIONS)}
-                  className="w-full justify-center h-8 text-[12px] font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                >
-                  {t("header.viewAllNotifications")}
-                  <ExternalLink className="ml-1.5 h-3 w-3" />
-                </Button>
-              </div>
-            )}
-          </PopoverContent>
-        </Popover>
+        <HeaderNotificationDropdown triggerClassName="text-sidebar-foreground hover:bg-sidebar-accent" />
 
         {/* Profile */}
         <DropdownMenu>

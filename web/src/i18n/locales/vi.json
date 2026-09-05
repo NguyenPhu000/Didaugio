@@ -3895,6 +3895,23 @@
       "allDescription": "Booking, địa điểm, doanh nghiệp và hệ thống sẽ được gom tại đây."
     }
   },
+  "header": {
+    "notifications": "Thông báo",
+    "unreadCount": "{{count}} chưa đọc",
+    "notificationSubtitle": "Cập nhật mới nhất từ hệ thống",
+    "markAllRead": "Đã đọc hết",
+    "noNotifications": "Chưa có thông báo nào",
+    "noNotificationsDesc": "Mọi thông báo cập nhật đặt chỗ và vận hành sẽ xuất hiện tại đây.",
+    "notification": "Thông báo",
+    "enableBrowserNotifications": "Bật thông báo trên máy tính",
+    "browserNotificationsEnabled": "Đã bật thông báo đẩy",
+    "viewAllNotifications": "Xem tất cả thông báo",
+    "account": "Tài khoản",
+    "profile": "Hồ sơ cá nhân",
+    "businessProfile": "Hồ sơ doanh nghiệp",
+    "systemSettings": "Cài đặt hệ thống",
+    "logout": "Đăng xuất"
+  },
   "legal": {
     "shellTitle": "iPoint Genie - du lịch thiết thực.",
     "shellSubtitle": "Thông tin công khai và các lựa chọn quản lý tài khoản dành cho người dùng iPoint Genie.",

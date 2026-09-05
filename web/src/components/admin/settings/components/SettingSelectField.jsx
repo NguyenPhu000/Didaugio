@@ -38,8 +38,6 @@ export default function SettingSelectField({
           className="block text-xs font-semibold text-zinc-600"
         >
           {label}
-        >
-          {label}
         </label>
       ) : null}
       <Select
