@@ -32,8 +32,8 @@ export const authService = {
   },
 
   // Refresh token
-  refreshToken: async () => {
-    const response = await api.post("/auth/refresh", {});
+  refreshToken: async (config = {}) => {
+    const response = await api.post("/auth/refresh", {}, config);
     return response;
   },
 

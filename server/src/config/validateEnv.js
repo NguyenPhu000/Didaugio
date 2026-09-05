@@ -20,6 +20,35 @@ const warnOrThrow = (isProd, message) => {
   console.warn(`\nWarning: ${message}\n`);
 };
 
+const validateProductionHttpsUrl = (isProd, key, { required = false } = {}) => {
+  if (!isProd) return;
+  const value = String(process.env[key] || "").trim();
+  if (!value) {
+    requireProductionValue(required, `[ENV] ${key} bat buoc trong production`);
+    return;
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`[ENV] ${key} phai la URL hop le`);
+  }
+
+  requireProductionValue(
+    parsed.protocol !== "https:",
+    `[ENV] ${key} trong production phai su dung HTTPS`,
+  );
+  requireProductionValue(
+    Boolean(parsed.username || parsed.password),
+    `[ENV] ${key} khong duoc chua credential trong URL`,
+  );
+  requireProductionValue(
+    ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname.toLowerCase()),
+    `[ENV] ${key} trong production khong duoc tro den localhost`,
+  );
+};
+
 function validateCoreEnvironment() {
   const missingCore = REQUIRED_CORE.filter((key) => !process.env[key]);
   if (missingCore.length > 0) {
@@ -106,6 +135,29 @@ function validateProductionOriginsAndEmail(isProd) {
   }
 }
 
+function validateProductionPublicUrls(isProd) {
+  validateProductionHttpsUrl(isProd, "FRONTEND_URL", { required: true });
+  validateProductionHttpsUrl(isProd, "API_BASE_URL", { required: true });
+
+  const hasVnpayConfig = ["VNPAY_TMN_CODE", "VNPAY_HASH_SECRET"].some((key) =>
+    String(process.env[key] || "").trim(),
+  );
+  if (hasVnpayConfig) {
+    for (const key of ["VNPAY_URL", "VNPAY_RETURN_URL"]) {
+      validateProductionHttpsUrl(isProd, key, { required: true });
+    }
+  }
+
+  const hasMomoConfig = ["MOMO_PARTNER_CODE", "MOMO_ACCESS_KEY", "MOMO_SECRET_KEY"].some(
+    (key) => String(process.env[key] || "").trim(),
+  );
+  if (hasMomoConfig) {
+    for (const key of ["MOMO_API_URL", "MOMO_REDIRECT_URL", "MOMO_IPN_URL"]) {
+      validateProductionHttpsUrl(isProd, key, { required: true });
+    }
+  }
+}
+
 function validateOptionalStackConfiguration(isProd) {
   const googleAudienceKeys = [
     "GOOGLE_CLIENT_ID",
@@ -153,6 +205,7 @@ export function validateEnv() {
   validateProductionRedis(isProd);
   validateProductionObservability(isProd);
   validateProductionOriginsAndEmail(isProd);
+  validateProductionPublicUrls(isProd);
   validateOptionalStackConfiguration(isProd);
   validateRoutingConfiguration(isProd);
 }

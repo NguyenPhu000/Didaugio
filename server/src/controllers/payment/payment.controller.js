@@ -26,6 +26,26 @@ function errorResponse(res, status, message, errorCode) {
     .json({ success: false, data: null, message, errorCode });
 }
 
+const normalizeRedirectId = (value) => {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? String(parsed) : null;
+};
+
+const paymentResultRedirect = (baseUrl, params = {}) => {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== null && value !== undefined && value !== "") {
+      query.set(key, String(value));
+    }
+  }
+  return `${baseUrl}?${query.toString()}`;
+};
+
+const resolvePaymentResultBase = (isMobile, frontendUrl, mobileScheme) =>
+  isMobile
+    ? `${mobileScheme.endsWith("/") ? mobileScheme : `${mobileScheme}/`}payment/result`
+    : `${frontendUrl.replace(/\/+$/u, "")}/payment/result`;
+
 /**
  * POST /api/payments/checkout
  * Auth: User (JWT)
@@ -130,22 +150,12 @@ export function momoReturn(req, res, next) {
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
   const mobileScheme = process.env.MOBILE_DEEP_LINK || "didigaugio://";
 
-  const resultCode = parseInt(req.query.resultCode || "1000", 10);
-  const orderId = req.query.orderId || "";
-
-  const baseParams = `bookingId=${bookingId || ""}&paymentId=${paymentId || ""}`;
-  if (resultCode === 0) {
-    const successUrl = isMobile
-      ? `${mobileScheme}payment/result?status=success&${baseParams}`
-      : `${frontendUrl}/payment/result?status=success&ref=${orderId}`;
-    return res.redirect(successUrl);
-  } else {
-    const message = encodeURIComponent(req.query.message || "");
-    const failUrl = isMobile
-      ? `${mobileScheme}payment/result?status=failed&${baseParams}&code=${resultCode}&message=${message}`
-      : `${frontendUrl}/payment/result?status=failed&ref=${orderId}&code=${resultCode}`;
-    return res.redirect(failUrl);
-  }
+  const resultBase = resolvePaymentResultBase(isMobile, frontendUrl, mobileScheme);
+  return res.redirect(paymentResultRedirect(resultBase, {
+    status: "pending_verify",
+    bookingId: normalizeRedirectId(bookingId),
+    paymentId: normalizeRedirectId(paymentId),
+  }));
 }
 
 /**
@@ -168,20 +178,12 @@ export function vnpayReturn(req, res, next) {
     return res.redirect(failUrl);
   }
 
-  const { responseCode, transactionRef } = verifyResult.data;
-
-  const baseParams = `bookingId=${bookingId || ""}&paymentId=${paymentId || ""}`;
-  if (responseCode === "00") {
-    const successUrl = isMobile
-      ? `${mobileScheme}payment/result?status=success&${baseParams}`
-      : `${frontendUrl}/payment/result?status=success&ref=${transactionRef}`;
-    return res.redirect(successUrl);
-  } else {
-    const failUrl = isMobile
-      ? `${mobileScheme}payment/result?status=failed&${baseParams}&code=${responseCode}`
-      : `${frontendUrl}/payment/result?status=failed&ref=${transactionRef}&code=${responseCode}`;
-    return res.redirect(failUrl);
-  }
+  const resultBase = resolvePaymentResultBase(isMobile, frontendUrl, mobileScheme);
+  return res.redirect(paymentResultRedirect(resultBase, {
+    status: "pending_verify",
+    bookingId: normalizeRedirectId(bookingId),
+    paymentId: normalizeRedirectId(paymentId),
+  }));
 }
 
 /**
@@ -195,23 +197,12 @@ export function sepayReturn(req, res, next) {
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
   const mobileScheme = process.env.MOBILE_DEEP_LINK || "didigaugio://";
 
-  const baseParams = `bookingId=${bookingId || ""}&paymentId=${paymentId || ""}`;
-
-  // SePay redirects to success_url on success, error_url on error, cancel_url on cancel.
-  // We use the same URL with a status query param to differentiate.
-  const status = req.query.status || "success";
-
-  if (status === "success") {
-    const successUrl = isMobile
-      ? `${mobileScheme}payment/result?status=success&${baseParams}`
-      : `${frontendUrl}/payment/result?status=success&${baseParams}`;
-    return res.redirect(successUrl);
-  }
-
-  const failUrl = isMobile
-    ? `${mobileScheme}payment/result?status=failed&${baseParams}`
-    : `${frontendUrl}/payment/result?status=failed&${baseParams}`;
-  return res.redirect(failUrl);
+  const resultBase = resolvePaymentResultBase(isMobile, frontendUrl, mobileScheme);
+  return res.redirect(paymentResultRedirect(resultBase, {
+    status: "pending_verify",
+    bookingId: normalizeRedirectId(bookingId),
+    paymentId: normalizeRedirectId(paymentId),
+  }));
 }
 
 /**

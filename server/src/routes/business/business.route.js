@@ -36,6 +36,10 @@ import { requireBusinessOwner } from "../../middlewares/requireBusinessOwner.js"
 import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import { sanitizeBody } from "../../middlewares/sanitizeMiddleware.js";
 import {
+  otpSendLimiter,
+  otpVerificationLimiter,
+} from "../../middlewares/rateLimitMiddleware.js";
+import {
   registerBusinessSchema,
   updateBusinessSchema,
   approveBusinessSchema,
@@ -110,12 +114,14 @@ router.get(
 router.post(
   "/profile/contract-otp",
   requireBusinessOwner,
+  otpSendLimiter,
   sendContractOtp
 );
 
 router.put(
   "/profile/contract-sign",
   requireBusinessOwner,
+  otpVerificationLimiter,
   validateBody(signBusinessContractSchema),
   auditLog({
     action: "SIGN_CONTRACT",

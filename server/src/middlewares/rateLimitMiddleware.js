@@ -153,6 +153,36 @@ export const recoveryLimiter = createLimiter({
   message: "Quá nhiều yêu cầu khôi phục tài khoản, vui lòng thử lại sau",
 });
 
+export const otpSendLimiter = createLimiter({
+  envKey: "OTP_SEND_RATE_LIMIT_MAX",
+  namespace: "otp-send",
+  devDefault: 100,
+  prodDefault: 5,
+  windowMs: 15 * 60 * 1000,
+  message: "Quá nhiều yêu cầu gửi OTP, vui lòng thử lại sau 15 phút",
+  keyGenerator: buildUserOrIpRateLimitKey,
+});
+
+export const otpVerificationLimiter = createLimiter({
+  envKey: "OTP_VERIFY_RATE_LIMIT_MAX",
+  namespace: "otp-verify",
+  devDefault: 1000,
+  prodDefault: 5,
+  windowMs: 15 * 60 * 1000,
+  message: "Quá nhiều lần nhập OTP, vui lòng thử lại sau 15 phút",
+  keyGenerator: buildUserOrIpRateLimitKey,
+});
+
+export const tripShareAccessLimiter = createLimiter({
+  envKey: "TRIP_SHARE_ACCESS_RATE_LIMIT_MAX",
+  namespace: "trip-share-access",
+  devDefault: 100,
+  prodDefault: 10,
+  windowMs: 15 * 60 * 1000,
+  message: "Quá nhiều lần truy cập chuyến đi được chia sẻ, vui lòng thử lại sau",
+  keyGenerator: buildUserOrIpRateLimitKey,
+});
+
 export const apiLimiter = createLimiter({
   envKey: "API_RATE_LIMIT_MAX",
   namespace: "api",

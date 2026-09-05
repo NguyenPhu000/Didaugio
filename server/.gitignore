@@ -34,3 +34,10 @@ inspect_ward_geojson.js
 test_lookup.js
 !src/scripts/
 !src/scripts/backfillTripPlans.js
+
+# Keep focused security regression tests under version control.
+!test/
+test/*
+!test/unit/
+test/unit/*
+!test/unit/paymentReturnRedirect.test.js

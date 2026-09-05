@@ -163,7 +163,7 @@ export const signBusinessContractSchema = z
   .object({
     otp: z
       .string({ required_error: "Mã OTP là bắt buộc" })
-      .length(6, "Mã OTP phải có đúng 6 chữ số"),
+      .regex(/^\d{6}$/u, "Mã OTP phải có đúng 6 chữ số"),
     acceptedTerms: z.literal(true, {
       errorMap: () => ({ message: "Bạn cần đồng ý điều khoản hợp đồng" }),
     }),

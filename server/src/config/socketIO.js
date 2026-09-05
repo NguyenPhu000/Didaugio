@@ -25,6 +25,17 @@ const ROLE_NAME_TO_ID = {
 
 const ADMIN_ROLE_IDS = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
 
+export const resolveSocketToken = (handshake = {}) => {
+  const authToken = handshake.auth?.token;
+  if (typeof authToken === "string" && authToken.trim()) return authToken.trim();
+
+  const authorization = handshake.headers?.authorization;
+  const bearerMatch = typeof authorization === "string"
+    ? authorization.match(/^Bearer\s+(.+)$/iu)
+    : null;
+  return bearerMatch?.[1]?.trim() || null;
+};
+
 const resolveRoleId = (decoded = {}) => {
   if (decoded.roleId) return decoded.roleId;
   const roleKey = String(decoded.roleName || decoded.role || "").toLowerCase();
@@ -76,10 +87,7 @@ export const initSocketIO = (httpServer, allowedOrigins = []) => {
 
   // Auth middleware - verify JWT + check user status + session validity
   io.use(async (socket, next) => {
-    const token =
-      socket.handshake.auth?.token ||
-      socket.handshake.query?.token ||
-      socket.handshake.headers?.authorization?.split(" ")[1];
+    const token = resolveSocketToken(socket.handshake);
 
     if (!token) {
       return next(new Error("Authentication required"));

@@ -763,16 +763,15 @@ export const sendContractVerificationEmail = async ({ to, code, name }) => {
   `;
 
   try {
-  await sendMail({
+    await sendMail({
       from: EMAIL_FROM,
       to,
       subject: "[iPoint Genie] Mã OTP xác nhận ký hợp đồng dịch vụ điện tử",
       html,
     });
-    console.log(`[Mailer Success] Email OTP đã gửi thành công tới ${to}`);
   } catch (mailError) {
-    console.error(`[Mailer SMTP Warning] Không thể gửi email tới ${to}: ${mailError.message}`);
-    console.log(`[DEV OTP FALLBACK] Mã OTP xác thực hợp đồng của ${to} là: ${code}`);
+    console.error(`[Mailer SMTP Error] Không thể gửi OTP hợp đồng: ${mailError.message}`);
+    throw mailError;
   }
 };
 

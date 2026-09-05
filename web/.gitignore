@@ -55,6 +55,20 @@ __tests__/
 types
 coverage/
 
+# Keep focused security regression tests under version control.
+!test/
+test/*
+!test/setup.js
+!test/auth/
+test/auth/*
+!test/stores/
+test/stores/*
+!test/utils/
+test/utils/*
+!test/auth/browserSession.test.js
+!test/stores/authStore.test.js
+!test/utils/contractPrintSecurity.test.js
+
 # Playwright & test reports
 playwright-report/
 test-results/

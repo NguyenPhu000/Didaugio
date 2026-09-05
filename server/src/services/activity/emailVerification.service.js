@@ -9,6 +9,34 @@ const hashValue = (value) => crypto.createHash("sha256").update(String(value)).d
 
 const generateOtpCode = () => String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
 
+export const recordFailedOtpAttempt = async (
+  verificationId,
+  now = new Date(),
+  client = prisma,
+) => {
+  const updated = await client.emailVerification.update({
+    where: { id: verificationId },
+    data: { otpAttempts: { increment: 1 } },
+    select: { otpAttempts: true },
+  });
+
+  if (updated.otpAttempts >= MAX_OTP_ATTEMPTS) {
+    await client.emailVerification.updateMany({
+      where: {
+        id: verificationId,
+        verifiedAt: null,
+        OR: [
+          { otpLockedUntil: null },
+          { otpLockedUntil: { lte: now } },
+        ],
+      },
+      data: {
+        otpLockedUntil: new Date(now.getTime() + OTP_TTL_MINUTES * 60 * 1000),
+      },
+    });
+  }
+};
+
 /**
  * Lấy danh sách email verifications (sắp xếp DESC - mới nhất lên đầu)
  */
@@ -224,16 +252,7 @@ export const verifyOtp = async ({ email, otp, upgradeToBusiness = false }) => {
   }
 
   if (hashValue(normalizedOtp) !== verification.otpHash) {
-    const nextAttempts = verification.otpAttempts + 1;
-    await prisma.emailVerification.update({
-      where: { id: verification.id },
-      data: {
-        otpAttempts: nextAttempts,
-        ...(nextAttempts >= MAX_OTP_ATTEMPTS
-          ? { otpLockedUntil: new Date(now.getTime() + OTP_TTL_MINUTES * 60 * 1000) }
-          : {}),
-      },
-    });
+    await recordFailedOtpAttempt(verification.id, now);
 
     const error = new Error("Mã OTP không đúng");
     error.statusCode = 400;

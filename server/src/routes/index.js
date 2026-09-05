@@ -59,6 +59,8 @@ import {
   businessApiLimiter,
   refreshLimiter,
   recoveryLimiter,
+  otpVerificationLimiter,
+  tripShareAccessLimiter,
   routingLimiter,
   navigationLimiter,
   navigationTelemetryLimiter,
@@ -77,7 +79,9 @@ export const registerRateLimiters = (app) => {
   app.use("/api/auth/forgot-password", recoveryLimiter);
   app.use("/api/auth/reset-password", recoveryLimiter);
   app.use("/api/auth/resend-verification-public", recoveryLimiter);
+  app.use("/api/auth/verify-email-otp", otpVerificationLimiter);
   app.use("/api/auth/change-password", changePasswordLimiter);
+  app.use("/api/profile/shared-trip", tripShareAccessLimiter);
   app.use("/api/routes", routingLimiter);
   app.use("/api/navigation/navigate", navigationLimiter);
   app.use("/api/navigation/telemetry", navigationTelemetryLimiter);

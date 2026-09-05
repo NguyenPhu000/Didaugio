@@ -1,5 +1,7 @@
 import { PrismaClient } from "@prisma/client";
+import { assertFinancialSeedAllowed } from "./lib/financialSeedGuard.js";
 
+assertFinancialSeedAllowed();
 const prisma = new PrismaClient();
 
 async function seedFinancialMockData() {

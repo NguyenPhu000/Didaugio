@@ -1,39 +1,19 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { ROLES } from "@/constants/constants";
 import { STORAGE_KEYS } from "@/constants/timing";
 
-/**
- * Read persisted auth state synchronously from localStorage at module load time.
- * This ensures the FIRST render already has the correct auth values,
- * preventing the "redirect to login on F5" race condition with Zustand v5's
- * async persist hydration.
- */
-const getPersistedAuth = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.AUTH);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      const { refreshToken: _refreshToken, ...persistedState } = parsed?.state ?? {};
-      return persistedState;
-    }
-  } catch {
-    // Ignore malformed persisted auth state.
-  }
-  return {};
-};
+try {
+  globalThis.localStorage?.removeItem(STORAGE_KEYS.AUTH);
+} catch {
+  // Storage may be unavailable in SSR or privacy-restricted browsers.
+}
 
-const _p = getPersistedAuth();
-
-export const useAuthStore = create(
-  persist(
-    (set, get) => ({
-      // State — seeded from localStorage so first render is already correct
-      user: _p.user ?? null,
-      accessToken: _p.accessToken ?? null,
+export const useAuthStore = create((set, get) => ({
+      user: null,
+      accessToken: null,
       refreshToken: null,
-      isAuthenticated: _p.isAuthenticated ?? false,
-      isLoading: false,
+      isAuthenticated: false,
+      isLoading: true,
       isLoggingOut: false,
 
       // Actions
@@ -82,8 +62,11 @@ export const useAuthStore = create(
           isLoading: false,
           isLoggingOut: false,
         });
-        // Clear localStorage explicitly
-        localStorage.removeItem(STORAGE_KEYS.AUTH);
+        try {
+          globalThis.localStorage?.removeItem(STORAGE_KEYS.AUTH);
+        } catch {
+          // Memory state is authoritative even when storage is unavailable.
+        }
       },
 
       // Getters
@@ -104,23 +87,4 @@ export const useAuthStore = create(
         const user = get().user;
         return user?.roleId === ROLES.BUSINESS;
       },
-    }),
-    {
-      name: STORAGE_KEYS.AUTH,
-      partialize: (state) => ({
-        user: state.user,
-        accessToken: state.accessToken,
-        isAuthenticated: state.isAuthenticated,
-      }),
-      // Skip hydration during SSR
-      skipHydration: false,
-      // Version for migration
-      version: 2,
-      // Migrate function to handle version changes
-      migrate: (persistedState, version) => {
-        const { refreshToken: _refreshToken, ...safeState } = persistedState ?? {};
-        return safeState;
-      },
-    },
-  ),
-);
+}));

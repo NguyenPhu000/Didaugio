@@ -8,6 +8,7 @@ import {
   applyBusinessApiErrorUx,
 } from "@/utils/businessApiErrorUx";
 import { toast } from "sonner";
+import { withBrowserRefreshLock } from "@/auth/refreshLock";
 
 axios.defaults.headers.common["ngrok-skip-browser-warning"] = "true";
 
@@ -98,7 +99,7 @@ const resetBrowserCsrfToken = () => {
   browserCsrfToken = null;
 };
 
-const requestBrowserRefresh = async () => {
+const requestBrowserRefresh = () => withBrowserRefreshLock(async () => {
   const request = async () =>
     axios.post(
       `${API_BASE_URL}/auth/refresh`,
@@ -126,7 +127,7 @@ const requestBrowserRefresh = async () => {
     resetBrowserCsrfToken();
     return request();
   }
-};
+});
 
 const redirectToLogin = () => {
   if (typeof window === "undefined") return;

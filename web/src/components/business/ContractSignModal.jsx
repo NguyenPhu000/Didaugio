@@ -34,6 +34,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import * as businessApi from "@/apis/businessApi";
+import { escapeContractPrintValue } from "@/utils/contractPrintSecurity";
 
 const PAD_WIDTH = 720;
 const PAD_HEIGHT = 220;
@@ -334,6 +335,7 @@ const ContractSignModal = ({
     const day = contractDate.getDate();
     const month = contractDate.getMonth() + 1;
     const year = contractDate.getFullYear();
+    const printValue = escapeContractPrintValue;
 
     const html = `<!DOCTYPE html>
 <html lang="vi">
@@ -377,9 +379,9 @@ const ContractSignModal = ({
 <body>
   <div class="header">
     <div class="header-left">
-      <p class="org-name">${PLATFORM_INFO.name}</p>
-      <p class="org-address">${PLATFORM_INFO.address}</p>
-      <p class="org-address">Tel: ${PLATFORM_INFO.phone} | Web: ${PLATFORM_INFO.website}</p>
+      <p class="org-name">${printValue(PLATFORM_INFO.name)}</p>
+      <p class="org-address">${printValue(PLATFORM_INFO.address)}</p>
+      <p class="org-address">Tel: ${printValue(PLATFORM_INFO.phone)} | Web: ${printValue(PLATFORM_INFO.website)}</p>
     </div>
     <div class="header-right">
       <p class="republic-title">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</p>
@@ -389,7 +391,7 @@ const ContractSignModal = ({
   </div>
 
   <div class="meta-row">
-    <span>Hợp đồng số: <b>${contractNumber}</b></span>
+    <span>Hợp đồng số: <b>${printValue(contractNumber)}</b></span>
     <span>Ngày ${day} tháng ${month} năm ${year}</span>
   </div>
 
@@ -407,27 +409,27 @@ const ContractSignModal = ({
   <div class="party-section">
     <p class="party-title">Bên sử dụng dịch vụ (Bên A) &mdash; BÊN SỬ DỤNG DỊCH VỤ</p>
     <div class="party-grid">
-      <p>Họ và tên: <b>${partyAData.fullName || "—"}</b></p>
-      <p>Số CCCD: <b>${partyAData.idCard || "—"}</b></p>
-      <p>Ngày cấp: <b>${partyAData.idCardIssuedDate || "—"}</b></p>
-      <p>Nơi cấp: <b>${partyAData.idCardIssuedPlace || "—"}</b></p>
-      <p class="full-width">Địa chỉ: <b>${partyAData.address || "—"}</b></p>
-      <p>Điện thoại: <b>${partyAData.phone || "—"}</b></p>
-      <p>Email: <b>${partyAData.email || "—"}</b></p>
+      <p>Họ và tên: <b>${printValue(partyAData.fullName || "—")}</b></p>
+      <p>Số CCCD: <b>${printValue(partyAData.idCard || "—")}</b></p>
+      <p>Ngày cấp: <b>${printValue(partyAData.idCardIssuedDate || "—")}</b></p>
+      <p>Nơi cấp: <b>${printValue(partyAData.idCardIssuedPlace || "—")}</b></p>
+      <p class="full-width">Địa chỉ: <b>${printValue(partyAData.address || "—")}</b></p>
+      <p>Điện thoại: <b>${printValue(partyAData.phone || "—")}</b></p>
+      <p>Email: <b>${printValue(partyAData.email || "—")}</b></p>
     </div>
   </div>
 
   <div class="party-section">
     <p class="party-title">Bên cung cấp dịch vụ (Bên B) &mdash; BÊN CUNG CẤP DỊCH VỤ</p>
     <div class="party-grid">
-      <p>Tên tổ chức: <b>${PLATFORM_INFO.name}</b></p>
-      <p>Người đại diện: <b>${PLATFORM_INFO.representative}</b></p>
-      <p>Chức vụ: <b>${PLATFORM_INFO.position}</b></p>
-      <p class="full-width">Địa chỉ: <b>${PLATFORM_INFO.address}</b></p>
-      <p>Điện thoại: <b>${PLATFORM_INFO.phone}</b></p>
-      <p>Email: <b>${PLATFORM_INFO.email}</b></p>
-      <p>Mã số thuế: <b>${PLATFORM_INFO.taxCode}</b></p>
-      <p class="full-width">Số tài khoản: <b>${PLATFORM_INFO.bankAccount}</b> (${PLATFORM_INFO.bankName})</p>
+      <p>Tên tổ chức: <b>${printValue(PLATFORM_INFO.name)}</b></p>
+      <p>Người đại diện: <b>${printValue(PLATFORM_INFO.representative)}</b></p>
+      <p>Chức vụ: <b>${printValue(PLATFORM_INFO.position)}</b></p>
+      <p class="full-width">Địa chỉ: <b>${printValue(PLATFORM_INFO.address)}</b></p>
+      <p>Điện thoại: <b>${printValue(PLATFORM_INFO.phone)}</b></p>
+      <p>Email: <b>${printValue(PLATFORM_INFO.email)}</b></p>
+      <p>Mã số thuế: <b>${printValue(PLATFORM_INFO.taxCode)}</b></p>
+      <p class="full-width">Số tài khoản: <b>${printValue(PLATFORM_INFO.bankAccount)}</b> (${printValue(PLATFORM_INFO.bankName)})</p>
     </div>
   </div>
 
@@ -461,6 +463,7 @@ const ContractSignModal = ({
 </body>
 </html>`;
 
+    printWindow.opener = null;
     printWindow.document.write(html);
     printWindow.document.close();
     printWindow.focus();

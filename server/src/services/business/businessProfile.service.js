@@ -25,6 +25,16 @@ const BUSINESS_REGISTRATION_ROLE_IDS = new Set([
   ROLES.BUSINESS,
 ]);
 
+const hashOtp = (otp) =>
+  crypto.createHash("sha256").update(String(otp)).digest("hex");
+
+const otpHashesMatch = (providedOtp, storedHash) => {
+  if (!/^[a-f0-9]{64}$/iu.test(String(storedHash || ""))) return false;
+  const providedHash = Buffer.from(hashOtp(providedOtp), "hex");
+  const expectedHash = Buffer.from(storedHash, "hex");
+  return crypto.timingSafeEqual(providedHash, expectedHash);
+};
+
 const defaultInclude = {
   owner: {
     select: {
@@ -546,15 +556,17 @@ const decryptIfPossible = (value) => {
  *   thời điểm bấm "Ký hợp đồng"). Giữ hàm thuần để dễ kiểm thử.
  */
 export const resolveContractOtpVerification = ({
-  settingsOtp,
+  settingsOtpHash,
   settingsOtpExpiresAt,
   emailVerification = null,
   providedOtp,
   now = new Date(),
 }) => {
-  if (settingsOtp && settingsOtpExpiresAt) {
+  if (settingsOtpHash && settingsOtpExpiresAt) {
     if (now > new Date(settingsOtpExpiresAt)) return { ok: false, reason: "EXPIRED" };
-    if (settingsOtp !== providedOtp) return { ok: false, reason: "MISMATCH" };
+    if (!otpHashesMatch(providedOtp, settingsOtpHash)) {
+      return { ok: false, reason: "MISMATCH" };
+    }
     return { ok: true, source: "settings" };
   }
 
@@ -562,11 +574,7 @@ export const resolveContractOtpVerification = ({
     if (now > new Date(emailVerification.otpExpiresAt)) {
       return { ok: false, reason: "EXPIRED" };
     }
-    const providedHash = crypto
-      .createHash("sha256")
-      .update(String(providedOtp))
-      .digest("hex");
-    if (providedHash !== emailVerification.otpHash) {
+    if (!otpHashesMatch(providedOtp, emailVerification.otpHash)) {
       return { ok: false, reason: "MISMATCH" };
     }
     return { ok: true, source: "emailVerification" };
@@ -616,14 +624,14 @@ export const verifyContractSigningRequest = async (userId, payload = {}) => {
   }
 
   const settings = typeof business.settings === "object" && business.settings !== null ? business.settings : {};
-  const storedOtp = settings.contractOtp;
+  const storedOtpHash = settings.contractOtpHash;
   const otpExpiresAt = settings.contractOtpExpiresAt;
 
   // Trong luồng đăng ký, OTP được gửi trước khi doanh nghiệp tồn tại nên được
   // lưu (hash) ở bảng emailVerification thay vì business.settings. Đọc bản ghi
   // gần nhất để fallback xác minh khi settings chưa có OTP.
   let contractEmailVerification = null;
-  if (!storedOtp || !otpExpiresAt) {
+  if (!storedOtpHash || !otpExpiresAt) {
     contractEmailVerification = await prisma.emailVerification.findFirst({
       where: { userId, otpHash: { not: null } },
       orderBy: { createdAt: "desc" },
@@ -631,7 +639,7 @@ export const verifyContractSigningRequest = async (userId, payload = {}) => {
   }
 
   const otpCheck = resolveContractOtpVerification({
-    settingsOtp: storedOtp,
+    settingsOtpHash: storedOtpHash,
     settingsOtpExpiresAt: otpExpiresAt,
     emailVerification: contractEmailVerification,
     providedOtp: payload.otp,
@@ -725,6 +733,7 @@ export const completeContractSigning = async (userId, businessId, signedAtInput)
   const settings = typeof business.settings === "object" && business.settings !== null ? business.settings : {};
   const updatedSettings = { ...settings };
   delete updatedSettings.contractOtp;
+  delete updatedSettings.contractOtpHash;
   delete updatedSettings.contractOtpExpiresAt;
 
   const updated = await prisma.business.update({
@@ -850,15 +859,16 @@ export const sendContractOtp = async (userId) => {
     const currentSettings = typeof business.settings === "object" && business.settings !== null ? business.settings : {};
     const updatedSettings = {
       ...currentSettings,
-      contractOtp: code,
+      contractOtpHash: hashOtp(code),
       contractOtpExpiresAt: expiresAt.toISOString(),
     };
+    delete updatedSettings.contractOtp;
     await prisma.business.update({
       where: { id: business.id },
       data: { settings: updatedSettings },
     });
   } else {
-    const otpHash = crypto.createHash("sha256").update(String(code)).digest("hex");
+    const otpHash = hashOtp(code);
     await prisma.emailVerification.deleteMany({
       where: { userId },
     });
@@ -873,9 +883,6 @@ export const sendContractOtp = async (userId) => {
       },
     });
   }
-
-  // Ghi log ra console để dev dễ test
-  console.log(`[Didaugio Email OTP] Đã gửi mã OTP ${code} đến email ${toEmail}`);
 
   return { email: toEmail };
 };

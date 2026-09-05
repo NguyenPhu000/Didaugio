@@ -153,7 +153,7 @@ app.use(
     },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" },
-    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    referrerPolicy: { policy: "no-referrer" },
     hsts: isProduction
       ? {
           maxAge: 31536000,
