@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/stores/authStore";
 import { authService } from "@/apis/authService";
 import { BUSINESS_ROUTES } from "@/constants/routes";
+import { ROLES } from "@/constants/constants";
 
 export default function BusinessUpgradePrompt() {
   const [isLoading, setIsLoading] = useState(false);
@@ -20,11 +21,10 @@ export default function BusinessUpgradePrompt() {
 
       if (response.success) {
         // Update auth store with new user data
-        const { accessToken, refreshToken } = useAuthStore.getState();
+        const { accessToken } = useAuthStore.getState();
         setAuth(
           response.data.user,
           response.data.accessToken || accessToken,
-          response.data.refreshToken || refreshToken,
         );
 
         toast.success("Nâng cấp thành công! Vui lòng đăng ký doanh nghiệp.");
@@ -32,16 +32,29 @@ export default function BusinessUpgradePrompt() {
         navigate(BUSINESS_ROUTES.REGISTER, { replace: true });
       }
     } catch (err) {
-      const errorCode = err.response?.data?.errorCode || err.errorCode;
+      const errorCode = err.errorCode || err.response?.data?.errorCode;
       if (errorCode === "EMAIL_NOT_VERIFIED") {
+        toast.error("Vui lòng xác thực email trước khi đăng ký doanh nghiệp");
         navigate(`/check-email?email=${encodeURIComponent(user?.email || "")}`, {
           replace: true,
         });
         return;
       }
 
+      if (errorCode === "ALREADY_BUSINESS") {
+        toast.info("Tài khoản của bạn đã ở quyền Doanh nghiệp");
+        if (user) {
+          useAuthStore.getState().setSession({
+            user: { ...user, roleId: ROLES.BUSINESS },
+          });
+        }
+        navigate(BUSINESS_ROUTES.REGISTER, { replace: true });
+        return;
+      }
+
       setError(
-        err.response?.data?.message ||
+        err.message ||
+          err.response?.data?.message ||
           "Có lỗi xảy ra khi nâng cấp tài khoản. Vui lòng thử lại."
       );
     } finally {

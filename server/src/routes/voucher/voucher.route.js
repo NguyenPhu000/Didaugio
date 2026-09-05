@@ -4,6 +4,7 @@ import { authenticate } from "../../middlewares/authMiddleware.js";
 import { checkBusinessOwnership } from "../../middlewares/businessOwnership.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import { requireActiveBusiness } from "../../middlewares/requireActiveBusiness.js";
+import { requireActiveSubscription } from "../../middlewares/subscriptionFeatureLock.js";
 import { validateBody } from "../../middlewares/validateSchema.js";
 import { auditLog } from "../../middlewares/auditLogMiddleware.js";
 import {
@@ -30,6 +31,7 @@ router.get("/stats", hasPermission(voucherViewPermission), controller.getStats);
 router.post(
   "/",
   hasPermission("business.manage_vouchers"),
+  requireActiveSubscription,
   validateBody(createVoucherSchema),
   auditLog({
     action: "CREATE",

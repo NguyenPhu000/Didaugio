@@ -121,10 +121,17 @@ export function buildGenieSuggestionGroups({
 
 export function normalizeGenieResponse(response = {}) {
   const data = response?.data?.data || response?.data || response || {};
-  const reply =
+  const rawReply =
     typeof data.reply === "string" && data.reply.trim()
       ? data.reply.trim()
       : "";
+  const reply = rawReply
+    .replace(/[\(\[\{]\s*(?:PLACES?|PLACE_ID|PLACES_ID|MÃ_ID|MÃ|ID)\s*:\s*[\d\s,]+\s*[\)\]\}]/gi, "")
+    .replace(/[\(\[\{]\s*(?:MÃ\s*ID|PLACE\s*ID|PLACES?|MÃ|ID)?\s*#?\s*:?\s*[\d\s,]+\s*[\)\]\}]/gi, "")
+    .replace(/\b(?:MÃ\s*ID|PLACE\s*ID|PLACES?|MÃ|ID)\s*#?\s*:?\s*\d+\b/gi, "")
+    .replace(/[\(\[\{]\s*[\)\]\}]/g, "")
+    .replace(/  +/g, " ")
+    .trim();
   const suggestedPlaces = Array.isArray(data.relatedPlaces)
     ? data.relatedPlaces
     : Array.isArray(data.suggestedPlaces)
@@ -136,15 +143,16 @@ export function normalizeGenieResponse(response = {}) {
   if (suggestedPlaces.length > 0) {
     actions.push({ type: "view_map" }, { type: "add_trip" });
   }
-  if (data.planDraft || data.hybridPlan) {
-    actions.push({ type: "review_plan" });
-  }
 
   return {
     reply,
+    requestLogId:
+      reply &&
+      Number.isSafeInteger(data.requestLogId) && data.requestLogId > 0
+        ? data.requestLogId
+        : null,
     suggestedPlaces,
     quickReplies,
     actions,
-    planDraft: data.planDraft || data.hybridPlan || null,
   };
 }

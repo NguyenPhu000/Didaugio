@@ -4,14 +4,14 @@ import {
   Platform,
   Pressable,
   Text,
+  View,
 } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
   TOKENS,
@@ -43,7 +43,6 @@ const PillItem = memo(function PillItem({
   }, [scale]);
 
   const handlePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPressCategory(categoryId);
   }, [categoryId, onPressCategory]);
 
@@ -52,22 +51,43 @@ const PillItem = memo(function PillItem({
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      className="flex-row items-center gap-2 min-h-[40px] px-4 py-2 rounded-full border"
+      accessibilityRole="tab"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: isActive }}
+      className="flex-row items-center gap-2 min-h-[40px] pl-3.5 pr-4 py-2 rounded-full border"
       style={[
         animatedStyle,
         {
-          backgroundColor: isActive ? APPLE_THEME.focusBlue : APPLE_THEME.surface,
-          borderColor: isActive ? APPLE_THEME.focusBlue : APPLE_THEME.border,
+          backgroundColor: isActive ? "#181819" : "#FDFCF9",
+          borderColor: isActive ? "#181819" : "rgba(24,24,25,0.13)",
           borderCurve: "continuous",
         },
         isActive
           ? Platform.select({
-              ios: TOKENS.shadow.sm,
-              android: { elevation: 2 },
+              ios: {
+                shadowColor: "#181819",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.18,
+                shadowRadius: 12,
+              },
+              android: { elevation: 3 },
             })
           : null,
       ]}
     >
+      {/* Indicator dot: dấu chấm nhỏ bên trái pill đang active, tạo cảm giác
+          editorial "selected" như iOS segmented control. */}
+      {isActive ? (
+        <View
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: APPLE_THEME.white,
+            opacity: 0.92,
+          }}
+        />
+      ) : null}
       <MaterialCommunityIcons
         name={icon}
         size={16}

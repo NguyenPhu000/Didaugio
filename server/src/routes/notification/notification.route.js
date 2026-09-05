@@ -1,6 +1,7 @@
 import express from "express";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import * as controller from "../../controllers/notification/notification.controller.js";
 import * as webPushController from "../../controllers/notification/webPush.controller.js";
 
@@ -14,10 +15,10 @@ router.post("/subscribe", webPushController.saveSubscription);
 router.delete("/subscribe", webPushController.removeSubscription);
 
 // Announcements (admin — trước route /:id để tránh conflict)
-router.get("/announcements", hasPermission("system.send_notifications"), controller.getAnnouncements);
-router.post("/announcements", hasPermission("system.send_notifications"), controller.createAnnouncement);
-router.put("/announcements/:id", hasPermission("system.send_notifications"), controller.updateAnnouncement);
-router.delete("/announcements/:id", hasPermission("system.send_notifications"), controller.deleteAnnouncement);
+router.get("/announcements", requireBackOfficeRole, hasPermission("system.send_notifications"), controller.getAnnouncements);
+router.post("/announcements", requireBackOfficeRole, hasPermission("system.send_notifications"), controller.createAnnouncement);
+router.put("/announcements/:id", requireBackOfficeRole, hasPermission("system.send_notifications"), controller.updateAnnouncement);
+router.delete("/announcements/:id", requireBackOfficeRole, hasPermission("system.send_notifications"), controller.deleteAnnouncement);
 
 // Notifications CRUD
 router.get("/", controller.getNotifications);

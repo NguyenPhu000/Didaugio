@@ -2,7 +2,9 @@ import express from "express";
 import * as controller from "../../controllers/subscription/subscription.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { requireActiveBusiness } from "../../middlewares/requireActiveBusiness.js";
+import { requireBusinessOwner } from "../../middlewares/requireBusinessOwner.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import { validateBody, validateQuery } from "../../middlewares/validateSchema.js";
 import { auditLog } from "../../middlewares/auditLogMiddleware.js";
 import {
@@ -40,6 +42,7 @@ businessRouter.post(
 );
 
 businessRouter.use(authenticate);
+businessRouter.use(requireBusinessOwner);
 businessRouter.use(requireActiveBusiness());
 
 // Read-only endpoints — no contract required
@@ -111,7 +114,7 @@ businessRouter.post(
 // ─── Admin Routes ────────────────────────────────────────────────────────────
 const adminRouter = express.Router();
 
-adminRouter.use(authenticate);
+adminRouter.use(authenticate, requireBackOfficeRole);
 adminRouter.use(hasPermission("subscriptions.manage"));
 
 adminRouter.get(

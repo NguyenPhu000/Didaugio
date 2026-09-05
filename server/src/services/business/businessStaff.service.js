@@ -3,6 +3,7 @@ import { BCRYPT_SALT_ROUNDS, ROLES, USER_STATUS } from "../../config/constants.j
 import ServiceError from "../../utils/serviceError.js";
 import { generateUniqueUsername } from "../../utils/username.js";
 import { assertBusinessLimit } from "../subscription/subscriptionEntitlement.service.js";
+import { invalidateUserCache } from "../../utils/permissionCache.js";
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
 
@@ -27,6 +28,14 @@ const STAFF_SELECT = {
       fullName: true,
       phone: true,
       avatar: true,
+    },
+  },
+  businessRole: {
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      permissions: true,
     },
   },
 };
@@ -82,7 +91,8 @@ export const getStaffList = async (businessId, query = {}) => {
  * Create a staff account under a business
  */
 export const createStaff = async (businessId, data) => {
-  const { email, password, fullName, phone, roleId } = data;
+  const { email, password, fullName, phone } = data;
+  const requestedBusinessRoleId = data.businessRoleId ?? data.roleId;
 
   const activeStaffCount = await prisma.user.count({
     where: { businessId, roleId: ROLES.STAFF, deletedAt: null },
@@ -101,10 +111,10 @@ export const createStaff = async (businessId, data) => {
 
   // Validate businessRoleId if provided
   let businessRoleId = null;
-  if (roleId) {
+  if (requestedBusinessRoleId) {
     const role = await prisma.businessRole.findFirst({
       where: {
-        id: roleId,
+        id: Number(requestedBusinessRoleId),
         OR: [
           { businessId: null, isDefault: true },
           { businessId },
@@ -168,8 +178,6 @@ export const createStaff = async (businessId, data) => {
  * Update a staff account (fullName, phone, status)
  */
 export const updateStaff = async (businessId, staffId, data) => {
-  assertStrongPassword(newPassword);
-
   const staff = await prisma.user.findFirst({
     where: {
       id: staffId,
@@ -184,12 +192,39 @@ export const updateStaff = async (businessId, staffId, data) => {
     throw new ServiceError("Nhân viên không tồn tại", 404, "NOT_FOUND");
   }
 
-  const { fullName, phone, status } = data;
+  const { fullName, phone, status, businessRoleId } = data;
+
+  if (status && ![USER_STATUS.ACTIVE, USER_STATUS.INACTIVE].includes(status)) {
+    throw new ServiceError("Trang thai nhan vien khong hop le", 400, "INVALID_STATUS");
+  }
+
+  let nextBusinessRoleId;
+  if (businessRoleId !== undefined) {
+    if (businessRoleId === null) {
+      nextBusinessRoleId = null;
+    } else {
+      const role = await prisma.businessRole.findFirst({
+        where: {
+          id: Number(businessRoleId),
+          OR: [
+            { businessId: null, isDefault: true },
+            { businessId },
+          ],
+        },
+        select: { id: true },
+      });
+      if (!role) {
+        throw new ServiceError("Vai tro khong ton tai", 404, "ROLE_NOT_FOUND");
+      }
+      nextBusinessRoleId = role.id;
+    }
+  }
 
   const user = await prisma.user.update({
     where: { id: staffId },
     data: {
       ...(status && { status }),
+      ...(businessRoleId !== undefined && { businessRoleId: nextBusinessRoleId }),
       ...(fullName !== undefined || phone !== undefined
         ? {
             profile: {
@@ -206,6 +241,8 @@ export const updateStaff = async (businessId, staffId, data) => {
     },
     select: STAFF_SELECT,
   });
+
+  invalidateUserCache(staffId);
 
   return user;
 };
@@ -240,6 +277,8 @@ export const resetStaffPassword = async (businessId, staffId, newPassword) => {
     data: { password: hashedPassword },
   });
 
+  invalidateUserCache(staffId);
+
   return true;
 };
 
@@ -266,6 +305,8 @@ export const deactivateStaff = async (businessId, staffId) => {
     data: { status: USER_STATUS.INACTIVE },
   });
 
+  invalidateUserCache(staffId);
+
   return true;
 };
 
@@ -291,6 +332,8 @@ export const activateStaff = async (businessId, staffId) => {
     where: { id: staffId },
     data: { status: USER_STATUS.ACTIVE },
   });
+
+  invalidateUserCache(staffId);
 
   return true;
 };

@@ -1,6 +1,9 @@
 import prisma from "../../config/prismaClient.js";
-import { updateProfileSchema } from "../../models/index.js";
+import crypto from "node:crypto";
+import { idSchema, updateProfileSchema } from "../../models/index.js";
 import ServiceError from "../../utils/serviceError.js";
+import { invalidateUserCache } from "../../utils/permissionCache.js";
+import { invalidateUserStatusCache } from "../../utils/userStatusCache.js";
 
 export const getProfile = async (userId) => {
   const user = await prisma.user.findUnique({
@@ -208,10 +211,72 @@ export const updateTravelPreferences = async (userId, preferences) => {
   return { travelPreferences: updatedProfile.travelPreferences };
 };
 
+export const deleteMyAccount = async (rawUserId) => {
+  const userId = idSchema.parse(rawUserId);
+  const deletedAt = new Date();
+  const deletedIdentity = `deleted-${userId}-${deletedAt.getTime()}`;
+
+  await prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { id: true, roleId: true, business: { select: { id: true } } },
+    });
+
+    if (!user) return;
+    if (user.business) {
+      throw new ServiceError(
+        "Tài khoản doanh nghiệp cần hoàn tất đóng hồ sơ doanh nghiệp trước khi xóa",
+        409,
+        "ACCOUNT_DELETION_REQUIRES_BUSINESS_CLOSURE",
+      );
+    }
+
+    await tx.aiPromptHistory.deleteMany({ where: { userId } });
+    await tx.reviewReply.deleteMany({ where: { userId } });
+    await tx.review.deleteMany({ where: { userId } });
+    await tx.eventParticipant.deleteMany({ where: { userId } });
+    await tx.eventMoment.deleteMany({ where: { userId } });
+    await tx.activeSession.deleteMany({ where: { userId } });
+    await tx.userCheckin.deleteMany({ where: { userId } });
+    await tx.savedTrip.deleteMany({ where: { userId } });
+    await tx.tripExecutionOperation.deleteMany({ where: { userId } });
+    await tx.tripExecutionSession.deleteMany({ where: { userId } });
+    await tx.tripPlan.deleteMany({ where: { userId } });
+    await tx.favorite.deleteMany({ where: { userId } });
+    await tx.notificationRecipient.deleteMany({ where: { userId } });
+    await tx.pushSubscription.deleteMany({ where: { userId } });
+    await tx.userPermission.deleteMany({ where: { userId } });
+    await tx.userSession.deleteMany({ where: { userId } });
+    await tx.userProfile.deleteMany({ where: { userId } });
+    await tx.passwordReset.deleteMany({ where: { userId } });
+    await tx.emailVerification.deleteMany({ where: { userId } });
+
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        email: `${deletedIdentity}@deleted.invalid`,
+        username: deletedIdentity,
+        password: crypto.randomUUID(),
+        status: "inactive",
+        deletedAt,
+        businessId: null,
+        businessRoleId: null,
+        failedLoginCount: 0,
+        lockedUntil: null,
+      },
+    });
+  });
+
+  invalidateUserCache(userId);
+  await invalidateUserStatusCache(userId);
+  return { userId };
+};
+
 export default {
   getProfile,
   updateProfile,
   updateAvatar,
   updateNotificationSettings,
   updateTravelPreferences,
+  deleteMyAccount,
 };

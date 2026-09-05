@@ -1,11 +1,54 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, FileText, AlertCircle } from "lucide-react";
+import { Download, ExternalLink, FileText, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/Button";
-import { Spinner } from "@/components/ui/Spinner";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { downloadContract } from "@/apis/businessApi";
+
+const PDF_MIME_TYPE = "application/pdf";
+
+async function resolvePdfBlob(rawResponse, fallbackMessage) {
+  const blob = rawResponse?.data || rawResponse;
+
+  if (blob instanceof Blob) {
+    const contentType = blob.type || PDF_MIME_TYPE;
+
+    if (contentType.includes("application/json")) {
+      try {
+        const json = JSON.parse(await blob.text());
+        throw new Error(json.message || fallbackMessage);
+      } catch (error) {
+        throw new Error(error.message || fallbackMessage);
+      }
+    }
+
+    if (!contentType.includes(PDF_MIME_TYPE)) {
+      return new Blob([blob], { type: PDF_MIME_TYPE });
+    }
+
+    return blob;
+  }
+
+  if (blob instanceof ArrayBuffer) {
+    return new Blob([blob], { type: PDF_MIME_TYPE });
+  }
+
+  if (typeof blob === "string") {
+    const trimmed = blob.trim();
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      try {
+        const json = JSON.parse(trimmed);
+        throw new Error(json.message || fallbackMessage);
+      } catch (error) {
+        throw new Error(error.message || fallbackMessage);
+      }
+    }
+  }
+
+  return new Blob([blob], { type: PDF_MIME_TYPE });
+}
 
 const ContractPdfViewer = memo(({ businessId, className, adminSigned = false }) => {
   const { t } = useTranslation();
@@ -19,9 +62,9 @@ const ContractPdfViewer = memo(({ businessId, className, adminSigned = false }) 
     setLoading(true);
     setError(null);
     try {
-      const blob = await downloadContract(businessId, adminSigned ? { adminSigned: true } : {});
+      const rawRes = await downloadContract(businessId, adminSigned ? { adminSigned: true } : {});
+      const blob = await resolvePdfBlob(rawRes, t("business.documents.loadFailed"));
       const url = URL.createObjectURL(blob);
-      // Revoke URL cũ trước khi set URL mới
       if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
       pdfUrlRef.current = url;
       setPdfUrl(url);
@@ -53,6 +96,11 @@ const ContractPdfViewer = memo(({ businessId, className, adminSigned = false }) 
     document.body.removeChild(link);
     toast.success(t("business.documents.downloadStarted"));
   }, [pdfUrl, businessId, t]);
+
+  const handleOpenInNewTab = useCallback(() => {
+    if (!pdfUrl) return;
+    window.open(pdfUrl, "_blank", "noopener,noreferrer");
+  }, [pdfUrl]);
 
   const content = useMemo(() => {
     if (loading) {
@@ -87,13 +135,21 @@ const ContractPdfViewer = memo(({ businessId, className, adminSigned = false }) 
       );
     }
 
+    const title = t("business.documents.contractPreview");
+
     return (
-      <iframe
-        src={pdfUrl}
-        title={t("business.documents.contractPreview")}
-        className="w-full rounded-lg border-0"
-        style={{ minHeight: 500 }}
-      />
+      <object
+        data={`${pdfUrl}#toolbar=1&navpanes=0`}
+        type={PDF_MIME_TYPE}
+        title={title}
+        className="block min-h-[560px] w-full"
+      >
+        <iframe
+          src={pdfUrl}
+          title={title}
+          className="block min-h-[560px] w-full border-0"
+        />
+      </object>
     );
   }, [loading, error, pdfUrl, t, fetchContract]);
 
@@ -106,19 +162,31 @@ const ContractPdfViewer = memo(({ businessId, className, adminSigned = false }) 
             {t("business.documents.contractPdf")}
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleDownload}
-          disabled={!pdfUrl || loading}
-          className="gap-1.5"
-        >
-          <Download className="h-3.5 w-3.5" />
-          {t("common.download")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleOpenInNewTab}
+            disabled={!pdfUrl || loading}
+            className="gap-1.5"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            {t("business.documents.openPdf", { defaultValue: "Mo PDF" })}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownload}
+            disabled={!pdfUrl || loading}
+            className="gap-1.5"
+          >
+            <Download className="h-3.5 w-3.5" />
+            {t("common.download")}
+          </Button>
+        </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-border/60 bg-muted/20">
+      <div className="min-h-[560px] overflow-hidden rounded-xl border border-border/60 bg-muted/20">
         {content}
       </div>
     </div>

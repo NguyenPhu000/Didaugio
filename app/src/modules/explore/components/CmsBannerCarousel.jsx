@@ -14,7 +14,6 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import {
@@ -55,7 +54,6 @@ function BannerSlide({ banner, width, onPress }) {
 
   const handlePress = useCallback(() => {
     if (!canNavigate) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress?.(banner);
   }, [banner, canNavigate, onPress]);
 
@@ -64,6 +62,9 @@ function BannerSlide({ banner, width, onPress }) {
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      accessibilityRole={canNavigate ? "button" : undefined}
+      accessibilityLabel={banner.title || t("explore.cmsFallbackTitle")}
+      accessibilityHint={canNavigate ? t("explore.accessibility.openBanner") : undefined}
       style={[
         animatedStyle,
         {
@@ -88,7 +89,7 @@ function BannerSlide({ banner, width, onPress }) {
         />
       ) : (
         <LinearGradient
-          colors={["#0F766E", "#007BFF", "#1E3A8A"]}
+          colors={["#181819", "#3F3B35", "#8A7C6C"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFillObject}
@@ -129,8 +130,8 @@ function BannerSlide({ banner, width, onPress }) {
         </Text>
         {canNavigate ? (
           <View style={styles.ctaPill}>
-            <MaterialIconsRounded name="touch-app" size={14} color="#FFF" />
             <Text style={styles.ctaText}>{t("explore.heroExplore")}</Text>
+            <MaterialIconsRounded name="arrow-forward" size={15} color="#181819" />
           </View>
         ) : null}
       </View>
@@ -283,15 +284,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 30,
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.28)",
+    backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
   },
   ctaText: {
-    color: "#FFF",
+    color: "#181819",
     fontSize: 12,
     fontFamily: TOKENS.font.semibold,
   },
@@ -308,7 +307,7 @@ const styles = StyleSheet.create({
   },
   dotActive: {
     width: 20,
-    backgroundColor: APPLE_THEME.focusBlue,
+    backgroundColor: "#181819",
   },
   dotInactive: {
     width: 6,

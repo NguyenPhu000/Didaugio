@@ -1,15 +1,18 @@
 import { useMemo, useState } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/Label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Mail, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Button, Input, Label } from "@/components/ui";
+import { Mail, Loader2, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
 import { authService } from "@/apis";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import AuthShell from "@/components/auth/AuthShell";
+import {
+  fieldLabel,
+  fieldInput,
+  fieldError,
+  primaryButton,
+} from "@/components/auth/authStyles";
 
 const ResendVerificationPage = () => {
   const { t } = useTranslation();
@@ -60,132 +63,126 @@ const ResendVerificationPage = () => {
       const errorMsg =
         error.response?.data?.message || error.message || t("auth.resendVerification.sendFailed");
       setError(errorMsg);
-      toast.error(`❌ ${errorMsg}`);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
-      <Card className="w-full max-w-md shadow-xl">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center">
-              <Mail className="w-10 h-10 text-blue-600" />
-            </div>
+    <AuthShell
+      eyebrow="Gửi lại xác thực"
+      title="Chưa nhận được email? Chúng tôi sẽ gửi lại ngay"
+      subtitle="Nhập email của bạn và chúng tôi sẽ gửi lại liên kết xác thực tài khoản."
+    >
+      <div className="mb-7 text-center">
+        <span className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#F3E600]/20 text-slate-900">
+          <Mail className="h-8 w-8" strokeWidth={2} />
+        </span>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          {t("auth.resendVerification.title")}
+        </h1>
+        <p className="mt-2 text-sm text-slate-500">
+          {t("auth.resendVerification.subtitle")}
+        </p>
+      </div>
+
+      {success ? (
+        <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+          <div className="text-sm text-emerald-800">
+            <p className="mb-1 font-semibold">
+              {t("auth.resendVerification.emailSent")}
+            </p>
+            <p>{t("auth.resendVerification.checkInbox")}</p>
+            <p className="mt-3 text-emerald-700/80">
+              {t("auth.resendVerification.autoRedirect")}
+            </p>
           </div>
-          <CardTitle className="text-2xl font-bold">
-            {t("auth.resendVerification.title")}
-          </CardTitle>
-          <p className="text-gray-600 mt-2">
-            {t("auth.resendVerification.subtitle")}
-          </p>
-        </CardHeader>
-
-        <CardContent>
-          {success ? (
-            <Alert className="bg-green-50 border-green-200">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                <p className="font-semibold mb-2">{t("auth.resendVerification.emailSent")}</p>
-                <p className="text-sm">
-                  {t("auth.resendVerification.checkInbox")}
-                </p>
-                <p className="text-sm mt-3 text-gray-600">
-                  {t("auth.resendVerification.autoRedirect")}
-                </p>
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <form onSubmit={handleResend} className="space-y-6">
-              {/* Error Alert */}
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              {/* Email Input */}
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your-email@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={loading}
-                  required
-                />
-                {isAuthenticated && (
-                  <p className="text-xs text-gray-500">
-                    {t("auth.resendVerification.emailFromAccount")}
-                  </p>
-                )}
-              </div>
-
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("auth.resendVerification.submitting")}
-                  </>
-                ) : (
-                  <>
-                    <Mail className="mr-2 h-4 w-4" />
-                    {t("auth.resendVerification.submit")}
-                  </>
-                )}
-              </Button>
-
-              {/* Info */}
-              <Alert className="bg-blue-50 border-blue-200">
-                <AlertDescription className="text-sm text-gray-700">
-                  {fromRegister && (
-                    <p className="font-semibold mb-2">
-                      {t("auth.resendVerification.accountCreated")}
-                    </p>
-                  )}
-                  <p className="font-semibold mb-2">{t("auth.resendVerification.note")}</p>
-                  <ul className="space-y-1 text-xs">
-                    <li>• {t("auth.resendVerification.noteCheckSpam")}</li>
-                    <li>• {t("auth.resendVerification.noteExpiry")}</li>
-                    <li>• {t("auth.resendVerification.noteRateLimit")}</li>
-                  </ul>
-                </AlertDescription>
-              </Alert>
-            </form>
+        </div>
+      ) : (
+        <form onSubmit={handleResend} className="space-y-5">
+          {error && (
+            <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+              <p className="text-sm text-rose-700">{error}</p>
+            </div>
           )}
 
-          {/* Footer */}
-          <div className="border-t pt-4 mt-6 text-center space-y-2">
-            <p className="text-sm text-gray-600">
-              <Link to="/login" className="text-blue-600 hover:underline">
-                {t("auth.resendVerification.backToLogin")}
-              </Link>
-            </p>
-            {!isAuthenticated && (
-              <p className="text-sm text-gray-600">
-                {t("auth.resendVerification.noAccount")}{" "}
-                <Link
-                  to="/register"
-                  className="text-blue-600 hover:underline font-medium"
-                >
-                  {t("auth.resendVerification.registerNow")}
-                </Link>
+          <div className="space-y-2">
+            <Label htmlFor="email" className={fieldLabel}>
+              <Mail className="h-4 w-4 text-slate-400" />
+              Email
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="your-email@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+              autoFocus
+              required
+              className={fieldInput}
+            />
+            {isAuthenticated && (
+              <p className="text-xs text-slate-400">
+                {t("auth.resendVerification.emailFromAccount")}
               </p>
             )}
           </div>
-        </CardContent>
-      </Card>
-    </div>
+
+          <Button type="submit" className={primaryButton} disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {t("auth.resendVerification.submitting")}
+              </>
+            ) : (
+              <>
+                <Mail className="mr-1 h-4 w-4" />
+                {t("auth.resendVerification.submit")}
+              </>
+            )}
+          </Button>
+
+          <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-sm text-slate-600">
+            {fromRegister && (
+              <p className="font-semibold text-slate-900">
+                {t("auth.resendVerification.accountCreated")}
+              </p>
+            )}
+            <p className="font-semibold text-slate-900">
+              {t("auth.resendVerification.note")}
+            </p>
+            <p>• {t("auth.resendVerification.noteCheckSpam")}</p>
+            <p>• {t("auth.resendVerification.noteExpiry")}</p>
+            <p>• {t("auth.resendVerification.noteRateLimit")}</p>
+          </div>
+        </form>
+      )}
+
+      <div className="mt-6 space-y-2 text-center">
+        <Link
+          to="/login"
+          className="inline-flex items-center gap-2 text-sm font-medium text-emerald-700 transition hover:text-emerald-800"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {t("auth.resendVerification.backToLogin")}
+        </Link>
+        {!isAuthenticated && (
+          <p className="text-sm text-slate-500">
+            {t("auth.resendVerification.noAccount")}{" "}
+            <Link
+              to="/register"
+              className="font-semibold text-emerald-700 hover:text-emerald-800"
+            >
+              {t("auth.resendVerification.registerNow")}
+            </Link>
+          </p>
+        )}
+      </div>
+    </AuthShell>
   );
 };
 

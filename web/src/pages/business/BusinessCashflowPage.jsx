@@ -15,6 +15,7 @@ export default function BusinessCashflowPage() {
       useSummary={useBusinessCashflowSummary}
       useRows={useBusinessCashflow}
       exportFilename="business_cashflow"
+      showSubNav={true}
     />
   );
 }

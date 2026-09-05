@@ -1,3 +1,7 @@
+// MAP: CategoryPlacesScreen
+// ├── UI: @/modules/explore/components/ExploreListScaffold
+// └── API: @/modules/explore/hooks/useExplore
+
 import { memo, useCallback, useMemo } from "react";
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { FlashList } from "@shopify/flash-list";

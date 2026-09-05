@@ -1,6 +1,6 @@
 import { useState, memo, useCallback } from "react";
 import { Loader2, Check, ChevronRight, Layers } from "lucide-react";
-import * as LucideIcons from "lucide-react";
+import { MdiCategoryIcon } from "@/components/category/MdiCategoryIcon";
 import { useCategories } from "@/hooks/queries/useCategoryQueries";
 import { Label, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -9,12 +9,6 @@ import { cn } from "@/lib/utils";
  * CATEGORY SELECTOR - TECHNICAL INDUSTRIAL MINIMALISM
  * Sharp borders, high contrast, grid-based layout
  */
-
-const getIconComponent = (iconName) => {
-  if (!iconName) return null;
-  const Icon = LucideIcons[iconName];
-  return Icon || null;
-};
 
 const CategorySelector = memo(({ value, onChange, error }) => {
   const { data: categories = [], isLoading } = useCategories();
@@ -56,10 +50,6 @@ const CategorySelector = memo(({ value, onChange, error }) => {
     const hasChildren = children.length > 0;
     const isExpanded = expandedCategories.has(category.id);
     const isSelected = value === category.id;
-    const IconComponent = category.icon
-      ? getIconComponent(category.icon)
-      : null;
-
     return (
       <div
         key={category.id}
@@ -89,8 +79,8 @@ const CategorySelector = memo(({ value, onChange, error }) => {
                 : "bg-gray-100 text-gray-800 border-gray-300 group-hover:border-black group-hover:text-black"
             )}
           >
-            {IconComponent ? (
-              <IconComponent className="w-5 h-5" />
+            {category.icon ? (
+              <MdiCategoryIcon category={category.icon} className="w-5 h-5" />
             ) : (
               <span className="text-xs font-bold font-mono">
                 {category.name[0]}

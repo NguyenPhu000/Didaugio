@@ -1,233 +1,147 @@
 import prisma from "../../config/prismaClient.js";
 import ServiceError from "../../utils/serviceError.js";
 import { ERROR_CODES } from "../../config/messages.js";
-import { deleteImage } from "../../utils/cloudinaryService.js";
 import { uploadPlaceImage } from "../media/media.service.js";
+import {
+  enqueueCloudinaryAssetCleanup,
+  enqueueCloudinaryAssetRollback,
+} from "../media/cloudinaryCleanupJob.service.js";
 
 const toInt = (value, fallback = null) => {
   const number = parseInt(value, 10);
   return Number.isNaN(number) ? fallback : number;
 };
 
-/**
- * Tạo banner marketing mới (admin only).
- * Upload ảnh base64 lên Cloudinary, lưu imageUrl + imagePublicId.
- */
-export const createBanner = async (userId, data) => {
-  const {
-    title,
-    description,
-    image,
-    linkType,
-    linkValue,
-    position,
-    priority,
-    startDate,
-    endDate,
-    isActive,
-  } = data;
+const isInlineImage = (value) =>
+  typeof value === "string" && value.startsWith("data:image/");
 
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  if (start > end) {
-    throw new ServiceError(
-      ERROR_CODES.VALIDATION_ERROR,
-      "Ngày bắt đầu không được lớn hơn ngày kết thúc",
-      400
-    );
-  }
-
-  // Upload ảnh lên Cloudinary nếu là base64
-  let imageUrl = null;
-  let imagePublicId = null;
-
-  if (image && image.startsWith("data:image/")) {
-    try {
-      const uploadResult = await uploadPlaceImage(image, "didaugio/banners");
-      imageUrl = uploadResult.secureUrl;
-      imagePublicId = uploadResult.publicId;
-    } catch (err) {
-      console.error("Lỗi upload banner image lên Cloudinary:", err);
-      throw new ServiceError(
-        ERROR_CODES.SERVER_ERROR,
-        "Lỗi upload ảnh lên Cloudinary",
-        500
-      );
-    }
-  } else if (image) {
-    // Nếu là URL sẵn có (không phải base64)
-    imageUrl = image;
-  }
-
-  const banner = await prisma.bannerMarketing.create({
-    data: {
-      title,
-      description: description || null,
-      imageData: imageUrl || "",
-      imageUrl,
-      imagePublicId,
-      linkType: linkType || "none",
-      linkValue: linkValue || null,
-      position: position || "home",
-      priority: priority || 0,
-      startDate: start,
-      endDate: end,
-      isActive: isActive !== false,
-      createdBy: userId,
-    },
-  });
-
-  return banner;
+const stageBannerImage = async (image) => {
+  if (!isInlineImage(image)) return { imageUrl: image || null, imagePublicId: null };
+  const uploaded = await uploadPlaceImage(image, "didaugio/banners");
+  return { imageUrl: uploaded.secureUrl, imagePublicId: uploaded.publicId };
 };
 
-/**
- * Cập nhật banner marketing (admin only).
- * Nếu upload ảnh mới → xóa ảnh cũ trên Cloudinary.
- */
-export const updateBanner = async (bannerId, data) => {
-  const existing = await prisma.bannerMarketing.findUnique({
-    where: { id: bannerId },
-  });
+const buildBannerListOptions = (filters = {}) => {
+  const { isActive, position, page = 1, limit = 20 } = filters;
+  const where = {};
+  if (isActive !== undefined) where.isActive = isActive === "true" || isActive === true;
+  if (position) where.position = position;
+  const pageNum = Math.max(toInt(page, 1), 1);
+  const limitNum = Math.min(Math.max(toInt(limit, 20), 1), 50);
+  return { where, pageNum, limitNum, skip: (pageNum - 1) * limitNum };
+};
 
-  if (!existing) {
-    throw new ServiceError(ERROR_CODES.NOT_FOUND, "Không tìm thấy banner", 404);
-  }
-
+const buildBannerUpdateData = (data, existing) => {
   const updateData = {};
-
-  if (data.title !== undefined) updateData.title = data.title;
+  for (const field of ["title", "linkType", "position", "priority", "isActive"]) {
+    if (data[field] !== undefined) updateData[field] = data[field];
+  }
   if (data.description !== undefined) updateData.description = data.description || null;
-  if (data.linkType !== undefined) updateData.linkType = data.linkType;
   if (data.linkValue !== undefined) updateData.linkValue = data.linkValue || null;
-  if (data.position !== undefined) updateData.position = data.position;
-  if (data.priority !== undefined) updateData.priority = data.priority;
-  if (data.isActive !== undefined) updateData.isActive = data.isActive;
+  if (data.startDate === undefined && data.endDate === undefined) return updateData;
 
-  // Xử lý ngày tháng
-  if (data.startDate !== undefined || data.endDate !== undefined) {
-    const start = new Date(data.startDate || existing.startDate);
-    const end = new Date(data.endDate || existing.endDate);
-    if (start > end) {
-      throw new ServiceError(
-        ERROR_CODES.VALIDATION_ERROR,
-        "Ngày bắt đầu không được lớn hơn ngày kết thúc",
-        400
-      );
-    }
-    if (data.startDate !== undefined) updateData.startDate = start;
-    if (data.endDate !== undefined) updateData.endDate = end;
+  const startDate = new Date(data.startDate || existing.startDate);
+  const endDate = new Date(data.endDate || existing.endDate);
+  if (startDate > endDate) {
+    throw new ServiceError("Start date cannot be after end date", 400, ERROR_CODES.VALIDATION_ERROR);
   }
-
-  // Xử lý ảnh — upload mới + dọn dẹp ảnh cũ
-  if (data.image !== undefined) {
-    // Nếu ảnh không thay đổi (giữ nguyên URL cũ) → bỏ qua
-    if (data.image === existing.imageUrl) {
-      // Không làm gì cả
-    } else if (data.image && data.image.startsWith("data:image/")) {
-      // Upload base64 mới lên Cloudinary
-      let newImageUrl = existing.imageUrl;
-      let newImagePublicId = existing.imagePublicId;
-
-      try {
-        const uploadResult = await uploadPlaceImage(
-          data.image,
-          "didaugio/banners"
-        );
-        newImageUrl = uploadResult.secureUrl;
-        newImagePublicId = uploadResult.publicId;
-      } catch (err) {
-        console.error("Lỗi upload banner image mới:", err);
-        throw new ServiceError(
-          ERROR_CODES.SERVER_ERROR,
-          "Lỗi upload ảnh lên Cloudinary",
-          500
-        );
-      }
-
-      // Dọn dẹp ảnh cũ trên Cloudinary
-      if (existing.imagePublicId) {
-        try {
-          await deleteImage(existing.imagePublicId);
-        } catch (err) {
-          console.error("Lỗi xóa banner image cũ trên Cloudinary:", err);
-        }
-      }
-
-      updateData.imageUrl = newImageUrl;
-      updateData.imagePublicId = newImagePublicId;
-      updateData.imageData = newImageUrl;
-    } else if (data.image) {
-      // URL mới khác URL cũ → thay thế (không upload Cloudinary)
-      updateData.imageUrl = data.image;
-      updateData.imagePublicId = null;
-      updateData.imageData = data.image;
-
-      // Dọn dẹp ảnh cũ trên Cloudinary
-      if (existing.imagePublicId) {
-        try {
-          await deleteImage(existing.imagePublicId);
-        } catch (err) {
-          console.error("Lỗi xóa banner image cũ trên Cloudinary:", err);
-        }
-      }
-    }
-  }
-
-  const updated = await prisma.bannerMarketing.update({
-    where: { id: bannerId },
-    data: updateData,
-  });
-
-  return updated;
+  if (data.startDate !== undefined) updateData.startDate = startDate;
+  if (data.endDate !== undefined) updateData.endDate = endDate;
+  return updateData;
 };
 
-/**
- * Xóa banner marketing (admin only).
- * Dọn dẹp ảnh trên Cloudinary trước khi xóa record.
- */
+export const createBanner = async (userId, data) => {
+  const startDate = new Date(data.startDate);
+  const endDate = new Date(data.endDate);
+  if (startDate > endDate) {
+    throw new ServiceError("Start date cannot be after end date", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+
+  const staged = await stageBannerImage(data.image);
+  try {
+    return await prisma.bannerMarketing.create({
+      data: {
+        title: data.title,
+        description: data.description || null,
+        imageData: staged.imageUrl || "",
+        imageUrl: staged.imageUrl,
+        imagePublicId: staged.imagePublicId,
+        linkType: data.linkType || "none",
+        linkValue: data.linkValue || null,
+        position: data.position || "home",
+        priority: data.priority || 0,
+        startDate,
+        endDate,
+        isActive: data.isActive !== false,
+        createdBy: userId,
+      },
+    });
+  } catch (error) {
+    await enqueueCloudinaryAssetRollback(prisma, {
+      aggregate: "BannerMarketing",
+      aggregateId: 0,
+      publicIds: [staged.imagePublicId],
+    });
+    throw error;
+  }
+};
+
+export const updateBanner = async (bannerId, data) => {
+  const existing = await prisma.bannerMarketing.findUnique({ where: { id: bannerId } });
+  if (!existing) throw new ServiceError("Banner does not exist", 404, ERROR_CODES.NOT_FOUND);
+
+  const updateData = buildBannerUpdateData(data, existing);
+
+  let staged = null;
+  if (data.image !== undefined && data.image !== existing.imageUrl) {
+    staged = await stageBannerImage(data.image);
+    updateData.imageData = staged.imageUrl || "";
+    updateData.imageUrl = staged.imageUrl;
+    updateData.imagePublicId = staged.imagePublicId;
+  }
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const updated = await tx.bannerMarketing.update({ where: { id: bannerId }, data: updateData });
+      if (existing.imagePublicId && existing.imagePublicId !== updated.imagePublicId) {
+        await enqueueCloudinaryAssetCleanup(tx, {
+          aggregate: "BannerMarketing",
+          aggregateId: bannerId,
+          publicIds: [existing.imagePublicId],
+        });
+      }
+      return updated;
+    });
+  } catch (error) {
+    await enqueueCloudinaryAssetRollback(prisma, {
+      aggregate: "BannerMarketing",
+      aggregateId: bannerId,
+      publicIds: [staged?.imagePublicId],
+    });
+    throw error;
+  }
+};
+
 export const deleteBanner = async (bannerId) => {
-  const banner = await prisma.bannerMarketing.findUnique({
-    where: { id: bannerId },
+  const banner = await prisma.bannerMarketing.findUnique({ where: { id: bannerId } });
+  if (!banner) throw new ServiceError("Banner does not exist", 404, ERROR_CODES.NOT_FOUND);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.bannerMarketing.delete({ where: { id: bannerId } });
+    await enqueueCloudinaryAssetCleanup(tx, {
+      aggregate: "BannerMarketing",
+      aggregateId: bannerId,
+      publicIds: [banner.imagePublicId],
+    });
   });
-
-  if (!banner) {
-    throw new ServiceError(ERROR_CODES.NOT_FOUND, "Không tìm thấy banner", 404);
-  }
-
-  // Dọn dẹp ảnh trên Cloudinary
-  if (banner.imagePublicId) {
-    try {
-      await deleteImage(banner.imagePublicId);
-    } catch (err) {
-      console.error("Lỗi xóa banner image trên Cloudinary:", err);
-    }
-  }
-
-  await prisma.bannerMarketing.delete({
-    where: { id: bannerId },
-  });
-
   return { id: bannerId };
 };
 
 /**
- * Lấy danh sách banner marketing (admin — có filter, pagination).
+ * Tạo banner marketing mới (admin only).
  */
 export const getBanners = async (filters = {}) => {
-  const { isActive, position, page = 1, limit = 20 } = filters;
-
-  const where = {};
-  if (isActive !== undefined) {
-    where.isActive = isActive === "true" || isActive === true;
-  }
-  if (position) {
-    where.position = position;
-  }
-
-  const pageNum = Math.max(toInt(page, 1), 1);
-  const limitNum = Math.min(Math.max(toInt(limit, 20), 1), 50);
-  const skip = (pageNum - 1) * limitNum;
+  const { where, pageNum, limitNum, skip } = buildBannerListOptions(filters);
 
   const [banners, total] = await Promise.all([
     prisma.bannerMarketing.findMany({

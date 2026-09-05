@@ -78,13 +78,16 @@
     "statusApproved": "Đã duyệt",
     "statusRejected": "Từ chối",
     "statusCancelled": "Đã hủy",
+    "statusUnknown": "Không xác định",
     "draft": "Nháp",
     "pendingApproval": "Chờ duyệt",
+    "others": "khác",
+    "exporting": "Đang xuất...",
     "reviewing": "Đang duyệt",
     "invalidImageFormat": "Chỉ hỗ trợ ảnh PNG/JPG/JPEG/WEBP",
     "invalidFileFormat": "Chỉ hỗ trợ ảnh PNG/JPG/JPEG/WEBP hoặc PDF",
-    "imageTooLarge": "Ảnh vượt quá 10MB, vui lòng chọn ảnh nhỏ hơn",
-    "fileTooLarge": "Tệp vượt quá 10MB, vui lòng chọn tệp nhỏ hơn"
+    "imageTooLarge": "Ảnh vượt quá 8MB, vui lòng chọn ảnh nhỏ hơn",
+    "fileTooLarge": "Tệp vượt quá 8MB, vui lòng chọn tệp nhỏ hơn"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -279,15 +282,15 @@
       "statEncryption": "MÃ HÓA",
       "statSecure": "BẢO MẬT",
       "title": "ĐĂNG NHẬP",
-      "subtitle": "TRUY CẬP HỆ THỐNG",
-      "emailOrUsername": "EMAIL HOẶC TÊN ĐĂNG NHẬP",
+      "subtitle": "Đăng nhập vào hệ thống quản trị",
+      "emailOrUsername": "Email hoặc tên đăng nhập",
       "emailOrUsernamePlaceholder": "Nhập email hoặc username",
-      "password": "MẬT KHẨU",
+      "password": "Mật khẩu",
       "passwordPlaceholder": "Nhập mật khẩu",
-      "rememberMe": "GHI NHỚ ĐĂNG NHẬP",
-      "forgotPassword": "QUÊN MẬT KHẨU?",
-      "submit": "TRUY CẬP HỆ THỐNG",
-      "submitting": "ĐANG XÁC THỰC...",
+      "rememberMe": "Ghi nhớ đăng nhập",
+      "forgotPassword": "Quên mật khẩu?",
+      "submit": "Đăng nhập",
+      "submitting": "Đang xác thực...",
       "success": "Đăng nhập thành công!",
       "failed": "Đăng nhập thất bại. Vui lòng thử lại.",
       "googleSuccess": "Đăng nhập Google thành công!",
@@ -295,9 +298,9 @@
       "googleNoToken": "Không nhận được token từ Google.",
       "noPermission": "Tài khoản không có quyền truy cập",
       "emailNotVerified": "Email chưa xác thực. Vui lòng kiểm tra hộp thư.",
-      "noAccount": "CHƯA CÓ TÀI KHOẢN?",
-      "registerBusiness": "ĐĂNG KÝ TÀI KHOẢN DOANH NGHIỆP",
-      "secureNote": "BẢO MẬT BỞI RSA-256 · PHIÊN ĐĂNG NHẬP TỰ ĐỘNG HẾT HẠN"
+      "noAccount": "Chưa có tài khoản?",
+      "registerBusiness": "Đăng ký tài khoản doanh nghiệp",
+      "secureNote": "Bảo mật bởi AES-256 · Phiên đăng nhập tự động hết hạn"
     },
     "register": {
       "pageTitle": "Đăng ký — iPoint Genie",
@@ -355,7 +358,7 @@
       "emailSentNote": "Chúng tôi đã gửi hướng dẫn khôi phục đến <strong>{{email}}</strong>",
       "checkSpam": "Kiểm tra thư mục Spam/Junk nếu không thấy email",
       "linkExpiry": "Link khôi phục sẽ hết hạn sau 1 giờ",
-      "contactSupport": "Liên hệ support@didaugio.com nếu cần hỗ trợ",
+      "contactSupport": "Liên hệ support@ipointgenie.com nếu cần hỗ trợ",
       "tryDifferentEmail": "THỬ EMAIL KHÁC",
       "needHelp": "CẦN HỖ TRỢ?"
     },
@@ -379,70 +382,141 @@
       "checkInbox": "Vui lòng kiểm tra hộp thư và nhấn vào link xác thực.",
       "autoRedirect": "Tự động chuyển đến trang đăng nhập sau 5 giây...",
       "emailFromAccount": "Email từ tài khoản đã đăng nhập"
+    },
+    "resetPassword": {
+      "pageTitle": "Đặt lại mật khẩu — iPoint Genie",
+      "eyebrow": "ĐẶT LẠI MẬT KHẨU",
+      "title": "ĐẶT LẠI MẬT KHẨU",
+      "subtitle": "Tạo mật khẩu mới cho tài khoản của bạn",
+      "newPassword": "MẬT KHẨU MỚI",
+      "newPasswordPlaceholder": "Nhập mật khẩu mới (tối thiểu 8 ký tự)",
+      "confirmPassword": "XÁC NHẬN MẬT KHẨU",
+      "confirmPasswordPlaceholder": "Nhập lại mật khẩu mới",
+      "submit": "ĐẶT LẠI MẬT KHẨU",
+      "submitting": "ĐANG CẬP NHẬT...",
+      "backToLogin": "QUAY LẠI ĐĂNG NHẬP",
+      "loginNow": "ĐĂNG NHẬP NGAY",
+      "resendRequest": "GỬI LẠI YÊU CẦU",
+      "success": "Đặt lại mật khẩu thành công!",
+      "successMessage": "Mật khẩu mới đã được lưu. Bạn có thể đăng nhập ngay bây giờ.",
+      "failed": "Đặt lại mật khẩu thất bại. Vui lòng thử lại.",
+      "invalidToken": "LIÊN KẾT KHÔNG HỢP LỆ",
+      "invalidTokenMessage": "Liên kết đặt lại mật khẩu của bạn đã hết hạn hoặc không đúng. Vui lòng gửi yêu cầu mới.",
+      "tokenExpired": "Liên kết đặt lại mật khẩu đã hết hạn hoặc không hợp lệ.",
+      "strengthLabel": "Độ mạnh mật khẩu:",
+      "strengthWeak": "Yếu",
+      "strengthFair": "Trung bình",
+      "strengthGood": "Khá",
+      "strengthStrong": "Mạnh",
+      "strengthVeryStrong": "Rất mạnh",
+      "hidePassword": "Ẩn mật khẩu",
+      "showPassword": "Hiện mật khẩu",
+      "shellTitle": "Tạo mật khẩu mới cho tài khoản của bạn",
+      "shellSubtitle": "Chọn một mật khẩu mạnh để giữ cho không gian làm việc du lịch của bạn an toàn.",
+      "shellSuccessTitle": "Xong rồi! Tài khoản của bạn đã sẵn sàng",
+      "shellSuccessSubtitle": "Mật khẩu mới đã được lưu. Bạn có thể đăng nhập ngay bây giờ.",
+      "shellErrorTitle": "Bảo mật tài khoản của bạn luôn được ưu tiên",
+      "shellErrorSubtitle": "Liên kết đặt lại mật khẩu chỉ có hiệu lực trong thời gian giới hạn để đảm bảo an toàn."
     }
   },
   "users": {
-    "title": "QUẢN LÝ NGƯỜI DÙNG",
-    "subtitle": "QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN",
-    "addUser": "THÊM NGƯỜI DÙNG",
-    "searchPlaceholder": "TÌM THEO TÊN, EMAIL, SDT...",
+    "eyebrow": "Quản trị Tài khoản & Phân quyền",
+    "title": "Quản lý người dùng",
+    "subtitle": "Xem, thêm, sửa đổi và phân quyền tài khoản người dùng trong hệ thống",
+    "addUser": "Thêm người dùng",
+    "exportCsv": "Xuất CSV",
+    "sync": "Đồng bộ lại",
+    "searchPlaceholder": "Tìm kiếm theo tên, email, username...",
+    "filters": {
+      "allRoles": "Tất cả vai trò",
+      "allStatuses": "Tất cả trạng thái",
+      "active": "Đang hoạt động",
+      "locked": "Đang khóa"
+    },
     "table": {
       "id": "ID",
-      "basicInfo": "THÔNG TIN CƠ BẢN",
-      "contact": "LIÊN HỆ",
-      "role": "VAI TRÒ",
-      "status": "TRẠNG THÁI",
-      "actions": "THAO TÁC"
-    },
-    "status": {
-      "active": "HOẠT ĐỘNG",
-      "locked": "ĐÃ KHÓA"
+      "serial": "STT",
+      "basicInfo": "Thông tin cơ bản",
+      "contact": "Liên hệ",
+      "role": "Vai trò",
+      "connection": "Kết nối",
+      "account": "Tài khoản",
+      "status": "Trạng thái",
+      "actions": "Thao tác",
+      "online": "Trực tuyến",
+      "offline": "Ngoại tuyến",
+      "detail": "Chi tiết",
+      "noDataTitle": "Không có dữ liệu",
+      "noDataDesc": "Không tìm thấy tài khoản nào khớp với bộ lọc.",
+      "showing": "Hiển thị {{count}} / {{total}} người dùng",
+      "previous": "← Trước",
+      "next": "Sau →"
     },
     "actions": {
-      "detail": "CHI TIẾT",
-      "edit": "CHỈNH SỬA",
-      "changePassword": "ĐỔI MẬT KHẨU",
-      "delete": "XÓA USER"
+      "detail": "Chi tiết",
+      "edit": "Chỉnh sửa",
+      "changePassword": "Đổi mật khẩu",
+      "delete": "Xóa",
+      "lock": "Khóa tài khoản",
+      "unlock": "Mở khóa tài khoản",
+      "lockAccount": "Khóa tài khoản",
+      "unlockAccount": "Mở khóa tài khoản"
     },
-    "deleteDialog": {
-      "title": "CẢNH BÁO: QUY TRÌNH XÓA",
-      "description": "Thao tác này là vĩnh viễn và không thể hoàn tác",
-      "message": "Xóa người dùng \"{{username}}\"? Tất cả dữ liệu liên quan sẽ bị xóa vĩnh viễn."
+    "status": {
+      "active": "Hoạt động",
+      "locked": "Đang khóa",
+      "inactive": "Đang khóa"
     },
     "pagination": {
-      "showing": "HIỂN THỊ {{count}} / {{total}} KẾT QUẢ",
-      "previous": "TRƯỚC",
-      "next": "SAU"
-    },
-    "stats": {
-      "total": "TỔNG NGƯỜI DÙNG",
-      "active": "HOẠT ĐỘNG",
-      "locked": "ĐÃ KHÓA",
-      "perPage": "BẢN GHI / TRANG"
+      "showing": "Đang hiển thị {{count}} / {{total}} người dùng",
+      "previous": "Trước",
+      "next": "Sau"
     },
     "errors": {
-      "loadFailed": "Tải danh sách người dùng thất bại",
-      "saveFailed": "Lưu người dùng thất bại"
+      "loadFailed": "Không thể tải danh sách người dùng",
+      "saveFailed": "Lưu thông tin người dùng thất bại"
     },
     "messages": {
-      "deleteSuccess": "Đã xóa người dùng thành công",
-      "updateSuccess": "Đã cập nhật người dùng thành công",
-      "createSuccess": "Đã tạo người dùng thành công"
+      "deleteSuccess": "Xóa người dùng thành công",
+      "updateSuccess": "Cập nhật người dùng thành công",
+      "createSuccess": "Tạo người dùng thành công",
+      "lockSuccess": "Đã khóa tài khoản thành công",
+      "unlockSuccess": "Đã kích hoạt tài khoản thành công",
+      "changePasswordSuccess": "Đổi mật khẩu thành công"
     },
     "export": {
-      "loading": "Đang xuất CSV...",
-      "success": "Đã xuất {{count}} người dùng thành công",
-      "error": "Xuất CSV thất bại"
+      "loading": "Đang xuất dữ liệu CSV...",
+      "success": "Xuất thành công {{count}} người dùng",
+      "error": "Lỗi khi xuất CSV"
     },
     "csv": {
-      "fullName": "Họ và tên",
+      "fullName": "Họ tên",
       "phone": "Số điện thoại",
       "role": "Vai trò",
       "status": "Trạng thái",
       "createdAt": "Ngày tạo"
     },
-    "filters": {
-      "allRoles": "Tất cả vai trò"
+    "deleteDialog": {
+      "title": "Xóa tài khoản",
+      "description": "Hành động này sẽ xóa mềm tài khoản người dùng này.",
+      "message": "Bạn có chắc chắn muốn xóa người dùng {{username}}?"
+    },
+    "stats": {
+      "total": "Tổng tài khoản",
+      "active": "Hoạt động",
+      "locked": "Đang khóa",
+      "perPage": "Trên trang này"
+    },
+    "bulk": {
+      "selected": "Đã chọn {{count}} người dùng",
+      "assignRole": "Gán vai trò",
+      "clearSelection": "Bỏ chọn",
+      "dialogTitle": "Gán vai trò hàng loạt",
+      "dialogDesc": "Cập nhật vai trò cho {{count}} người dùng đã chọn",
+      "selectRolePlaceholder": "Chọn vai trò mới",
+      "applying": "Đang cập nhật...",
+      "apply": "Áp dụng",
+      "cancel": "Hủy"
     }
   },
   "roles": {
@@ -544,14 +618,11 @@
     "types": {
       "all": "Tất cả",
       "general": "Chung",
-      "food": "Ẩm thực",
-      "travel": "Du lịch",
-      "service": "Dịch vụ",
+      "feature": "Đặc điểm",
+      "amenity": "Tiện ích",
+      "cuisine": "Ẩm thực",
       "activity": "Hoạt động",
-      "ambience": "Không gian",
-      "price": "Giá cả",
-      "time": "Thời gian",
-      "ai_signal": "AI Signal"
+      "atmosphere": "Không gian"
     },
     "table": {
       "identity": "ĐỊNH DANH",
@@ -678,6 +749,8 @@
     "subtitle": "HỆ THỐNG // CẤU HÌNH",
     "save": "LƯU CÀI ĐẶT",
     "saving": "ĐANG LƯU...",
+    "undo": "Hoàn tác",
+    "unsaved": "Có thay đổi chưa lưu",
     "general": {
       "title": "1) Cài Đặt Chung",
       "description": "Tên hệ thống, logo/favicon, ngôn ngữ, múi giờ, domain và maintenance mode",
@@ -1111,10 +1184,15 @@
       "noData": "Chưa có dữ liệu",
       "vsLastWeek": "so với tuần trước",
       "funnelViews": "Lượt xem",
+      "funnelDetail": "Chi tiết",
       "funnelDetails": "Chi tiết",
+      "funnelBooking": "Đặt chỗ",
       "funnelBookings": "Đặt chỗ",
+      "funnelConfirm": "Xác nhận",
       "funnelConfirmed": "Xác nhận",
+      "funnelComplete": "Hoàn thành",
       "funnelCompleted": "Hoàn thành",
+      "conversions": "lượt chuyển đổi",
       "chartViews": "Lượt xem",
       "chartBookings": "Đặt chỗ",
       "orders": "đơn",
@@ -1716,7 +1794,7 @@
       "revenue": "Doanh thu",
       "vouchers": "Voucher",
       "reset": "Đặt lại",
-    "createdAt": "Ngày tạo",
+      "createdAt": "Ngày tạo",
       "updatedAt": "Ngày cập nhật",
       "documents": "Giấy tờ",
       "businessLicense": "Giấy phép kinh doanh",
@@ -1728,7 +1806,14 @@
       "signedViewPdf": "Đã ký (Xem PDF)",
       "unsignedViewDraft": "Chưa ký (Xem bản nháp)",
       "commissionRatePercent": "Tỷ lệ hoa hồng (%)",
-      "confirmCheckDocuments": "Xác nhận thông tin hồ sơ doanh nghiệp đã khớp với các giấy tờ đính kèm."
+      "confirmCheckDocuments": "Xác nhận thông tin hồ sơ doanh nghiệp đã khớp với các giấy tờ đính kèm.",
+      "systemCommission": "Hoa hồng hệ thống",
+      "totalRevenue": "Tổng doanh thu",
+      "netRevenue": "Doanh thu thực nhận",
+      "commissionRate": "Tỷ lệ hoa hồng",
+      "valid": "Hợp lệ",
+      "missing": "Chưa bổ sung",
+      "subtitle": "Hồ sơ xác thực, hợp đồng và hiệu suất kinh doanh"
     },
     "schedule": {
       "title": "Lịch đặt chỗ",
@@ -1737,9 +1822,13 @@
       "today": "Hôm nay",
       "refresh": "Làm mới",
       "allPlaces": "Tất cả địa điểm",
-      "pending": "chờ",
-      "confirmed": "xác nhận",
-      "completed": "hoàn thành",
+      "pending": "Chờ xác nhận",
+      "confirmed": "Đã xác nhận",
+      "completed": "Hoàn thành",
+      "cancelled": "Đã hủy",
+      "rejected": "Bị từ chối",
+      "expired": "Hết hạn",
+      "noShow": "Không đến",
       "block": "Chặn",
       "guest": "Khách",
       "guests": "khách",
@@ -1759,6 +1848,7 @@
       "notes": "Ghi chú",
       "close": "Đóng",
       "viewDetail": "Xem chi tiết",
+      "processing": "Đang xử lý...",
       "legend": {
         "pending": "Chờ xác nhận",
         "confirmed": "Đã xác nhận",
@@ -1787,7 +1877,7 @@
       "maxAmount": "Tối đa:",
       "refundReason": "Lý do hoàn tiền",
       "refundAmountError": "Số tiền hoàn phải lớn hơn 0",
-      "refundExceedsPayment": "Số tiền hoàn vượt qua giá trị thanh toán",
+      "refundExceedsPayment": "Số tiền hoàn vượt quá giá trị thanh toán",
       "confirmRefund": "Xác nhận hoàn tiền",
       "timeline": {
         "created": "Tạo đặt chỗ",
@@ -1845,29 +1935,15 @@
       "confirmDialogTitle": "Hủy đặt chỗ",
       "confirmDialogDesc": "Vui lòng nhập lý do hủy (ít nhất 5 ký tự).",
       "confirmPaymentTitle": "Xác nhận thanh toán",
-      "confirmPaymentDesc": "Đánh dấu booking đã thanh toán thủ công.",
       "paymentNoteLabel": "Ghi chú (tuỳ chọn)",
-      "paymentNotePlaceholder": "Ví dụ: Khách đã chuyển khoản",
       "confirmPaidBtn": "Xác nhận đã thanh toán",
       "refundTitle": "Hoàn tiền",
-      "refundDesc": "Nhập số tiền hoàn và lý do để lưu lại lịch sử giao dịch.",
       "refundAmountLabel": "Số tiền hoàn (VND)",
       "refundReasonMinLength": "Lý do hoàn tiền cần ít nhất 5 ký tự",
       "refundAmountZero": "Số tiền hoàn phải lớn hơn 0",
-      "refundExceedsPayment": "Số tiền hoàn vượt quá giá trị thanh toán",
       "confirmRefundBtn": "Xác nhận hoàn tiền",
       "qrCodePresent": "Khách hàng xuất trình mã này khi đến",
       "voucherDiscount": "Giảm",
-      "guestLabel": "Khách",
-      "selectedCount": "{{count}} được chọn",
-      "conditionLabel": "Điều kiện",
-      "noCondition": "Không có điều kiện",
-      "priorityLabel": "Độ ưu tiên",
-      "confirmDeleteRule": "Bạn có chắc muốn xóa rule này?",
-      "timeSlot": "Khung giờ",
-      "minGuests": "Tối thiểu",
-      "maxGuests": "Tối đa",
-      "errorOccurred": "Lỗi xảy ra",
       "title": "Chi tiết đặt chỗ"
     },
     "profile": {
@@ -1971,18 +2047,19 @@
       "noContract": "Chưa có hợp đồng",
       "contractPreview": "Xem trước hợp đồng",
       "contractPdf": "Hợp đồng PDF",
+      "openPdf": "Mở PDF",
       "downloadStarted": "Bắt đầu tải xuống"
     },
     "staff": {
       "title": "Quản lý nhân viên",
       "addStaff": "Thêm nhân viên",
-      "searchPlaceholder": "Tìm nhân viên...",
+      "searchPlaceholder": "Tìm theo tên, email nhân viên...",
       "name": "Tên",
       "email": "Email",
       "role": "Vai trò",
       "status": "Trạng thái",
       "actions": "Thao tác",
-      "active": "Hoạt động",
+      "active": "Đang hoạt động",
       "inactive": "Không hoạt động",
       "edit": "Sửa",
       "remove": "Xóa",
@@ -1992,10 +2069,10 @@
       "roleUpdated": "Đã cập nhật vai trò",
       "roleUpdateFailed": "Không thể cập nhật vai trò",
       "inviteSent": "Đã gửi lời mời",
-      "inviteFailed": "Không thể gửi lời mời",
-      "noStaff": "Chưa có nhân viên",
+      "inviteFailed": "Lỗi khi gửi lời mời nhân viên",
+      "noStaff": "Chưa có nhân viên nào trong danh sách",
       "loadFailed": "Không thể tải danh sách nhân viên",
-      "locked": "Đã khóa",
+      "locked": "Tạm khóa",
       "pending": "Chờ xử lý",
       "accepted": "Đã chấp nhận",
       "expired": "Đã hết hạn",
@@ -2020,8 +2097,18 @@
       "linkCopied": "Đã sao chép link mời",
       "subtitle": "Quản lý tài khoản và phân quyền nhân viên",
       "inviteStaff": "Mời nhân viên",
+      "inviteSubtitle": "Gửi lời mời nhân viên mới tham gia vào hệ thống quản lý của bạn.",
       "totalStaff": "Tổng nhân viên",
       "activeStaff": "Đang hoạt động",
+      "lock": "Khóa tài khoản",
+      "unlock": "Mở khóa tài khoản",
+      "selectRolePlaceholder": "Chọn vai trò cho nhân viên",
+      "defaultRole": "Chưa phân vai trò",
+      "note": "Ghi chú",
+      "notePlaceholder": "Thêm ghi chú kèm theo lời mời...",
+      "inviteLinkCreated": "Lời mời đã được tạo thành công! Sao chép liên kết dưới đây để gửi cho nhân viên:",
+      "statusSuccess": "Đã cập nhật trạng thái nhân viên",
+      "statusFailed": "Lỗi khi cập nhật trạng thái nhân viên",
       "pendingInvitations": "Lời mời chờ",
       "staffTab": "Nhân viên",
       "invitationsTab": "Lời mời",
@@ -2103,26 +2190,86 @@
         }
       },
       "metrics": {
-        "totalBookings": { "label": "Tổng đặt chỗ", "subtitle": "đặt chỗ" },
-        "confirmationRate": { "label": "Tỷ lệ xác nhận", "subtitle": "xác nhận/thành công" },
-        "cancellationRate": { "label": "Tỷ lệ hủy", "subtitle": "bị hủy" },
-        "bookingsRevenue": { "label": "Doanh thu", "subtitle": "tổng doanh thu" },
-        "totalRevenue": { "label": "Tổng doanh thu", "subtitle": "trước hoa hồng" },
-        "netRevenue": { "label": "Doanh thu ròng", "subtitle": "sau hoa hồng" },
-        "commission": { "label": "Hoa hồng", "subtitle": "phí nền tảng" },
-        "growth": { "label": "Tăng trưởng", "subtitle": "so với kỳ trước" },
-        "reviewCount": { "label": "Số đánh giá", "subtitle": "đánh giá" },
-        "avgScore": { "label": "Điểm TB", "subtitle": "trên 5 sao" },
-        "responseRate": { "label": "Tỷ lệ phản hồi", "subtitle": "đã phản hồi" },
-        "newReviews": { "label": "Đánh giá mới", "subtitle": "tuần này" },
-        "newCustomers": { "label": "Khách mới", "subtitle": "khách hàng" },
-        "returningCustomers": { "label": "Khách quay lại", "subtitle": "khách hàng" },
-        "avgValue": { "label": "Giá trị TB", "subtitle": "mỗi đặt chỗ" },
-        "bookingFrequency": { "label": "Tần suất đặt", "subtitle": "trung bình" },
-        "serviceRate": { "label": "Tỷ lệ phục vụ", "subtitle": "hoàn thành" },
-        "waitTime": { "label": "Thời gian chờ", "subtitle": "trung bình" },
-        "satisfactionScore": { "label": "Satisfaction score", "subtitle": "trên 5" },
-        "noShow": { "label": "No-show", "subtitle": "không đến" }
+        "totalBookings": {
+          "label": "Tổng đặt chỗ",
+          "subtitle": "đặt chỗ"
+        },
+        "confirmationRate": {
+          "label": "Tỷ lệ xác nhận",
+          "subtitle": "xác nhận/thành công"
+        },
+        "cancellationRate": {
+          "label": "Tỷ lệ hủy",
+          "subtitle": "bị hủy"
+        },
+        "bookingsRevenue": {
+          "label": "Doanh thu",
+          "subtitle": "tổng doanh thu"
+        },
+        "totalRevenue": {
+          "label": "Tổng doanh thu",
+          "subtitle": "trước hoa hồng"
+        },
+        "netRevenue": {
+          "label": "Doanh thu ròng",
+          "subtitle": "sau hoa hồng"
+        },
+        "commission": {
+          "label": "Hoa hồng",
+          "subtitle": "phí nền tảng"
+        },
+        "growth": {
+          "label": "Tăng trưởng",
+          "subtitle": "so với kỳ trước"
+        },
+        "reviewCount": {
+          "label": "Số đánh giá",
+          "subtitle": "đánh giá"
+        },
+        "avgScore": {
+          "label": "Điểm TB",
+          "subtitle": "trên 5 sao"
+        },
+        "responseRate": {
+          "label": "Tỷ lệ phản hồi",
+          "subtitle": "đã phản hồi"
+        },
+        "newReviews": {
+          "label": "Đánh giá mới",
+          "subtitle": "tuần này"
+        },
+        "newCustomers": {
+          "label": "Khách mới",
+          "subtitle": "khách hàng"
+        },
+        "returningCustomers": {
+          "label": "Khách quay lại",
+          "subtitle": "khách hàng"
+        },
+        "avgValue": {
+          "label": "Giá trị TB",
+          "subtitle": "mỗi đặt chỗ"
+        },
+        "bookingFrequency": {
+          "label": "Tần suất đặt",
+          "subtitle": "trung bình"
+        },
+        "serviceRate": {
+          "label": "Tỷ lệ phục vụ",
+          "subtitle": "hoàn thành"
+        },
+        "waitTime": {
+          "label": "Thời gian chờ",
+          "subtitle": "trung bình"
+        },
+        "satisfactionScore": {
+          "label": "Satisfaction score",
+          "subtitle": "trên 5"
+        },
+        "noShow": {
+          "label": "No-show",
+          "subtitle": "không đến"
+        }
       },
       "minuteUnit": "phút",
       "vsLastWeek": "so tuần trước",
@@ -2362,13 +2509,14 @@
         "default": "Mặc định",
         "topServices": "Dịch vụ hàng đầu",
         "noServicesInPeriod": "Không có dịch vụ trong giai đoạn này",
-        "serviceStats": "{count} đặt chỗ · {revenue} doanh thu"
+        "serviceStats": "{{count}} đặt chỗ · {{revenue}} doanh thu"
       }
     },
     "bookings": {
       "title": "Quản lý đặt chỗ",
       "subtitle": "Xem và xử lý tất cả đặt chỗ",
       "loadFailed": "Tải danh sách đặt chỗ thất bại",
+      "notFound": "Không tìm thấy đặt chỗ",
       "confirmedSuccess": "Đã xác nhận đặt chỗ",
       "cannotConfirm": "Không thể xác nhận đặt chỗ",
       "cancelledSuccess": "Đã hủy đặt chỗ",
@@ -2437,6 +2585,47 @@
         "doubleBooking": "Trùng lịch đặt",
         "serviceUnavailable": "Dịch vụ không khả dụng",
         "weather": "Thời tiết xấu"
+      },
+      "scanQr": "Quét QR",
+      "exportCsv": "Xuất CSV",
+      "viewDetail": "Xem chi tiết",
+      "guestLabel": "Khách",
+      "selectedCount": "{{count}} được chọn",
+      "bulkConfirmSuccess": "Đã xác nhận {{count}} đặt chỗ",
+      "bulkRejectSuccess": "Đã từ chối {{count}} đặt chỗ",
+      "export": {
+        "filename": "danh_sach_dat_cho",
+        "headers": {
+          "id": "ID",
+          "guestName": "Tên khách",
+          "phone": "Số điện thoại",
+          "service": "Dịch vụ",
+          "status": "Trạng thái",
+          "price": "Giá",
+          "createdAt": "Ngày tạo"
+        }
+      },
+      "qr": {
+        "title": "Quét QR check-in",
+        "description": "Quét QR trên vé booking của khách hoặc nhập mã booking thủ công.",
+        "ready": "Sẵn sàng quét QR",
+        "cameraSession": "Camera sẽ chỉ dùng trong phiên quét này.",
+        "openCamera": "Mở camera",
+        "stopCamera": "Dừng camera",
+        "verifying": "Đang xác thực",
+        "manualLabel": "Nhập mã hoặc dán dữ liệu QR",
+        "manualPlaceholder": "BK-12345 hoặc JSON QR",
+        "submit": "Xác nhận check-in",
+        "invalid": "Mã QR booking không hợp lệ",
+        "valid": "QR hợp lệ",
+        "checkedIn": "Check-in thành công",
+        "verifyFailed": "Không thể xác thực mã QR",
+        "unsupported": "Trình duyệt này chưa hỗ trợ quét QR bằng camera. Hãy nhập hoặc dán mã QR.",
+        "cameraUnavailable": "Thiết bị này chưa hỗ trợ mở camera trong trình duyệt. Hãy nhập hoặc dán mã QR.",
+        "cameraPermission": "Bạn cần cấp quyền camera để quét QR.",
+        "cameraOpenFailed": "Không mở được camera. Hãy nhập hoặc dán mã QR.",
+        "customer": "Khách hàng",
+        "service": "Dịch vụ"
       }
     },
     "earnings": {
@@ -2549,60 +2738,57 @@
     },
     "revenue": {
       "title": "Doanh thu",
-      "subtitle": "Báo cáo doanh thu chi tiết",
-      "overview": "Tổng quan",
-      "totalRevenue": "Tổng doanh thu",
-      "systemCommission": "Hoa hồng hệ thống",
-      "netRevenue": "Doanh thu ròng",
-      "totalBookings": "Tổng đặt chỗ",
-      "status": "Trạng thái",
-      "quantity": "Số lượng",
-      "ratio": "Tỷ lệ",
-      "completed": "Hoàn thành",
-      "confirmed": "Đã xác nhận",
-      "pending": "Chờ xác nhận",
-      "cancelled": "Đã hủy",
-      "noShow": "Không đến",
-      "reportExported": "Đã xuất báo cáo",
+      "description": "Thống kê dòng tiền, doanh số và chi tiết các giao dịch kinh doanh.",
       "today": "Hôm nay",
-      "days7": "7 ngày",
-      "days30": "30 ngày",
-      "days90": "90 ngày",
-      "grossRevenueLabel": "Doanh thu tổng",
-      "netRevenueLabel": "Doanh thu ròng",
-      "pendingProcessing": "Chờ xử lý",
-      "toastNoData": "Không có dữ liệu để xuất",
-      "csvPlace": "Địa điểm",
-      "csvBookings": "Số booking",
-      "csvAvgValue": "Giá trị TB",
-      "toastExported": "Đã xuất báo cáo CSV",
-      "gmvDescription": "Tổng giá trị booking",
-      "netRevenueDescription": "Sau chiết khấu nền tảng",
-      "platformFees": "Phí nền tảng",
-      "platformFeesDescription": "Tổng hoa hồng đã trả",
-      "refund": "Hoàn tiền",
-      "refundDescription": "Tổng tiền hoàn trả",
-      "headerTitle": "Doanh Thu & Thu Nhập",
-      "headerDesc": "Tổng quan doanh thu và phân tích theo thời gian",
-      "chartTitle": "Biểu đồ doanh thu",
+      "days7": "7 ngày qua",
+      "days30": "30 ngày qua",
+      "days90": "90 ngày qua",
+      "refresh": "Làm mới",
+      "exportCsv": "Xuất CSV",
+      "exportSuccess": "Xuất file CSV thành công",
+      "exportError": "Không thể xuất file CSV",
+      "totalRevenueCard": "Tổng Doanh Thu Gộp (GMV)",
+      "netRevenueCard": "Doanh Thu Thực Nhận",
+      "avgOrderCard": "Giá Trị Đơn TB",
+      "completedBookingsCard": "Lượt Đặt Hoàn Tất",
+      "chartTitle": "Diễn Biến Doanh Thu",
+      "chartSubtitle": "Diễn biến chi tiết doanh thu gộp và thực nhận theo chu kỳ đã chọn",
       "groupByDay": "Theo ngày",
       "groupByWeek": "Theo tuần",
       "groupByMonth": "Theo tháng",
-      "noTimelineData": "Không có dữ liệu timeline",
-      "revenueByPlace": "Doanh thu theo địa điểm",
-      "recentTransactions": "Giao dịch gần đây",
-      "noDataByPlace": "Chưa có dữ liệu doanh thu",
-      "viewAll": "Xem tất cả",
-      "noTransactions": "Chưa có giao dịch nào",
-      "amount": "Số tiền",
-      "revenueLabel": "Doanh thu",
-      "bookingLabel": "Booking",
-      "avgLabel": "TB",
-      "commissionLabel": "HH"
+      "noTimelineData": "Không có dữ liệu doanh thu trong khoảng thời gian này",
+      "grossRevenueLabel": "Doanh thu gộp",
+      "netRevenueLabel": "Doanh thu thực nhận",
+      "byPlaceTitle": "Doanh Thu Theo Địa Điểm",
+      "byPlaceSubtitle": "Phân bổ doanh thu theo từng địa điểm kinh doanh",
+      "noPlaceData": "Chưa có dữ liệu phân bổ theo địa điểm",
+      "txTitle": "Nhật Ký Giao Dịch",
+      "txSubtitle": "Nhật ký giao dịch tài chính gần nhất",
+      "noTransactions": "Chưa có giao dịch nào trong khoảng thời gian này",
+      "txColId": "Mã GD",
+      "txColPlace": "Địa điểm",
+      "txColDate": "Thời gian",
+      "txColAmount": "Số tiền",
+      "txColStatus": "Trạng thái",
+      "headerTitle": "Tổng Quan Doanh Thu",
+      "headerDesc": "Theo dõi doanh số, dòng tiền ròng, phí sàn và nhật ký giao dịch.",
+      "toastNoData": "Không có dữ liệu để xuất CSV",
+      "toastExported": "Đã xuất file CSV thành công",
+      "csvPlace": "Địa điểm",
+      "totalRevenue": "Tổng doanh thu",
+      "csvBookings": "Lượt đặt",
+      "csvAvgValue": "Đơn TB",
+      "gmvDescription": "Tổng giá trị booking hoàn tất",
+      "netRevenue": "Doanh Thu Thực Nhận",
+      "netRevenueDescription": "Sau khi trừ phí hoa hồng sàn",
+      "platformFees": "Phí Nền Tảng",
+      "platformFeesDescription": "Hoa hồng dịch vụ iPoint Genie",
+      "refund": "Hoàn Tiền",
+      "refundDescription": "Đã hoàn cho khách do hủy đơn"
     },
     "cashflow": {
-      "title": "Dòng tiền",
-      "description": "Theo dõi tiền khách đã thanh toán, hoàn tiền và các lần rút tiền của doanh nghiệp."
+      "title": "Sổ dòng tiền",
+      "description": "Theo dõi toàn bộ biến động tài chính và dòng tiền kinh doanh."
     },
     "reviews": {
       "title": "Đánh giá",
@@ -2610,6 +2796,7 @@
       "loadFailed": "Tải đánh giá thất bại",
       "replySuccess": "Đã phản hồi đánh giá",
       "replyFailed": "Phản hồi đánh giá thất bại",
+      "replyLowRating": "Phản hồi",
       "responseRate": "Tỷ lệ phản hồi",
       "avgResponseTime": "Thời gian phản hồi",
       "quickReplies": {
@@ -2618,52 +2805,9 @@
         "thankNeutral": "Cảm ơn phản hồi của bạn"
       }
     },
-    "schedule": {
-      "title": "Lịch đặt chỗ",
-      "resourceModel": "Mô hình: Tài nguyên (bàn/phòng)",
-      "capacityModel": "Mô hình: Sức chứa",
-      "today": "Hôm nay",
-      "refresh": "Làm mới",
-      "allPlaces": "Tất cả địa điểm",
-      "pending": "Chờ xác nhận",
-      "confirmed": "Đã xác nhận",
-      "completed": "Hoàn thành",
-      "cancelled": "Đã hủy",
-      "rejected": "Bị từ chối",
-      "expired": "Hết hạn",
-      "noShow": "Không đến",
-      "block": "Chặn",
-      "guest": "Khách",
-      "guests": "khách",
-      "detail": "Chi tiết đặt chỗ",
-      "customerInfo": "Khách hàng",
-      "name": "Tên",
-      "phone": "Số điện thoại",
-      "email": "Email",
-      "bookingInfo": "Đặt chỗ",
-      "date": "Ngày",
-      "time": "Giờ",
-      "numGuests": "Số khách",
-      "totalAmount": "Tổng tiền",
-      "serviceAndPlace": "Dịch vụ & Địa điểm",
-      "duration": "phút",
-      "capacity": "Sức chứa:",
-      "notes": "Ghi chú",
-      "close": "Đóng",
-      "viewDetail": "Xem chi tiết",
-      "processing": "Đang xử lý...",
-      "legend": {
-        "pending": "Chờ xác nhận",
-        "confirmed": "Đã xác nhận",
-        "completed": "Hoàn thành",
-        "cancelled": "Đã hủy",
-        "rejected": "Bị từ chối",
-        "expired": "Hết hạn",
-        "noShow": "Không đến"
-      }
-    },
     "quickProcess": {
       "title": "Xử lý nhanh",
+      "automationTab": "Quy tắc tự động",
       "loadFailed": "Tải dữ liệu thất bại",
       "loadListFailed": "Không tải được danh sách",
       "loadRuleFailed": "Không tải được rule",
@@ -2671,7 +2815,10 @@
       "confirmDeleteRule": "Bạn có chắc muốn xóa rule này?",
       "timeSlot": "Khung giờ",
       "minGuests": "Tối thiểu",
-      "maxGuests": "Tối đa"
+      "maxGuests": "Tối đa",
+      "conditionLabel": "Điều kiện",
+      "noCondition": "Không có điều kiện",
+      "priorityLabel": "Độ ưu tiên"
     },
     "register": {
       "title": "Đăng ký doanh nghiệp",
@@ -2718,11 +2865,20 @@
     },
     "vouchers": {
       "title": "Voucher",
+      "subtitle": "Tạo và quản lý mã giảm giá, voucher khuyến mãi cho doanh nghiệp của bạn.",
       "page": {
         "title": "Quản lý Khuyến Mãi",
         "subtitle": "Tạo và quản lý mã giảm giá, voucher khuyến mãi cho doanh nghiệp của bạn."
       },
       "createBtn": "Tạo mã mới",
+      "metrics": {
+        "totalActive": "Đang hoạt động",
+        "totalUsed": "Lượt sử dụng",
+        "totalDiscounted": "Tổng giảm giá"
+      },
+      "searchPlaceholder": "Tìm mã, tên voucher...",
+      "used": "Đã dùng",
+      "noExpiry": "Không hết hạn",
       "status": {
         "all": "Tất cả",
         "active": "Đang hoạt động",
@@ -2747,12 +2903,16 @@
         "createSubtitle": "Điền thông tin để tạo mã khuyến mãi mới.",
         "basicInfo": "Thông tin cơ bản",
         "voucherCode": "Mã voucher",
+        "generateRandom": "Tạo ngẫu nhiên",
         "voucherName": "Tên voucher",
         "namePlaceholder": "VD: Khuyến mãi hè 2026",
         "description": "Mô tả",
         "descriptionPlaceholder": "Mô tả ngắn gọn về voucher...",
         "discountSection": "Giá trị giảm giá",
+        "discountRules": "Quy tắc giảm giá",
         "discountType": "Loại giảm",
+        "typePercentage": "Phần trăm (%)",
+        "typeFixed": "Cố định (VND)",
         "discountValue": "Giá trị",
         "preview": "Xem trước",
         "limitsSection": "Giới hạn sử dụng",
@@ -2777,6 +2937,7 @@
         "duplicate": "Nhân bản",
         "pause": "Tạm dừng",
         "activate": "Kích hoạt",
+        "deactivate": "Tắt kích hoạt",
         "delete": "Xóa"
       },
       "card": {
@@ -2810,6 +2971,8 @@
         "clearFilters": "Xóa bộ lọc"
       },
       "empty": {
+        "title": "Chưa có voucher nào",
+        "description": "Nhấn 'Tạo mã mới' để bắt đầu tạo mã khuyến mãi.",
         "noMatchTitle": "Không tìm thấy voucher phù hợp",
         "noMatchDesc": "Thử thay đổi bộ lọc hoặc tạo voucher mới.",
         "noMatchAction": "Xóa bộ lọc",
@@ -2819,7 +2982,9 @@
       "toasts": {
         "error": "Có lỗi xảy ra",
         "createSuccess": "Tạo voucher thành công",
+        "editSuccess": "Cập nhật voucher thành công",
         "updateSuccess": "Cập nhật voucher thành công",
+        "statusSuccess": "Đã cập nhật trạng thái voucher",
         "deleteSuccess": "Xóa voucher thành công",
         "deleteFailed": "Không thể xóa voucher",
         "duplicateSuccess": "Nhân bản voucher thành công",
@@ -2839,6 +3004,12 @@
         "blockedDates": "Ngày chặn"
       },
       "editing": "Đang chỉnh sửa:",
+      "actions": {
+        "save": "Lưu thay đổi",
+        "saving": "Đang lưu...",
+        "undo": "Hoàn tác",
+        "unsaved": "Có thay đổi chưa lưu"
+      },
       "bookingRules": {
         "autoProcessing": "Tự động xử lý",
         "autoProcessingDesc": "Cấu hình duyệt và xử lý đặt chỗ tự động",
@@ -2869,12 +3040,19 @@
         "bookingSection": "ĐẶT CHỖ",
         "reviewSection": "ĐÁNH GIÁ & THANH TOÁN",
         "newBookingEmail": "Email khi có đặt chỗ mới",
+        "newBookingEmailDescription": "Nhận email ngay khi có khách tạo đặt chỗ.",
         "newBookingPush": "Push khi có đặt chỗ mới",
+        "newBookingPushDescription": "Nhận thông báo nhanh trên trình duyệt hoặc thiết bị.",
         "cancellationEmail": "Email khi đặt chỗ bị hủy",
+        "cancellationEmailDescription": "Biết ngay khi một đặt chỗ bị hủy hoặc thay đổi.",
         "cancellationPush": "Push khi đặt chỗ bị hủy",
+        "cancellationPushDescription": "Theo dõi thay đổi đặt chỗ mà không cần mở email.",
         "newReviewEmail": "Email khi có đánh giá mới",
+        "newReviewEmailDescription": "Nhận email khi khách để lại đánh giá mới.",
         "newReviewPush": "Push khi có đánh giá mới",
+        "newReviewPushDescription": "Xem phản hồi mới ngay trong luồng thông báo.",
         "payoutEmail": "Email khi có rút tiền",
+        "payoutEmailDescription": "Nhận thông báo về các yêu cầu và trạng thái rút tiền.",
         "cardTitle": "3) THÔNG BÁO DOANH NGHIỆP",
         "cardDescription": "Cấu hình thông báo cho doanh nghiệp"
       },
@@ -3095,14 +3273,25 @@
       "close": "Đóng"
     },
     "changePassword": {
+      "title": "Đổi mật khẩu",
+      "description": "Cập nhật mật khẩu định kỳ để bảo vệ tài khoản quản trị viên của bạn.",
+      "currentPasswordLabel": "Mật khẩu hiện tại",
+      "currentPasswordPlaceholder": "Nhập mật khẩu đang sử dụng",
+      "newPasswordLabel": "Mật khẩu mới",
+      "newPasswordPlaceholder": "Nhập mật khẩu mới (tối thiểu 8 ký tự)",
+      "confirmPasswordLabel": "Xác nhận mật khẩu mới",
+      "confirmPasswordPlaceholder": "Nhập lại mật khẩu mới",
+      "cancel": "Hủy",
+      "submit": "Đổi mật khẩu",
+      "submitting": "Đang cập nhật...",
       "currentPasswordRequired": "Vui lòng nhập mật khẩu hiện tại",
-      "newPasswordMin": "Mật khẩu mới phải có ít nhất 6 ký tự",
-      "newPasswordComplexity": "Mật khẩu phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 số",
+      "newPasswordMin": "Mật khẩu mới phải có ít nhất 8 ký tự",
+      "newPasswordComplexity": "Mật khẩu phải có ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt",
       "confirmPasswordRequired": "Vui lòng xác nhận mật khẩu",
       "passwordMismatch": "Mật khẩu xác nhận không khớp",
       "sameAsOld": "Mật khẩu mới phải khác mật khẩu hiện tại",
-      "success": "Đổi mật khẩu thành công! Vui lòng đăng nhập lại.",
-      "failed": "Đổi mật khẩu thất bại"
+      "success": "Đổi mật khẩu thành công! Đang chuyển hướng đăng nhập...",
+      "failed": "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại."
     },
     "form": {
       "processing": "Đang xử lý...",
@@ -3130,75 +3319,6 @@
       "address": "Địa chỉ chi tiết",
       "addressPlaceholder": "Số nhà, tên đường...",
       "cancel": "Hủy bỏ"
-    }
-  },
-  "users": {
-    "title": "Quản lý người dùng",
-    "subtitle": "Xem, thêm, sửa đổi và phân quyền tài khoản người dùng trong hệ thống",
-    "addUser": "Thêm người dùng",
-    "searchPlaceholder": "Tìm kiếm theo tên, email, username...",
-    "filters": {
-      "allRoles": "Tất cả vai trò"
-    },
-    "table": {
-      "id": "ID",
-      "basicInfo": "Thông tin cơ bản",
-      "contact": "Liên hệ",
-      "role": "Vai trò",
-      "status": "Trạng thái",
-      "actions": "Thao tác"
-    },
-    "actions": {
-      "detail": "Chi tiết",
-      "edit": "Chỉnh sửa",
-      "changePassword": "Đổi mật khẩu",
-      "delete": "Xóa",
-      "lock": "Khóa tài khoản",
-      "unlock": "Kích hoạt"
-    },
-    "status": {
-      "active": "Hoạt động",
-      "locked": "Đang khóa"
-    },
-    "pagination": {
-      "showing": "Đang hiển thị {{count}} / {{total}} người dùng",
-      "previous": "Trước",
-      "next": "Sau"
-    },
-    "errors": {
-      "loadFailed": "Không thể tải danh sách người dùng",
-      "saveFailed": "Lưu thông tin người dùng thất bại"
-    },
-    "messages": {
-      "deleteSuccess": "Xóa người dùng thành công",
-      "updateSuccess": "Cập nhật người dùng thành công",
-      "createSuccess": "Tạo người dùng thành công",
-      "lockSuccess": "Đã khóa tài khoản thành công",
-      "unlockSuccess": "Đã kích hoạt tài khoản thành công",
-      "changePasswordSuccess": "Đổi mật khẩu thành công"
-    },
-    "export": {
-      "loading": "Đang xuất dữ liệu CSV...",
-      "success": "Xuất thành công {{count}} người dùng",
-      "error": "Lỗi khi xuất CSV"
-    },
-    "csv": {
-      "fullName": "Họ tên",
-      "phone": "Số điện thoại",
-      "role": "Vai trò",
-      "status": "Trạng thái",
-      "createdAt": "Ngày tạo"
-    },
-    "deleteDialog": {
-      "title": "Xóa tài khoản",
-      "description": "Hành động này sẽ xóa mềm tài khoản người dùng này.",
-      "message": "Bạn có chắc chắn muốn xóa người dùng {{username}}?"
-    },
-    "stats": {
-      "total": "Tổng tài khoản",
-      "active": "Hoạt động",
-      "locked": "Đang khóa",
-      "perPage": "Trên trang này"
     }
   },
   "map": {
@@ -3331,8 +3451,10 @@
     },
     "status": {
       "active": "Đang hoạt động",
+      "trialing": "Dùng thử",
       "grace": "Gia hạn",
       "past_due": "Quá hạn",
+      "paused": "Tạm ngưng",
       "canceled": "Đã hủy"
     },
     "plans": {
@@ -3340,15 +3462,21 @@
       "subtitle": "Chọn gói phù hợp với doanh nghiệp của bạn",
       "monthly": "Theo tháng",
       "yearly": "Theo năm",
+      "yearlyDiscount": "-20%",
       "popular": "Phổ biến nhất",
       "current": "Gói hiện tại",
       "select": "Chọn gói",
+      "changeCycle": "Đổi chu kỳ thanh toán",
+      "unavailable": "Không khả dụng cho chu kỳ này",
       "compareFeatures": "So sánh tính năng",
       "feature": "Tính năng"
     },
     "invoice": {
       "title": "Lịch sử hóa đơn",
+      "subtitle": "Xem và thanh toán các hóa đơn gói dịch vụ",
       "empty": "Chưa có hóa đơn nào",
+      "payWithWallet": "Thanh toán bằng ví",
+      "paying": "Đang thanh toán...",
       "status": {
         "pending": "Chờ thanh toán",
         "paid": "Đã thanh toán",
@@ -3402,15 +3530,415 @@
     "grace": {
       "warning": "Gói của bạn đã hết hạn. Còn {{days}} ngày để gia hạn."
     },
+    "featureGate": {
+      "upgradeRequired": "Tính năng này yêu cầu gói {{plan}} trở lên.",
+      "upgradeBtn": "Nâng cấp gói",
+      "andAbove": "trở lên"
+    },
+    "toast": {
+      "upgradeScheduled": "Đã gửi yêu cầu nâng cấp gói",
+      "downgradeScheduled": "Đã lên lịch hạ gói cuối chu kỳ",
+      "downgradeCanceled": "Đã hủy lịch hạ gói",
+      "subscriptionCanceled": "Đã hủy gói dịch vụ",
+      "invoicePaidFromWallet": "Thanh toán hóa đơn từ ví doanh thu thành công",
+      "adminPlanCreated": "Tạo gói thành công",
+      "adminPlanUpdated": "Cập nhật gói thành công",
+      "adminSubStatusUpdated": "Cập nhật trạng thái thành công"
+    },
     "admin": {
       "title": "Quản lý Subscription",
+      "subtitle": "Theo dõi subscription, MRR và churn của tất cả doanh nghiệp",
       "mrr": "MRR",
       "activeSubs": "Subscription đang hoạt động",
       "churnRate": "Tỷ lệ churn",
-      "revenue": "Doanh thu"
+      "revenue": "Doanh thu",
+      "table": {
+        "business": "Doanh nghiệp",
+        "plan": "Gói",
+        "status": "Trạng thái",
+        "cycle": "Chu kỳ",
+        "amount": "Doanh thu",
+        "expiresAt": "Ngày hết hạn"
+      },
+      "actions": {
+        "pause": "Tạm ngưng subscription",
+        "resume": "Kích hoạt lại subscription",
+        "cancel": "Hủy subscription"
+      },
+      "cancelDialog": {
+        "title": "Hủy subscription",
+        "description": "Vui lòng nhập lý do hủy subscription. Thông báo sẽ được gửi đến doanh nghiệp.",
+        "reasonPlaceholder": "Nhập lý do hủy...",
+        "submitting": "Đang hủy...",
+        "confirm": "Xác nhận hủy"
+      },
+      "filters": {
+        "planPlaceholder": "Gói",
+        "statusPlaceholder": "Trạng thái"
+      },
+      "pagination": "Trang {{page}} / {{totalPages}} ({{total}})",
+      "plansTitle": "Quản lý gói dịch vụ",
+      "plansSubtitle": "Chỉnh sửa thông tin, giới hạn và trạng thái các gói subscription",
+      "card": {
+        "hidden": "Tạm ẩn",
+        "perMonth": "/ tháng",
+        "perYear": "/ năm",
+        "placesLabel": "địa điểm",
+        "bookingsLabel": "booking",
+        "staffLabel": "NV",
+        "featuresLabel": "Tính năng",
+        "subscribers": "{{count}} subscriber"
+      },
+      "form": {
+        "title": "Chỉnh sửa gói {{name}}",
+        "description": "Cập nhật thông tin và giới hạn gói dịch vụ",
+        "nameLabel": "Tên gói *",
+        "namePlaceholder": "Plus",
+        "slugLabel": "Slug",
+        "descriptionLabel": "Mô tả",
+        "descriptionPlaceholder": "Mô tả ngắn về gói dịch vụ",
+        "pricingLabel": "Giá dịch vụ",
+        "monthlyLabel": "Giá / tháng (VND)",
+        "yearlyLabel": "Giá / năm (VND)",
+        "yearlySavings": "Tiết kiệm {{percent}}% khi thanh toán theo năm",
+        "limitsLabel": "Giới hạn sử dụng",
+        "placesFieldLabel": "Địa điểm tối đa",
+        "bookingsFieldLabel": "Booking / tháng",
+        "staffFieldLabel": "Nhân viên tối đa",
+        "unlimitedHint": "-1 = không giới hạn",
+        "sortOrderLabel": "Thứ tự hiển thị",
+        "featuresLabel": "Tính năng (mỗi dòng một tính năng)",
+        "featuresPlaceholder": "Quản lý 5 địa điểm\nHỗ trợ ưu tiên\nBáo cáo nâng cao",
+        "submitting": "Đang lưu..."
+      },
+      "validation": {
+        "nameRequired": "Tên gói là bắt buộc",
+        "slugRequired": "Slug là bắt buộc",
+        "priceNonNegative": "Giá phải >= 0",
+        "minOneUnlimited": "-1 = không giới hạn"
+      }
     }
   },
   "apiError": {
     "generic": "Không thể thực hiện thao tác. Vui lòng thử lại sau."
+  },
+  "adminAi": {
+    "title": "AI Control Center",
+    "description": "Theo dõi trạng thái runtime, chất lượng vận hành và cấu hình nhà cung cấp AI.",
+    "tabs": {
+      "overview": "Tổng quan",
+      "configuration": "Cấu hình",
+      "safety": "An toàn",
+      "logs": "Logs & Feedback",
+      "testLab": "Test Lab"
+    },
+    "status": {
+      "active": "AI đang hoạt động",
+      "disabled": "AI đang tạm dừng",
+      "maintenance": "AI đang bảo trì",
+      "error": "Không đọc được trạng thái AI",
+      "unknown": "Trạng thái AI chưa xác định"
+    },
+    "technical": {
+      "provider": "Nhà cung cấp",
+      "model": "Mô hình",
+      "version": "Phiên bản",
+      "notPublished": "Chưa phát hành"
+    },
+    "overview": {
+      "loadingLabel": "Đang tải tổng quan AI",
+      "errorEyebrow": "Tổng quan không khả dụng",
+      "errorTitle": "Không tải được dữ liệu vận hành",
+      "errorDesc": "Dữ liệu tổng quan bị cô lập ở panel này. Bạn có thể thử tải lại mà không ảnh hưởng các khu vực khác.",
+      "emptyTitle": "Chưa có dữ liệu tổng quan",
+      "emptyDesc": "Cockpit sẽ hiển thị số liệu sau khi runtime trả về snapshot vận hành đầu tiên.",
+      "requestsLabel": "Yêu cầu",
+      "requestsDetail": "Production requests trong cửa sổ quan sát",
+      "successRateLabel": "Tỷ lệ thành công",
+      "successRateDetail": "Kết quả status=success",
+      "totalTokensLabel": "Tổng token",
+      "tokenDetail": "{{input}} vào · {{output}} ra",
+      "avgLatencyLabel": "Latency trung bình",
+      "avgLatencyDetail": "Thời gian phản hồi trung bình",
+      "p95LatencyLabel": "Latency P95",
+      "p95LatencyDetail": "Phân vị thứ 95",
+      "safetyBlocksLabel": "Safety blocks",
+      "safetyBlocksDetail": "Input hoặc output bị chặn",
+      "negativeFeedbackLabel": "Feedback tiêu cực",
+      "negativeFeedbackDetail": "Đánh dấu không hữu ích",
+      "chartTitle": "Lưu lượng theo ngày",
+      "chartDesc": "Production requests và lỗi thực tế theo bucket do server trả về.",
+      "chartRequests": "Yêu cầu",
+      "chartErrors": "Lỗi",
+      "chartAriaLabel": "Biểu đồ yêu cầu và lỗi AI theo ngày",
+      "mainSignalsLabel": "Tín hiệu vận hành chính",
+      "usageAndPerfLabel": "Mức sử dụng và hiệu năng",
+      "exceptionsLabel": "Ngoại lệ cần theo dõi"
+    },
+    "config": {
+      "sections": {
+        "provider": "Thông tin Provider & Mật khẩu",
+        "providerDesc": "Cấu hình nhà cung cấp AI, danh sách API Key và mô hình mặc định.",
+        "prompts": "Cấu hình Prompt hệ thống",
+        "promptsDesc": "Các câu lệnh định hướng hành vi AI cho từng tính năng.",
+        "quota": "Hạn ngạch & Giới hạn",
+        "quotaDesc": "Giới hạn thời gian chờ, số lượng request và token tối đa.",
+        "context": "Nguồn ngữ cảnh RAG",
+        "contextDesc": "Kích hoạt các nguồn dữ liệu truyền vào AI prompt."
+      },
+      "labels": {
+        "serviceName": "Tên dịch vụ",
+        "apiKeyLabel": "API Key #{{index}}",
+        "addApiKey": "+ Thêm API Key mới",
+        "removeApiKey": "Xóa API Key",
+        "changeReason": "Lý do thay đổi",
+        "changeReasonPlaceholder": "Mô tả ngắn gọn lý do cập nhật cấu hình...",
+        "saveAndPublish": "Lưu & Phát hành",
+        "saving": "Đang lưu...",
+        "rollback": "Rollback",
+        "registeredContextSources": "Registered context sources",
+        "fieldAllowlist": "Field allowlist",
+        "workbenchTitle": "Configuration workbench",
+        "draftLabel": "Draft v{{version}} · Revision {{revision}}",
+        "apiKeyReadyCount": "Đã sẵn sàng {{count}} API Key để lưu vào Pool xoay vòng.",
+        "apiKeyReadyOne": "Đã sẵn sàng 1 API Key để lưu vào Pool xoay vòng.",
+        "apiKeyHint": "Để trống để giữ nguyên khóa hiện tại. Bạn có thể thêm nhiều ô API Key Groq Free. Hệ thống sẽ tự động chuyển sang Key tiếp theo khi dính Rate Limit (429).",
+        "credentialConfigured": "Đã cấu hình khóa bảo mật trong CSDL · đuôi {{suffix}}",
+        "credentialNone": "Chưa có khóa bảo mật nào được lưu"
+      },
+      "contextSources": {
+        "coarseLocation": "Vị trí ước tính (Tỉnh/Thành)",
+        "travelPreferences": "Sở thích du lịch",
+        "budget": "Ngân sách chuyến đi",
+        "partySize": "Số lượng người tham gia",
+        "tripDuration": "Thời gian chuyến đi (Số ngày)",
+        "transportPreference": "Phương tiện di chuyển ưa thích",
+        "places": "Danh sách địa điểm CSDL RAG",
+        "events": "Sự kiện & lễ hội",
+        "sessionMessages": "Lịch sử tin nhắn phiên chat",
+        "time": "Thời gian hiện tại",
+        "weather": "Thời tiết địa phương",
+        "openingStatus": "Trạng thái mở/đóng cửa",
+        "currentCity": "Thành phố/Quận huyện hiện tại",
+        "messages": "Tin nhắn thoại/chat gửi kèm",
+        "timeOfDay": "Buổi trong ngày (Sáng/Trưa/Tối)"
+      },
+      "errors": {
+        "loadFailed": "Không tải được cấu hình AI",
+        "loadFailedDesc": "Không có mutation nào được mở khi snapshot cấu hình chưa sẵn sàng.",
+        "reload": "Tải lại cấu hình",
+        "safetyLoadFailed": "Không tải được safety draft",
+        "safetyLoadFailedDesc": "Keyword rules và kill-switch entry point chưa được mở.",
+        "conflictTitle": "Xung đột phiên bản",
+        "conflictDesc": "Phiên bản trên server mới hơn (revision {{revision}}). Tải lại để tiếp tục.",
+        "reloadPage": "Tải lại"
+      }
+    },
+    "safety": {
+      "killSwitchOn": "Kill Switch đang bật - AI đã bị tắt",
+      "killSwitchOff": "Kill Switch đang tắt - AI đang hoạt động",
+      "enableAi": "Bật lại AI",
+      "disableAi": "Tắt AI (Kill Switch)",
+      "keywordsSection": "Từ khóa an toàn",
+      "blocklistTitle": "Blocklist từ khóa",
+      "allowlistTitle": "Allowlist từ khóa",
+      "blocklistDesc": "AI sẽ từ chối trả lời nếu input/output chứa bất kỳ từ khóa nào trong danh sách.",
+      "allowlistDesc": "Chỉ cho phép AI trả lời về các chủ đề liên quan đến từ khóa này.",
+      "addKeyword": "Thêm từ khóa",
+      "keywordPlaceholder": "Nhập từ khóa...",
+      "importCsv": "Nhập CSV",
+      "exportCsv": "Xuất CSV",
+      "diacriticInsensitive": "Không phân biệt dấu",
+      "keywordError": "Lỗi từ khóa",
+      "saveKeywords": "Lưu từ khóa",
+      "savingKeywords": "Đang lưu...",
+      "noKeywords": "Chưa có từ khóa nào.",
+      "keywordCount": "{{count}} từ khóa"
+    },
+    "logs": {
+      "title": "Logs & Feedback",
+      "loadingLabel": "Đang tải logs AI",
+      "errorTitle": "Không tải được logs AI",
+      "emptyTitle": "Chưa có log nào",
+      "emptyDesc": "Log sẽ xuất hiện sau khi có request production đầu tiên.",
+      "columns": {
+        "time": "Thời gian",
+        "feature": "Tính năng",
+        "provider": "Provider / Model",
+        "tokens": "Token",
+        "latency": "Latency",
+        "status": "Trạng thái",
+        "safety": "Safety",
+        "feedback": "Feedback"
+      },
+      "filters": {
+        "fromDate": "Từ ngày",
+        "toDate": "Đến ngày",
+        "feature": "Tính năng",
+        "status": "Trạng thái",
+        "safetyBlocked": "Safety",
+        "feedback": "Feedback",
+        "allFeatures": "Tất cả tính năng",
+        "allStatuses": "Tất cả trạng thái",
+        "allSafety": "Tất cả",
+        "allFeedback": "Tất cả",
+        "blocked": "Bị chặn",
+        "notBlocked": "Không bị chặn",
+        "positive": "Tích cực",
+        "negative": "Tiêu cực",
+        "none": "Chưa đánh giá",
+        "clearFilters": "Xóa bộ lọc",
+        "searchLabel": "Lọc logs"
+      },
+      "status": {
+        "started": "Đang xử lý",
+        "success": "Thành công",
+        "error": "Lỗi",
+        "quota_exceeded": "Quota hết",
+        "safety_blocked": "Bị chặn",
+        "unknown": "Không rõ"
+      },
+      "pagination": {
+        "previous": "Trang trước",
+        "next": "Trang sau",
+        "pageInfo": "Trang {{page}} / {{total}}"
+      },
+      "noValue": "—",
+      "safetyBlocked": "Bị chặn",
+      "safetyOk": "OK",
+      "feedbackPositive": "Hữu ích",
+      "feedbackNegative": "Không hữu ích",
+      "feedbackNone": "Chưa đánh giá"
+    },
+    "testLab": {
+      "title": "Test Lab",
+      "desc": "Chạy thử cấu hình draft trực tiếp với AI provider. Kết quả không ảnh hưởng production.",
+      "contextSection": "Context (JSON)",
+      "contextPlaceholder": "{ \"currentCity\": \"Cần Thơ\" }",
+      "messageLabel": "Tin nhắn gửi AI",
+      "messagePlaceholder": "Nhập câu hỏi thử nghiệm...",
+      "featureLabel": "Tính năng",
+      "temperatureLabel": "Temperature (ghi đè)",
+      "topPLabel": "Top P (ghi đè)",
+      "maxTokensLabel": "Max Tokens (ghi đè)",
+      "runTest": "Chạy test",
+      "running": "Đang chạy...",
+      "resultTitle": "Kết quả",
+      "safetyTitle": "Safety",
+      "inputTitle": "Input gửi đi",
+      "inputPromptLabel": "Prompt",
+      "safetyInputLabel": "Input bị chặn",
+      "safetyOutputLabel": "Output bị chặn",
+      "metaTitle": "Metadata",
+      "metaModel": "Model",
+      "metaLatency": "Latency",
+      "metaTokens": "Tokens",
+      "metaFinishReason": "Finish reason",
+      "contextMasked": "Context đã được ẩn để bảo mật",
+      "emptyResult": "Chưa có kết quả. Nhập tin nhắn và nhấn Chạy test.",
+      "features": {
+        "chat": "Chat",
+        "planner": "Planner",
+        "voice": "Voice"
+      }
+    },
+    "publishDialog": {
+      "eyebrow": "Guarded mutation",
+      "title": "Phát hành draft",
+      "desc": "Draft sẽ trở thành cấu hình chạy trên Mobile. Hệ thống không tự retry khi revision đã cũ.",
+      "versionLabel": "Published → Draft",
+      "reasonLabel": "Lý do phát hành",
+      "cancel": "Hủy",
+      "confirm": "Xác nhận phát hành"
+    },
+    "rollbackDialog": {
+      "eyebrow": "Guarded mutation",
+      "title": "Rollback cấu hình",
+      "desc": "Snapshot được chọn sẽ được sao chép thành một phiên bản published mới; lịch sử cũ không bị sửa.",
+      "versionLabel": "Current → Target",
+      "selectVersion": "Chọn phiên bản",
+      "targetVersionLabel": "Phiên bản đích",
+      "reasonLabel": "Lý do rollback",
+      "cancel": "Hủy",
+      "confirm": "Xác nhận rollback"
+    },
+    "killSwitchDialog": {
+      "eyebrow": "Emergency control",
+      "titleDisable": "Tắt AI runtime",
+      "titleEnable": "Bật lại AI runtime",
+      "desc": "Thao tác tác động ngay đến Mobile fallback và luôn được audit.",
+      "reasonLabel": "Lý do thay đổi kill switch",
+      "confirmLabel": "Nhập TAT AI để xác nhận",
+      "cancel": "Hủy",
+      "confirmDisable": "Xác nhận tắt AI",
+      "confirmEnable": "Xác nhận bật AI"
+    },
+    "emptyState": {
+      "accessDenied": "Bạn không có quyền truy cập AI Control Center",
+      "accessDeniedDesc": "Tài khoản cần quyền ai.view để xem trạng thái hoặc gọi API vận hành AI.",
+      "accessEyebrow": "Access restricted",
+      "noPermission": "Bạn không có quyền mở khu vực này",
+      "retry": "Thử lại"
+    }
+  },
+  "notificationsPage": {
+    "title": "Thông báo",
+    "unreadCount": "{{count}} chưa đọc",
+    "upToDate": "Đã cập nhật",
+    "markAllRead": "Đọc hết",
+    "tabs": { "unread": "Chưa đọc", "all": "Tất cả" },
+    "time": { "justNow": "Vừa xong", "minutesAgo": "{{count}} phút trước", "hoursAgo": "{{count}} giờ trước", "daysAgo": "{{count}} ngày trước" },
+    "empty": {
+      "unreadTitle": "Không có thông báo chưa đọc",
+      "allTitle": "Không có thông báo",
+      "unreadDescription": "Thông báo mới sẽ hiện ở đây và cập nhật ngay khi server gửi.",
+      "allDescription": "Booking, địa điểm, doanh nghiệp và hệ thống sẽ được gom tại đây."
+    }
+  },
+  "header": {
+    "notifications": "Thông báo",
+    "unreadCount": "{{count}} chưa đọc",
+    "notificationSubtitle": "Cập nhật mới nhất từ hệ thống",
+    "markAllRead": "Đã đọc hết",
+    "noNotifications": "Chưa có thông báo nào",
+    "noNotificationsDesc": "Mọi thông báo cập nhật đặt chỗ và vận hành sẽ xuất hiện tại đây.",
+    "notification": "Thông báo",
+    "enableBrowserNotifications": "Bật thông báo trên máy tính",
+    "browserNotificationsEnabled": "Đã bật thông báo đẩy",
+    "viewAllNotifications": "Xem tất cả thông báo",
+    "account": "Tài khoản",
+    "profile": "Hồ sơ cá nhân",
+    "businessProfile": "Hồ sơ doanh nghiệp",
+    "systemSettings": "Cài đặt hệ thống",
+    "logout": "Đăng xuất"
+  },
+  "legal": {
+    "shellTitle": "iPoint Genie - du lịch thiết thực.",
+    "shellSubtitle": "Thông tin công khai và các lựa chọn quản lý tài khoản dành cho người dùng iPoint Genie.",
+    "backToLogin": "Quay lại đăng nhập",
+    "lastUpdated": "Cập nhật lần cuối: 10 tháng 8, 2026.",
+    "links": { "privacy": "Quyền riêng tư", "terms": "Điều khoản", "deleteAccount": "Xóa tài khoản" },
+    "privacy": { "title": "Chính sách quyền riêng tư", "intro": "Cách iPoint Genie xử lý dữ liệu cá nhân và các lựa chọn quyền riêng tư.", "sections": [["Dữ liệu thu thập", "Thông tin tài khoản và hồ sơ, nội dung bạn đăng, dữ liệu đặt chỗ và thanh toán, dữ liệu sử dụng dịch vụ, và vị trí khi bạn cấp quyền để hiển thị địa điểm gần bạn."], ["Mục đích sử dụng", "Vận hành dịch vụ, xử lý đặt chỗ, cải thiện trải nghiệm, bảo đảm an toàn, hỗ trợ khách hàng và đáp ứng nghĩa vụ pháp lý."], ["Chia sẻ dữ liệu", "Dữ liệu chỉ được chia sẻ với nhà cung cấp cần thiết để vận hành dịch vụ, thanh toán, bản đồ hoặc định vị, lưu trữ và khi pháp luật yêu cầu."], ["Lưu giữ và xóa", "Bạn có thể xóa tài khoản trong ứng dụng hoặc gửi yêu cầu tại trang này. Hồ sơ cá nhân, phiên đăng nhập, dữ liệu đã lưu và chuyến đi sẽ được xóa. Bản ghi booking và thanh toán bắt buộc lưu giữ sẽ được ẩn danh."], ["Liên hệ", "Nếu cần hỗ trợ về dữ liệu cá nhân, gửi email đến {{supportEmail}}."]] },
+    "terms": { "title": "Điều khoản dịch vụ", "intro": "Các quy tắc khi sử dụng dịch vụ iPoint Genie.", "sections": [["Sử dụng dịch vụ", "Bạn chịu trách nhiệm về thông tin cung cấp, bảo mật tài khoản và tuân thủ pháp luật khi sử dụng iPoint Genie."], ["Đặt chỗ và thanh toán", "Booking, voucher và thanh toán phải tuân theo điều kiện của doanh nghiệp cung cấp dịch vụ. iPoint Genie có thể lưu bản ghi giao dịch để xử lý hỗ trợ, tranh chấp và nghĩa vụ pháp lý."], ["Nội dung người dùng", "Bạn không được đăng tải nội dung vi phạm pháp luật, xâm phạm quyền của người khác hoặc làm gián đoạn hệ thống."], ["Thay đổi dịch vụ", "Chúng tôi có thể cập nhật dịch vụ và điều khoản khi cần thiết. Phiên bản mới sẽ được công bố tại trang này."], ["Liên hệ", "Câu hỏi về điều khoản sử dụng có thể gửi đến {{supportEmail}}."]] },
+    "deletion": { "title": "Yêu cầu xóa tài khoản", "intro": "Dùng biểu mẫu này khi bạn không thể truy cập ứng dụng di động. Chúng tôi xác minh quyền sở hữu trước khi xử lý yêu cầu xóa.", "error": "Không thể gửi yêu cầu. Vui lòng thử lại.", "successTitle": "Yêu cầu của bạn đã được tiếp nhận.", "successDescription": "Đội ngũ hỗ trợ sẽ xác minh quyền sở hữu qua địa chỉ email đã cung cấp trước khi xóa dữ liệu cá nhân.", "email": "Email tài khoản", "notice": "Việc xóa sẽ loại bỏ hồ sơ cá nhân, phiên đăng nhập, dữ liệu đã lưu và chuyến đi. Bản ghi booking và thanh toán bắt buộc lưu giữ theo luật sẽ được ẩn danh.", "submit": "Gửi yêu cầu xóa" }
+  },
+  "cashflowLedger": {
+    "exportCsv": "Xuất CSV",
+    "ledgerTitle": "Sổ Nhật Ký Giao Dịch",
+    "ledgerDescription": "Theo dõi chi tiết tất cả biến động số dư và nguồn thu chi trong hệ thống.",
+    "types": { "moneyIn": "Tiền vào", "refund": "Hoàn tiền", "payout": "Rút tiền", "ledger": "Sổ cái" },
+    "stats": {
+      "totalIn": "Tổng tiền vào", "receivedTransactions": "{{count}} giao dịch nhận tiền",
+      "refunds": "Hoàn tiền", "refundTransactions": "{{count}} giao dịch hoàn trả",
+      "payouts": "Đã rút / Chuyển", "payoutTransactions": "{{count}} lần payout",
+      "walletBalance": "Số dư ví khả dụng", "frozenBalance": "Tạm giữ: {{amount}}"
+    },
+    "filters": { "type": "Loại dòng tiền", "allTypes": "Tất cả loại", "gateway": "Cổng thanh toán", "allGateways": "Tất cả cổng" },
+    "csv": { "time": "Thời gian", "type": "Loại", "amount": "Số tiền", "status": "Trạng thái", "gateway": "Kênh", "transactionRef": "Mã đối soát", "description": "Mô tả" },
+    "empty": "Chưa có dòng tiền phù hợp với bộ lọc này.",
+    "defaultDescription": "Giao dịch thanh toán dịch vụ",
+    "channel": "{{date}} · Kênh:",
+    "internal": "Nội bộ",
+    "pagination": "Trang {{page}} / {{totalPages}} ({{total}} giao dịch)"
   }
 }

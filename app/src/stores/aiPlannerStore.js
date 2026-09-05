@@ -1,22 +1,25 @@
 import { create } from "zustand";
 import safeAsyncStorage from "../utils/safeAsyncStorage";
+import { createRandomId } from "../utils/createRandomId";
+import {
+  normalizeMessageCreatedAt,
+  trimPersistedMessages,
+} from "./aiPlannerRetention";
+import { removeDraftPreviewMessages } from "./aiPlannerMessageHelpers";
+
+export { trimPersistedMessages } from "./aiPlannerRetention";
+export { removeDraftPreviewMessages } from "./aiPlannerMessageHelpers";
 
 const { persist, createJSONStorage } = require("zustand/middleware");
 
-const MAX_MESSAGES = 60;
-
 function createInitialState() {
   return {
+    // TODO (Tech Debt): Refactor to Option B — Merge conversation memory into single source of truth with aiContextStore
     messages: [],
     draftPlan: null,
     selectedPlaceIds: [],
     lastPreferences: null,
   };
-}
-
-function trimMessages(messages) {
-  if (!Array.isArray(messages)) return [];
-  return messages.slice(-MAX_MESSAGES);
 }
 
 function normalizePlaceIds(ids) {
@@ -27,13 +30,11 @@ function normalizePlaceIds(ids) {
 function normalizeMessage(message) {
   if (!message || typeof message !== "object") return null;
 
-  const createdAt = message.createdAt
-    ? new Date(message.createdAt).toISOString()
-    : new Date().toISOString();
+  const createdAt = normalizeMessageCreatedAt(message.createdAt);
 
   return {
     ...message,
-    id: message.id || `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    id: message.id || createRandomId("message"),
     role: message.role || "assistant",
     text: message.text ?? message.content ?? "",
     createdAt,
@@ -45,17 +46,37 @@ function normalizeMessage(message) {
   };
 }
 
-export function removeDraftPreviewMessages(messages) {
-  if (!Array.isArray(messages)) return [];
-  return messages.filter((message) => {
-    const isLegacyDraftPreview =
-      message?.role === "assistant" &&
-      (message?.source || "planner") === "planner" &&
-      Array.isArray(message?.suggestedPlaces) &&
-      message.suggestedPlaces.length > 0 &&
-      Array.isArray(message?.selectedPlaceIds);
-    return !message?.isDraftPreview && !isLegacyDraftPreview;
-  });
+function stripBase64(val) {
+  if (typeof val === "string" && val.startsWith("data:image")) return null;
+  return val;
+}
+
+function sanitizePlace(place) {
+  if (!place || typeof place !== "object") return place;
+  return {
+    ...place,
+    thumbnail: stripBase64(place.thumbnail),
+    image: stripBase64(place.image),
+    images: Array.isArray(place.images)
+      ? place.images
+          .map((img) =>
+            typeof img === "string"
+              ? stripBase64(img)
+              : { ...img, image_data: stripBase64(img?.image_data) },
+          )
+          .filter(Boolean)
+      : [],
+  };
+}
+
+function sanitizeMessagesForStorage(messages) {
+  const trimmed = trimPersistedMessages(messages);
+  return trimmed.map((msg) => ({
+    ...msg,
+    suggestedPlaces: Array.isArray(msg.suggestedPlaces)
+      ? msg.suggestedPlaces.map(sanitizePlace)
+      : [],
+  }));
 }
 
 export const useAIPlannerStore = create(
@@ -68,7 +89,7 @@ export const useAIPlannerStore = create(
           const normalized = normalizeMessage(message);
           if (!normalized) return { messages: s.messages };
           return {
-            messages: trimMessages([...s.messages, normalized]),
+            messages: trimPersistedMessages([...s.messages, normalized]),
           };
         }),
 
@@ -80,7 +101,7 @@ export const useAIPlannerStore = create(
           });
           if (!normalized) return { messages: s.messages };
           return {
-            messages: trimMessages([
+            messages: trimPersistedMessages([
               ...removeDraftPreviewMessages(s.messages),
               normalized,
             ]),
@@ -89,8 +110,10 @@ export const useAIPlannerStore = create(
 
       setMessages: (messages) =>
         set({
-          messages: trimMessages(
-            messages.map(normalizeMessage).filter(Boolean),
+          messages: trimPersistedMessages(
+            (Array.isArray(messages) ? messages : [])
+              .map(normalizeMessage)
+              .filter(Boolean),
           ),
         }),
 
@@ -98,7 +121,9 @@ export const useAIPlannerStore = create(
 
       clearChatMessages: () =>
         set((s) => ({
-          messages: s.messages.filter((m) => m.source !== "chat"),
+          messages: trimPersistedMessages(
+            s.messages.filter((m) => m.source !== "chat"),
+          ),
         })),
 
       setDraftPlan: (draftPlan) => set({ draftPlan: draftPlan || null }),
@@ -123,7 +148,7 @@ export const useAIPlannerStore = create(
       name: "ai-planner-store",
       storage: createJSONStorage(() => safeAsyncStorage),
       partialize: (s) => ({
-        messages: trimMessages(s.messages),
+        messages: sanitizeMessagesForStorage(s.messages),
         draftPlan: s.draftPlan,
         selectedPlaceIds: normalizePlaceIds(s.selectedPlaceIds),
         lastPreferences: s.lastPreferences,
@@ -138,6 +163,11 @@ export const useAIPlannerStore = create(
         }
         return persistedState;
       },
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...persistedState,
+        messages: trimPersistedMessages(persistedState?.messages),
+      }),
       version: 2,
     },
   ),

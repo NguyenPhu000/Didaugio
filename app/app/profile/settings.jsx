@@ -1,7 +1,10 @@
+// MAP: SettingsScreen
+// ├── UI: @/components/reacticx/settings-v1/components, @/components/ui/CustomModal
+// └── API: @/modules/profile/hooks/useProfile, @/modules/auth/hooks/useAuth, @/modules/notifications/hooks/useNotifications
+
 import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Animated,
-  Alert,
   Linking,
   Modal,
   Pressable,
@@ -14,16 +17,30 @@ import {
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { showAppAlertLegacy } from "../../src/utils/appAlert";
 import { useAuth } from "../../src/modules/auth/hooks/useAuth";
 import { useAuthStore } from "../../src/stores/authStore";
 import { useUIStore } from "../../src/stores/uiStore";
-import { useProfile, useUpdateNotificationSettings } from "../../src/modules/profile/hooks/useProfile";
+import { useProfile, useUpdateNotificationSettings, useDeleteMyAccount } from "../../src/modules/profile/hooks/useProfile";
 import { useNotifications } from "../../src/modules/notifications/hooks/useNotifications";
 import { TOKENS } from "../../src/constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "../(tabs)/_layout";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
+import safeAsyncStorage from "../../src/utils/safeAsyncStorage";
+import { asyncStoragePersister } from "../../src/providers/queryPersist";
+import { OFFLINE_STORAGE_KEYS } from "../../src/constants/storage";
+import { getLegalUrls } from "../../src/config/legalUrls";
 
 const ACCENT_BLUE = "#3478F6";
+const ACCOUNT_CACHE_KEYS = Object.values(OFFLINE_STORAGE_KEYS);
+
+async function clearOfflineAccountData() {
+  await Promise.all([
+    asyncStoragePersister.removeClient(),
+    safeAsyncStorage.multiRemove(ACCOUNT_CACHE_KEYS),
+  ]);
+}
 
 /* ====================== SUB COMPONENTS ====================== */
 
@@ -140,6 +157,31 @@ function LogoutConfirmModal({ visible, onCancel, onConfirm }) {
   );
 }
 
+function AccountDeletionModal({ visible, isDeleting, onCancel, onConfirm }) {
+  const { t } = useTranslation();
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <Pressable style={styles.modalBackdrop} onPress={onCancel}>
+        <View style={styles.modalCard}>
+          <View style={styles.modalIconWrap}>
+            <MaterialIconsRounded name="delete-forever" size={28} color={TOKENS.color.error} />
+          </View>
+          <Text style={styles.modalTitle}>{t("settings.deleteAccountTitle")}</Text>
+          <Text style={styles.modalCopy}>{t("settings.deleteAccountMessage")}</Text>
+          <View style={styles.modalActions}>
+            <Pressable disabled={isDeleting} onPress={onCancel} style={styles.modalCancelBtn}>
+              <Text style={styles.modalCancelText}>{t("common.cancel")}</Text>
+            </Pressable>
+            <Pressable disabled={isDeleting} onPress={onConfirm} style={styles.modalConfirmBtn}>
+              <Text style={styles.modalConfirmText}>{isDeleting ? t("common.loading") : t("settings.deleteAccountConfirm")}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Pressable>
+    </Modal>
+  );
+}
+
 function CustomToast({ message, visible, onHide }) {
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -219,10 +261,10 @@ export default function SettingsScreen() {
   const language = useUIStore((s) => s.language || "device");
   const setLanguage = useUIStore((s) => s.setLanguage);
   const getResolvedLanguage = useUIStore((s) => s.getResolvedLanguage);
-  const themePreference = useUIStore((s) => s.themePreference || "auto");
-  const setTheme = useUIStore((s) => s.setTheme);
   const profileSettings = useUIStore((s) => s.profileSettings);
   const updateProfileSettings = useUIStore((s) => s.updateProfileSettings);
+  const clearSession = useAuthStore((s) => s.clearSession);
+  const queryClient = useQueryClient();
 
   const { logout } = useAuth();
   const { data: profile, refetch, isRefetching } = useProfile(isLoggedIn);
@@ -232,11 +274,13 @@ export default function SettingsScreen() {
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [deleteAccountVisible, setDeleteAccountVisible] = useState(false);
 
   const updateNotifSettingsMutation = useUpdateNotificationSettings();
+  const deleteAccountMutation = useDeleteMyAccount();
+  const legalUrls = getLegalUrls();
 
   // Derived states
-  const darkModeEnabled = themePreference === "dark";
   const pushEnabled = isLoggedIn && profile
     ? (profile?.notificationSettings?.push?.bookingConfirmed ?? true)
     : (profileSettings?.pushEnabled ?? true);
@@ -247,16 +291,6 @@ export default function SettingsScreen() {
   const isPushPending = updateNotifSettingsMutation.isPending;
 
   // Handlers
-  const handleSoonFeature = useCallback((title) => {
-    setToastMessage(t("settings.comingSoon", { feature: title }));
-    setToastVisible(true);
-  }, [t]);
-
-  const handleToggleTheme = useCallback(
-    (enabled) => setTheme(enabled ? "dark" : "light"),
-    [setTheme]
-  );
-
   const handleTogglePush = useCallback(
     async (enabled) => {
       // Lưu ở local store trước
@@ -322,7 +356,7 @@ export default function SettingsScreen() {
   }, [logout]);
 
   const handleClearCache = useCallback(() => {
-    Alert.alert(
+    showAppAlertLegacy(
       t("settings.clearCacheTitle"),
       t("settings.clearCacheMessage"),
       [
@@ -330,21 +364,40 @@ export default function SettingsScreen() {
         {
           text: t("settings.clearCacheConfirm"),
           style: "destructive",
-          onPress: () => {
-            // Có thể thêm AsyncStorage.clear() hoặc tương tự ở đây nếu cần
-            Alert.alert(t("settings.clearCacheSuccess"), t("settings.clearCacheSuccessMessage"));
+          onPress: async () => {
+            try {
+              await clearOfflineAccountData();
+              queryClient.clear();
+              showAppAlertLegacy(t("settings.clearCacheSuccess"), t("settings.clearCacheSuccessMessage"));
+            } catch {
+              setToastMessage(t("settings.clearCacheError"));
+              setToastVisible(true);
+            }
           },
         },
       ]
     );
+  }, [queryClient, t]);
+
+  const handleOpenPrivacy = useCallback((url) => {
+    Linking.openURL(url).catch(() => {
+      setToastMessage(t("settings.legalUnavailable"));
+      setToastVisible(true);
+    });
   }, [t]);
 
-  const handleOpenPrivacy = useCallback(() => {
-    // Demo mở link (bạn có thể thay bằng link thật của app)
-    Linking.openURL("https://yourapp.com/privacy").catch(() =>
-      handleSoonFeature(t("settings.privacyPolicy"))
-    );
-  }, [handleSoonFeature, t]);
+  const handleDeleteAccount = useCallback(async () => {
+    try {
+      await deleteAccountMutation.mutateAsync();
+      await Promise.all([clearOfflineAccountData(), clearSession()]);
+      queryClient.clear();
+      setDeleteAccountVisible(false);
+      router.replace("/(auth)/login");
+    } catch (error) {
+      setToastMessage(error?.message || t("settings.deleteAccountError"));
+      setToastVisible(true);
+    }
+  }, [clearSession, deleteAccountMutation, queryClient, router, t]);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -387,16 +440,6 @@ export default function SettingsScreen() {
               <View style={styles.divider} />
 
               <SettingRow
-                icon="security"
-                iconBg="rgba(245,158,11,0.1)"
-                iconColor="#F59E0B"
-                title={t("settings.accountSecurity")}
-                subtitle={t("settings.accountSecuritySubtitle")}
-                onPress={() => handleSoonFeature(t("settings.accountSecurity"))}
-              />
-              <View style={styles.divider} />
-
-              <SettingRow
                 icon="sync"
                 title={t("settings.syncProfile")}
                 subtitle={isRefetching ? t("settings.syncing") : t("settings.syncProfileSubtitle")}
@@ -409,22 +452,6 @@ export default function SettingsScreen() {
         {/* ==================== PREFERENCES SECTION ==================== */}
         <SectionHeader text={t("settings.preferences")} />
         <View style={styles.settingsCard}>
-          {/* Dark mode */}
-          <SettingRow
-            icon="dark-mode"
-            iconBg="rgba(99,102,241,0.1)"
-            iconColor="#6366F1"
-            title={t("settings.darkMode")}
-            subtitle={darkModeEnabled ? t("settings.darkModeOn") : t("settings.darkModeOff")}
-            rightElement={
-              <Switch
-                value={darkModeEnabled}
-                onValueChange={handleToggleTheme}
-                trackColor={{ false: "#CBD5E1", true: ACCENT_BLUE + "88" }}
-                thumbColor="#FFFFFF"
-              />
-            }
-          />
           <View style={styles.divider} />
 
           {/* Language */}
@@ -536,27 +563,11 @@ export default function SettingsScreen() {
             title={t("settings.savedPlaces")}
             onPress={() => router.push("/(tabs)/saved")}
           />
-          <View style={styles.divider} />
-          <SettingRow
-            icon="credit-card"
-            iconBg="rgba(245,158,11,0.1)"
-            iconColor="#F59E0B"
-            title={t("settings.paymentMethods")}
-            onPress={() => handleSoonFeature(t("settings.paymentMethods"))}
-          />
         </View>
 
         {/* ==================== SUPPORT SECTION (mới - chức năng tiêu chuẩn) ==================== */}
         <SectionHeader text={t("settings.support")} />
         <View style={styles.settingsCard}>
-          <SettingRow
-            icon="help-outline"
-            title={t("settings.helpCenter")}
-            subtitle={t("settings.helpCenterSubtitle")}
-            onPress={() => handleSoonFeature(t("settings.helpCenter"))}
-          />
-          <View style={styles.divider} />
-
           <SettingRow
             icon="feedback"
             title={t("settings.sendFeedback")}
@@ -574,29 +585,32 @@ export default function SettingsScreen() {
         </View>
 
         {/* ==================== LEGAL SECTION (mới - chức năng tiêu chuẩn) ==================== */}
-        <SectionHeader text={t("settings.legal")} />
-        <View style={styles.settingsCard}>
-          <SettingRow
-            icon="policy"
-            title={t("settings.privacyPolicy")}
-            onPress={handleOpenPrivacy}
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            icon="description"
-            title={t("settings.termsOfService")}
-            onPress={() => handleSoonFeature(t("settings.termsOfService"))}
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            icon="info-outline"
-            iconBg="rgba(148,163,184,0.12)"
-            iconColor="#64748B"
-            title={t("settings.appVersion")}
-            subtitle="v1.2.4 (build 2026.04)"
-            onPress={() => handleSoonFeature(t("settings.appVersion"))}
-          />
-        </View>
+        {legalUrls ? (
+          <>
+            <SectionHeader text={t("settings.legal")} />
+            <View style={styles.settingsCard}>
+              <SettingRow
+                icon="policy"
+                title={t("settings.privacyPolicy")}
+                onPress={() => handleOpenPrivacy(legalUrls.privacy)}
+              />
+              <View style={styles.divider} />
+              <SettingRow
+                icon="description"
+                title={t("settings.termsOfService")}
+                onPress={() => handleOpenPrivacy(legalUrls.terms)}
+              />
+              <View style={styles.divider} />
+              <SettingRow
+                icon="info-outline"
+                iconBg="rgba(148,163,184,0.12)"
+                iconColor="#64748B"
+                title={t("settings.appVersion")}
+                subtitle="v1.2.4 (build 2026.04)"
+              />
+            </View>
+          </>
+        ) : null}
 
         {/* Logout - chỉ hiển thị khi đã login */}
         {isLoggedIn && (
@@ -608,6 +622,14 @@ export default function SettingsScreen() {
               onPress={() => setLogoutModalVisible(true)}
               rightElement={<View />} // Không hiển thị dấu chevron
             />
+            <View style={styles.divider} />
+            <SettingRow
+              icon="delete-forever"
+              title={t("settings.deleteAccount")}
+              subtitle={t("settings.deleteAccountSubtitle")}
+              danger={true}
+              onPress={() => setDeleteAccountVisible(true)}
+            />
           </View>
         )}
       </ScrollView>
@@ -616,6 +638,12 @@ export default function SettingsScreen() {
         visible={logoutModalVisible}
         onCancel={() => setLogoutModalVisible(false)}
         onConfirm={handleConfirmLogout}
+      />
+      <AccountDeletionModal
+        visible={deleteAccountVisible}
+        isDeleting={deleteAccountMutation.isPending}
+        onCancel={() => setDeleteAccountVisible(false)}
+        onConfirm={handleDeleteAccount}
       />
 
       <CustomToast

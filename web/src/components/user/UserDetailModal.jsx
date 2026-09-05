@@ -96,10 +96,9 @@ const UserDetailModal = ({
         if (districtCode) {
           try {
             const wards = await locationService.getWardsByProvince(provinceCode);
-            const ward = wards.find((w) => w.ward_code === districtCode);
+            const ward = wards.find((w) => w.wardCode === districtCode);
             if (ward) {
-              if (ward.ward_name) parts.push(ward.ward_name);
-              if (ward.district_name) parts.push(ward.district_name);
+              parts.push(ward.fullName || ward.name);
             }
           } catch (err) {
             console.error("Error fetching ward:", err);
@@ -107,8 +106,8 @@ const UserDetailModal = ({
         }
 
         const provinces = await locationService.getAllProvinces();
-        const province = provinces.find((p) => p.province_code === provinceCode);
-        if (province) parts.push(province.name);
+        const province = provinces.find((p) => p.code === provinceCode);
+        if (province) parts.push(province.fullName || province.name);
       } catch (error) {
         console.error("Error fetching location names:", error);
       }

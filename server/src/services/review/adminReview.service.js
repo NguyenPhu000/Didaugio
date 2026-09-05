@@ -329,9 +329,9 @@ export const moderateReview = async (id, data = {}, actorUserId) => {
     await recalculatePlaceRating(tx, existing.placeId);
 
     return normalizeReviewMediaResponse(review);
-  }).then((result) => {
+  }).then(async (result) => {
     // Flush place cache since rating changed
-    flushPattern("places:");
+    await flushPattern("places:");
     return result;
   });
 };

@@ -6,9 +6,12 @@ export const upgradeSchema = z.object({
     .number({ required_error: "Plan đích không được để trống" })
     .int()
     .positive("Plan đích không hợp lệ"),
+  billingCycle: z.enum(["monthly", "yearly"]).default("monthly"),
 });
 
-export const downgradeSchema = upgradeSchema;
+export const downgradeSchema = z.object({
+  targetPlanId: z.coerce.number().int().positive(),
+});
 
 export const createPlanSchema = z.object({
   name: z

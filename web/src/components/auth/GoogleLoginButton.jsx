@@ -1,4 +1,5 @@
 import { GoogleLogin } from "@react-oauth/google";
+import { useTranslation } from "react-i18next";
 
 /**
  * Chỉ render khi có VITE_GOOGLE_CLIENT_ID (GoogleOAuthProvider đã wrap app).
@@ -8,8 +9,10 @@ import { GoogleLogin } from "@react-oauth/google";
  * để nhận ID token (credential), khớp với server POST /api/auth/google.
  */
 const GoogleLoginButton = ({ onSuccess, onError, disabled }) => {
+  const { i18n } = useTranslation();
+
   return (
-    <div className="w-full mb-4">
+    <div className="w-full mb-4 flex justify-center">
       <GoogleLogin
         onSuccess={(credentialResponse) => {
           // Default flow returns { credential: "<id_token>" }
@@ -20,7 +23,9 @@ const GoogleLoginButton = ({ onSuccess, onError, disabled }) => {
         width="320"
         shape="rectangular"
         text="signin_with"
+        locale={i18n.resolvedLanguage === "vi" ? "vi" : "en"}
         size="large"
+        useOneTap={false}
       />
     </div>
   );

@@ -4,6 +4,7 @@
  */
 import prisma from "../../config/prismaClient.js";
 import { PAGINATION, ROLES } from "../../config/constants.js";
+import { assertBusinessLimit } from "../subscription/subscriptionEntitlement.service.js";
 
 const defaultInclude = {
   place: { select: { id: true, name: true } },
@@ -270,6 +271,11 @@ export const create = async (data, userId) => {
     error.statusCode = 403;
     throw error;
   }
+
+  const currentServiceCount = await prisma.businessService.count({
+    where: { businessId: business.id },
+  });
+  await assertBusinessLimit(business.id, "maxServices", currentServiceCount);
 
   const mappedData = mapInputToPrisma(data);
   mappedData.terms = mergeDepositConfigIntoTerms(null, mappedData);

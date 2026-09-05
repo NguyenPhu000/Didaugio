@@ -5,13 +5,32 @@ import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
 import ServiceError from "../../utils/serviceError.js";
 import {
   generateMapMarkerUrl,
-  deleteMapMarkerImage,
+  getMapMarkerPublicId,
 } from "../../utils/cloudinaryHelper.js";
 import { assertBusinessLimit } from "../subscription/subscriptionEntitlement.service.js";
 import {
   toPublicSpokenGuide,
   writeSpokenGuide,
 } from "./placeSpokenGuide.service.js";
+import { validatePlaceLocation } from "./placeLocation.service.js";
+import { applyPlaceBusinessSettings } from "../business/businessSettings.service.js";
+import {
+  deletePlaceImage,
+  uploadPlaceImage,
+} from "../media/media.service.js";
+import {
+  cleanupPlaceImageAssets,
+  resolvePlaceImageUrls,
+  uploadInlinePlaceImages,
+} from "./placeImageUpload.service.js";
+import { enqueueCloudinaryAssetCleanup } from "../media/cloudinaryCleanupJob.service.js";
+
+const enqueuePlaceMarkerCleanup = (tx, placeId, markerUrl) =>
+  enqueueCloudinaryAssetCleanup(tx, {
+    aggregate: "Place",
+    aggregateId: placeId,
+    publicIds: [getMapMarkerPublicId(markerUrl)],
+  });
 
 /**
  * Generate slug từ tên
@@ -29,25 +48,32 @@ const generateSlug = (name) => {
 };
 
 /**
- * Kiểm tra slug unique
+ * Kiểm tra slug unique (Tối ưu hóa: chỉ dùng 1 query duy nhất để lấy danh sách slug trùng)
  */
 const ensureUniqueSlug = async (baseSlug, excludeId = null) => {
-  let slug = baseSlug;
+  const existingPlaces = await prisma.place.findMany({
+    where: {
+      slug: { startsWith: baseSlug },
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+    select: { slug: true },
+  });
+
+  if (existingPlaces.length === 0) {
+    return baseSlug;
+  }
+
+  const slugSet = new Set(existingPlaces.map((p) => p.slug));
+  if (!slugSet.has(baseSlug)) {
+    return baseSlug;
+  }
+
   let counter = 1;
-
-  while (true) {
-    const existing = await prisma.place.findUnique({
-      where: { slug },
-      select: { id: true },
-    });
-
-    if (!existing || (excludeId && existing.id === excludeId)) {
-      return slug;
-    }
-
-    slug = `${baseSlug}-${counter}`;
+  while (slugSet.has(`${baseSlug}-${counter}`)) {
     counter++;
   }
+
+  return `${baseSlug}-${counter}`;
 };
 
 const calculateDistanceMeters = (lat1, lon1, lat2, lon2) => {
@@ -106,12 +132,53 @@ const defaultInclude = {
   amenities: true,
   openingHours: true,
   aiGuides: {
-    where: { locale: "vi-VN" },
     include: { faqs: { orderBy: { sortOrder: "asc" } } },
     take: 1,
   },
   _count: {
     select: { reviews: true, favorites: true, checkins: true },
+  },
+};
+
+const compactPlaceSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  shortDescription: true,
+  address: true,
+  latitude: true,
+  longitude: true,
+  priceRange: true,
+  priceFrom: true,
+  priceTo: true,
+  thumbnail: true,
+  markerUrl: true,
+  ratingAvg: true,
+  ratingCount: true,
+  viewCount: true,
+  isFeatured: true,
+  createdAt: true,
+  category: {
+    select: { id: true, name: true, slug: true, icon: true, color: true },
+  },
+  district: {
+    select: { id: true, name: true },
+  },
+  ward: {
+    select: { id: true, name: true },
+  },
+  images: {
+    take: 1,
+    orderBy: [{ isCover: "desc" }, { order: "asc" }],
+    select: {
+      id: true,
+      secureUrl: true,
+      thumbnailUrl: true,
+      isCover: true,
+    },
+  },
+  _count: {
+    select: { reviews: true, favorites: true },
   },
 };
 
@@ -141,6 +208,7 @@ export const getAllPlaces = async (filters = {}) => {
     search,
     priceRange,
     minRating,
+    compact = false,
     ownerUserId,
     sortBy = "newest",
     page = PAGINATION.DEFAULT_PAGE,
@@ -221,56 +289,62 @@ export const getAllPlaces = async (filters = {}) => {
   const [places, total] = await Promise.all([
     prisma.place.findMany({
       where,
-      include: {
-        category: {
-          select: { id: true, name: true, slug: true, icon: true, color: true },
-        },
-        district: {
-          select: { id: true, name: true },
-        },
-        ward: {
-          select: { id: true, name: true },
-        },
-        // Include creator info using consistent profile selection
-        createdByUser: {
-          select: {
-            id: true,
-            email: true,
-            profile: {
-              select: {
-                fullName: true,
-                avatar: true,
+      ...(compact
+        ? { select: compactPlaceSelect }
+        : {
+            include: {
+              category: {
+                select: { id: true, name: true, slug: true, icon: true, color: true },
+              },
+              district: {
+                select: { id: true, name: true },
+              },
+              ward: {
+                select: { id: true, name: true },
+              },
+              createdByUser: {
+                select: {
+                  id: true,
+                  email: true,
+                  profile: {
+                    select: {
+                      fullName: true,
+                      avatar: true,
+                    },
+                  },
+                },
+              },
+              images: {
+                take: 5,
+                orderBy: [{ isCover: "desc" }, { order: "asc" }],
+                select: {
+                  id: true,
+                  imageData: true,
+                  secureUrl: true,
+                  thumbnailUrl: true,
+                  caption: true,
+                  isCover: true,
+                },
+              },
+              amenities: true,
+              openingHours: true,
+              aiGuides: {
+                include: { faqs: { orderBy: { sortOrder: "asc" } } },
+                take: 1,
+              },
+              tagLinks: {
+                include: {
+                  tag: true,
+                },
+              },
+              _count: {
+                select: { reviews: true, favorites: true },
+              },
+              business: {
+                select: { id: true, businessName: true, status: true, settings: true },
               },
             },
-          },
-        },
-        // Include first 5 images for gallery preview (optimized for list view)
-        images: {
-          take: 5,
-          orderBy: [{ isCover: "desc" }, { order: "asc" }],
-          select: {
-            id: true,
-            imageData: true,
-            secureUrl: true,
-            thumbnailUrl: true,
-            caption: true,
-            isCover: true,
-          },
-        },
-        amenities: true,
-        openingHours: true,
-        tagLinks: {
-          include: {
-            tag: true,
-          },
-        },
-        _count: {
-          select: { reviews: true, favorites: true },
-        },
-        business: {
-          select: { id: true, businessName: true, status: true },
-        },
-      },
+          }),
       orderBy,
       skip,
       take,
@@ -279,7 +353,9 @@ export const getAllPlaces = async (filters = {}) => {
   ]);
 
   return {
-    data: places,
+    data: compact
+      ? places
+      : places.map((p) => attachPrimarySpokenGuide(applyPlaceBusinessSettings(p))),
     pagination: {
       page: parseInt(page),
       limit: take,
@@ -394,7 +470,7 @@ export const getPlaceById = async (id, incrementView = false) => {
         },
       },
       business: {
-        select: { id: true, businessName: true, status: true },
+        select: { id: true, businessName: true, status: true, settings: true },
       },
       businessServices: {
         where: { isActive: true },
@@ -414,7 +490,7 @@ export const getPlaceById = async (id, incrementView = false) => {
     });
   }
 
-  return attachPrimarySpokenGuide(place);
+  return attachPrimarySpokenGuide(applyPlaceBusinessSettings(place));
 };
 
 /**
@@ -434,6 +510,9 @@ export const getPlaceBySlug = async (slug, incrementView = false) => {
         orderBy: { dayOfWeek: "asc" },
       },
       amenities: true,
+      business: {
+        select: { id: true, businessName: true, status: true, settings: true },
+      },
       businessServices: {
         where: { isActive: true },
         select: { id: true },
@@ -458,7 +537,7 @@ export const getPlaceBySlug = async (slug, incrementView = false) => {
     });
   }
 
-  return attachPrimarySpokenGuide(place);
+  return attachPrimarySpokenGuide(applyPlaceBusinessSettings(place));
 };
 
 /**
@@ -486,6 +565,8 @@ export const createPlace = async (data, userId) => {
     name,
     slug: customSlug,
     categoryId,
+    provinceCode,
+    wardCode,
     districtId,
     wardId,
     description,
@@ -508,6 +589,7 @@ export const createPlace = async (data, userId) => {
     businessId,
     spokenGuide,
   } = data;
+  const resolvedProvinceCode = provinceCode || (districtId ? "92" : null);
 
   const ownedBusiness = await prisma.business.findUnique({
     where: { ownerId: userId },
@@ -533,22 +615,24 @@ export const createPlace = async (data, userId) => {
   if (
     !name ||
     !categoryId ||
-    !districtId ||
+    !resolvedProvinceCode ||
     !address ||
     !latitude ||
     !longitude
   ) {
     throw new ServiceError(
-      ERROR_CODES.INVALID_INPUT,
-      "Thiếu thông tin bắt buộc: Tên, Danh mục, Quận/Huyện, Địa chỉ, Tọa độ",
+      "Thiếu thông tin bắt buộc: Tên, Danh mục, Tỉnh/Thành, Địa chỉ, Tọa độ",
       400,
+      ERROR_CODES.INVALID_INPUT,
     );
   }
 
   // Validate Category & Location
   const [category, district] = await Promise.all([
     prisma.category.findUnique({ where: { id: parseInt(categoryId) } }),
-    prisma.districtCantho.findUnique({ where: { id: parseInt(districtId) } }),
+    districtId
+      ? prisma.districtCantho.findUnique({ where: { id: parseInt(districtId) } })
+      : Promise.resolve(null),
   ]);
 
   if (!category)
@@ -557,12 +641,19 @@ export const createPlace = async (data, userId) => {
       "Danh mục không tồn tại",
       404,
     );
-  if (!district)
+  if (districtId && !district)
     throw new ServiceError(
       ERROR_CODES.NOT_FOUND,
       "Quận/Huyện không tồn tại",
       404,
     );
+
+  await validatePlaceLocation({
+    provinceCode: resolvedProvinceCode,
+    administrativeWardCode: wardCode || null,
+    latitude,
+    longitude,
+  });
 
   // Validate Tags (filter out invalid IDs)
   let validTagIds = [];
@@ -592,6 +683,7 @@ export const createPlace = async (data, userId) => {
   // Generate or validate slug
   const baseSlug = customSlug || generateSlug(name);
   const slug = await ensureUniqueSlug(baseSlug);
+  let uploadedPlaceImagePublicIds = [];
 
   try {
     // Create place với transaction
@@ -602,7 +694,9 @@ export const createPlace = async (data, userId) => {
           name,
           slug,
           categoryId: parseInt(categoryId),
-          districtId: parseInt(districtId),
+          provinceCode: resolvedProvinceCode,
+          administrativeWardCode: wardCode || null,
+          districtId: districtId ? parseInt(districtId) : null,
           wardId: wardId ? parseInt(wardId) : null,
           description,
           shortDescription,
@@ -639,12 +733,22 @@ export const createPlace = async (data, userId) => {
       }
 
       // 3. Create images
-      // NOTE: Storing large images in DB is not recommended. Ideally use S3/Cloudinary.
       if (images && images.length > 0) {
+        const stagedImages = await uploadInlinePlaceImages(
+          newPlace.id,
+          images,
+          uploadPlaceImage,
+          deletePlaceImage,
+        );
+        uploadedPlaceImagePublicIds = stagedImages.publicIds;
+
         await tx.placeImage.createMany({
-          data: images.map((img, index) => ({
+          data: stagedImages.images.map((img, index) => ({
             placeId: newPlace.id,
-            imageData: img.imageData, // Assumed to be base64 or URL
+            imageData: img.imageData || null,
+            publicId: img.publicId || null,
+            secureUrl: img.secureUrl || null,
+            thumbnailUrl: img.thumbnailUrl || null,
             caption: img.caption || null,
             order: img.order ?? index,
             isCover: img.isCover || index === 0,
@@ -653,13 +757,17 @@ export const createPlace = async (data, userId) => {
         });
 
         // Update thumbnail (first cover image)
-        const coverImage = images.find((img) => img.isCover) || images[0];
-        if (coverImage) {
-          const markerUrl = await generateMapMarkerUrl(coverImage.imageData);
+        const coverImage =
+          stagedImages.images.find((img) => img.isCover) || stagedImages.images[0];
+        const coverSource = coverImage?.secureUrl || coverImage?.imageData;
+        const thumbnail =
+          coverImage?.thumbnailUrl || coverImage?.secureUrl || coverImage?.imageData;
+        if (coverSource) {
+          const markerUrl = await generateMapMarkerUrl(coverSource);
           await tx.place.update({
             where: { id: newPlace.id },
             data: {
-              thumbnail: coverImage.imageData,
+              thumbnail,
               markerUrl: markerUrl,
             },
           });
@@ -709,6 +817,10 @@ export const createPlace = async (data, userId) => {
     // Return full place data
     return getPlaceById(place.id);
   } catch (error) {
+    await cleanupPlaceImageAssets(
+      uploadedPlaceImagePublicIds,
+      deletePlaceImage,
+    );
     console.error("Create place transaction failed:", error);
     throw new ServiceError(
       ERROR_CODES.INTERNAL_SERVER_ERROR,
@@ -721,11 +833,25 @@ export const createPlace = async (data, userId) => {
 /**
  * Cập nhật địa điểm
  */
-export const updatePlace = async (id, data, userId, userRoleId) => {
+export const updatePlace = async (
+  id,
+  data,
+  userId,
+  userRoleId,
+  {
+    db = prisma,
+    uploadCloudImage = uploadPlaceImage,
+    deleteCloudAsset = deletePlaceImage,
+    generateMarker = generateMapMarkerUrl,
+    getPlace = getPlaceById,
+  } = {},
+) => {
   const {
     name,
     slug: customSlug,
     categoryId,
+    provinceCode,
+    wardCode,
     districtId,
     wardId,
     description,
@@ -748,9 +874,18 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
   } = data;
 
   // Check place exists
-  const existing = await prisma.place.findUnique({
+  const existing = await db.place.findUnique({
     where: { id, deletedAt: null },
-    select: { id: true, slug: true, status: true, markerUrl: true },
+    select: {
+      id: true,
+      slug: true,
+      status: true,
+      markerUrl: true,
+      provinceCode: true,
+      administrativeWardCode: true,
+      latitude: true,
+      longitude: true,
+    },
   });
 
   if (!existing) {
@@ -759,6 +894,21 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
       ERROR_MESSAGES.NOT_FOUND,
       404,
     );
+  }
+
+  if (
+    provinceCode !== undefined ||
+    wardCode !== undefined ||
+    latitude !== undefined ||
+    longitude !== undefined
+  ) {
+    await validatePlaceLocation({
+      provinceCode: provinceCode ?? existing.provinceCode,
+      administrativeWardCode:
+        wardCode !== undefined ? wardCode || null : existing.administrativeWardCode,
+      latitude: latitude ?? existing.latitude,
+      longitude: longitude ?? existing.longitude,
+    });
   }
 
   // Generate or validate slug if changed
@@ -774,13 +924,29 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
   }
 
   // Update với transaction
-  const place = await prisma.$transaction(async (tx) => {
+  let stagedImages = null;
+  if (images !== undefined) {
+    stagedImages = await uploadInlinePlaceImages(
+      id,
+      images,
+      uploadCloudImage,
+      deleteCloudAsset,
+    );
+  }
+  const synchronizedImages = stagedImages?.images ?? images;
+  let place;
+  try {
+    place = await db.$transaction(async (tx) => {
     // 1. Update place data
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (slug !== existing.slug) updateData.slug = slug;
     if (categoryId !== undefined) updateData.categoryId = parseInt(categoryId);
-    if (districtId !== undefined) updateData.districtId = parseInt(districtId);
+    if (provinceCode !== undefined) updateData.provinceCode = provinceCode;
+    if (wardCode !== undefined)
+      updateData.administrativeWardCode = wardCode || null;
+    if (districtId !== undefined)
+      updateData.districtId = districtId ? parseInt(districtId) : null;
     if (wardId !== undefined)
       updateData.wardId = wardId ? parseInt(wardId) : null;
     if (description !== undefined) updateData.description = description;
@@ -889,7 +1055,7 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
     }
 
     // 5. Update Images (Synchronize)
-    if (images !== undefined) {
+    if (synchronizedImages !== undefined) {
       // Get current images to map IDs
       const currentImages = await tx.placeImage.findMany({
         where: { placeId: id },
@@ -900,20 +1066,29 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
       // Expecting images from FE to have 'id' if existing, or just 'imageData' if new
       // Note: FE currently sends all images.
 
-      const imagesToKeep = images.filter(
+      const imagesToKeep = synchronizedImages.filter(
         (img) => img.id && currentImageIds.includes(img.id),
       );
       const imagesToKeepIds = imagesToKeep.map((img) => img.id);
 
-      const imagesToAdd = images.filter((img) => !img.id); // No ID = New
+      const imagesToAdd = synchronizedImages.filter((img) => !img.id); // No ID = New
 
       // 5.1 Delete removed images
       const imagesToDelete = currentImageIds.filter(
         (tid) => !imagesToKeepIds.includes(tid),
       );
+      const removedPublicIds = currentImages
+        .filter((image) => imagesToDelete.includes(image.id))
+        .map((image) => image.publicId)
+        .filter(Boolean);
       if (imagesToDelete.length > 0) {
         await tx.placeImage.deleteMany({
           where: { id: { in: imagesToDelete } },
+        });
+        await enqueueCloudinaryAssetCleanup(tx, {
+          aggregate: "Place",
+          aggregateId: id,
+          publicIds: removedPublicIds,
         });
       }
 
@@ -936,7 +1111,10 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
         await tx.placeImage.createMany({
           data: imagesToAdd.map((img, index) => ({
             placeId: id,
-            imageData: img.imageData,
+            imageData: img.imageData || null,
+            publicId: img.publicId || null,
+            secureUrl: img.secureUrl || null,
+            thumbnailUrl: img.thumbnailUrl || null,
             caption: img.caption || null,
             order: img.order ?? imagesToKeep.length + index,
             isCover: img.isCover || false,
@@ -948,32 +1126,39 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
       // 5.4 Update thumbnail if cover changed
       // We need to re-fetch to be sure which one is cover now
       // Or just trust the input. Let's find the cover in the INPUT list.
-      const coverImage = images.find((img) => img.isCover) || images[0];
-      if (coverImage && coverImage.imageData) {
+      const coverImage =
+        synchronizedImages.find((img) => img.isCover) || synchronizedImages[0];
+      if (coverImage && (coverImage.secureUrl || coverImage.imageData)) {
         // If it's a new image, it has imageData.
-        const markerUrl = await generateMapMarkerUrl(coverImage.imageData);
+        const coverSource = coverImage.secureUrl || coverImage.imageData;
+        const thumbnail =
+          coverImage.thumbnailUrl || coverImage.secureUrl || coverImage.imageData;
+        const markerUrl = await generateMarker(coverSource);
         await tx.place.update({
           where: { id },
-          data: { thumbnail: coverImage.imageData, markerUrl },
+          data: { thumbnail, markerUrl },
         });
         if (existing.markerUrl && existing.markerUrl !== markerUrl) {
-          deleteMapMarkerImage(existing.markerUrl).catch(console.error);
+          await enqueuePlaceMarkerCleanup(tx, id, existing.markerUrl);
         }
       } else if (coverImage && coverImage.id) {
         // Existing image is cover, but we might not have imageData in the payload to update thumbnail
         // Fetch it from DB
         const dbImage = await tx.placeImage.findUnique({
           where: { id: coverImage.id },
-          select: { imageData: true },
+          select: { imageData: true, secureUrl: true, thumbnailUrl: true },
         });
         if (dbImage) {
-          const markerUrl = await generateMapMarkerUrl(dbImage.imageData);
+          const coverSource = dbImage.secureUrl || dbImage.imageData;
+          const thumbnail =
+            dbImage.thumbnailUrl || dbImage.secureUrl || dbImage.imageData;
+          const markerUrl = await generateMarker(coverSource);
           await tx.place.update({
             where: { id },
-            data: { thumbnail: dbImage.imageData, markerUrl },
+            data: { thumbnail, markerUrl },
           });
           if (existing.markerUrl && existing.markerUrl !== markerUrl) {
-            deleteMapMarkerImage(existing.markerUrl).catch(console.error);
+            await enqueuePlaceMarkerCleanup(tx, id, existing.markerUrl);
           }
         }
       }
@@ -981,13 +1166,22 @@ export const updatePlace = async (id, data, userId, userRoleId) => {
 
     await writeSpokenGuide(tx, id, spokenGuide);
 
-    return { id };
-  });
+      return { id };
+    });
+  } catch (error) {
+    if (stagedImages) {
+      await cleanupPlaceImageAssets(
+        stagedImages.publicIds,
+        deleteCloudAsset,
+      );
+    }
+    throw error;
+  }
 
   // Emit event
   eventEmitter.emit(EVENTS.PLACE.UPDATED, { id, updatedBy: userId });
 
-  return getPlaceById(place.id);
+  return getPlace(place.id);
 };
 
 /**
@@ -1020,10 +1214,19 @@ export const deletePlace = async (id) => {
 /**
  * Xóa vĩnh viễn (hard delete) - Admin only
  */
-export const hardDeletePlace = async (id) => {
-  const existing = await prisma.place.findUnique({
+export const hardDeletePlace = async (
+  id,
+  {
+    db = prisma,
+  } = {},
+) => {
+  const existing = await db.place.findUnique({
     where: { id },
-    select: { id: true, markerUrl: true },
+    select: {
+      id: true,
+      markerUrl: true,
+      images: { select: { publicId: true } },
+    },
   });
 
   if (!existing) {
@@ -1035,12 +1238,21 @@ export const hardDeletePlace = async (id) => {
   }
 
   // Xoá hình Cloudinary Marker vĩnh viễn
-  if (existing.markerUrl) {
-    deleteMapMarkerImage(existing.markerUrl).catch(console.error);
-  }
-
   // Cascade delete is handled by Prisma relations
-  await prisma.place.delete({ where: { id } });
+  const deleteAndScheduleCleanup = async (tx) => {
+    await tx.place.delete({ where: { id } });
+    await enqueueCloudinaryAssetCleanup(tx, {
+      aggregate: "Place",
+      aggregateId: id,
+      publicIds: existing.images.map((image) => image.publicId),
+    });
+    await enqueuePlaceMarkerCleanup(tx, id, existing.markerUrl);
+  };
+  if (typeof db.$transaction === "function") {
+    await db.$transaction(deleteAndScheduleCleanup);
+  } else {
+    await deleteAndScheduleCleanup(db);
+  }
 
   return { success: true, message: "Xóa vĩnh viễn địa điểm thành công" };
 };
@@ -1056,17 +1268,17 @@ export const approvePlace = async (id, userId) => {
 
   if (!existing) {
     throw new ServiceError(
-      ERROR_CODES.NOT_FOUND,
       "Địa điểm không tồn tại",
       404,
+      ERROR_CODES.NOT_FOUND,
     );
   }
 
   if (existing.status === PLACE_STATUS.APPROVED) {
     throw new ServiceError(
-      ERROR_CODES.INVALID_INPUT,
       "Địa điểm đã được duyệt trước đó",
       400,
+      ERROR_CODES.INVALID_INPUT,
     );
   }
 
@@ -1260,10 +1472,17 @@ export const submitForReview = async (id) => {
 /**
  * Thêm ảnh cho địa điểm — upload lên Cloudinary nếu có imageData base64.
  */
-export const addImages = async (placeId, images, userId) => {
-  const { uploadPlaceImage } = await import("../media/media.service.js");
-
-  const existing = await prisma.place.findUnique({
+export const addImages = async (
+  placeId,
+  images,
+  userId,
+  {
+    db = prisma,
+    uploadCloudImage = uploadPlaceImage,
+    deleteCloudAsset = deletePlaceImage,
+  } = {},
+) => {
+  const existing = await db.place.findUnique({
     where: { id: placeId, deletedAt: null },
     include: { images: true },
   });
@@ -1289,56 +1508,64 @@ export const addImages = async (placeId, images, userId) => {
 
   const hasCover = existing.images.some((img) => img.isCover);
 
-  const uploadedImages = await Promise.all(
-    images.map(async (img, index) => {
-      let publicId = null;
-      let secureUrl = null;
-      let thumbnailUrl = null;
-      let imageData = img.imageData || null;
+  let stagedImages;
 
-      if (img.imageData && img.imageData.startsWith("data:")) {
-        const uploaded = await uploadPlaceImage(img.imageData);
-        publicId = uploaded.publicId;
-        secureUrl = uploaded.secureUrl;
-        thumbnailUrl = uploaded.thumbnailUrl;
-        imageData = null;
-      }
+  try {
+    stagedImages = await uploadInlinePlaceImages(
+      placeId,
+      images,
+      uploadCloudImage,
+      deleteCloudAsset,
+    );
+    const uploadedImages = stagedImages.images.map((image, index) => ({
+      placeId,
+      imageData: image.imageData || null,
+      publicId: image.publicId || null,
+      secureUrl: image.secureUrl || null,
+      thumbnailUrl: image.thumbnailUrl || null,
+      caption: image.caption || null,
+      order: currentImageCount + index,
+      isCover: !hasCover && index === 0,
+      uploadedBy: userId,
+    }));
 
-      return {
-        placeId,
-        imageData,
-        publicId,
-        secureUrl,
-        thumbnailUrl,
-        caption: img.caption || null,
-        order: currentImageCount + index,
-        isCover: !hasCover && index === 0,
-        uploadedBy: userId,
-      };
-    }),
-  );
-
-  const createdImages = await prisma.placeImage.createMany({
-    data: uploadedImages,
-  });
-
-  // Update thumbnail if no cover existed
-  if (!hasCover && uploadedImages.length > 0) {
-    const firstImage = uploadedImages[0];
-    await prisma.place.update({
-      where: { id: placeId },
-      data: { thumbnail: firstImage.thumbnailUrl ?? firstImage.imageData },
+    const createdImages = await db.placeImage.createMany({
+      data: uploadedImages,
     });
-  }
 
-  return createdImages;
+    // Update thumbnail if no cover existed
+    if (!hasCover && uploadedImages.length > 0) {
+      const firstImage = uploadedImages[0];
+      await db.place.update({
+        where: { id: placeId },
+        data: { thumbnail: firstImage.thumbnailUrl ?? firstImage.imageData },
+      });
+    }
+
+    return createdImages;
+  } catch (error) {
+    if (stagedImages) {
+      await cleanupPlaceImageAssets(
+        stagedImages.publicIds,
+        deleteCloudAsset,
+      );
+    }
+    throw error;
+  }
 };
 
 /**
  * Xóa ảnh
  */
-export const deleteImage = async (placeId, imageId) => {
-  const image = await prisma.placeImage.findFirst({
+export const deleteImage = async (
+  placeId,
+  imageId,
+  {
+    db = prisma,
+    generateMarker = generateMapMarkerUrl,
+  } = {},
+) => {
+  const image = await db.placeImage.findFirst({
     where: { id: imageId, placeId },
   });
 
@@ -1350,43 +1577,61 @@ export const deleteImage = async (placeId, imageId) => {
     );
   }
 
-  await prisma.placeImage.delete({ where: { id: imageId } });
+  const scheduleCloudinaryCleanup = async (tx) => {
+    await enqueueCloudinaryAssetCleanup(tx, {
+      aggregate: "Place",
+      aggregateId: placeId,
+      publicIds: [image.publicId],
+    });
+  };
+
+  const deleteImageRecord = async (tx) => {
+    await tx.placeImage.delete({ where: { id: imageId } });
+    await scheduleCloudinaryCleanup(tx);
+  };
+
+  if (typeof db.$transaction === "function") {
+    await db.$transaction(deleteImageRecord);
+  } else {
+    await deleteImageRecord(db);
+  }
 
   // If deleted cover, set new cover
   if (image.isCover) {
-    const nextImage = await prisma.placeImage.findFirst({
+    const nextImage = await db.placeImage.findFirst({
       where: { placeId },
       orderBy: { order: "asc" },
     });
 
     if (nextImage) {
-      await prisma.placeImage.update({
+      await db.placeImage.update({
         where: { id: nextImage.id },
         data: { isCover: true },
       });
-      const markerUrl = await generateMapMarkerUrl(nextImage.imageData);
-      const placeDb = await prisma.place.findUnique({
+      const nextImageUrls = resolvePlaceImageUrls(nextImage);
+      const markerUrl = await generateMarker(nextImageUrls.source);
+      const placeDb = await db.place.findUnique({
         where: { id: placeId },
         select: { markerUrl: true },
       });
-      await prisma.place.update({
+      await db.place.update({
         where: { id: placeId },
-        data: { thumbnail: nextImage.imageData, markerUrl },
+        data: { thumbnail: nextImageUrls.thumbnail, markerUrl },
       });
       if (placeDb?.markerUrl && placeDb.markerUrl !== markerUrl) {
-        deleteMapMarkerImage(placeDb.markerUrl).catch(console.error);
+        await enqueuePlaceMarkerCleanup(db, placeId, placeDb.markerUrl);
       }
     } else {
-      const placeDb = await prisma.place.findUnique({
+      const placeDb = await db.place.findUnique({
         where: { id: placeId },
         select: { markerUrl: true },
       });
-      await prisma.place.update({
+      await db.place.update({
         where: { id: placeId },
         data: { thumbnail: null, markerUrl: null },
       });
       if (placeDb?.markerUrl) {
-        deleteMapMarkerImage(placeDb.markerUrl).catch(console.error);
+        await enqueuePlaceMarkerCleanup(db, placeId, placeDb.markerUrl);
       }
     }
   }
@@ -1410,6 +1655,7 @@ export const setCoverImage = async (placeId, imageId) => {
     );
   }
 
+  const imageUrls = resolvePlaceImageUrls(image);
   await prisma.$transaction([
     // Remove current cover
     prisma.placeImage.updateMany({
@@ -1424,25 +1670,27 @@ export const setCoverImage = async (placeId, imageId) => {
     // Update thumbnail
     prisma.place.update({
       where: { id: placeId },
-      data: { thumbnail: image.imageData },
+      data: { thumbnail: imageUrls.thumbnail },
     }),
   ]);
 
   // Update markerUrl properly since we just set a new cover
-  const newMarkerUrl = await generateMapMarkerUrl(image.imageData);
+  const newMarkerUrl = await generateMapMarkerUrl(imageUrls.source);
   const placeDb = await prisma.place.findUnique({
     where: { id: placeId },
     select: { markerUrl: true },
   });
 
   if (newMarkerUrl) {
-    await prisma.place.update({
-      where: { id: placeId },
-      data: { markerUrl: newMarkerUrl },
+    await prisma.$transaction(async (tx) => {
+      await tx.place.update({
+        where: { id: placeId },
+        data: { markerUrl: newMarkerUrl },
+      });
+      if (placeDb?.markerUrl && placeDb.markerUrl !== newMarkerUrl) {
+        await enqueuePlaceMarkerCleanup(tx, placeId, placeDb.markerUrl);
+      }
     });
-    if (placeDb?.markerUrl && placeDb.markerUrl !== newMarkerUrl) {
-      deleteMapMarkerImage(placeDb.markerUrl).catch(console.error);
-    }
   }
 
   return { success: true };

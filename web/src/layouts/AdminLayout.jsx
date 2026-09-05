@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { MapPin } from "lucide-react";
+
 import { useAuthStore } from "@/stores/authStore";
 import {
   SidebarProvider,
@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
   SidebarInset,
 } from "@/components/animate-ui/components/radix/sidebar";
-import AnimatedIcon from "@/components/ui/animated-icon";
+
 import { ADMIN_ROUTES, BUSINESS_ROUTES } from "@/constants/routes";
 import { ROLES, ROLE_NAMES } from "@/constants/constants";
 import { APP_META } from "@/constants/brand";
@@ -31,8 +31,7 @@ import {
 
 /**
  * ADMIN LAYOUT
- * Main layout wrapper with sidebar, header, and content area
- * Sub-components extracted to layouts/sidebar/ for maintainability
+ * Warm Minimalist SaaS Framework (70% White / 20% Black / 10% Yellow)
  */
 const AdminLayout = ({ children }) => {
   const { user } = useAuthStore();
@@ -87,14 +86,14 @@ const AdminLayout = ({ children }) => {
 
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon" className="bg-sidebar border-r">
-        <SidebarHeader className="bg-sidebar px-4 py-4">
+      <Sidebar collapsible="icon" className="bg-sidebar border-r border-sidebar-border/30">
+        <SidebarHeader className="bg-sidebar px-3 py-4 border-b border-sidebar-border/20">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
                 size="lg"
                 asChild
-                className="hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:!p-2"
+                className="hover:bg-white/[0.04] active:scale-[0.98] transition-all rounded-2xl data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:!p-1.5 p-2 h-auto"
               >
                 <Link
                   to={
@@ -102,21 +101,28 @@ const AdminLayout = ({ children }) => {
                       ? BUSINESS_ROUTES.DASHBOARD
                       : ADMIN_ROUTES.DASHBOARD
                   }
+                  className="flex items-center gap-3 group"
                 >
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                    <AnimatedIcon
-                      icon={MapPin}
-                      className="size-4"
-                      type="pulse"
+                  <div className="relative flex size-10 items-center justify-center rounded-xl bg-white/[0.08] border border-white/[0.12] shadow-sm shrink-0 overflow-hidden transition-transform duration-200 group-hover:scale-105">
+                    <img
+                      src="/logo512.png"
+                      alt="iPoint Genie"
+                      className="size-6 object-contain relative z-10"
                     />
                   </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                    <span className="font-semibold">{APP_META.NAME}</span>
-                    <span className="text-xs text-muted-foreground uppercase">
-                      {ROLE_NAMES[user?.roleId]
-                        ? `${ROLE_NAMES[user?.roleId]} TERMINAL`
-                        : APP_META.ADMIN_SUBTITLE}
-                    </span>
+                  <div className="grid flex-1 text-left group-data-[collapsible=icon]:hidden min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[15px] font-extrabold text-white leading-tight tracking-tight truncate">
+                        {APP_META.NAME}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-white/10 text-slate-300 text-[10px] font-medium tracking-wide uppercase leading-none border border-white/10">
+                        {ROLE_NAMES[user?.roleId]
+                          ? `${ROLE_NAMES[user?.roleId]}`
+                          : APP_META.ADMIN_SUBTITLE}
+                      </span>
+                    </div>
                   </div>
                 </Link>
               </SidebarMenuButton>
@@ -159,9 +165,11 @@ const AdminLayout = ({ children }) => {
         </SidebarContent>
       </Sidebar>
       <CustomSidebarRail />
-      <SidebarInset>
+      <SidebarInset className="bg-[#FAF9F5] relative font-sans min-h-screen text-slate-900 flex flex-col min-w-0">
         <AdminHeader />
-        <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
+        <div className="flex-1 p-3 sm:p-5 md:p-6 lg:p-8 relative z-10 flex flex-col min-w-0 w-full overflow-x-hidden">
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

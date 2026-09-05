@@ -1,7 +1,10 @@
-const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
+const { getSentryExpoConfig } = require("@sentry/react-native/metro");
 
-const config = getDefaultConfig(__dirname);
+const config = getSentryExpoConfig(__dirname, {
+  includeWebReplay: false,
+  includeWebFeedback: false,
+});
 
 // lucide-react-native ships ESM .mjs files; Metro needs 'mjs' in sourceExts
 // to resolve imports like `./icons/a-arrow-down.mjs` from the package entry.

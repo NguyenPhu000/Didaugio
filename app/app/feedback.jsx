@@ -1,7 +1,10 @@
+// MAP: FeedbackScreen
+// ├── UI: @/modules/feedback/components/{TypeChip, RatingRow, ImagePickerField}
+// └── API: @/modules/feedback/hooks/useFeedback
+
 import { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,6 +19,7 @@ import { useRouter } from "expo-router";
 import { useFeedback } from "../src/modules/feedback/hooks/useFeedback";
 import { cn } from "../src/lib/cn";
 import { useTranslation } from "react-i18next";
+import { showAppAlertLegacy } from "../src/utils/appAlert";
 
 const TypeChip = ({ option, active, onPress }) => (
   <Pressable
@@ -72,7 +76,7 @@ export default function FeedbackScreen() {
 
   useEffect(() => {
     if (isSuccess) {
-      Alert.alert(
+      showAppAlertLegacy(
         t("feedback.thankYou"),
         t("feedback.thankYouMessage"),
         [
@@ -90,7 +94,7 @@ export default function FeedbackScreen() {
 
   useEffect(() => {
     if (isError) {
-      Alert.alert(t("feedback.submitFailed"), error?.message || t("feedback.submitErrorMessage"));
+      showAppAlertLegacy(t("feedback.submitFailed"), error?.message || t("feedback.submitErrorMessage"));
     }
   }, [isError, error, t]);
 

@@ -49,7 +49,7 @@ export const createTagSchema = z.object({
     .trim()
     .min(1)
     .max(120),
-  tagType: z.enum(TAG_TYPES).optional(),
+  tagGroupId: idSchema,
   icon: z.string().max(50).optional().nullable(),
   color: z.string().max(20).optional().nullable(),
 });
@@ -58,7 +58,7 @@ export const updateTagSchema = z
   .object({
     name: z.string().trim().min(1).max(120).optional(),
     slug: z.string().trim().min(1).max(120).optional(),
-    tagType: z.enum(TAG_TYPES).optional(),
+    tagGroupId: idSchema.optional(),
     icon: z.string().max(50).optional().nullable(),
     color: z.string().max(20).optional().nullable(),
     isActive: z.boolean().optional(),

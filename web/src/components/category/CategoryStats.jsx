@@ -1,5 +1,5 @@
 import { FolderTree, Eye, EyeOff, MapPin } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
 
 /**

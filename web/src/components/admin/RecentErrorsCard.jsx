@@ -1,10 +1,9 @@
+import { AlertTriangle, Clock } from "lucide-react";
 import { useDashboardHealth } from "@/hooks/queries/useDashboardQuery";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
-import Clock from "lucide-react/dist/esm/icons/clock";
 
 const formatTimeAgo = (dateStr) => {
   if (!dateStr) return "";

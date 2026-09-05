@@ -1,84 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import Plus from "lucide-react/dist/esm/icons/plus";
-import Search from "lucide-react/dist/esm/icons/search";
-import Filter from "lucide-react/dist/esm/icons/filter";
-import MapPin from "lucide-react/dist/esm/icons/map-pin";
-import Eye from "lucide-react/dist/esm/icons/eye";
-import Edit from "lucide-react/dist/esm/icons/edit";
-import Trash2 from "lucide-react/dist/esm/icons/trash-2";
-import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
-import Star from "lucide-react/dist/esm/icons/star";
-import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
-import XCircle from "lucide-react/dist/esm/icons/x-circle";
-import Info from "lucide-react/dist/esm/icons/info";
-import Layers from "lucide-react/dist/esm/icons/layers";
-import BarChart3 from "lucide-react/dist/esm/icons/bar-chart-3";
-import Activity from "lucide-react/dist/esm/icons/activity";
-import List from "lucide-react/dist/esm/icons/list";
-import GridIcon from "lucide-react/dist/esm/icons/grid";
-import AnimatedIcon from "@/components/ui/animated-icon";
-import { cn } from "@/lib/utils";
-import { lazy, Suspense } from "react";
-import {
-  usePlaces,
-  useDeletePlace,
-  useUpdatePlaceStatus,
-  useApprovePlace,
-  useRejectPlace,
-  useToggleFeature,
-} from "@/hooks/queries/usePlaceQueries";
-import { useCategories } from "@/hooks/queries/useCategoryQueries";
+// MAP: PlaceListPage
+// ├── UI: @/components/admin/places/{PlaceHeaderFilters, PlaceMasterTable, PlaceQuickInspectDrawer, PlaceApproveRejectModal}
+// └── API: @/hooks/queries/usePlaceQueries, @/hooks/queries/useCategoryQueries
 
-// Dynamic import for heavy component
-const PlaceDetailDialog = lazy(
-  () => import("@/components/place/PlaceDetailDialog"),
-);
-import {
-  Button,
-  Input,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-  Badge,
-  Skeleton,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Plus, MapPin, CheckCircle, Activity, Star } from "lucide-react";
+import { usePlaces, useDeletePlace, useUpdatePlaceStatus, useApprovePlace, useRejectPlace, useToggleFeature } from "@/hooks/queries/usePlaceQueries";
+import { useCategories } from "@/hooks/queries/useCategoryQueries";
 import { useToast } from "@/hooks/use-toast";
-import { PRICE_RANGE_LABELS } from "@/constants/constants";
 import { usePermission } from "@/hooks/usePermission";
-import { Textarea } from "@/components/ui/textarea";
 import TimStatsCard from "@/components/admin/TimStatsCard";
 import BusinessDetailModal from "@/components/admin/BusinessDetailModal";
 import { useTranslation } from "react-i18next";
-import { getTableSerialNumber } from "@/utils/tableSerial";
 
-/**
- * PLACE LIST PAGE - T.I.M STYLE OVERHAUL
- */
+// Extracted Sub-Components
+import PlaceFilterBar from "@/components/admin/places/PlaceFilterBar";
+import PlaceAdminGridView from "@/components/admin/places/PlaceAdminGridView";
+import PlaceAdminListView from "@/components/admin/places/PlaceAdminListView";
+import PlaceModerationDialog from "@/components/admin/places/PlaceModerationDialog";
+
+const PlaceDetailDialog = lazy(() => import("@/components/place/PlaceDetailDialog"));
 
 const PlaceListPage = ({
   initialStatus = "all",
@@ -95,11 +36,10 @@ const PlaceListPage = ({
   const resolvedPageTitle = pageTitle || t("places.title");
   const resolvedPageMeta = pageMeta || t("places.subtitle");
   const { hasPermission } = usePermission();
-  const canModeratePlaces =
-    hasPermission("places.approve") || hasPermission("places.reject");
+  const canModeratePlaces = hasPermission("places.approve") || hasPermission("places.reject");
   const canFeaturePlaces = hasPermission("places.feature");
 
-  // TanStack Query mutations
+  // Mutations
   const deleteMutation = useDeletePlace();
   const updateStatusMutation = useUpdatePlaceStatus();
   const approveMutation = useApprovePlace();
@@ -109,8 +49,9 @@ const PlaceListPage = ({
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [viewBusinessId, setViewBusinessId] = useState(null);
-  const [viewMode, setViewMode] = useState("grid"); // grid | list
+  const [viewMode, setViewMode] = useState("grid");
   const searchDebounceRef = useRef(null);
+  const [localSearch, setLocalSearch] = useState(searchParams.get("search") || "");
   const [moderationDialog, setModerationDialog] = useState({
     open: false,
     place: null,
@@ -118,7 +59,6 @@ const PlaceListPage = ({
     comment: "",
   });
 
-  // Initialize from URL or defaults
   const [filters, setFilters] = useState({
     search: searchParams.get("search") || "",
     categoryId: searchParams.get("categoryId") || "",
@@ -130,7 +70,6 @@ const PlaceListPage = ({
     limit: parseInt(searchParams.get("limit")) || 12,
   });
 
-  // Sync from URL to State
   useEffect(() => {
     const newFilters = {
       search: searchParams.get("search") || "",
@@ -145,7 +84,6 @@ const PlaceListPage = ({
     setFilters(newFilters);
   }, [searchParams, initialStatus]);
 
-  // Build API filters
   const apiFilters = useMemo(() => {
     const f = { ...filters };
     if (f.status === "all") f.status = "";
@@ -155,12 +93,9 @@ const PlaceListPage = ({
     return f;
   }, [filters]);
 
-  // TanStack Query for places
   const { data: placesRes, isLoading } = usePlaces(apiFilters);
   const places = placesRes?.data || placesRes || [];
   const pagination = placesRes?.pagination || { page: 1, limit: 12, total: 0, totalPages: 0 };
-
-  // TanStack Query for categories
   const { data: categories = [] } = useCategories();
 
   const updateURL = (newFilters) => {
@@ -181,9 +116,8 @@ const PlaceListPage = ({
 
   const handleSearch = (e) => {
     const value = e.target.value;
-    if (searchDebounceRef.current) {
-      clearTimeout(searchDebounceRef.current);
-    }
+    setLocalSearch(value);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     searchDebounceRef.current = setTimeout(() => {
       const newFilters = { ...filters, search: value, page: 1 };
       setFilters(newFilters);
@@ -191,12 +125,18 @@ const PlaceListPage = ({
     }, 350);
   };
 
+  const handleClearSearch = () => {
+    setLocalSearch("");
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    const newFilters = { ...filters, search: "", page: 1 };
+    setFilters(newFilters);
+    updateURL(newFilters);
+  };
+
   const onSearchKey = (e) => {
     if (e.key === "Enter") {
-      if (searchDebounceRef.current) {
-        clearTimeout(searchDebounceRef.current);
-      }
-      const newFilters = { ...filters, search: e.target.value, page: 1 };
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      const newFilters = { ...filters, search: localSearch, page: 1 };
       setFilters(newFilters);
       updateURL(newFilters);
     }
@@ -209,14 +149,24 @@ const PlaceListPage = ({
   }, []);
 
   const handleFilterChange = (key, value) => {
-    const newFilters = { ...filters, [key]: value, page: 1 };
+    const newFilters = {
+      ...filters,
+      [key]: value,
+      page: key === "page" ? Number(value) : 1,
+    };
     setFilters(newFilters);
     updateURL(newFilters);
   };
 
-  const handleCreate = () => {
-    navigate("/admin/places/new");
+  const handlePageChange = (nextPage) => {
+    const boundedPage = Math.min(
+      Math.max(1, Number(nextPage) || 1),
+      pagination.totalPages
+    );
+    if (boundedPage !== filters.page) handleFilterChange("page", boundedPage);
   };
+
+  const handleCreate = () => navigate("/admin/places/new");
 
   const handleViewDetails = (place) => {
     setSelectedPlace(place);
@@ -359,575 +309,154 @@ const PlaceListPage = ({
     return { total, approved, pending, featured };
   }, [places]);
 
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      draft: {
-        label: "DRAFT",
-        className: "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
-      },
-      pending: {
-        label: "PENDING",
-        className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50 animate-pulse",
-      },
-      approved: {
-        label: "APPROVED",
-        className: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50",
-      },
-      rejected: {
-        label: "REJECTED",
-        className: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50",
-      },
-      hidden: {
-        label: "HIDDEN",
-        className: "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
-      },
-    };
-
-    const config = statusConfig[status] || statusConfig.draft;
-    return (
-      <div
-        className={cn("px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider rounded-full border shadow-sm backdrop-blur-sm", config.className)}
-      >
-        {config.label}
-      </div>
-    );
-  };
-
   return (
-    <div className="min-h-screen p-8 bg-[#F4F4F4] relative font-sans">
-      <div className="absolute inset-0 bg-grid-pattern bg-grid-20 opacity-30 pointer-events-none"></div>
+    <div className="space-y-6 text-slate-900 antialiased max-w-[1560px] mx-auto">
+      {/* Editorial Header */}
+      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-black/[0.04]">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Hệ thống Dữ liệu Địa điểm
+          </p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
+            {resolvedPageTitle}
+          </h1>
+          <p className="text-xs text-slate-500 font-medium">
+            {resolvedPageMeta}
+          </p>
+        </div>
 
-      <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
-        {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b-2 border-black pb-6">
-          <div className="flex items-center gap-6">
-            <div className="accent-bar h-16 shrink-0"></div>
-            <div>
-              <h1 className="tim-title">{resolvedPageTitle}</h1>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
-                <span className="tim-system bg-black text-white px-2 py-1 shrink-0">
-                  DATABASE // PLACES
-                </span>
-                <p className="tim-meta">{resolvedPageMeta}</p>
-              </div>
-            </div>
-          </div>
+        <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
           {allowCreate && hasPermission("places.create") && (
-            <Button
+            <button
+              type="button"
               onClick={handleCreate}
-              className="w-full sm:w-auto h-12 bg-black text-white hover:bg-primary hover:text-black hover:shadow-hard transition-all tim-button rounded-none border border-black px-6 shrink-0"
+              className="w-full sm:w-auto justify-center h-10 px-5 rounded-full bg-slate-950 hover:bg-black text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 active:scale-95"
             >
-              <Plus className="mr-2 h-4 w-4" />
-              {t("places.createPlace")}
-            </Button>
+              <Plus className="h-4 w-4 text-white" />
+              <span>{t("places.createPlace")}</span>
+            </button>
           )}
         </div>
+      </header>
 
-        {/* Thống kê nhanh (theo dữ liệu trang / bộ lọc hiện tại) */}
-        {!isLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <TimStatsCard
-              title={t("places.stats.total")}
-              value={placeStats.total}
-              icon={MapPin}
-              serial="PLC-001"
-            />
-            <TimStatsCard
-              title={t("places.stats.approved")}
-              value={placeStats.approved}
-              icon={CheckCircle}
-              serial="PLC-002"
-              textColor="text-emerald-600"
-            />
-            <TimStatsCard
-              title={t("places.stats.pending")}
-              value={placeStats.pending}
-              icon={Activity}
-              serial="PLC-003"
-              textColor="text-amber-600"
-            />
-            <TimStatsCard
-              title={t("places.stats.featured")}
-              value={placeStats.featured}
-              icon={Star}
-              serial="PLC-004"
-              color="bg-yellow-50"
-            />
+      {/* Thống kê nhanh */}
+      {!isLoading && (
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <TimStatsCard
+            title={t("places.stats.total")}
+            value={placeStats.total}
+            icon={MapPin}
+          />
+          <TimStatsCard
+            title={t("places.stats.approved")}
+            value={placeStats.approved}
+            icon={CheckCircle}
+          />
+          <TimStatsCard
+            title={t("places.stats.pending")}
+            value={placeStats.pending}
+            icon={Activity}
+          />
+          <TimStatsCard
+            title={t("places.stats.featured")}
+            value={placeStats.featured}
+            icon={Star}
+          />
+        </section>
+      )}
+
+      {/* Filter Bar */}
+      <PlaceFilterBar
+        localSearch={localSearch}
+        handleSearch={handleSearch}
+        onSearchKey={onSearchKey}
+        handleClearSearch={handleClearSearch}
+        filters={filters}
+        handleFilterChange={handleFilterChange}
+        lockStatusFilter={lockStatusFilter}
+        categories={categories}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+      />
+
+      {/* Content Grid/List */}
+      {isLoading ? (
+        <div className="py-28 text-center space-y-3">
+          <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-semibold text-slate-500">{t("common.loading")}</p>
+        </div>
+      ) : places.length === 0 ? (
+        <div className="rounded-3xl bg-white border border-black/[0.04] p-16 text-center shadow-[0_8px_30px_rgba(0,0,0,0.02)]">
+          <MapPin className="h-12 w-12 mx-auto text-slate-300 mb-3 stroke-[1.5]" />
+          <h3 className="font-bold text-base text-slate-900">
+            Không tìm thấy địa điểm nào
+          </h3>
+          <p className="text-xs text-slate-500 mt-1">
+            Hãy thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc trạng thái.
+          </p>
+        </div>
+      ) : viewMode === "grid" ? (
+        <PlaceAdminGridView
+          places={places}
+          pagination={pagination}
+          filters={filters}
+          handleViewDetails={handleViewDetails}
+          handleEdit={handleEdit}
+          handleDelete={handleDelete}
+          handleToggleFeature={handleToggleFeature}
+          handleStatusChange={handleStatusChange}
+          openModerationDialog={openModerationDialog}
+          canFeaturePlaces={canFeaturePlaces}
+          canModeratePlaces={canModeratePlaces}
+          hasPermission={hasPermission}
+          moderationMode={moderationMode}
+        />
+      ) : (
+        <PlaceAdminListView
+          places={places}
+          handleViewDetails={handleViewDetails}
+          handleEdit={handleEdit}
+        />
+      )}
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between pt-5 border-t border-black/[0.04] text-xs">
+          <div className="text-slate-500 font-medium">
+            Hiển thị trang <span className="font-bold text-slate-900 font-mono tabular-nums">{filters.page}</span> / <span className="font-mono tabular-nums">{pagination.totalPages}</span> (Tổng <span className="font-mono tabular-nums">{pagination.total}</span> địa điểm)
           </div>
-        )}
-
-        {/* Filter Bar */}
-        <div className="bg-white border border-black p-4 flex flex-col md:flex-row gap-4 shadow-sm">
-          {/* Search */}
-          <div className="flex-1 flex shadow-sm">
-            <div className="h-10 w-10 bg-black flex items-center justify-center text-white">
-              <Search className="h-4 w-4" />
-            </div>
-            <input
-              placeholder={t("places.searchPlaceholder")}
-              value={filters.search}
-              onChange={handleSearch}
-              onKeyDown={onSearchKey}
-              className="flex-1 h-10 px-4 border-y border-r border-black font-mono text-sm uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-gray-400"
-            />
-          </div>
-
-          {/* Filters */}
-          <div className="grid grid-cols-2 sm:flex sm:items-center gap-4 w-full md:w-auto">
-            <Select
-              value={filters.status || "all"}
-              onValueChange={(val) => handleFilterChange("status", val)}
-              disabled={lockStatusFilter}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={filters.page <= 1}
+              onClick={() => handlePageChange(filters.page - 1)}
+              className="rounded-full text-xs font-semibold h-8 px-3.5 bg-white border border-black/[0.05] shadow-2xs hover:bg-[#F5F4F0] disabled:opacity-40 transition-all flex items-center gap-1 text-slate-900"
             >
-              <SelectTrigger className="w-full sm:w-[150px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white">
-                <SelectValue placeholder={t("places.statusFilters.placeholder")} />
-              </SelectTrigger>
-              <SelectContent className="rounded-none border-black">
-                <SelectItem value="all">{t("places.statusFilters.all")}</SelectItem>
-                <SelectItem value="pending">{t("places.statusFilters.pending")}</SelectItem>
-                <SelectItem value="approved">{t("places.statusFilters.approved")}</SelectItem>
-                <SelectItem value="draft">{t("places.statusFilters.draft")}</SelectItem>
-                <SelectItem value="rejected">{t("places.statusFilters.rejected")}</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={filters.categoryId || "all"}
-              onValueChange={(val) => handleFilterChange("categoryId", val)}
+              ← Trước
+            </button>
+            <button
+              type="button"
+              disabled={filters.page >= pagination.totalPages}
+              onClick={() => handlePageChange(filters.page + 1)}
+              className="rounded-full text-xs font-semibold h-8 px-3.5 bg-white border border-black/[0.05] shadow-2xs hover:bg-[#F5F4F0] disabled:opacity-40 transition-all flex items-center gap-1 text-slate-900"
             >
-              <SelectTrigger className="w-full sm:w-[180px] h-10 rounded-none border-black font-mono text-xs uppercase bg-white">
-                <SelectValue placeholder={t("places.categoryFilter.placeholder")} />
-              </SelectTrigger>
-              <SelectContent className="rounded-none border-black">
-                <SelectItem value="all">{t("places.categoryFilter.all")}</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id.toString()}>
-                    {cat.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <div className="col-span-2 sm:col-span-1 border-t sm:border-t-0 sm:border-l border-black pt-4 sm:pt-0 sm:pl-4 flex gap-2 justify-end">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setViewMode("grid")}
-                className={`h-10 w-10 rounded-none border border-black ${viewMode === "grid" ? "bg-primary text-black" : "text-gray-400 hover:text-black"}`}
-              >
-                <GridIcon className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setViewMode("list")}
-                className={`h-10 w-10 rounded-none border border-black ${viewMode === "list" ? "bg-primary text-black" : "text-gray-400 hover:text-black"}`}
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
+              Sau →
+            </button>
           </div>
         </div>
+      )}
 
-        {/* Content Grid */}
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <div className="w-12 h-12 border-4 border-black border-t-primary rounded-full animate-spin"></div>
-            <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-              {t("common.loading")}
-            </div>
-          </div>
-        ) : (
-          <div
-            className={
-              viewMode === "grid"
-                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-                : "space-y-2"
-            }
-          >
-            {places.map((place, index) =>
-              viewMode === "grid" ? (
-                // GRID VIEW CARD - ENHANCED T.I.M STYLE
-                <div
-                  key={place.id}
-                  className="relative group bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-1 overflow-hidden flex flex-col"
-                >
-                  {/* Grid Background Overlay */}
-                  <div className="absolute inset-0 bg-grid-dots opacity-30 pointer-events-none"></div>
-
-                  {/* Image Container */}
-                  <div className="h-52 bg-zinc-900 relative overflow-hidden border-b border-zinc-100 dark:border-zinc-800 rounded-t-2xl shrink-0">
-                    {place.images?.[0] ? (
-                      <>
-                        <img
-                          src={place.images[0].imageData || place.images[0]}
-                          className="w-full h-full object-cover grayscale-[0.7] group-hover:grayscale-0 group-hover:scale-110 transition-all duration-700"
-                          alt={place.name}
-                        />
-                        {/* Accent Bar on Image */}
-                        <div className="absolute bottom-0 left-0 w-1 h-full bg-[#F3E600] group-hover:w-1.5 transition-all"></div>
-                      </>
-                    ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                        <MapPin className="h-12 w-12 text-gray-600 mb-2" />
-                        <span className="font-mono text-xs text-gray-500 uppercase tracking-wider">
-                          NO_IMAGE_DATA
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Status & Featured Badges */}
-                    <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
-                      {getStatusBadge(place.status)}
-                      {place.isFeatured && (
-                        <div className="bg-[#F3E600] text-black px-2.5 py-1 text-[10px] uppercase font-bold flex items-center gap-1 rounded-full shadow-sm">
-                          <Star className="w-3 h-3 fill-black" /> FEATURED
-                        </div>
-                      )}
-                    </div>
-
-                    {/* ID Badge */}
-                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-0.5 rounded-full">
-                      <span className="font-mono text-[10px] text-white font-semibold">
-                        {getTableSerialNumber(
-                          pagination.total || places.length,
-                          index,
-                          pagination.page || filters.page,
-                          pagination.limit || filters.limit,
-                        )}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Content Section */}
-                  <div className="p-5 relative bg-white dark:bg-zinc-900 flex-1 flex flex-col">
-                    {/* Title */}
-                    <h3
-                      className="font-bold text-base text-zinc-900 dark:text-zinc-100 leading-tight uppercase mb-2 tracking-tight hover:text-[#F3E600] transition-colors cursor-pointer line-clamp-2 min-h-[2.5rem]"
-                      title={place.name}
-                      onClick={() => handleViewDetails(place)}
-                    >
-                      {place.name}
-                    </h3>
-
-                    {/* Meta Info */}
-                    <div className="flex items-center gap-2 text-[10px] text-zinc-500 dark:text-zinc-400 mb-4 flex-wrap">
-                      <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full font-medium">
-                        {place.category?.name || "UNCATEGORIZED"}
-                      </span>
-                      <span className="text-zinc-300 dark:text-zinc-700">•</span>
-                      <span
-                        className="truncate max-w-[120px] font-medium"
-                        title={place.district?.name}
-                      >
-                        {place.district?.name || "NO_DISTRICT"}
-                      </span>
-                    </div>
-
-                    {/* Stats Grid - Enhanced */}
-                    <div className="grid grid-cols-2 gap-2.5 border-t border-zinc-100 dark:border-zinc-800 pt-4 mb-4">
-                      <div className="text-center bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl p-2.5 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                        <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
-                          <Eye className="w-3.5 h-3.5 text-zinc-400" /> VIEWS
-                        </div>
-                        <div className="font-bold text-lg text-zinc-800 dark:text-zinc-200">
-                          {place.viewCount || 0}
-                        </div>
-                      </div>
-                      <div className="text-center bg-amber-50/30 dark:bg-amber-950/10 border border-amber-100/50 dark:border-amber-950/30 rounded-xl p-2.5 transition-all hover:bg-amber-50/50">
-                        <div className="text-[10px] text-amber-600/80 dark:text-amber-500 font-semibold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
-                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> RATING
-                        </div>
-                        <div className="font-bold text-lg text-amber-700 dark:text-amber-400">
-                          {place.ratingAvg
-                            ? parseFloat(place.ratingAvg).toFixed(1)
-                            : "N/A"}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons - Tactical Style */}
-                    <div className="flex gap-2 mt-auto pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                      <Button
-                        size="sm"
-                        className="flex-1 rounded-xl bg-zinc-950 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 dark:text-zinc-950 text-white font-semibold text-[11px] gap-1.5 h-10 shadow-sm"
-                        onClick={() => handleEdit(place)}
-                      >
-                        <Edit className="w-4 h-4" /> EDIT
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="icon"
-                            className="h-10 w-10 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
-                          >
-                            <MoreHorizontal className="w-5 h-5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-950 w-48 font-sans text-xs [--accent:transparent]"
-                        >
-                          <DropdownMenuLabel>{t("places.card.actions")}</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleViewDetails(place)}
-                            className="cursor-pointer hover:bg-gray-100"
-                          >
-                            <Info className="mr-2 h-3 w-3" /> {t("places.card.detail")}
-                          </DropdownMenuItem>
-                          {canFeaturePlaces && (
-                            <DropdownMenuItem
-                              onClick={() => handleToggleFeature(place)}
-                              className="cursor-pointer hover:bg-gray-100"
-                            >
-                              <Star className="mr-2 h-3 w-3" />{" "}
-                              {place.isFeatured ? t("places.card.unfeature") : t("places.card.feature")}
-                            </DropdownMenuItem>
-                          )}
-
-                          {place.status === "pending" && canModeratePlaces && (
-                            <>
-                              <DropdownMenuSeparator />
-                              {hasPermission("places.approve") && (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    moderationMode
-                                      ? openModerationDialog(place, "approved")
-                                      : handleStatusChange(place, "approved")
-                                  }
-                                  className="text-green-600 hover:bg-green-50 cursor-pointer text-bold"
-                                >
-                                  <CheckCircle className="mr-2 h-3 w-3" /> {t("places.card.quickApprove")}
-                                </DropdownMenuItem>
-                              )}
-                              {hasPermission("places.reject") && (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    moderationMode
-                                      ? openModerationDialog(place, "rejected")
-                                      : handleStatusChange(place, "rejected")
-                                  }
-                                  className="text-red-600 hover:bg-red-50 cursor-pointer text-bold"
-                                >
-                                  <XCircle className="mr-2 h-3 w-3" /> {t("places.card.reject")}
-                                </DropdownMenuItem>
-                              )}
-                            </>
-                          )}
-
-                          {hasPermission("places.delete") && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(place)}
-                                className="text-red-600 hover:bg-red-50 cursor-pointer"
-                              >
-                                <Trash2 className="mr-2 h-3 w-3" /> {t("places.card.delete")}
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                // LIST VIEW ROW
-                <div
-                  key={place.id}
-                  className="flex flex-col sm:flex-row sm:items-center bg-white border border-black p-3 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all group gap-3 sm:gap-0"
-                >
-                  <div className="w-full sm:w-16 sm:h-16 h-36 bg-gray-200 sm:mr-4 shrink-0 relative border border-black">
-                    {place.images?.[0] ? (
-                      <img
-                        src={place.images[0].imageData || place.images[0]}
-                        className="w-full h-full object-cover"
-                        alt={place.name}
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <MapPin className="h-6 w-6 text-gray-400" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0 flex flex-col md:grid md:grid-cols-12 md:items-center gap-2 md:gap-4">
-                    <div className="md:col-span-5 min-w-0">
-                      <div
-                        className="font-bold text-sm uppercase truncate cursor-pointer hover:text-yellow-600"
-                        onClick={() => handleViewDetails(place)}
-                      >
-                        {place.name}
-                      </div>
-                      <div className="text-[10px] text-gray-500 font-mono truncate" title={place.address}>
-                        {place.address || "NO_ADDRESS"}
-                      </div>
-                    </div>
-                    <div className="md:col-span-3 flex items-center gap-2">
-                      <span className="text-[10px] font-mono uppercase bg-gray-100 px-2 py-0.5 border border-gray-300">
-                        {place.category?.name || "UNCATEGORIZED"}
-                      </span>
-                    </div>
-                    <div className="md:col-span-2">
-                      {getStatusBadge(place.status)}
-                    </div>
-                    <div className="md:col-span-2 flex justify-end gap-2 mt-2 md:mt-0">
-                      <Button
-                        size="sm"
-                        className="flex-1 md:flex-initial h-8 rounded-none border border-black bg-white text-black hover:bg-[#F3E600] hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-mono text-[10px] uppercase font-bold"
-                        onClick={() => handleEdit(place)}
-                      >
-                        {t("common.edit")}
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-8 w-8 rounded-none border-2 border-black bg-black text-[#F3E600] hover:bg-[#F3E600] hover:text-black transition-all"
-                          >
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="rounded-none border border-black w-48 font-mono text-xs uppercase"
-                        >
-                          <DropdownMenuLabel>{t("places.card.actions")}</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleViewDetails(place)}
-                            className="cursor-pointer"
-                          >
-                            <Info className="mr-2 h-3 w-3" /> {t("places.card.detail")}
-                          </DropdownMenuItem>
-                          {canFeaturePlaces && (
-                            <DropdownMenuItem
-                              onClick={() => handleToggleFeature(place)}
-                              className="cursor-pointer"
-                            >
-                              <Star className="mr-2 h-3 w-3" />{" "}
-                              {place.isFeatured ? t("places.card.unfeature") : t("places.card.feature")}
-                            </DropdownMenuItem>
-                          )}
-                          {place.status === "pending" && canModeratePlaces && (
-                            <>
-                              <DropdownMenuSeparator />
-                              {hasPermission("places.approve") && (
-                                <DropdownMenuItem
-                                  onClick={() => handleStatusChange(place, "approved")}
-                                  className="text-green-600"
-                                >
-                                  <CheckCircle className="mr-2 h-3 w-3" /> {t("places.card.quickApprove")}
-                                </DropdownMenuItem>
-                              )}
-                              {hasPermission("places.reject") && (
-                                <DropdownMenuItem
-                                  onClick={() => handleStatusChange(place, "rejected")}
-                                  className="text-red-600"
-                                >
-                                  <XCircle className="mr-2 h-3 w-3" /> {t("places.card.reject")}
-                                </DropdownMenuItem>
-                              )}
-                            </>
-                          )}
-                          {hasPermission("places.delete") && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(place)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="mr-2 h-3 w-3" /> {t("places.card.delete")}
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                </div>
-              ),
-            )}
-          </div>
+      {/* Modals */}
+      <Suspense fallback={null}>
+        {detailDialogOpen && selectedPlace && (
+          <PlaceDetailDialog
+            open={detailDialogOpen}
+            onOpenChange={setDetailDialogOpen}
+            place={selectedPlace}
+            onEdit={() => handleEdit(selectedPlace)}
+            onViewBusiness={(bizId) => setViewBusinessId(bizId)}
+          />
         )}
-
-        {/* Empty State */}
-        {!isLoading && places.length === 0 && (
-          <div className="text-center py-20 border border-dashed border-black bg-white/50">
-            <MapPin className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <h3 className="font-black text-xl uppercase mb-2">
-              {t("places.empty.title")}
-            </h3>
-            <p className="font-mono text-xs text-muted-foreground mb-6 uppercase">
-              {t("places.empty.description")}
-            </p>
-            <Button
-              onClick={handleCreate}
-              className="rounded-none bg-black text-white px-8 font-bold uppercase hover:bg-primary hover:text-black"
-            >
-              {t("places.empty.createNew")}
-            </Button>
-          </div>
-        )}
-
-        {/* Pagination */}
-        {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-black pt-4 font-mono text-xs uppercase">
-            <div>
-              {t("places.pagination.page", { page: pagination.page, totalPages: pagination.totalPages })}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                disabled={filters.page === 1}
-                onClick={() => handleFilterChange("page", filters.page - 1)}
-                className="rounded-none border-black h-8 hover:bg-black hover:text-white"
-              >
-                {t("common.previous")}
-              </Button>
-              <Button
-                variant="outline"
-                disabled={filters.page === pagination.totalPages}
-                onClick={() => handleFilterChange("page", filters.page + 1)}
-                className="rounded-none border-black h-8 hover:bg-black hover:text-white"
-              >
-                {t("common.next")}
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Detail Dialog */}
-      <Suspense
-        fallback={
-          <div className="flex items-center justify-center p-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        }
-      >
-        <PlaceDetailDialog
-          place={selectedPlace}
-          open={detailDialogOpen}
-          onOpenChange={setDetailDialogOpen}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onApprove={
-            hasPermission("places.approve")
-              ? (place) => approveMutation.mutateAsync(place.id)
-              : undefined
-          }
-          onReject={
-            hasPermission("places.reject")
-              ? (place) => openModerationDialog(place, "rejected")
-              : undefined
-          }
-          onViewBusinessDetails={(id) => {
-            setDetailDialogOpen(false);
-            setViewBusinessId(id);
-          }}
-        />
       </Suspense>
 
       <BusinessDetailModal
@@ -938,80 +467,15 @@ const PlaceListPage = ({
         businessId={viewBusinessId}
       />
 
-      <Dialog
+      <PlaceModerationDialog
         open={moderationDialog.open}
         onOpenChange={(open) =>
           setModerationDialog((prev) => ({ ...prev, open }))
         }
-      >
-        <DialogContent className="rounded-none border border-black bg-white sm:max-w-[560px]">
-          <DialogHeader className="space-y-2">
-            <DialogTitle className="font-black uppercase tracking-wide text-base">
-              {moderationDialog.action === "approved"
-                ? t("places.moderation.confirmApprove")
-                : t("places.moderation.confirmReject")}
-            </DialogTitle>
-            <DialogDescription className="font-mono text-xs uppercase text-gray-500">
-              {moderationDialog.place?.name || t("places.moderation.placeLabel")}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-2">
-            <label className="font-mono text-[11px] uppercase text-gray-600">
-              {moderationDialog.action === "approved"
-                ? t("places.moderation.noteOptional")
-                : t("places.moderation.rejectReasonRequired")}
-            </label>
-            <Textarea
-              value={moderationDialog.comment}
-              onChange={(e) =>
-                setModerationDialog((prev) => ({
-                  ...prev,
-                  comment: e.target.value,
-                }))
-              }
-              rows={4}
-              placeholder={
-                moderationDialog.action === "approved"
-                  ? t("places.moderation.approvePlaceholder")
-                  : t("places.moderation.rejectPlaceholder")
-              }
-              className="rounded-none border-black focus-visible:ring-0 font-mono text-sm"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-none border-black font-bold uppercase text-xs"
-              onClick={() =>
-                setModerationDialog({
-                  open: false,
-                  place: null,
-                  action: "approved",
-                  comment: "",
-                })
-              }
-            >
-              {t("common.cancel")}
-            </Button>
-            <Button
-              type="button"
-              className={`rounded-none border border-black font-bold uppercase text-xs ${
-                moderationDialog.action === "approved"
-                  ? "bg-green-600 hover:bg-green-700 text-white"
-                  : "bg-red-600 hover:bg-red-700 text-white"
-              }`}
-              onClick={handleModerationConfirm}
-            >
-              {moderationDialog.action === "approved"
-                ? t("places.moderation.confirmApproveBtn")
-                : t("places.moderation.confirmRejectBtn")}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        moderationDialog={moderationDialog}
+        setModerationDialog={setModerationDialog}
+        onConfirm={handleModerationConfirm}
+      />
     </div>
   );
 };

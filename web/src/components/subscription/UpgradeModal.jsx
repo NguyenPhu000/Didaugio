@@ -9,11 +9,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 import {
   useCurrentSubscription,
   useDowngradeSubscription,
@@ -25,13 +25,14 @@ function unwrapResponse(res) {
   return res?.data?.data || res?.data || {};
 }
 
-export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPlan }) {
+export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPlan, billingCycle = "monthly" }) {
   const { t } = useTranslation();
   const [step, setStep] = useState("confirm");
   const [invoice, setInvoice] = useState(null);
 
   const { data: prorationRes, isLoading: prorationLoading } = useProration(
     open ? targetPlan?.id : null,
+    billingCycle,
   );
   const upgradeMutation = useUpgradeSubscription();
   const downgradeMutation = useDowngradeSubscription();
@@ -57,18 +58,37 @@ export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPl
   useEffect(() => {
     if (step !== "qr" || !invoice || !targetPlan?.id) return undefined;
 
+    let cancelled = false;
+    const POLL_INTERVAL_MS = 3000;
+    const POLL_TIMEOUT_MS = 5 * 60 * 1000;
+    const deadline = Date.now() + POLL_TIMEOUT_MS;
+
     const interval = setInterval(() => {
+      if (cancelled || Date.now() > deadline) {
+        clearInterval(interval);
+        return;
+      }
       refetchSub().then((res) => {
+        if (cancelled) return;
         const sub = unwrapResponse(res);
-        if (sub?.planId === targetPlan.id) {
+        const planChanged = sub?.planId === targetPlan.id;
+        const cycleChanged = sub?.billingCycle === billingCycle;
+        if (planChanged && cycleChanged) {
           setStep("success");
           clearInterval(interval);
+        } else if (Date.now() > deadline) {
+          clearInterval(interval);
         }
+      }).catch(() => {
+        // swallow polling errors to avoid noisy UX; periodic retry continues
       });
-    }, 3000);
+    }, POLL_INTERVAL_MS);
 
-    return () => clearInterval(interval);
-  }, [invoice, refetchSub, step, targetPlan?.id]);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [billingCycle, invoice, refetchSub, step, targetPlan?.id]);
 
   const handleConfirm = () => {
     if (!targetPlan?.id) return;
@@ -80,13 +100,14 @@ export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPl
       return;
     }
 
-    upgradeMutation.mutate(targetPlan.id, {
+    upgradeMutation.mutate({ targetPlanId: targetPlan.id, billingCycle }, {
       onSuccess: (res) => {
         const invoiceData = unwrapResponse(res)?.invoice;
         if (invoiceData?.qrUrl) {
           setInvoice(invoiceData);
           setStep("qr");
         } else {
+          refetchSub();
           setStep("success");
         }
       },
@@ -142,7 +163,7 @@ export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPl
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">{t("subscription.changePlan.remainingCredit")}</span>
                       <span className="text-emerald-600">
-                        -{formatVND(proration.unusedCredit)}
+                        -{formatMoney(proration.unusedCredit)}
                       </span>
                     </div>
                   )}
@@ -154,7 +175,11 @@ export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPl
                       {isDowngrade ? t("subscription.changePlan.payNow") : t("subscription.changePlan.totalPayment")}
                     </span>
                     <span className="text-lg font-bold">
-                      {formatVND(proration.chargeAmount ?? targetPlan?.priceMonthly ?? 0)}
+                      {formatMoney(
+                        proration.chargeAmount
+                        ?? (billingCycle === "yearly" ? targetPlan?.priceYearly : targetPlan?.priceMonthly)
+                        ?? 0,
+                      )}
                     </span>
                   </div>
 
@@ -209,7 +234,7 @@ export default function UpgradeModal({ open, onOpenChange, targetPlan, currentPl
 
               <div className="text-center">
                 <p className="text-sm text-muted-foreground">{t("subscription.changePlan.amount")}</p>
-                <p className="text-2xl font-bold">{formatVND(invoice?.amount || 0)}</p>
+                <p className="text-2xl font-bold">{formatMoney(invoice?.amount || 0)}</p>
               </div>
 
               {invoice?.transactionRef && (

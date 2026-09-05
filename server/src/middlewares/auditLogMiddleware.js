@@ -93,6 +93,26 @@ function generateDescription(action, tableName, recordId) {
   return `${action} trên ${tableName} #${recordId}`;
 }
 
+function queueAuditRecord({ req, body, action, tableName, getRecordId, getOldData, getNewData }) {
+  const userId = req.user?.userId;
+  const roleId = req.user?.roleId;
+  if (!userId || !roleId || roleId > MAX_AUDITABLE_ROLE) return;
+  let parsedBody = body;
+  try { parsedBody = typeof body === "string" ? JSON.parse(body) : body; } catch { /* retain raw body */ }
+  const recordId = getRecordId ? getRecordId(req, parsedBody) : parseInt(req.params.id) || parsedBody?.data?.id || 0;
+  auditLogService.create({
+    userId,
+    action,
+    tableName,
+    recordId,
+    description: generateDescription(action, tableName, recordId),
+    oldData: getOldData ? getOldData(req) : null,
+    newData: getNewData ? getNewData(req, parsedBody) : null,
+    ipAddress: req.ip || req.connection.remoteAddress,
+    userAgent: req.headers["user-agent"],
+  }).catch((error) => console.error("Failed to create audit log:", error));
+}
+
 export const auditLog = ({ action, tableName, getRecordId, getOldData, getNewData }) => {
   return async (req, res, next) => {
     const originalSend = res.send;
@@ -101,43 +121,8 @@ export const auditLog = ({ action, tableName, getRecordId, getOldData, getNewDat
       res.send = originalSend;
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        const userId = req.user?.userId;
-        const roleId = req.user?.roleId;
-
-        if (userId && roleId && roleId <= MAX_AUDITABLE_ROLE) {
-          try {
-            let parsedBody = null;
-            try {
-              parsedBody = typeof body === "string" ? JSON.parse(body) : body;
-            } catch {
-              parsedBody = body;
-            }
-
-            const recordId = getRecordId
-              ? getRecordId(req, parsedBody)
-              : parseInt(req.params.id) || parsedBody?.data?.id || 0;
-
-            const description = generateDescription(action, tableName, recordId);
-
-            auditLogService
-              .create({
-                userId,
-                action,
-                tableName,
-                recordId,
-                description,
-                oldData: getOldData ? getOldData(req) : null,
-                newData: getNewData ? getNewData(req, parsedBody) : null,
-                ipAddress: req.ip || req.connection.remoteAddress,
-                userAgent: req.headers["user-agent"],
-              })
-              .catch((error) => {
-                console.error("Failed to create audit log:", error);
-              });
-          } catch (error) {
-            console.error("Audit log middleware error:", error);
-          }
-        }
+        try { queueAuditRecord({ req, body, action, tableName, getRecordId, getOldData, getNewData }); }
+        catch (error) { console.error("Audit log middleware error:", error); }
       }
 
       return originalSend.call(this, body);

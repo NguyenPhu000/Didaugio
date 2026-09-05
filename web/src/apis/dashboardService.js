@@ -2,7 +2,7 @@ import api from "@/constants/api";
 
 export const dashboardService = {
   getStats: () => api.get("/dashboard/stats"),
-  getTimeline: () => api.get("/dashboard/timeline"),
+  getTimeline: (params) => api.get("/dashboard/timeline", { params }),
   getHealth: () => api.get("/dashboard/health"),
   getOnlineUsers: () => api.get("/dashboard/online-users"),
 };

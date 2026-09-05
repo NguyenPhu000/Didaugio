@@ -5,8 +5,8 @@ import { ENDPOINTS } from "./endpoints";
  * Lấy danh sách sự kiện (có hỗ trợ filter, pagination qua params)
  * @param {object} params 
  */
-export const getEventsApi = async (params = {}) => {
-  const response = await apiClient.get(ENDPOINTS.events.list, { params });
+export const getEventsApi = async (params = {}, config = {}) => {
+  const response = await apiClient.get(ENDPOINTS.events.list, { ...config, params });
   return response;
 };
 
@@ -14,8 +14,8 @@ export const getEventsApi = async (params = {}) => {
  * Lấy chi tiết sự kiện
  * @param {number|string} id 
  */
-export const getEventDetailApi = async (id) => {
-  const response = await apiClient.get(ENDPOINTS.events.detail(id));
+export const getEventDetailApi = async (id, config = {}) => {
+  const response = await apiClient.get(ENDPOINTS.events.detail(id), config);
   return response;
 };
 
@@ -53,8 +53,8 @@ export const createMomentApi = async (id, payload) => {
  * @param {number|string} id 
  * @param {{ destinationId?: number }} params 
  */
-export const getMomentsApi = async (id, params = {}) => {
-  const response = await apiClient.get(ENDPOINTS.events.moments(id), { params });
+export const getMomentsApi = async (id, params = {}, config = {}) => {
+  const response = await apiClient.get(ENDPOINTS.events.moments(id), { ...config, params });
   return response;
 };
 

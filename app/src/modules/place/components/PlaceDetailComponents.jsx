@@ -204,7 +204,15 @@ export const AmenityCard = memo(function AmenityCard({ icon, label, tag, onPress
   );
 });
 
-export const DetailRow = memo(function DetailRow({ icon, label, value, onPress, highlight = false }) {
+export const DetailRow = memo(function DetailRow({
+  icon,
+  label,
+  value,
+  onPress,
+  highlight = false,
+  actionIcon = "open-in-new",
+  accessibilityLabel,
+}) {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -254,7 +262,7 @@ export const DetailRow = memo(function DetailRow({ icon, label, value, onPress, 
       </View>
       {onPress ? (
         <MaterialIconsRounded
-          name="open-in-new"
+          name={actionIcon}
           size={17}
           color={PALETTE.textSoft}
         />
@@ -268,6 +276,8 @@ export const DetailRow = memo(function DetailRow({ icon, label, value, onPress, 
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel || label}
       >
         <Animated.View className="rounded-[16px]" style={animatedStyle}>
           {content}

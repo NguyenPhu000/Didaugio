@@ -2,6 +2,7 @@ import express from "express";
 import * as controller from "../../controllers/autoApproveRule/autoApproveRule.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { requireActiveBusiness } from "../../middlewares/requireActiveBusiness.js";
+import { requireBusinessOwner } from "../../middlewares/requireBusinessOwner.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import { validateBody } from "../../middlewares/validateSchema.js";
 import {
@@ -12,6 +13,7 @@ import {
 const router = express.Router();
 
 router.use(authenticate);
+router.use(requireBusinessOwner);
 router.use(requireActiveBusiness({ requireContractSigned: true }));
 
 router.get("/", hasPermission("bookings.view"), controller.list);

@@ -7,6 +7,8 @@ import {
   getMyTripsApi,
 } from "../api/aiApi";
 import { mapAIError } from "../lib/mapAIError";
+import { inferPlannerPreferences } from "../lib/plannerPreferences";
+import { normalizePlannerNotes } from "../lib/plannerText";
 import { useAIPlannerStore } from "../../../stores/aiPlannerStore";
 import { TRIP_QUERY_KEYS } from "../../../constants/trip-query-keys";
 
@@ -20,6 +22,20 @@ function normalizePlaceIds(ids, fallbackPlaces = []) {
   }
 
   return ids.map((id) => Number(id)).filter(Boolean);
+}
+
+function getMessagePlaceIds(message) {
+  return (message?.suggestedPlaces || [])
+    .map((place) => Number(place?.id))
+    .filter(Boolean);
+}
+
+function getLatestSuggestedPlaceIds(messages = []) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const ids = getMessagePlaceIds(messages[index]);
+    if (ids.length > 0) return [...new Set(ids)];
+  }
+  return [];
 }
 
 function buildTripSummaryMessage(trip, t) {
@@ -51,21 +67,6 @@ function buildPreviewMessage(payload, selectedCount, t) {
     selectedLine +
     costLine
   );
-}
-
-function inferPlannerPreferences(text = "") {
-  const dayMatch = text.match(/(\d{1,2})\s*(ngày|day)/i);
-  const groupMatch = text.match(/(\d{1,2})\s*(người|person|people)/i);
-
-  const totalDays = Number(dayMatch?.[1]);
-  const groupSize = Number(groupMatch?.[1]);
-
-  return {
-    totalDays:
-      Number.isFinite(totalDays) && totalDays > 0 ? Math.min(totalDays, 14) : undefined,
-    groupSize:
-      Number.isFinite(groupSize) && groupSize > 0 ? Math.min(groupSize, 12) : undefined,
-  };
 }
 
 export function useAIPlanner() {
@@ -112,6 +113,10 @@ export function useAIPlanner() {
           suggestedPlaces,
           selectedPlaceIds: normalizedSelectedIds,
           isDraftPreview: true,
+          requestLogId:
+            Number.isSafeInteger(payload.requestLogId)
+              ? payload.requestLogId
+              : null,
         };
         replaceDraftPreviewMessage(assistantMsg);
         return;
@@ -124,6 +129,10 @@ export function useAIPlanner() {
           role: "assistant",
           text: buildTripSummaryMessage(trip, t),
           plan: trip,
+          requestLogId:
+            Number.isSafeInteger(payload.requestLogId)
+              ? payload.requestLogId
+              : null,
           createdAt: new Date(),
         };
         setDraftPlan(null);
@@ -180,30 +189,52 @@ export function useAIPlanner() {
 
   const sendMessage = useCallback(
     async (userText, preferences = {}) => {
-      if (!userText.trim() && !preferences.totalDays) return;
+      const rawText = String(userText ?? "");
+      const trimmedText = rawText.trim();
+      if (!trimmedText && !preferences.totalDays) {
+        return { success: false };
+      }
 
       const userMsg = {
         id: Date.now().toString(),
         role: "user",
-        text: userText,
+        text: rawText,
         createdAt: new Date(),
       };
       appendMessage(userMsg);
 
-      const inferred = inferPlannerPreferences(userText);
+      const inferred = inferPlannerPreferences(rawText);
+      const activeDraftIds = getMessagePlaceIds({ suggestedPlaces: draftPlan?.suggestedPlaces });
+      const latestSuggestedIds = activeDraftIds.length > 0
+        ? activeDraftIds
+        : getLatestSuggestedPlaceIds(messages);
+      const contextSelectedIds = selectedPlaceIds.length > 0
+        ? selectedPlaceIds
+        : latestSuggestedIds;
+
       const payload = {
-        totalDays: preferences.totalDays || inferred.totalDays || 1,
-        travelStyle: preferences.travelStyle,
-        groupSize: preferences.groupSize || inferred.groupSize || 1,
-        budget: preferences.budget,
-        notes: userText,
+        totalDays: preferences.totalDays ?? inferred.totalDays ?? 1,
+        travelStyle: preferences.travelStyle ?? inferred.travelStyle,
+        groupSize: preferences.groupSize ?? inferred.groupSize ?? 1,
+        budget: preferences.budget ?? inferred.budget,
+        notes: normalizePlannerNotes(rawText),
+        selectedPlaceIds:
+          preferences.selectedPlaceIds ??
+          (contextSelectedIds.length > 0 ? [...new Set(contextSelectedIds)] : undefined),
       };
 
       setLastPreferences(payload);
       setDraftPlan(null);
       setSelectedPlaceIds([]);
 
-      await previewMutation.mutateAsync(payload);
+      try {
+        const response = await previewMutation.mutateAsync(payload);
+        return { success: true, data: response?.data ?? null };
+      } catch {
+        // React Query already ran onError; keep the UI error state local to
+        // the mutation instead of leaking a rejected event-handler promise.
+        return { success: false };
+      }
     },
     [
       appendMessage,
@@ -211,6 +242,9 @@ export function useAIPlanner() {
       setDraftPlan,
       setLastPreferences,
       setSelectedPlaceIds,
+      draftPlan,
+      messages,
+      selectedPlaceIds,
     ],
   );
 
@@ -257,14 +291,24 @@ export function useAIPlanner() {
       itineraryDraft: draftPlan.itinerary,
     };
 
-    const response = await confirmMutation.mutateAsync(payload);
-    return response?.data || null;
+    try {
+      const response = await confirmMutation.mutateAsync(payload);
+      return response?.data || null;
+    } catch {
+      // onError owns the user-visible message and retryable mutation state.
+      return null;
+    }
   }, [confirmMutation, draftPlan, lastPreferences, selectedPlaceIds]);
 
   const canConfirmSelection =
     !!draftPlan && selectedPlaceIds.length > 0 && !confirmMutation.isPending;
 
   const activeError = confirmMutation.error || previewMutation.error;
+
+  const clearError = useCallback(() => {
+    previewMutation.reset();
+    confirmMutation.reset();
+  }, [confirmMutation, previewMutation]);
 
   const reset = useCallback(() => {
     resetPlannerState();
@@ -278,6 +322,7 @@ export function useAIPlanner() {
     isPreviewLoading: previewMutation.isPending,
     isConfirming: confirmMutation.isPending,
     error: activeError ? mapAIError(activeError) : null,
+    clearError,
     sendMessage,
     draftPlan,
     selectedPlaceIds,

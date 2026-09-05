@@ -22,23 +22,40 @@ export const MAP_CONFIGS = {
 };
 
 export const MAP_STYLES = {
+  ISLAND: {
+    key: "island",
+    label: "Đảo Cần Thơ",
+    urls: [],
+    mapType: "standard",
+    useNativeCleanStyle: true,
+    showIslandMask: true,
+    showDistrictBorders: true,
+    showDistrictLabels: true,
+  },
   OSM: {
     key: "osm",
     label: MAP_TEXT.mapConfig.mapStyles.osm,
     urls: [],
     mapType: "standard",
     useNativeCleanStyle: true,
+    showIslandMask: false,
+    showDistrictBorders: false,
+    showDistrictLabels: false,
   },
   HYBRID: {
     key: "hybrid",
     label: MAP_TEXT.mapConfig.mapStyles.hybrid,
     urls: [],
     mapType: "hybrid",
-    useNativeCleanStyle: false,
+    useNativeCleanStyle: true,
+    showIslandMask: false,
+    showDistrictBorders: false,
+    showDistrictLabels: false,
   },
 };
 
-export const DEFAULT_MAP_STYLE = MAP_STYLES.OSM;
+// Tạm dùng nền vệ tinh native; lớp Đảo Cần Thơ không còn là mặc định.
+export const DEFAULT_MAP_STYLE = MAP_STYLES.HYBRID;
 
 export const MAP_THEME = {
   PRIMARY: COLORS.primary,

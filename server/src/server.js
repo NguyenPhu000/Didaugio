@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { createRequire } from "module";
 import express from "express";
 import { createServer } from "http";
@@ -12,6 +13,10 @@ import { initNotificationService } from "./services/notification/notification.se
 import { initSocketIO } from "./config/socketIO.js";
 import { validateEnv } from "./config/validateEnv.js";
 import { registerApiRoutes, registerRateLimiters } from "./routes/index.js";
+import { registerHealthRoutes } from "./health/health.routes.js";
+import { getRedisClient, closeRedisClient } from "./config/redisClient.js";
+import { requestIdMiddleware } from "./middlewares/requestContext.js";
+import { registerMetrics } from "./observability/metrics.js";
 import { startPendingBookingExpireScheduler } from "./schedulers/pendingBookingExpire.scheduler.js";
 import { startTripAutoCompleteScheduler } from "./schedulers/tripAutoComplete.scheduler.js";
 import { startSubscriptionRenewalReminderScheduler } from "./schedulers/subscriptionRenewalReminder.scheduler.js";
@@ -20,7 +25,9 @@ import { startSubscriptionPastDueScheduler } from "./schedulers/subscriptionPast
 import { startSubscriptionFeatureLockScheduler } from "./schedulers/subscriptionFeatureLock.scheduler.js";
 import { startSubscriptionStatsScheduler } from "./schedulers/subscriptionStats.scheduler.js";
 import { startDomainJobScheduler } from "./schedulers/domainJob.scheduler.js";
+import { createSchedulerLeader } from "./schedulers/schedulerLeader.js";
 import { initContractGenerationListener } from "./services/contract/contractGenerationListener.js";
+import { ensureDefaultAiConfig } from "./services/adminAi/index.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json");
@@ -29,6 +36,7 @@ dotenv.config({ override: true });
 validateEnv();
 
 const app = express();
+app.use(requestIdMiddleware);
 const PORT = process.env.PORT || 8080;
 const BODY_LIMIT = process.env.BODY_LIMIT || "2mb";
 const RAW_BODY_CAPTURE_PATHS = [
@@ -45,9 +53,8 @@ const configuredOrigins = (process.env.CORS_ORIGINS || "")
 const isProduction = process.env.NODE_ENV === "production";
 const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "";
 
-// Trust first proxy hop (nginx, load balancer, cloud platform, ngrok)
-// "loopback" = chỉ trust localhost (127.0.0.1, ::1), đủ cho dev + ngrok
-app.set("trust proxy", "loopback");
+// Trust proxy configuration
+app.set("trust proxy", process.env.TRUST_PROXY === "true" ? 1 : (process.env.TRUST_PROXY || "loopback"));
 
 const devDefaultOrigins = [
   "http://localhost:3000",
@@ -95,6 +102,11 @@ const isOriginAllowed = (origin) => {
 };
 
 app.disable("x-powered-by");
+registerMetrics(app, {
+  enabled: String(process.env.METRICS_ENABLED || "false") === "true",
+  collectRuntimeMetrics: String(process.env.METRICS_ENABLED || "false") === "true",
+  prisma,
+});
 app.use(compression());
 
 const shouldCaptureRawBody = (req) => {
@@ -131,9 +143,9 @@ app.use(
           ...allowedOriginPatterns.map((o) => o.replace(/^http/, "ws")),
         ],
         fontSrc: ["'self'"],
-        objectSrc: ["'none'"],
+        objectSrc: ["'self'", "blob:"],
         mediaSrc: ["'self'", ...cloudinaryDomains],
-        frameSrc: ["'none'"],
+        frameSrc: ["'self'", "blob:", "data:"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
         upgradeInsecureRequests: isProduction ? true : null,
@@ -141,7 +153,7 @@ app.use(
     },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" },
-    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    referrerPolicy: { policy: "no-referrer" },
     hsts: isProduction
       ? {
           maxAge: 31536000,
@@ -164,8 +176,24 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    exposedHeaders: [
+      "Content-Disposition",
+      "Content-Type",
+      "X-Request-Id",
+      "RateLimit-Limit",
+      "RateLimit-Remaining",
+      "RateLimit-Reset",
+      "Retry-After",
+    ],
   }),
 );
+
+const redis = getRedisClient();
+registerHealthRoutes(app, {
+  prisma,
+  redis,
+  routingUrl: process.env.OSRM_URL || "http://localhost:5000",
+});
 
 registerRateLimiters(app);
 registerApiRoutes(app);
@@ -199,19 +227,68 @@ initContractGenerationListener();
 
 const httpServer = createServer(app);
 const io = initSocketIO(httpServer, allowedOriginPatterns);
+const schedulerLeader = createSchedulerLeader({
+  redis,
+  starters: [
+    startPendingBookingExpireScheduler,
+    startTripAutoCompleteScheduler,
+    startSubscriptionRenewalReminderScheduler,
+    startSubscriptionGracePeriodScheduler,
+    startSubscriptionPastDueScheduler,
+    startSubscriptionFeatureLockScheduler,
+    startSubscriptionStatsScheduler,
+    startDomainJobScheduler,
+  ],
+});
+
+let isBootCompleted = false;
+
+ensureDefaultAiConfig()
+  .then(() => {
+    isBootCompleted = true;
+    logger.info("[boot] Default AI configuration initialized successfully");
+  })
+  .catch((err) => {
+    isBootCompleted = true;
+    logger.warn("[boot] Default AI configuration failed, using fallback", { error: err.message });
+  });
 
 httpServer.listen(PORT, () => {
   logger.info(`Server is running on http://localhost:${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
-  startPendingBookingExpireScheduler();
-  startTripAutoCompleteScheduler();
-  startSubscriptionRenewalReminderScheduler();
-  startSubscriptionGracePeriodScheduler();
-  startSubscriptionPastDueScheduler();
-  startSubscriptionFeatureLockScheduler();
-  startSubscriptionStatsScheduler();
-  startDomainJobScheduler();
+  schedulerLeader.start();
 });
 
-export default app;
+const gracefulShutdown = async (signal) => {
+  logger.info(`[Shutdown] Received signal ${signal}. Starting graceful shutdown...`);
+
+  // 1. Safety timeout: if requests do not finish within 10s, force exit. Unref so timer does not block event loop.
+  setTimeout(() => {
+    logger.error("[Shutdown] Timeout of 10s exceeded, forcing process exit.");
+    process.exit(1);
+  }, 10000).unref();
+
+  // 2. Stop accepting new HTTP connections
+  httpServer.close(async (err) => {
+    if (err) logger.error("[Shutdown] Error closing HTTP server", { error: err.message });
+
+    try {
+      logger.info("[Shutdown] HTTP server closed. Stopping background schedulers & closing DB connections...");
+      await schedulerLeader.stop();
+      await prisma.$disconnect();
+      await closeRedisClient();
+
+      logger.info("[Shutdown] Graceful shutdown completed cleanly. Process exiting (0).");
+      process.exit(0);
+    } catch (shutdownErr) {
+      logger.error("[Shutdown] Error during cleanup", { error: shutdownErr.message });
+      process.exit(1);
+    }
+  });
+};
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
 export { io };
+export default app;

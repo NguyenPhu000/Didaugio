@@ -20,7 +20,7 @@ function deepMerge(target, source) {
       !Array.isArray(tv)
     ) {
       out[key] = deepMerge(tv, sv);
-    } else {
+    } else if (sv !== undefined) {
       out[key] = sv;
     }
   }
@@ -48,7 +48,7 @@ export async function saveSettings(payload, userId) {
       key: SETTINGS_KEY,
       value: merged,
       updatedBy: userId,
-      description: "Cài đặt hệ thống (giao diện quản trị)",
+      description: "Cài đặt hệ thống du lịch thông minh Cần Thơ",
     },
     update: {
       value: merged,
@@ -57,4 +57,82 @@ export async function saveSettings(payload, userId) {
   });
 
   return merged;
+}
+
+export async function getSystemHealth() {
+  const uptimeSeconds = Math.floor(process.uptime());
+  const hours = Math.floor(uptimeSeconds / 3600);
+  const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+  const uptimeStr = `${hours}h ${minutes}m (${uptimeSeconds}s)`;
+
+  let dbHealthy = true;
+  let postgisHealthy = true;
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+  } catch {
+    dbHealthy = false;
+  }
+
+  try {
+    await prisma.$queryRaw`SELECT PostGIS_Version()`;
+  } catch {
+    postgisHealthy = false;
+  }
+
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const errorCount = await prisma.auditLog.count({
+    where: {
+      action: { contains: "ERROR", mode: "insensitive" },
+      createdAt: { gte: oneDayAgo },
+    },
+  }).catch(() => 0);
+
+  const isHealthy = dbHealthy && postgisHealthy;
+
+  return {
+    status: isHealthy ? "healthy" : "unhealthy",
+    uptime: uptimeStr,
+    database: dbHealthy ? "connected" : "disconnected",
+    postgis: postgisHealthy ? "active" : "inactive",
+    errorCount,
+    nodeVersion: process.version,
+    memoryUsage: process.memoryUsage(),
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export async function getSystemLogs(limit = 50) {
+  const logs = await prisma.auditLog.findMany({
+    take: Number(limit) || 50,
+    orderBy: { createdAt: "desc" },
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          username: true,
+        },
+      },
+    },
+  }).catch(() => []);
+
+  return logs.map((log) => {
+    let level = "info";
+    const act = (log.action || "").toUpperCase();
+    if (act.includes("ERROR") || act.includes("FAIL")) {
+      level = "error";
+    } else if (act.includes("DELETE") || act.includes("CANCEL") || act.includes("DEACTIVATE")) {
+      level = "warn";
+    }
+
+    return {
+      id: log.id,
+      level,
+      message: log.description || `${log.action} trên ${log.tableName} (#${log.recordId})`,
+      timestamp: log.createdAt,
+      user: log.user?.email || log.user?.username || `Người dùng #${log.userId}`,
+      action: log.action,
+    };
+  });
 }

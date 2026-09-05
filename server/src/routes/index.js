@@ -11,6 +11,7 @@ import permissionRoutes from "./rbac/permission.route.js";
 import userPermissionRoutes from "./rbac/userPermission.route.js";
 import categoryRoutes from "./category/category.route.js";
 import tagRoutes from "./tag/tag.route.js";
+import tagGroupRoutes from "./tag/tagGroup.route.js";
 import placeRoutes from "./place/place.route.js";
 import districtRoutes from "./district/district.route.js";
 import wardRoutes from "./district/ward.route.js";
@@ -31,13 +32,16 @@ import bookingRoutes from "./booking/booking.route.js";
 import bookingPublicRoutes from "./booking/bookingPublic.route.js";
 import autoApproveRuleRoutes from "./autoApproveRule/autoApproveRule.route.js";
 import voucherRoutes from "./voucher/voucher.route.js";
+import voucherPublicRoutes from "./voucher/voucherPublic.route.js";
 import reviewRoutes from "./review/review.route.js";
 import adminReviewRoutes from "./review/adminReview.route.js";
 import feedbackRoutes from "./feedback/feedback.route.js";
 import serviceBookingRoutes from "./booking/serviceBooking.route.js";
 import aiRoutes from "./ai/ai.route.js";
+import adminAiRoutes from "./adminAi/adminAi.route.js";
 import routingRoutes from "../modules/routing/routing.routes.js";
 import navigationRoutes from "../modules/navigation/navigation.routes.js";
+import placeTelemetryRoutes from "./analytics/placeTelemetry.route.js";
 import dashboardRoutes from "./dashboard/dashboard.route.js";
 import notificationRoutes from "./notification/notification.route.js";
 import eventRoutes from "./event/event.route.js";
@@ -45,6 +49,9 @@ import cmsRoutes from "./cms/cms.route.js";
 import bannerRoutes from "./banner/banner.route.js";
 import paymentRoutes from "./payment/payment.route.js";
 import documentRoutes from "./document/document.route.js";
+import placeV2Routes from "./v2/place.route.js";
+import locationV2Routes from "./v2/location.route.js";
+import { locationTrafficMiddleware } from "../observability/administrativeMetrics.js";
 import { businessRouter as subscriptionRoutes, adminRouter as adminSubscriptionRoutes } from "./subscription/subscription.route.js";
 import {
   authLimiter,
@@ -52,12 +59,12 @@ import {
   businessApiLimiter,
   refreshLimiter,
   recoveryLimiter,
+  otpVerificationLimiter,
+  tripShareAccessLimiter,
   routingLimiter,
-  aiNavigateLimiter,
   navigationLimiter,
   navigationTelemetryLimiter,
   changePasswordLimiter,
-  groqChatLimiter,
   documentDownloadLimiter,
 } from "../middlewares/rateLimitMiddleware.js";
 
@@ -72,11 +79,10 @@ export const registerRateLimiters = (app) => {
   app.use("/api/auth/forgot-password", recoveryLimiter);
   app.use("/api/auth/reset-password", recoveryLimiter);
   app.use("/api/auth/resend-verification-public", recoveryLimiter);
+  app.use("/api/auth/verify-email-otp", otpVerificationLimiter);
   app.use("/api/auth/change-password", changePasswordLimiter);
+  app.use("/api/profile/shared-trip", tripShareAccessLimiter);
   app.use("/api/routes", routingLimiter);
-  app.use("/api/ai/navigate", aiNavigateLimiter);
-  app.use("/api/ai/groq-chat", groqChatLimiter);
-  app.use("/api/ai/voice", groqChatLimiter);
   app.use("/api/navigation/navigate", navigationLimiter);
   app.use("/api/navigation/telemetry", navigationTelemetryLimiter);
   app.use("/api/documents/download", documentDownloadLimiter);
@@ -91,6 +97,8 @@ export const registerRateLimiters = (app) => {
 };
 
 export const registerApiRoutes = (app) => {
+  app.use("/api/v2/places", placeV2Routes);
+  app.use("/api/v2/locations", locationTrafficMiddleware("v2"), locationV2Routes);
   // Public routes (no auth required)
   app.use("/api/staff/invite", staffInvitePublicRoutes);
 
@@ -106,9 +114,10 @@ export const registerApiRoutes = (app) => {
   app.use("/api/permissions", permissionRoutes);
   app.use("/api/categories", categoryRoutes);
   app.use("/api/tags", tagRoutes);
+  app.use("/api/tag-groups", tagGroupRoutes);
   app.use("/api/places", placeRoutes);
-  app.use("/api/districts", districtRoutes);
-  app.use("/api/wards", wardRoutes);
+  app.use("/api/districts", locationTrafficMiddleware("v1"), districtRoutes);
+  app.use("/api/wards", locationTrafficMiddleware("v1"), wardRoutes);
   app.use("/api/boundaries", boundaryRoutes);
   app.use("/api/settings", settingsRoutes);
   // Register specific /api/business/* sub-routes BEFORE the generic /api/business
@@ -131,6 +140,7 @@ export const registerApiRoutes = (app) => {
   app.use("/api/admin/reviews", adminReviewRoutes);
   app.use("/api/bookings", bookingPublicRoutes);
   app.use("/api/services", serviceBookingRoutes);
+  app.use("/api/vouchers", voucherPublicRoutes);
 
   app.use("/api/feedback", feedbackRoutes);
   app.use("/api/notifications", notificationRoutes);
@@ -141,9 +151,11 @@ export const registerApiRoutes = (app) => {
   app.use("/api/cms", cmsRoutes);
   app.use("/api/subscriptions", subscriptionRoutes);
   app.use("/api/admin/subscriptions", adminSubscriptionRoutes);
+  app.use("/api/v1/admin/ai", adminAiRoutes);
   app.use("/api/ai", aiRoutes);
   app.use("/api/routes", routingRoutes);
   app.use("/api/navigation", navigationRoutes);
+  app.use("/api/telemetry", placeTelemetryRoutes);
   app.use("/api", userPermissionRoutes);
   app.use("/api", userRoutes);
 };

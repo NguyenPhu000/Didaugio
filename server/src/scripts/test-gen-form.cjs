@@ -1,6 +1,15 @@
+require("dotenv/config");
+
 const crypto = require("crypto");
-const merchant = "SP-TEST-NH63AB24";
-const key = "spsk_test_kUAB9vbAnfDBFwpd1poptav2jFvmcaQb";
+
+function requireEnvironmentVariable(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} must be set`);
+  return value;
+}
+
+const merchant = requireEnvironmentVariable("SEPAY_MERCHANT_ID");
+const key = requireEnvironmentVariable("SEPAY_SECRET_KEY");
 const fields = {
   merchant,
   operation: "PURCHASE",

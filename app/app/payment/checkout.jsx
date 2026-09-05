@@ -1,7 +1,10 @@
+// MAP: PaymentCheckoutScreen
+// ├── UI: @/modules/booking/components/{OrderSummary, PaymentMethodSelector}
+// └── API: @/modules/booking/hooks/usePayment, @/modules/booking/api/bookingApi
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
   ActivityIndicator,
-  Alert,
   AppState,
   Linking,
   Pressable,
@@ -11,6 +14,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { showAppAlertLegacy } from "../../src/utils/appAlert";
 import * as WebBrowser from "expo-web-browser";
 import safeAsyncStorage from "../../src/utils/safeAsyncStorage";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
@@ -77,7 +81,7 @@ export default function PaymentCheckoutScreen() {
       setTimeLeft(remaining);
       if (remaining <= 0) setIsExpired(true);
     } catch (err) {
-      Alert.alert("Lỗi", err?.message || "Không thể tải thông tin đơn hàng");
+      showAppAlertLegacy("Lỗi", err?.message || "Không thể tải thông tin đơn hàng");
     } finally {
       setLoadingBooking(false);
     }
@@ -206,7 +210,7 @@ export default function PaymentCheckoutScreen() {
       startPolling(paymentId, bookingId);
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || "Thanh toán thất bại";
-      Alert.alert("Lỗi thanh toán", msg);
+      showAppAlertLegacy("Lỗi thanh toán", msg);
       try {
         await safeAsyncStorage.removeItem(PENDING_PAYMENT_BOOKING_KEY);
       } catch {

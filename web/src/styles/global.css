@@ -159,7 +159,7 @@
 
 /* Material Icons Round styling */
 .material-icons-round {
-  font-family: "Material Icons Round";
+  font-family: "Material Icons Round", sans-serif;
   font-weight: normal;
   font-style: normal;
   font-size: 24px;
@@ -674,6 +674,28 @@
 .page-enter {
   animation: page-fade-in 0.3s ease-out forwards;
 }
+
+/* ============================================
+   AIDA / High-End Micro-Motion Animations
+   ============================================ */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); filter: blur(6px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes fade-down {
+  from { opacity: 0; transform: translateY(-16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes hero-rise {
+  from { opacity: 0; transform: translateY(64px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-fade-up { animation: fade-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-fade-down { animation: fade-down 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-hero-rise { animation: hero-rise 1.1s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
 /* ============================================
    Accessibility: Reduced Motion Support

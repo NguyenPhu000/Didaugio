@@ -2,12 +2,14 @@ import { Fragment, useMemo, useState, useEffect } from "react";
 import { StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
+import { useReducedMotion } from "react-native-reanimated";
 import { MaterialIconsRounded } from "../../../components/primitives/MaterialIconsRounded";
 import { Box, Text, Pressable } from "../../../components/primitives";
 import { cn } from "../../../lib/cn";
 import {
   buildSummary,
-  getHeroTrip,
+  getHeroTrips,
   getDateRangeLabel,
   getTimelineLabel,
   getDaysUntil,
@@ -28,13 +30,30 @@ export function TripsDashboard({
   onCreate,
 }) {
   const { t } = useTranslation();
-  const heroTrip = useMemo(() => getHeroTrip(trips), [trips]);
+  const heroTrips = useMemo(() => getHeroTrips(trips), [trips]);
   const summary = useMemo(() => buildSummary(trips), [trips]);
   const filters = getTripFilters();
+  const reduceMotion = useReducedMotion();
+
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isHeroInteracting, setIsHeroInteracting] = useState(false);
+
+  // Auto-advance only when motion is allowed and the user is not touching the hero.
+  useEffect(() => {
+    if (heroTrips.length <= 1 || reduceMotion || isHeroInteracting) return;
+    const timer = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % heroTrips.length);
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [heroTrips.length, isHeroInteracting, reduceMotion]);
+
+  // Keep activeIndex within bounds if trips change
+  const safeIndex = activeIndex >= heroTrips.length ? 0 : activeIndex;
+  const currentHeroTrip = heroTrips[safeIndex] || null;
 
   const heroCoverUri = useMemo(
-    () => (heroTrip ? resolveTripCoverUri(heroTrip, HERO_COVER_WIDTH) : null),
-    [heroTrip],
+    () => (currentHeroTrip ? resolveTripCoverUri(currentHeroTrip, HERO_COVER_WIDTH) : null),
+    [currentHeroTrip],
   );
 
   const [imgSrc, setImgSrc] = useState({ uri: heroCoverUri });
@@ -44,12 +63,12 @@ export function TripsDashboard({
       if (current?.uri === heroCoverUri) return current;
       return { uri: heroCoverUri };
     });
-  }, [heroCoverUri, heroTrip?.id]);
+  }, [heroCoverUri, currentHeroTrip?.id]);
 
-  const timelineLabel = heroTrip ? getTimelineLabel(heroTrip) : null;
+  const timelineLabel = currentHeroTrip ? getTimelineLabel(currentHeroTrip) : null;
   const heroDaysUntil = useMemo(
-    () => getDaysUntil(heroTrip?.startDate),
-    [heroTrip?.startDate],
+    () => getDaysUntil(currentHeroTrip?.startDate),
+    [currentHeroTrip?.startDate],
   );
 
   return (
@@ -76,71 +95,115 @@ export function TripsDashboard({
         </Pressable>
       </Box>
 
-      {/* ── Hero Trip Card ── */}
-      {heroTrip ? (
-        <Pressable
-          onPress={() => onOpenHero(heroTrip.id)}
-          className="h-[232px] rounded-[26px] overflow-hidden mb-5 bg-[#173B39] active:opacity-95"
-          style={SHADOW.hero}
-        >
-          {imgSrc?.uri ? (
-            <Image
-              source={imgSrc}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              transition={300}
-              cachePolicy="memory-disk"
-              onError={() => setImgSrc({ uri: null })}
+      {/* ── Hero Trip Carousel Card (Awwwards-Tier Auto-Sliding 10s) ── */}
+      {currentHeroTrip ? (
+        <Box className="-mx-2 p-1.5 rounded-[32px] bg-white/10 border border-white/20 mb-6 shadow-2xl">
+          <Pressable
+            onPress={() => onOpenHero(currentHeroTrip.id)}
+            onPressIn={() => setIsHeroInteracting(true)}
+            onPressOut={() => setIsHeroInteracting(false)}
+            className="h-[310px] rounded-[26px] overflow-hidden bg-[#08090C] border border-white/20 active:opacity-95"
+            style={SHADOW.hero}
+          >
+            {imgSrc?.uri ? (
+              <Image
+                source={imgSrc}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                transition={350}
+                cachePolicy="memory-disk"
+                onError={() => setImgSrc({ uri: null })}
+              />
+            ) : (
+              <Box className="absolute inset-0 bg-[#0D0E12]" />
+            )}
+
+            {/* 3-Stop Cinematic Gradient Overlay */}
+            <LinearGradient
+              colors={["transparent", "rgba(8, 9, 12, 0.4)", "rgba(8, 9, 12, 0.96)"]}
+              locations={[0, 0.45, 1]}
+              style={StyleSheet.absoluteFillObject}
+              pointerEvents="none"
             />
-          ) : null}
-          <Box className="absolute inset-0 bg-black/15" pointerEvents="none" />
-          <Box className="absolute bottom-0 left-0 right-0 h-[72%] bg-black/55" pointerEvents="none" />
 
-          <Box className="absolute top-4 left-4 rounded-full overflow-hidden">
-            <Box className="flex-row items-center px-3 py-1.5 gap-1.5 bg-white/90">
-              <Box className="w-1.5 h-1.5 rounded-full bg-success" />
-              <Text className="text-[11px] uppercase font-semibold text-ink">
-                {timelineLabel || t("tripDashboard.upcoming")}
-              </Text>
-            </Box>
-          </Box>
-
-          <Box className="absolute bottom-0 left-0 right-0 p-5 gap-2">
-            <Text
-              className="text-white text-[28px] leading-[32px] font-semibold"
-              numberOfLines={2}
-            >
-              {heroTrip.title || t("tripDashboard.newTrip")}
-            </Text>
-
-            <Box className="flex-row items-center gap-2">
-              <Box className="flex-row flex-1 items-center gap-1.5">
-                <MaterialIconsRounded name="event" size={14} color="rgba(255,255,255,0.8)" />
-                <Text className="flex-1 text-white text-[13px] font-medium" numberOfLines={1}>
-                  {getDateRangeLabel(heroTrip)}
+            {/* Top Header: Floating Status Pill (Left), Pagination Dots (Center), Arrow (Right) */}
+            <Box className="absolute top-4 left-4 right-4 flex-row items-center justify-between z-10">
+              <Box className="flex-row items-center px-3.5 py-1.5 gap-2 bg-black/60 border border-white/30 rounded-full">
+                <Box className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34D399]" />
+                <Text className="text-[11px] uppercase font-bold text-white tracking-[0.12em]">
+                  {timelineLabel || t("tripDashboard.upcoming")}
                 </Text>
               </Box>
-              <Box className="flex-row items-center gap-1.5">
-                <MaterialIconsRounded name="place" size={14} color="rgba(255,255,255,0.8)" />
-                <Text className="text-white text-[13px] font-medium">
-                  {t("tripDashboard.destinations", {
-                    count: heroTrip.destinations?.length || 0,
-                  })}
-                </Text>
+
+              {/* Carousel Pagination Dots (when multiple active/upcoming trips) */}
+              {heroTrips.length > 1 ? (
+                <Box className="flex-row items-center gap-1.5 px-3 py-1.5 bg-black/60 border border-white/30 rounded-full">
+                  {heroTrips.map((tItem, idx) => (
+                    <Pressable
+                      key={tItem.id || idx}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        setActiveIndex(idx);
+                      }}
+                      hitSlop={6}
+                      className={cn(
+                        "h-1.5 rounded-full transition-all duration-300",
+                        idx === safeIndex ? "w-4 bg-white" : "w-1.5 bg-white/40",
+                      )}
+                    />
+                  ))}
+                </Box>
+              ) : null}
+
+              {/* Button-in-Button Trailing Action Icon */}
+              <Box className="w-9 h-9 rounded-full bg-black/60 border border-white/30 items-center justify-center">
+                <MaterialIconsRounded name="arrow-forward" size={17} color="#FFFFFF" />
               </Box>
             </Box>
 
-            {heroDaysUntil !== null && heroDaysUntil <= 30 ? (
-              <Text className="text-[12px] font-semibold text-white/80">
-                {heroDaysUntil === 0
-                  ? t("tripDashboard.startToday")
-                  : heroDaysUntil === 1
-                    ? t("tripDashboard.startTomorrow")
-                    : t("tripDashboard.daysUntil", { count: heroDaysUntil })}
+            {/* Bottom Content Area: Expanded Breathing Room & Premium Typography */}
+            <Box className="absolute bottom-0 left-0 right-0 p-6 gap-3 z-20">
+              <Text
+                className="text-white text-[26px] leading-[31px] font-extrabold tracking-[-0.6px]"
+                numberOfLines={2}
+              >
+                {currentHeroTrip.title || t("tripDashboard.newTrip")}
               </Text>
-            ) : null}
-          </Box>
-        </Pressable>
+
+              <Box className="flex-row flex-wrap items-center justify-between gap-y-2 pt-3 border-t border-white/25">
+                <Box className="flex-row items-center gap-2 shrink-0">
+                  <MaterialIconsRounded name="event" size={15} color="#FFFFFF" />
+                  <Text className="text-white text-[13.5px] font-bold" style={{ fontVariant: ["tabular-nums"] }} numberOfLines={1}>
+                    {getDateRangeLabel(currentHeroTrip)}
+                  </Text>
+                </Box>
+
+                <Box className="flex-row items-center gap-3 shrink-0">
+                  <Box className="flex-row items-center gap-1.5">
+                    <MaterialIconsRounded name="place" size={15} color="#FFFFFF" />
+                    <Text className="text-white text-[13.5px] font-bold" style={{ fontVariant: ["tabular-nums"] }}>
+                      {t("tripDashboard.destinations", {
+                        count: currentHeroTrip.destinations?.length || 0,
+                      })}
+                    </Text>
+                  </Box>
+
+                  {heroDaysUntil !== null && heroDaysUntil >= 0 && heroDaysUntil <= 30 ? (
+                    <Box className="px-2.5 py-1 rounded-full bg-white/20 border border-white/30">
+                      <Text className="text-[11px] font-extrabold text-white tracking-wide" style={{ fontVariant: ["tabular-nums"] }}>
+                        {heroDaysUntil === 0
+                          ? t("tripDashboard.startToday")
+                          : heroDaysUntil === 1
+                            ? t("tripDashboard.startTomorrow")
+                            : t("tripDashboard.daysUntil", { count: heroDaysUntil })}
+                      </Text>
+                    </Box>
+                  ) : null}
+                </Box>
+              </Box>
+            </Box>
+          </Pressable>
+        </Box>
       ) : (
         <Pressable
           onPress={onCreate}
@@ -195,13 +258,8 @@ export function TripsDashboard({
         })}
       </Box>
 
-      {/* ── Section Header + Apple Custom Segmented Filters ── */}
-      <Box className="flex-row items-center justify-between mb-4">
-        <Text className="text-[20px] font-semibold text-ink">
-          {filteredCount > 0
-            ? t("tripDashboard.listWithCount", { count: filteredCount })
-            : t("tripDashboard.list")}
-        </Text>
+      {/* ── Apple Custom Segmented Filters ── */}
+      <Box className="flex-row items-center justify-end mb-3">
         <Box className="flex-row bg-[#EEF0EF] p-0.5 rounded-[10px] items-center">
           {filters.map((filter) => {
             const active = activeFilter === filter.key;

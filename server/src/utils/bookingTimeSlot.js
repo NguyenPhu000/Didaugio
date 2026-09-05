@@ -9,6 +9,65 @@ export const TIME_SLOT_KEYS = {
 };
 
 const TZ = "Asia/Ho_Chi_Minh";
+const VIETNAM_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+function assertValidDate(date, name) {
+  if (Number.isNaN(date.getTime())) {
+    throw new RangeError(`${name} must be a valid date`);
+  }
+  return date;
+}
+
+function getUseDateParts(useDate) {
+  if (typeof useDate === "string") {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(useDate);
+    if (!match) throw new RangeError("useDate must be a valid date");
+    const [year, month, day] = match.slice(1).map(Number);
+    const candidate = new Date(Date.UTC(year, month - 1, day));
+    if (
+      candidate.getUTCFullYear() !== year ||
+      candidate.getUTCMonth() !== month - 1 ||
+      candidate.getUTCDate() !== day
+    ) {
+      throw new RangeError("useDate must be a valid date");
+    }
+    return { year, month, day };
+  }
+
+  const date = assertValidDate(new Date(useDate), "useDate");
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+  };
+}
+
+function parseBookingAt(value) {
+  if (value instanceof Date) return assertValidDate(new Date(value), "bookingAt");
+
+  const raw = String(value ?? "").trim();
+  if (!raw) throw new RangeError("bookingAt must be a valid date");
+  if (!/(?:Z|[+-]\d{2}:?\d{2})$/iu.test(raw)) {
+    throw new RangeError("bookingAt must include a Z or numeric UTC offset");
+  }
+
+  const calendarMatch = /^(\d{4}-\d{2}-\d{2})T/u.exec(raw);
+  if (calendarMatch) getUseDateParts(calendarMatch[1]);
+
+  return assertValidDate(new Date(raw), "bookingAt");
+}
+
+function getUseTimeParts(useTime) {
+  if (useTime === null || useTime === undefined || String(useTime).trim() === "") {
+    return { hour: 0, minute: 0 };
+  }
+  const match = /^(\d{2}):(\d{2})$/.exec(String(useTime).trim());
+  if (!match) throw new RangeError("useTime must use HH:mm format");
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) throw new RangeError("useTime must use HH:mm format");
+  return { hour, minute };
+}
 
 /**
  * @param {Date | string | null | undefined} bookingAt
@@ -62,25 +121,37 @@ export function endOfMinuteUtc(d) {
  * @param {string | null | undefined} useTime
  */
 export function combineUseDateAndTime(useDate, useTime) {
-  const base = new Date(useDate);
-  const y = base.getUTCFullYear();
-  const mo = base.getUTCMonth();
-  const da = base.getUTCDate();
-  let hh = 0;
-  let mm = 0;
-  if (useTime && String(useTime).trim()) {
-    const parts = String(useTime).trim().split(":");
-    hh = parseInt(parts[0], 10) || 0;
-    mm = parseInt(parts[1], 10) || 0;
+  const { year, month, day } = getUseDateParts(useDate);
+  const { hour, minute } = getUseTimeParts(useTime);
+  return new Date(Date.UTC(year, month - 1, day, hour, minute) - VIETNAM_OFFSET_MS);
+}
+
+/**
+ * Resolves raw booking-create time input without coercing calendar strings through Date.
+ * @param {{ bookingAt?: Date | string, useDate?: Date | string, useTime?: string } | null | undefined} payload
+ */
+export function resolveBookingAtFromPayload(payload = {}) {
+  if (payload?.bookingAt) return parseBookingAt(payload.bookingAt);
+  if (payload?.useDate) {
+    return combineUseDateAndTime(payload.useDate, payload.useTime || "09:00");
   }
-  return new Date(Date.UTC(y, mo, da, hh, mm, 0, 0));
+  return null;
+}
+
+export function isValidBookingAt(value) {
+  try {
+    parseBookingAt(value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
  * @param {Date} bookingAt
  */
 export function toUseTimeString(bookingAt) {
-  const d = bookingAt instanceof Date ? bookingAt : new Date(bookingAt);
+  const d = assertValidDate(bookingAt instanceof Date ? bookingAt : new Date(bookingAt), "bookingAt");
   return d.toLocaleTimeString("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
@@ -94,7 +165,7 @@ export function toUseTimeString(bookingAt) {
  * @param {Date} bookingAt
  */
 export function toUseDateOnly(bookingAt) {
-  const d = bookingAt instanceof Date ? bookingAt : new Date(bookingAt);
+  const d = assertValidDate(bookingAt instanceof Date ? bookingAt : new Date(bookingAt), "bookingAt");
   const ymd = d.toLocaleDateString("en-CA", { timeZone: TZ });
   const [y, m, day] = ymd.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, day, 12, 0, 0, 0));

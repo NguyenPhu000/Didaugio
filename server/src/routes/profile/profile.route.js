@@ -33,6 +33,7 @@ router.put(
   authenticate,
   profileController.updateTravelPreferences,
 );
+router.delete("/account", authenticate, profileController.deleteMyAccount);
 
 router.get("/saved-places", authenticate, profileController.getSavedPlaces);
 router.get(

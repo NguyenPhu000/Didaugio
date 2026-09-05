@@ -1,101 +1,136 @@
-import { memo, useCallback } from "react";
-import { Pressable, Text, View } from "react-native";
-import { Image } from "expo-image";
+import { memo } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import * as Haptics from "expo-haptics";
-import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
-} from "../../../constants/design-tokens";
+import Animated from "react-native-reanimated";
+import { TOKENS } from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
 import { getPlaceLocation } from "../utils/exploreHelpers";
+import {
+  CREAM,
+  Eyebrow,
+  INK,
+  POSTER_MEDIA_RADIUS,
+  PosterMedia,
+  PosterScrim,
+  SectionHeading,
+  usePressScale,
+} from "./cinematic";
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const BENTO_H = 344;
+const TILE_GAP = 10;
 
 function BentoTile({ place, large = false, onPress, defaultCategoryLabel, defaultExperienceLabel }) {
+  const { t } = useTranslation();
   const imageUri = resolvePlaceImageUri(place);
   const category = place?.category?.name || defaultCategoryLabel;
   const location = getPlaceLocation(place);
 
-  const handlePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onPress?.();
-  }, [onPress]);
+  const { onPressIn, onPressOut, cardStyle, mediaStyle } = usePressScale({
+    to: 0.975,
+    mediaTo: 1.05,
+  });
 
   return (
-    <Pressable
-      onPress={handlePress}
-      style={({ pressed }) => [
-        { borderCurve: "continuous", opacity: pressed ? 0.92 : 1 },
+    <AnimatedPressable
+      onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      accessibilityRole="button"
+      accessibilityLabel={place?.name || defaultExperienceLabel}
+      accessibilityHint={t("explore.accessibility.openPlace")}
+      style={[
+        cardStyle,
+        {
+          flex: large ? 1.28 : 1,
+          borderRadius: POSTER_MEDIA_RADIUS + 4,
+          borderCurve: "continuous",
+          overflow: "hidden",
+          backgroundColor: CREAM,
+        },
       ]}
-      className={`overflow-hidden rounded-[20px] relative ${
-        large ? "flex-[1.2]" : "flex-1"
-      }`}
     >
-      {imageUri ? (
-        <Image
-          source={{ uri: imageUri }}
-          contentFit="cover"
-          transition={220}
-          cachePolicy="memory-disk"
-          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+      <Animated.View style={[StyleSheet.absoluteFillObject, mediaStyle]}>
+        <PosterMedia
+          uri={imageUri}
+          width={large ? 420 : 260}
+          fallbackIcon="restaurant"
         />
-      ) : (
-        <View
-          className="absolute inset-0 items-center justify-center"
-          style={{ backgroundColor: APPLE_THEME.surfaceMuted }}
-        >
-          <MaterialIconsRounded
-            name="restaurant"
-            size={large ? 34 : 26}
-            color={APPLE_THEME.textMuted}
-          />
-        </View>
-      )}
+      </Animated.View>
 
+      {/* Grain texture để ảnh editorial có cảm giác film, không quá digital. */}
       <View
         pointerEvents="none"
-        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
-        className={large ? "bg-black/45" : "bg-black/30"}
+        style={{
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: "rgba(255,255,255,0.05)",
+          opacity: 0.55,
+        }}
       />
 
-      <View className="absolute left-2.5 right-2.5 bottom-2.5">
-        {!large ? (
-          <View
-            className="self-start px-2 h-5 rounded-full justify-center mb-1.5"
-            style={{ backgroundColor: "rgba(255,255,255,0.88)" }}
-          >
-            <Text
-              className="text-[10px] font-semibold tracking-[0.2px]"
-              style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.semibold }}
-              numberOfLines={1}
-            >
-              {category}
-            </Text>
-          </View>
-        ) : null}
+      <PosterScrim
+        bottomHeight={large ? "58%" : "72%"}
+        topHeight="22%"
+        strength={large ? 0.82 : 0.76}
+        withTop={large}
+      />
+
+      <View
+        style={{
+          position: "absolute",
+          left: large ? 15 : 12,
+          right: large ? 15 : 12,
+          bottom: large ? 15 : 12,
+        }}
+      >
+        <Eyebrow>{category}</Eyebrow>
 
         <Text
-          className={`text-white tracking-[-0.3px] font-bold ${
-            large ? "text-[26px] leading-[30px]" : "text-[17px] leading-[21px]"
-          }`}
-          style={{ fontFamily: TOKENS.font.heading }}
+          style={{
+            marginTop: 5,
+            color: "#FFFFFF",
+            fontSize: large ? 24 : 15.5,
+            lineHeight: large ? 29 : 19.5,
+            letterSpacing: large ? -0.7 : -0.3,
+            fontFamily: TOKENS.font.heading,
+          }}
           numberOfLines={2}
         >
           {place?.name || defaultExperienceLabel}
         </Text>
 
         {large && location ? (
-          <Text
-            className="mt-0.5 text-[11px] font-medium"
-            style={{ color: "rgba(255,255,255,0.75)", fontFamily: TOKENS.font.medium }}
-            numberOfLines={1}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              marginTop: 6,
+            }}
           >
-            {location}
-          </Text>
+            <MaterialIconsRounded
+              name="place"
+              size={12}
+              color="rgba(255,255,255,0.6)"
+            />
+            <Text
+              style={{
+                flex: 1,
+                color: "rgba(255,255,255,0.74)",
+                fontSize: 12,
+                fontFamily: TOKENS.font.medium,
+              }}
+              numberOfLines={1}
+            >
+              {location}
+            </Text>
+          </View>
         ) : null}
       </View>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -109,50 +144,66 @@ function ExperienceBentoSectionInner({ places, onPressPlace }) {
   const defaultExperienceLabel = t("explore.card.defaultExperience");
 
   return (
-    <View
-      style={{ paddingHorizontal: TAB_SCREEN_PADDING }}
-      className="mt-7"
-    >
-      <View className="flex-row items-center gap-2.5 mb-3.5">
-        <View
-          className="w-1 h-6 rounded-full"
-          style={{ backgroundColor: APPLE_THEME.focusBlue }}
+    <View style={{ paddingHorizontal: TAB_SCREEN_PADDING, marginTop: 38 }}>
+      <View style={{ marginBottom: 18 }}>
+        <SectionHeading
+          title={t("explore.sections.culinary")}
+          right={
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 5,
+                paddingHorizontal: 11,
+                height: 26,
+                borderRadius: 13,
+                backgroundColor: "rgba(11,11,12,0.04)",
+                borderWidth: 1,
+                borderColor: "rgba(11,11,12,0.07)",
+              }}
+            >
+              <MaterialIconsRounded
+                name="auto-awesome"
+                size={13}
+                color={INK}
+              />
+              <Text
+                style={{
+                  color: INK,
+                  fontSize: 11,
+                  fontFamily: TOKENS.font.semibold,
+                  letterSpacing: 0.2,
+                }}
+              >
+                {t("explore.bento.curated", { defaultValue: "Tuyển chọn" })}
+              </Text>
+            </View>
+          }
         />
-        <Text
-          className="text-[22px] leading-7 tracking-[-0.5px] font-bold"
-          style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.heading }}
-        >
-          {t("explore.sections.culinary")}
-        </Text>
       </View>
 
-      <View
-        className="rounded-[28px] p-2.5 bg-white border-[0.5px]"
-        style={{ borderColor: APPLE_THEME.border, ...TOKENS.shadow.sm }}
-      >
-        <View className="flex-row gap-2 h-[300px]">
+      <View style={{ flexDirection: "row", gap: TILE_GAP, height: BENTO_H }}>
+        <BentoTile
+          place={hero}
+          large
+          defaultCategoryLabel={defaultCategoryLabel}
+          defaultExperienceLabel={defaultExperienceLabel}
+          onPress={() => onPressPlace(hero)}
+        />
+
+        <View style={{ flex: 1, gap: TILE_GAP }}>
           <BentoTile
-            place={hero}
-            large
+            place={topRight}
             defaultCategoryLabel={defaultCategoryLabel}
             defaultExperienceLabel={defaultExperienceLabel}
-            onPress={() => onPressPlace(hero)}
+            onPress={() => onPressPlace(topRight)}
           />
-
-          <View className="flex-1 gap-2">
-            <BentoTile
-              place={topRight}
-              defaultCategoryLabel={defaultCategoryLabel}
-              defaultExperienceLabel={defaultExperienceLabel}
-              onPress={() => onPressPlace(topRight)}
-            />
-            <BentoTile
-              place={bottomRight}
-              defaultCategoryLabel={defaultCategoryLabel}
-              defaultExperienceLabel={defaultExperienceLabel}
-              onPress={() => onPressPlace(bottomRight)}
-            />
-          </View>
+          <BentoTile
+            place={bottomRight}
+            defaultCategoryLabel={defaultCategoryLabel}
+            defaultExperienceLabel={defaultExperienceLabel}
+            onPress={() => onPressPlace(bottomRight)}
+          />
         </View>
       </View>
     </View>

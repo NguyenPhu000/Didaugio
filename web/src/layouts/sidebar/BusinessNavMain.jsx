@@ -43,6 +43,25 @@ function navTargetMatchesLocation(targetUrl, location) {
   return true;
 }
 
+const ROUTE_PREFETCH_MAP = {
+  "/business/bookings": () => import("@/pages/business/BookingListPage"),
+  "/business/services": () => import("@/pages/business/ServiceListPage"),
+  "/business/vouchers": () => import("@/pages/business/VoucherListPage"),
+  "/business/staff": () => import("@/pages/business/StaffManagementPage"),
+  "/business/subscription": () => import("@/pages/business/SubscriptionPage"),
+  "/business/revenue": () => import("@/pages/business/RevenuePage"),
+  "/business/places": () => import("@/pages/business/BusinessPlacePage"),
+};
+
+function handleRoutePrefetch(url) {
+  if (!url) return;
+  const path = url.split("?")[0];
+  const prefetcher = ROUTE_PREFETCH_MAP[path];
+  if (prefetcher) {
+    prefetcher().catch(() => {});
+  }
+}
+
 /**
  * BusinessNavMain — sidebar navigation for the business portal.
  * Visually distinct from admin NavMain: monochrome zinc palette, cleaner active states.
@@ -224,7 +243,11 @@ function BusinessExpandedMenuItem({ item, isActive, location }) {
                       isSubActive && "!bg-zinc-950 !text-white dark:!bg-zinc-100 dark:!text-zinc-950",
                     )}
                   >
-                    <Link to={subItem.url}>
+                    <Link
+                      to={subItem.url}
+                      onMouseEnter={() => handleRoutePrefetch(subItem.url)}
+                      onFocus={() => handleRoutePrefetch(subItem.url)}
+                    >
                       {subItem.icon && (
                         <AnimatedIcon
                           icon={subItem.icon}
@@ -264,7 +287,11 @@ function BusinessSimpleMenuItem({ item, isActive }) {
           isActive && "bg-zinc-100 text-zinc-950 dark:bg-zinc-800 dark:text-zinc-100",
         )}
       >
-        <Link to={item.url}>
+        <Link
+          to={item.url}
+          onMouseEnter={() => handleRoutePrefetch(item.url)}
+          onFocus={() => handleRoutePrefetch(item.url)}
+        >
           <AnimatedIcon
             icon={item.icon}
             className="size-4 shrink-0"

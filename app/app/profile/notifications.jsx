@@ -1,3 +1,7 @@
+// MAP: NotificationsScreen
+// ├── UI: @/modules/notifications/components/{NotificationCard, NotificationFilterTabs}
+// └── API: @/modules/notifications/hooks/useNotifications
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -348,30 +352,28 @@ export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("unread");
-  const [allItems, setAllItems] = useState([]);
-  const [localUnreadCount, setLocalUnreadCount] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-
-  const { data, isLoading, refetch, isRefetching } = useNotifications();
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, refetch, isRefetching } = useNotifications({ unreadOnly: activeTab === "unread" });
   const markRead = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
 
   // Sync server data into local state + update badge
   useEffect(() => {
-    if (data?.items) {
-      const serverItems = data.items;
-      setAllItems(serverItems);
-      const count = data.unreadCount ?? 0;
-      setLocalUnreadCount(count);
-      setHasMore(serverItems.length >= 40);
+    if (ExpoNotifications) {
 
       // Đồng bộ badge count trên app icon
-      if (ExpoNotifications) {
-        ExpoNotifications.setBadgeCountAsync(count).catch(() => {});
-      }
+      ExpoNotifications.setBadgeCountAsync(data?.pages?.[0]?.unreadCount ?? 0).catch(() => {});
     }
   }, [data]);
+
+  const allItems = useMemo(() => {
+    const seen = new Set();
+    return (data?.pages || []).flatMap((page) => page?.data || []).filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  }, [data]);
+  const localUnreadCount = data?.pages?.[0]?.unreadCount ?? 0;
 
   const items = useMemo(() => {
     if (activeTab === "unread") return allItems.filter((n) => !n.readAt);
@@ -386,19 +388,7 @@ export default function NotificationsScreen() {
   const handlePress = useCallback(
     (item) => {
       if (!item.readAt) {
-        markRead.mutate(item.id, {
-          onSuccess: () => {
-            setAllItems((prev) => prev.filter((n) => n.id !== item.id));
-            setLocalUnreadCount((prev) => {
-              const next = Math.max(0, prev - 1);
-              // Cập nhật badge mỗi khi mark 1 item
-              if (ExpoNotifications) {
-                ExpoNotifications.setBadgeCountAsync(next).catch(() => {});
-              }
-              return next;
-            });
-          },
-        });
+        markRead.mutate(item.id);
       }
       const route = resolveRoute(item);
       router.push(route);
@@ -407,21 +397,7 @@ export default function NotificationsScreen() {
   );
 
   const handleMarkAll = useCallback(() => {
-    markAll.mutate(undefined, {
-      onSuccess: () => {
-        setAllItems((prev) =>
-          prev.map((n) => ({
-            ...n,
-            readAt: n.readAt || new Date().toISOString(),
-          })),
-        );
-        setLocalUnreadCount(0);
-        // Clear badge khi mark all read
-        if (ExpoNotifications) {
-          ExpoNotifications.setBadgeCountAsync(0).catch(() => {});
-        }
-      },
-    });
+    markAll.mutate();
   }, [markAll]);
 
   const handleTabChange = useCallback((tab) => {
@@ -429,11 +405,8 @@ export default function NotificationsScreen() {
   }, []);
 
   const handleLoadMore = useCallback(() => {
-    if (isLoadingMore || !hasMore) return;
-    setIsLoadingMore(true);
-    // TODO: call next page API when endpoint supports pagination
-    setIsLoadingMore(false);
-  }, [isLoadingMore, hasMore]);
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   const renderItem = useCallback(
     ({ item, index }) => (
@@ -482,7 +455,7 @@ export default function NotificationsScreen() {
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.4}
           ListFooterComponent={
-            isLoadingMore ? (
+            isFetchingNextPage ? (
               <View className="py-5 items-center">
                 <ActivityIndicator size="small" color="#0071E3" />
               </View>

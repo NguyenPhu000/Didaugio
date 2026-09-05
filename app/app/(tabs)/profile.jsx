@@ -1,3 +1,7 @@
+// MAP: ProfileTabScreen
+// ├── UI: @/modules/profile/components/{UpcomingTripCard, MemoriesSection}, @/components/reacticx/settings-v1/components
+// └── API: @/modules/profile/hooks/useProfile, @/modules/trips/hooks/useTrips, @/stores/authStore
+
 import { useState, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
@@ -22,7 +26,7 @@ import { UpcomingTripCard } from "../../src/modules/profile/components/UpcomingT
 import { MemoriesSection } from "../../src/modules/profile/components/MemoriesSection";
 import { resolveMediaUrl } from "../../src/lib/media-url";
 import { NotificationBell } from "../../src/components/composed/NotificationBell";
-import { locationService } from "../../src/apis/locationService";
+import { locationService } from "../../src/api/locationService";
 import { useTranslation } from "react-i18next";
 import * as Settings from "../../src/components/reacticx/settings-v1/components";
 
@@ -462,15 +466,14 @@ function LoggedInProfileScreen({ insets, storedUser }) {
       try {
         // Lấy tên tỉnh
         const provinces = await locationService.getAllProvinces();
-        const province = provinces.find((p) => p.province_code === pCode);
-        const provinceName = province ? province.name : "";
+        const province = provinces.find((p) => p.code === pCode);
+        const provinceName = province?.fullName || province?.name || "";
 
         let districtName = "";
         if (dCode) {
-          // Lấy tên huyện
-          const districts = await locationService.getWardsByProvince(pCode);
-          const district = districts.find((d) => d.ward_code === dCode);
-          districtName = district ? district.ward_name : "";
+          const wards = await locationService.getWardsByProvince(pCode);
+          const ward = wards.find((item) => item.wardCode === dCode);
+          districtName = ward?.fullName || ward?.name || "";
         }
 
         const parts = [];

@@ -5,12 +5,11 @@ import {
   getCachedPermissions,
   setCachedPermissions,
 } from "../utils/permissionCache.js";
+import {
+  STAFF_OPERATION_PERMISSIONS,
+} from "../utils/staffPermissions.js";
 
 const SYSTEM_RESTRICTED_PERMISSIONS = {
-  [ROLES.ADMIN]: new Set([
-    "roles.manage_permissions",
-    "roles.assign_to_users",
-  ]),
   [ROLES.BUSINESS]: new Set([
     "places.approve",
     "places.reject",
@@ -43,6 +42,26 @@ async function getUserPermissions(userId, roleId) {
   const cached = getCachedPermissions(cacheKey);
   if (cached) {
     return { isSuperAdmin: false, permissions: cached.permissions };
+  }
+
+  if (roleId === ROLES.STAFF) {
+    const staff = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        businessId: true,
+        businessRole: { select: { permissions: true } },
+      },
+    });
+    const permissions = new Set(
+      staff?.businessId && Array.isArray(staff.businessRole?.permissions)
+        ? staff.businessRole.permissions.filter((permission) =>
+            STAFF_OPERATION_PERMISSIONS.has(permission),
+          )
+        : [],
+    );
+
+    setCachedPermissions(cacheKey, { permissions });
+    return { isSuperAdmin: false, permissions };
   }
 
   const [rolePermissions, customPermissions] = await Promise.all([

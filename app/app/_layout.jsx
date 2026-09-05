@@ -1,7 +1,9 @@
 import "../global.css";
+import * as Sentry from "@sentry/react-native";
+import "../src/config/sentry";
 import i18n, { resolveLanguage } from "../src/i18n";
 import { useEffect, useRef, useState } from "react";
-import { View, Alert, AppState } from "react-native";
+import { View, AppState } from "react-native";
 import safeAsyncStorage from "../src/utils/safeAsyncStorage";
 import { Stack, useRouter, useSegments, usePathname } from "expo-router";
 import { PENDING_PAYMENT_BOOKING_KEY } from "../src/modules/booking/hooks/usePayment";
@@ -12,19 +14,15 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
-import {
-  useFonts,
-  BeVietnamPro_400Regular,
-  BeVietnamPro_500Medium,
-  BeVietnamPro_600SemiBold,
-  BeVietnamPro_700Bold,
-} from "@expo-google-fonts/be-vietnam-pro";
-import {
-  Afacad_400Regular,
-  Afacad_500Medium,
-  Afacad_600SemiBold,
-  Afacad_700Bold,
-} from "@expo-google-fonts/afacad";
+import { useFonts } from "expo-font";
+import { BeVietnamPro_400Regular } from "@expo-google-fonts/be-vietnam-pro/400Regular";
+import { BeVietnamPro_500Medium } from "@expo-google-fonts/be-vietnam-pro/500Medium";
+import { BeVietnamPro_600SemiBold } from "@expo-google-fonts/be-vietnam-pro/600SemiBold";
+import { BeVietnamPro_700Bold } from "@expo-google-fonts/be-vietnam-pro/700Bold";
+import { Afacad_400Regular } from "@expo-google-fonts/afacad/400Regular";
+import { Afacad_500Medium } from "@expo-google-fonts/afacad/500Medium";
+import { Afacad_600SemiBold } from "@expo-google-fonts/afacad/600SemiBold";
+import { Afacad_700Bold } from "@expo-google-fonts/afacad/700Bold";
 import { AppProvider } from "../src/providers/AppProvider";
 import { I18nInitializer } from "../src/providers/I18nInitializer";
 import { OfflineToast } from "../src/components/composed/OfflineToast";
@@ -33,9 +31,12 @@ import { ToastContainer } from "../src/components/composed/ToastContainer";
 import { useAuthStore } from "../src/stores/authStore";
 import { useUIStore } from "../src/stores/uiStore";
 import { useOfflineSync } from "../src/modules/trips/hooks/useTripsOffline";
-import { useAlertStore } from "../src/stores/alertStore";
 import { GlobalAlert } from "../src/components/composed/GlobalAlert";
 import { isMobileUserRole } from "../src/modules/auth/utils/authRoleAccess";
+import { logger } from "../src/lib/logger";
+import CinematicSplash from "../src/components/splash/CinematicSplash";
+import { SPLASH_TIMING } from "../src/components/splash/cinematicSplashTiming";
+import { resolveStatusBarStyle } from "../src/config/statusBarStyle";
 
 // Tat strict mode canh bao doc/ghi shared value truc tiep trong render cycle vi mot so thu vien ben thu ba (nhu bottom-sheet, draggable-flatlist) chua cap nhat tuong thich.
 configureReanimatedLogger({
@@ -69,8 +70,8 @@ function PaymentRecoveryListener() {
             `/payment/result?status=pending_verify&bookingId=${pendingBookingId}`
           );
         }
-      } catch {
-        // silent
+      } catch (error) {
+        logger.warn("[PaymentRecovery] Failed to restore pending payment:", error);
       } finally {
         isProcessingRef.current = false;
       }
@@ -80,18 +81,17 @@ function PaymentRecoveryListener() {
 
   return null;
 }
-
 function OfflineSyncManager() {
   useOfflineSync();
   return null;
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
   const pathname = usePathname();
   
-  // Trạng thái Hydration từ cả 2 store
+  // Tráº¡ng thÃ¡i Hydration tá»« cáº£ 2 store
   const isAuthHydrated = useAuthStore((s) => s.isHydrated);
   const isUiHydrated = useUIStore((s) => s.isHydrated);
   const userLanguage = useUIStore((s) => s.language);
@@ -113,17 +113,19 @@ export default function RootLayout() {
     Afacad_700Bold,
   });
 
-  const [timeoutReady, setTimeoutReady] = useState(false);
+  const [bootstrapDeadlineReached, setBootstrapDeadlineReached] = useState(false);
+  const [nativeSplashHidden, setNativeSplashHidden] = useState(false);
+  const [splashFinished, setSplashFinished] = useState(false);
 
-  // Phanh cứu hộ chống đứng màn hình Splash Screen (2.5 giây)
+  // Giá»›i háº¡n pháº§n chá» hydration trÆ°á»›c video Ä‘á»ƒ trÃ¡nh "mÃ n chá» trÆ°á»›c mÃ n chá»".
   useEffect(() => {
     const timer = setTimeout(() => {
-      setTimeoutReady(true);
-    }, 2500);
+      setBootstrapDeadlineReached(true);
+    }, SPLASH_TIMING.BOOTSTRAP_DEADLINE_MS);
     return () => clearTimeout(timer);
   }, []);
 
-  // Ép i18n nhận diện ngôn ngữ ngay khi uiStore vừa đọc xong từ AsyncStorage
+  // Ã‰p i18n nháº­n diá»‡n ngÃ´n ngá»¯ ngay khi uiStore vá»«a Ä‘á»c xong tá»« AsyncStorage
   useEffect(() => {
     if (isUiHydrated && userLanguage) {
       const resolved = resolveLanguage(userLanguage);
@@ -133,115 +135,29 @@ export default function RootLayout() {
     }
   }, [isUiHydrated, userLanguage]);
 
-  // Luồng tính toán trạng thái Sẵn Sàng cuối cùng
+  // Luá»“ng tÃ­nh toÃ¡n tráº¡ng thÃ¡i Sáºµn SÃ ng cuá»‘i cÃ¹ng
   const isStoreReady = isAuthHydrated && isUiHydrated;
   const isFontReady = fontsLoaded || fontError;
-  const isReady = (isStoreReady && isFontReady) || timeoutReady;
+  const isReady =
+    (isStoreReady && isFontReady) || bootstrapDeadlineReached;
 
   useEffect(() => {
-    if (isReady) {
-      SplashScreen.hideAsync();
-    }
-  }, [isReady]);
+    if (!isReady || nativeSplashHidden) return undefined;
 
-  useEffect(() => {
-    const originalAlert = Alert.alert;
-
-    Alert.alert = (title, message, buttons, options) => {
-      let type = "info";
-      const combinedText = `${title || ""} ${message || ""}`.toLowerCase();
-
-      // Detect error type (Vietnamese + English)
-      if (
-        combinedText.includes("lỗi") ||
-        combinedText.includes("thất bại") ||
-        combinedText.includes("không thể") ||
-        combinedText.includes("error") ||
-        combinedText.includes("failed") ||
-        combinedText.includes("thiếu") ||
-        combinedText.includes("bắt buộc") ||
-        combinedText.includes("chưa nhập") ||
-        combinedText.includes("could not") ||
-        combinedText.includes("cannot") ||
-        combinedText.includes("required") ||
-        combinedText.includes("missing")
-      ) {
-        type = "error";
-      } else if (
-        // Detect success type
-        combinedText.includes("thành công") ||
-        combinedText.includes("đã lưu") ||
-        combinedText.includes("đã xóa") ||
-        combinedText.includes("success") ||
-        combinedText.includes("saved") ||
-        combinedText.includes("hoàn tất") ||
-        combinedText.includes("deleted") ||
-        combinedText.includes("completed")
-      ) {
-        type = "success";
-      } else if (
-        // Detect warning type
-        combinedText.includes("cảnh báo") ||
-        combinedText.includes("warning") ||
-        combinedText.includes("chú ý") ||
-        combinedText.includes("lưu ý")
-      ) {
-        type = "warning";
-      } else if (
-        // Detect confirm type
-        combinedText.includes("chắc chắn") ||
-        combinedText.includes("xác nhận") ||
-        combinedText.includes("bạn có muốn") ||
-        combinedText.includes("bạn có chắc") ||
-        combinedText.includes("chắc chắn muốn") ||
-        combinedText.includes("are you sure") ||
-        combinedText.includes("confirm") ||
-        (buttons && buttons.length > 1)
-      ) {
-        type = "confirm";
-      }
-
-      let mappedButtons = [];
-      if (buttons && buttons.length > 0) {
-        mappedButtons = buttons.map((btn) => ({
-          text: btn.text,
-          onPress: () => {
-            useAlertStore.getState().hideAlert();
-            btn.onPress?.();
-          },
-          style:
-            btn.style === "cancel"
-              ? "cancel"
-              : btn.style === "destructive"
-              ? "destructive"
-              : "default",
-        }));
-      } else {
-        mappedButtons = [
-          {
-            text: i18n.t("common.close"),
-            onPress: () => useAlertStore.getState().hideAlert(),
-            style: "default",
-          },
-        ];
-      }
-
-      useAlertStore.getState().showAlert({
-        title,
-        message,
-        type,
-        buttons: mappedButtons,
-        options,
+    let active = true;
+    SplashScreen.hideAsync()
+      .catch(() => {})
+      .finally(() => {
+        if (active) setNativeSplashHidden(true);
       });
-    };
 
     return () => {
-      Alert.alert = originalAlert;
+      active = false;
     };
-  }, []);
+  }, [isReady, nativeSplashHidden]);
 
   useEffect(() => {
-    if (!isStoreReady && !timeoutReady) return;
+    if (!isStoreReady && !bootstrapDeadlineReached) return;
 
     const rootSegment = segments[0];
     const childSegment = segments[1];
@@ -280,16 +196,20 @@ export default function RootLayout() {
     if (isLoggedIn && !inOnboarding && !hasOnboarded && accessToken) {
       router.replace("/onboarding");
     }
-  }, [isStoreReady, timeoutReady, accessToken, user, clearSession, isGuest, segments, hasOnboarded, router]);
+  }, [isStoreReady, bootstrapDeadlineReached, accessToken, user, clearSession, isGuest, segments, hasOnboarded, router]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="dark" translucent backgroundColor="transparent" />
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#02030A" }}>
+      <StatusBar
+        style={resolveStatusBarStyle({ splashFinished, isDark: false })}
+        translucent
+        backgroundColor="transparent"
+      />
       <SafeAreaProvider>
         <KeyboardProvider>
           <AppProvider>
             <I18nInitializer>
-              {isReady ? (
+              {isReady && (
                 <>
                   <OfflineSyncManager />
                   <PaymentRecoveryListener />
@@ -346,6 +266,14 @@ export default function RootLayout() {
                     </BottomSheetModalProvider>
                   </View>
                 </>
+              )}
+
+              {!splashFinished ? (
+                <CinematicSplash
+                  active={nativeSplashHidden}
+                  ready={isReady}
+                  onFinish={() => setSplashFinished(true)}
+                />
               ) : null}
             </I18nInitializer>
           </AppProvider>
@@ -354,3 +282,5 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(RootLayout);

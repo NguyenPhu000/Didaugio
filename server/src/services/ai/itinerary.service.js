@@ -4,40 +4,24 @@
  */
 import crypto from "crypto";
 import prisma from "../../config/prismaClient.js";
-import { z } from "zod";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
-import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
+import { renderConfiguredPrompt } from "../../lib/promptBuilder.js";
+import { createGroqClient, executeGroqCompletionWithPool } from "./groq.service.js";
+import {
+  logAiProviderEvent,
+  toAiServiceError,
+} from "./aiProviderPolicy.js";
 import { kMeansClustering, solveNearestNeighborTSP } from "../../utils/clustering.js";
 import { validateAndCorrectItinerary } from "../../utils/itineraryFormatter.js";
+import { buildValidatedCachedItineraryResult, parseAndValidateItineraryOutput } from "./itineraryOutput.js";
+import {
+  ITINERARY_MONEY_MAX,
+  itineraryPreviewSchema,
+} from "../../models/schemas/trip/itineraryPreview.schema.js";
 
 const DEFAULT_DESTINATIONS_PER_DAY = 3;
 const START_TIME_SLOTS = ["08:00", "11:00", "14:30"];
-
-const ItineraryDestinationSchema = z.object({
-  placeId: z.number().int(),
-  order: z.number().int(),
-  startTime: z.string(),
-  endTime: z.string(),
-  durationMinutes: z.number().int(),
-  note: z.string(),
-  transportToNext: z.string(),
-  estimatedCost: z.number(),
-});
-
-const ItineraryDaySchema = z.object({
-  dayNumber: z.number().int(),
-  theme: z.string(),
-  destinations: z.array(ItineraryDestinationSchema),
-});
-
-const ItinerarySchema = z.object({
-  title: z.string(),
-  description: z.string(),
-  totalDays: z.number().int(),
-  estimatedCost: z.number(),
-  days: z.array(ItineraryDaySchema),
-});
 
 function toPositiveInt(value, fallback = 1) {
   const parsed = Number.parseInt(value, 10);
@@ -84,7 +68,10 @@ function estimateDestinationCost(
     );
   }
 
-  return Math.max(30000, Math.round(estimated));
+  return Math.min(
+    ITINERARY_MONEY_MAX,
+    Math.max(30000, Math.round(estimated)),
+  );
 }
 
 function buildDayTheme(dayNumber, travelStyle) {
@@ -116,15 +103,32 @@ export function generateFallbackItinerary(preferences = {}, places = []) {
   );
   const groupSize = Math.max(toPositiveInt(preferences.groupSize, 1), 1);
   const budgetPerPerson = Number(preferences.budget);
+  const selectedIds = Array.isArray(preferences.selectedPlaceIds)
+    ? preferences.selectedPlaceIds.map((id) => Number(id)).filter(Boolean)
+    : [];
   const destinationsPerDay = Math.max(
     1,
-    Math.min(DEFAULT_DESTINATIONS_PER_DAY, places.length),
+    Math.min(
+      selectedIds.length > 0
+        ? Math.ceil(selectedIds.length / totalDays)
+        : DEFAULT_DESTINATIONS_PER_DAY,
+      places.length,
+      12,
+    ),
   );
 
-  const requiredStops = Math.max(totalDays * destinationsPerDay, 1);
+  const placeById = new Map(places.map((place) => [Number(place?.id), place]));
+  const selectedPlaces = selectedIds
+    .map((id) => placeById.get(id))
+    .filter(Boolean);
+  const requiredStops = Math.max(
+    selectedPlaces.length || totalDays * destinationsPerDay,
+    1,
+  );
+  const fallbackSource = selectedPlaces.length > 0 ? selectedPlaces : places;
   const pickedPlaces = Array.from(
     { length: requiredStops },
-    (_, index) => places[index % places.length],
+    (_, index) => fallbackSource[index % fallbackSource.length],
   );
 
   let totalEstimatedCost = 0;
@@ -147,12 +151,18 @@ export function generateFallbackItinerary(preferences = {}, places = []) {
           );
         const durationMinutes = slot === destinationsPerDay - 1 ? 150 : 120;
         const endTime = addMinutesToTime(startTime, durationMinutes);
-        const estimatedCost = estimateDestinationCost(
+        const rawEstimatedCost = estimateDestinationCost(
           place,
           groupSize,
           budgetPerPerson,
           totalDays,
           destinationsPerDay,
+        );
+        // Cap against the remaining preview budget so the total continues to
+        // equal the sum of its destination-level cost breakdown.
+        const estimatedCost = Math.min(
+          rawEstimatedCost,
+          Math.max(ITINERARY_MONEY_MAX - totalEstimatedCost, 0),
         );
 
         totalEstimatedCost += estimatedCost;
@@ -180,14 +190,14 @@ export function generateFallbackItinerary(preferences = {}, places = []) {
     };
   });
 
-  return {
+  return itineraryPreviewSchema.parse({
     title: `Lịch trình ${totalDays} ngày ở Cần Thơ`,
     description:
       "Lịch trình dự phòng được tạo từ dữ liệu địa điểm hiện có khi AI tạm thời không khả dụng.",
     totalDays,
     estimatedCost: totalEstimatedCost,
     days,
-  };
+  });
 }
 
 // ─── Itinerary generation ─────────────────────────────────────────────────────
@@ -197,19 +207,32 @@ export function generateFallbackItinerary(preferences = {}, places = []) {
  * @param {Object} preferences - User travel preferences
  * @param {Array}  clusteredPlaces - Available approved places from DB, grouped by day index
  */
-function buildItineraryPrompt(preferences, clusteredPlaces) {
+function buildItineraryPrompt(
+  preferences,
+  clusteredPlaces,
+  configuredPrompt = "",
+  promptVariables = {},
+) {
   const { totalDays, travelStyle, groupSize, budget, notes } = preferences;
+  const selectedPlaceIds = Array.isArray(preferences.selectedPlaceIds)
+    ? preferences.selectedPlaceIds.map((id) => Number(id)).filter(Boolean)
+    : [];
+  const selectedRequirement = selectedPlaceIds.length > 0
+    ? `- Mandatory selected place IDs: ${selectedPlaceIds.join(", ")}. Include every one of these placeId values exactly once when the ID exists in the DB list. Do not reduce the itinerary to only 3 places.`
+    : "";
 
   const minifiedClustered = clusteredPlaces.map((cluster, idx) => ({
     dayNumber: idx + 1,
     places: cluster.map((p) => ({
-      i: p.id,
-      n: p.name,
-      c: p.category?.name || "Khác",
+      id: p.id,
+      name: p.name,
+      category: p.category?.name || "Khác",
     })),
   }));
 
-  return `Bạn là trợ lý du lịch thông minh cho Cần Thơ, Việt Nam.
+  return `${renderConfiguredPrompt(configuredPrompt, promptVariables)}
+
+Bạn là trợ lý du lịch thông minh cho Cần Thơ, Việt Nam.
 Hãy tạo lịch trình du lịch Cần Thơ chi tiết dựa theo các thông tin sau:
 
 **Thông tin chuyến đi:**
@@ -218,14 +241,17 @@ Hãy tạo lịch trình du lịch Cần Thơ chi tiết dựa theo các thông 
 - Số người: ${groupSize || 1}
 - Ngân sách ước tính: ${budget ? budget + " VNĐ/người" : "Không giới hạn"}
 ${notes ? `- Ghi chú: ${notes}` : ""}
+${selectedRequirement}
 
-**Danh sách địa điểm ĐÃ PHÂN CỤM THEO TỪNG NGÀY (i = ID, n = Tên, c = Danh mục):**
-${JSON.stringify(minifiedClustered)}
+**Danh sách địa điểm CSDL khả dụng theo từng ngày:**
+${JSON.stringify(minifiedClustered, null, 2)}
 
 **YÊU CẦU NGHIÊM NGẶT:**
 1. Bạn CHỈ ĐƯỢC phép xếp địa điểm của cụm Ngày N vào đúng ngày ("dayNumber": N) trong lịch trình đầu ra. Không được hoán đổi địa điểm giữa các ngày.
-2. Dùng đúng ID ("i") của địa điểm cho trường "placeId" của đầu ra.
-3. Trả về JSON hợp lệ khớp với schema yêu cầu, không giải thích gì thêm.
+2. Dùng đúng giá trị số "id" của địa điểm cho trường "placeId" của đầu ra. TUYỆT ĐỐI KHÔNG TỰ TẠO SỐ ID KHÔNG CÓ TRONG CSDL.
+3. ĐẶC BIỆT LƯU Ý: Nếu người dùng có yêu cầu hoặc đề cập các địa điểm cụ thể trong Ghi chú ("notes") hoặc tin nhắn trước, bạn BẮT BUỘC phải ưu tiên xếp đầy đủ các địa điểm đó vào lịch trình (dùng đúng placeId tương ứng trong CSDL).
+4. Tuyệt đối không dùng dấu hoa thị (*) hoặc markdown bold (*).
+5. Trả về JSON hợp lệ khớp với schema yêu cầu, không giải thích gì thêm.
 
 **JSON Schema yêu cầu:**
 ${JSON.stringify({
@@ -258,10 +284,39 @@ Chỉ trả về JSON thuần, không markdown, không giải thích.`;
  * @param {Array}  places
  * @returns {{ parsed: Object, raw: string, tokensUsed: number, responseTimeMs: number }}
  */
-export async function generateItinerary(preferences, places) {
+export async function generateItinerary(
+  preferences,
+  places,
+  providerOptions = {},
+  providerContext = {},
+) {
   // Phân cụm địa điểm bằng K-Means trước khi gọi AI
-  const totalDays = toPositiveInt(preferences.totalDays, 1);
-  const clusteredPlaces = kMeansClustering(places, totalDays);
+  const totalDays = Math.min(
+    Math.max(toPositiveInt(preferences.totalDays, 1), 1),
+    7,
+  );
+  const rawAllowedPlaces =
+    Array.isArray(providerContext?.places) && providerContext.places.length > 0
+      ? providerContext.places
+      : Array.isArray(places) && places.length > 0
+        ? places
+        : [];
+
+  // Nếu người dùng chọn/yêu cầu địa điểm cụ thể, đưa các địa điểm đó lên đầu mảng
+  const selectedIds = new Set(
+    Array.isArray(preferences.selectedPlaceIds)
+      ? preferences.selectedPlaceIds.map((id) => Number(id)).filter(Boolean)
+      : [],
+  );
+
+  const allowedPlaces = selectedIds.size > 0
+    ? [
+        ...rawAllowedPlaces.filter((p) => selectedIds.has(p.id)),
+        ...rawAllowedPlaces.filter((p) => !selectedIds.has(p.id)),
+      ]
+    : rawAllowedPlaces;
+
+  const clusteredPlaces = kMeansClustering(allowedPlaces, totalDays);
 
   // Caching nâng cao
   const placeIds = places.map((p) => p.id).sort((a, b) => a - b).join(",");
@@ -274,93 +329,76 @@ export async function generateItinerary(preferences, places) {
     const cached = await prisma.cachedItinerary.findUnique({
       where: { filterHash },
     });
-    if (cached) {
-      return {
-        parsed: cached.itineraryData,
-        raw: JSON.stringify(cached.itineraryData),
-        tokensUsed: 0,
-        responseTimeMs: 0,
-      };
-    }
+    const cachedResult = buildValidatedCachedItineraryResult(cached, places);
+    if (cachedResult) return cachedResult;
   } catch {
     // Bỏ qua lỗi đọc cache và gọi trực tiếp AI
   }
 
-  const prompt = buildItineraryPrompt(preferences, clusteredPlaces);
+  const prompt = buildItineraryPrompt(
+    {
+      totalDays:
+        providerContext.tripDuration ?? preferences.totalDays,
+      travelStyle:
+        providerContext.travelPreferences?.travelStyles?.join(", ") ||
+        undefined,
+      groupSize:
+        providerContext.partySize ?? preferences.groupSize,
+      budget: providerContext.budget,
+      notes: preferences.notes,
+    },
+    clusteredPlaces,
+    providerOptions.configuredPrompt,
+    providerContext,
+  );
   const start = Date.now();
 
   let rawText;
   let tokensUsed = null;
   try {
-    const client = createGroqClient();
-    const completion = await client.chat.completions.create({
-      model: GROQ_MODEL,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.5,
-      max_tokens: 2000,
-      response_format: { type: "json_object" },
-    });
+    const completion = await executeGroqCompletionWithPool(
+      providerOptions,
+      async (client) => {
+        return client.chat.completions.create(
+          {
+            model: providerOptions.model,
+            messages: [{ role: "user", content: prompt }],
+            temperature: Math.min(providerOptions.temperature, 0.3),
+            top_p: providerOptions.topP,
+            max_tokens: providerOptions.maxTokens,
+            response_format: { type: "json_object" },
+          },
+          { timeout: providerOptions.timeoutMs },
+        );
+      },
+    );
     rawText = completion.choices[0]?.message?.content || "";
     tokensUsed = completion.usage?.total_tokens ?? null;
+    logAiProviderEvent({
+      feature: "itinerary",
+      model: providerOptions.model,
+      startedAt: start,
+      completion,
+    });
   } catch (err) {
-    const isQuotaError =
-      err?.status === 429 || /quota|rate.?limit|too many requests/i.test(err?.message || "");
-    const isUnavailable =
-      err?.status === 503 || /service unavailable|overloaded/i.test(err?.message || "");
-
-    if (isQuotaError) {
-      throw new ServiceError(
-        "AI đã chạm giới hạn tần suất. Vui lòng thử lại sau.",
-        429,
-        "QUOTA_EXCEEDED",
-      );
-    }
-
-    if (isUnavailable) {
-      throw new ServiceError(
-        "Dịch vụ AI tạm thời không khả dụng.",
-        503,
-        "AI_UNAVAILABLE",
-      );
-    }
-
-    throw new ServiceError(
-      err?.message || "Lỗi khi gọi AI API",
-      err?.status || 503,
-      "AI_ERROR",
-    );
+    const aiError = toAiServiceError(err);
+    logAiProviderEvent({
+      feature: "itinerary",
+      model: providerOptions.model,
+      startedAt: start,
+      code: aiError.code,
+    });
+    throw aiError;
   }
-
-  const responseTimeMs = Date.now() - start;
 
   let parsed;
   try {
-    parsed = JSON.parse(rawText);
-  } catch {
-    try {
-      const repaired = repairTruncatedJson(rawText);
-      parsed = JSON.parse(repaired);
-    } catch {
-      const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/) || rawText.match(/(\{[\s\S]*\})/);
-      if (jsonMatch?.[1]) {
-        try {
-          const repairedInner = repairTruncatedJson(jsonMatch[1].trim());
-          parsed = JSON.parse(repairedInner);
-        } catch {
-          throw new ServiceError(
-            "AI trả về JSON không hợp lệ và không thể tự phục hồi",
-            502,
-            ERROR_CODES.VALIDATION_ERROR,
-          );
-        }
-      } else {
-        throw new ServiceError(
-          "AI trả về JSON không hợp lệ và không tìm thấy cấu trúc JSON phù hợp",
-          502,
-          ERROR_CODES.VALIDATION_ERROR,
-        );
-      }
-    }
+    parsed = parseAndValidateItineraryOutput(rawText, places);
+  } catch (parseError) {
+    console.warn(
+      `[Itinerary AI] Invalid output from provider (${parseError.message}). Using candidate places fallback.`
+    );
+    parsed = generateFallbackItinerary(preferences, places);
   }
 
   // 1. Validate và co kéo thời gian khớp giờ mở cửa thực tế
@@ -417,53 +455,10 @@ export async function generateItinerary(preferences, places) {
     // Bỏ qua lỗi ghi cache — vẫn trả kết quả cho client
   }
 
-  return { parsed, raw: rawText, tokensUsed, responseTimeMs };
-}
-
-function repairTruncatedJson(jsonStr) {
-  let str = jsonStr.trim();
-  str = str.replace(/^```json\s*/i, "").replace(/```$/, "");
-  
-  const stack = [];
-  let inString = false;
-  let escaped = false;
-  
-  for (let i = 0; i < str.length; i++) {
-    const char = str[i];
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (char === "\\") {
-      escaped = true;
-      continue;
-    }
-    if (char === '"') {
-      inString = !inString;
-      continue;
-    }
-    if (inString) continue;
-    
-    if (char === '{' || char === '[') {
-      stack.push(char);
-    } else if (char === '}') {
-      if (stack[stack.length - 1] === '{') stack.pop();
-    } else if (char === ']') {
-      if (stack[stack.length - 1] === '[') stack.pop();
-    }
-  }
-  
-  if (inString) {
-    str += '"';
-  }
-  
-  str = str.replace(/,\s*$/, "");
-  
-  while (stack.length > 0) {
-    const last = stack.pop();
-    if (last === '{') str += '}';
-    else if (last === '[') str += ']';
-  }
-  
-  return str;
+  return {
+    parsed,
+    raw: rawText,
+    tokensUsed,
+    responseTimeMs: Date.now() - start,
+  };
 }

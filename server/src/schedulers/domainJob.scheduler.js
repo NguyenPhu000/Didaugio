@@ -2,9 +2,13 @@ import prisma from "../config/prismaClient.js";
 import logger from "../config/logger.js";
 import { DOMAIN_JOB_STATUS, DOMAIN_JOB_TYPES } from "../config/constants.js";
 import routingService from "../services/routing/routing.service.js";
+import { deleteImage } from "../utils/cloudinaryService.js";
 
 const DEFAULT_INTERVAL_MS = Number(process.env.DOMAIN_JOB_INTERVAL_MS || 15000);
 const DEFAULT_BATCH_SIZE = Number(process.env.DOMAIN_JOB_BATCH_SIZE || 10);
+const DEFAULT_PROCESSING_LEASE_MS = Number(
+  process.env.DOMAIN_JOB_PROCESSING_LEASE_MS || 120000,
+);
 
 const toPoint = (place) => ({
   lat: Number(place.latitude),
@@ -89,11 +93,33 @@ const rebuildRouteMetrics = async (job) => {
   });
 };
 
-const handlers = {
-  [DOMAIN_JOB_TYPES.REBUILD_ROUTE_METRICS]: rebuildRouteMetrics,
+const deleteCloudinaryAsset = async (job) => {
+  const publicId = String(job.payload?.publicId || "").trim();
+  if (!publicId) throw new Error(`Domain job ${job.id} is missing payload.publicId`);
+  await deleteImage(publicId);
 };
 
+const handlers = {
+  [DOMAIN_JOB_TYPES.REBUILD_ROUTE_METRICS]: rebuildRouteMetrics,
+  [DOMAIN_JOB_TYPES.DELETE_CLOUDINARY_ASSET]: deleteCloudinaryAsset,
+};
+
+export const buildDomainJobRecoveryUpdate = (
+  now = new Date(),
+  processingLeaseMs = DEFAULT_PROCESSING_LEASE_MS,
+) => ({
+  where: {
+    status: DOMAIN_JOB_STATUS.PROCESSING,
+    updatedAt: { lte: new Date(now.getTime() - processingLeaseMs) },
+  },
+  data: {
+    status: DOMAIN_JOB_STATUS.PENDING,
+    runAfter: now,
+  },
+});
+
 export const processPendingDomainJobs = async (batchSize = DEFAULT_BATCH_SIZE) => {
+  await prisma.domainJob.updateMany(buildDomainJobRecoveryUpdate());
   const jobs = await prisma.domainJob.findMany({
     where: {
       status: DOMAIN_JOB_STATUS.PENDING,

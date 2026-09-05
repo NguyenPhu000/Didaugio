@@ -1,6 +1,10 @@
+// MAP: ExploreCategoriesScreen
+// ├── UI: @/modules/explore/components/{ExploreListScaffold, SmallPlaceCard}
+// └── API: @/modules/explore/hooks/useCategories, @/modules/explore/hooks/useExplore
+
 import { memo, useMemo } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { TOKENS } from "../../src/constants/design-tokens";
@@ -39,11 +43,11 @@ const CategorySection = memo(function CategorySection({ category }) {
         </Pressable>
       </View>
       {isLoading ? (
-        <View className="h-[220px] items-center justify-center"><ActivityIndicator color="#000" /></View>
+        <View className="h-[282px] items-center justify-center"><ActivityIndicator color="#000" /></View>
       ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: TOKENS.space[6], paddingBottom: 8 }} snapToInterval={SMALL_CARD_W + 16} decelerationRate="fast">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: TOKENS.space[6], paddingVertical: 4 }} snapToInterval={SMALL_CARD_W + 12} decelerationRate="fast">
           {places.slice(0, 8).map((place) => (
-            <View key={place.id} className="mr-4">
+            <View key={place.id} className="mr-3">
               <SmallPlaceCard place={place} onPress={() => router.push({ pathname: "/place/[id]", params: { id: place.id } })} />
             </View>
           ))}

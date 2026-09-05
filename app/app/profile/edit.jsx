@@ -1,7 +1,10 @@
+// MAP: EditProfileScreen
+// ├── UI: @/components/ui/{AvatarPicker, FormField, DatePickerModal}
+// └── API: @/modules/profile/hooks/useProfile, @/modules/profile/hooks/useUpdateProfile
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,6 +20,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { showAppAlertLegacy } from "../../src/utils/appAlert";
 import { useAuthStore } from "../../src/stores/authStore";
 import { TOKENS } from "../../src/constants/design-tokens";
 import {
@@ -26,7 +30,7 @@ import {
 } from "../../src/modules/profile/hooks/useProfile";
 import { resolveMediaUrl } from "../../src/lib/media-url";
 import { BottomSheetPicker } from "../../src/components/ui/BottomSheetPicker";
-import { ProvinceDistrictSelect } from "../../src/modules/profile/components/ProvinceDistrictSelect";
+import { ProvinceWardSelect } from "../../src/modules/profile/components/ProvinceWardSelect";
 import { useTranslation } from "react-i18next";
 
 const MAX_AVATAR_BYTES = 200 * 1024;
@@ -244,7 +248,7 @@ export default function EditProfileScreen() {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
+        showAppAlertLegacy(
           t("editProfile.errors.noPhotoAccess"),
           t("editProfile.errors.grantPhotoPermission"),
         );
@@ -263,7 +267,7 @@ export default function EditProfileScreen() {
 
       const selectedUri = result.assets?.[0]?.uri;
       if (!selectedUri) {
-        Alert.alert(t("editProfile.errors.imageNotFound"), t("editProfile.errors.trySelectAgain"));
+        showAppAlertLegacy(t("editProfile.errors.imageNotFound"), t("editProfile.errors.trySelectAgain"));
         return;
       }
 
@@ -272,7 +276,7 @@ export default function EditProfileScreen() {
       setAvatarPreview(compressed.dataUrl);
       setPendingAvatarDataUrl(compressed.dataUrl);
     } catch (_error) {
-      Alert.alert(
+      showAppAlertLegacy(
         t("editProfile.errors.processImage"),
         t("editProfile.errors.tryAgain"),
       );
@@ -286,17 +290,17 @@ export default function EditProfileScreen() {
     const cleanUsername = normalizeText(username);
 
     if (cleanFullName.length < 2) {
-      Alert.alert(t("editProfile.errors.missingInfo"), t("editProfile.errors.nameMinChars"));
+      showAppAlertLegacy(t("editProfile.errors.missingInfo"), t("editProfile.errors.nameMinChars"));
       return;
     }
 
     if (!cleanUsername) {
-      Alert.alert(t("editProfile.errors.missingInfo"), t("editProfile.errors.usernameRequired"));
+      showAppAlertLegacy(t("editProfile.errors.missingInfo"), t("editProfile.errors.usernameRequired"));
       return;
     }
 
     if (!USERNAME_REGEX.test(cleanUsername)) {
-      Alert.alert(
+      showAppAlertLegacy(
         t("editProfile.errors.invalidUsername"),
         t("editProfile.errors.usernameFormat"),
       );
@@ -359,10 +363,10 @@ export default function EditProfileScreen() {
         profile: mergedProfile,
       });
 
-      Alert.alert(t("editProfile.success.title"), t("editProfile.success.message"));
+      showAppAlertLegacy(t("editProfile.success.title"), t("editProfile.success.message"));
       router.back();
     } catch (_error) {
-      Alert.alert(
+      showAppAlertLegacy(
         t("editProfile.errors.updateFailed"),
         t("editProfile.errors.tryAgainLater"),
       );
@@ -552,11 +556,11 @@ export default function EditProfileScreen() {
 
             <View>
               <FieldLabel text={t("editProfile.fields.region")} />
-              <ProvinceDistrictSelect
+              <ProvinceWardSelect
                 provinceCode={provinceCode}
-                districtCode={districtCode}
+                wardCode={districtCode}
                 onProvinceChange={setProvinceCode}
-                onDistrictChange={setDistrictCode}
+                onWardChange={setDistrictCode}
               />
             </View>
 

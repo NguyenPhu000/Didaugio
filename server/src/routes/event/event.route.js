@@ -5,6 +5,7 @@ import {
   authenticateOptional,
 } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import {
   validateBody,
   validateQuery,
@@ -87,6 +88,7 @@ router.delete(
 router.post(
   "/",
   authenticate,
+  requireBackOfficeRole,
   hasPermission("system.manage_banners"),
   validateBody(createEventSchema),
   eventController.createEvent
@@ -96,6 +98,7 @@ router.post(
 router.put(
   "/:id",
   authenticate,
+  requireBackOfficeRole,
   hasPermission("system.manage_banners"),
   validateParams(eventIdParamSchema),
   validateBody(updateEventSchema),
@@ -106,6 +109,7 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
+  requireBackOfficeRole,
   hasPermission("system.manage_banners"),
   validateParams(eventIdParamSchema),
   eventController.deleteEvent
@@ -115,6 +119,7 @@ router.delete(
 router.put(
   "/:id/broadcast",
   authenticate,
+  requireBackOfficeRole,
   hasPermission("system.manage_banners"),
   validateParams(eventIdParamSchema),
   validateBody(updateBroadcastSchema),

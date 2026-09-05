@@ -2,6 +2,8 @@ import nodemailer from "nodemailer";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const EMAIL_FROM = process.env.EMAIL_FROM || "Didaugio <no-reply@didaugio.vn>";
+const isEmailDeliveryEnabled = () =>
+  String(process.env.EMAIL_DELIVERY_ENABLED || "true").toLowerCase() !== "false";
 
 /**
  * Escape HTML special characters to prevent XSS in email templates
@@ -28,6 +30,14 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASS,
   },
 });
+
+const sendMail = async (message) => {
+  if (!isEmailDeliveryEnabled()) {
+    return { accepted: [], rejected: [], skipped: true };
+  }
+
+  return transporter.sendMail(message);
+};
 
 /**
  * Gửi email xác thực tài khoản
@@ -236,7 +246,7 @@ Link này có hiệu lực trong 24 giờ.
 Nếu bạn không thực hiện đăng ký này, vui lòng bỏ qua email này.
   `;
 
-  await transporter.sendMail({
+  await sendMail({
     from: EMAIL_FROM,
     to,
     subject: "Xác thực email",
@@ -444,7 +454,7 @@ ${resetUrl}
 ⚠️ CẢNH BÁO BẢO MẬT: Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.
   `;
 
-  await transporter.sendMail({
+  await sendMail({
     from: EMAIL_FROM,
     to,
     subject: "Đặt lại mật khẩu",
@@ -663,7 +673,7 @@ ${inviteUrl}
 ⚠️ Nếu bạn không mong đợi lời mời này, vui lòng bỏ qua email này.
   `;
 
-  await transporter.sendMail({
+  await sendMail({
     from: EMAIL_FROM,
     to,
     subject: `Lời mời làm việc tại ${escapeHtml(businessName)}`,
@@ -735,27 +745,57 @@ export const sendContractVerificationEmail = async ({ to, code, name }) => {
     <body>
       <div class="container">
         <div class="header">
-          <h2 style="margin: 0;">Đi Đâu Giờ?</h2>
+          <h2 style="margin: 0;">iPoint Genie</h2>
           <p style="margin: 4px 0 0 0; font-size: 12px; color: #94a3b8; text-transform: uppercase;">Xác thực hợp đồng điện tử</p>
         </div>
         <div class="content">
           <p>Xin chào <strong>${escapeHtml(name)}</strong>,</p>
-          <p>Bạn đang thực hiện ký kết hợp đồng dịch vụ điện tử trên hệ thống Đi Đâu Giờ. Dưới đây là mã OTP để xác nhận và đóng dấu chữ ký điện tử của bạn:</p>
+          <p>Bạn đang thực hiện ký kết hợp đồng dịch vụ điện tử trên hệ thống iPoint Genie. Dưới đây là mã OTP để xác nhận và đóng dấu chữ ký điện tử của bạn:</p>
           <div class="otp-box">${code}</div>
           <p style="font-size: 13px; color: #64748b;">Mã OTP này có hiệu lực trong vòng 5 phút. Vui lòng không cung cấp mã xác thực này cho bất kỳ ai khác.</p>
         </div>
         <div class="footer">
-          Đây là email tự động từ hệ thống Đi Đâu Giờ. Vui lòng không phản hồi email này.
+          Đây là email tự động từ hệ thống iPoint Genie. Vui lòng không phản hồi email này.
         </div>
       </div>
     </body>
     </html>
   `;
 
-  await transporter.sendMail({
+  try {
+    await sendMail({
+      from: EMAIL_FROM,
+      to,
+      subject: "[iPoint Genie] Mã OTP xác nhận ký hợp đồng dịch vụ điện tử",
+      html,
+    });
+  } catch (mailError) {
+    console.error(`[Mailer SMTP Error] Không thể gửi OTP hợp đồng: ${mailError.message}`);
+    throw mailError;
+  }
+};
+
+export const sendBusinessNotificationEmail = async ({ to, subject, title, body }) => {
+  const safeTitle = escapeHtml(title);
+  const safeBody = escapeHtml(body).replace(/\n/g, "<br />");
+
+  await sendMail({
     from: EMAIL_FROM,
     to,
-    subject: "[Đi Đâu Giờ] Mã OTP xác nhận ký hợp đồng dịch vụ điện tử",
-    html,
+    subject,
+    text: `${title}\n\n${body}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #172033;">
+        <div style="padding: 20px 24px; background: #172033; color: #ffffff; border-radius: 12px 12px 0 0;">
+          <strong>Didaugio Business</strong>
+        </div>
+        <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: 0; border-radius: 0 0 12px 12px;">
+          <h2 style="margin: 0 0 12px; font-size: 20px;">${safeTitle}</h2>
+          <p style="margin: 0; line-height: 1.6;">${safeBody}</p>
+        </div>
+      </div>
+    `,
   });
+
+  return { provider: "smtp", to };
 };

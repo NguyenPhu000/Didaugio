@@ -10,6 +10,14 @@ import {
 import { ENDPOINTS } from "../../../api/endpoints";
 import apiClient from "../../../api/client";
 import { AI_REQUEST_TIMEOUT } from "../../../constants/api";
+import { VOICE_ERROR_CODES } from "../../../constants/voice-error-codes";
+import {
+  createAsyncGate,
+  createMountedCallbackGuard,
+  restoreIdleAudioMode,
+  startAudioRecording,
+  stopAudioRecording,
+} from "./audioSessionController";
 
 const VOICE_STATUS = Object.freeze({
   IDLE: "idle",
@@ -26,6 +34,54 @@ const VOICE_RECORDING_OPTIONS = {
   bitRate: 64000,
 };
 
+const createSpeechCallbacks = ({
+  cleanText,
+  isCurrentSpeech,
+  setError,
+  setSafely,
+  setVoiceLevel,
+  setVoiceStatus,
+}) => {
+  const resetToIdle = () => {
+    if (!isCurrentSpeech()) return;
+    setSafely(setVoiceLevel, 0);
+    setVoiceStatus(VOICE_STATUS.IDLE);
+  };
+  const failPlayback = () => {
+    setSafely(setError, "Voice playback failed");
+    setSafely(setVoiceLevel, 0);
+    setVoiceStatus(VOICE_STATUS.ERROR);
+  };
+  const fallbackOptions = {
+    language: "vi",
+    rate: 0.95,
+    pitch: 1.0,
+    onDone: resetToIdle,
+    onError: () => {
+      if (!isCurrentSpeech()) return;
+      failPlayback();
+    },
+  };
+
+  return {
+    language: "vi-VN",
+    rate: 0.95,
+    pitch: 1.0,
+    onDone: resetToIdle,
+    onStopped: resetToIdle,
+    onError: () => {
+      if (!isCurrentSpeech()) return;
+      try {
+        Speech.speak(cleanText, fallbackOptions);
+      } catch {
+        failPlayback();
+      }
+    },
+  };
+};
+
+
+
 export function useGenieVoice() {
   const [status, setStatus] = useState(VOICE_STATUS.IDLE);
   const [transcript, setTranscript] = useState("");
@@ -33,107 +89,185 @@ export function useGenieVoice() {
   const [voiceLevel, setVoiceLevel] = useState(0);
   const [error, setError] = useState(null);
   const busyRef = useRef(false);
-  const stoppingRef = useRef(false);
+  const statusRef = useRef(VOICE_STATUS.IDLE);
+  const speechSessionRef = useRef(0);
+  const mountedGuardRef = useRef(createMountedCallbackGuard());
+  const audioGateRef = useRef(createAsyncGate());
   const recorder = useAudioRecorder(VOICE_RECORDING_OPTIONS);
   const recorderState = useAudioRecorderState(recorder, 140);
+
+  const setSafely = useCallback((setter, value) => (
+    mountedGuardRef.current.run(setter, value)
+  ), []);
+
+  const setVoiceStatus = useCallback((nextStatus) => {
+    if (!mountedGuardRef.current.isMounted()) return false;
+    statusRef.current = nextStatus;
+    return setSafely(setStatus, nextStatus);
+  }, [setSafely]);
+
+  const restoreIdle = useCallback(
+    () => restoreIdleAudioMode(setAudioModeAsync),
+    [],
+  );
+
+  useEffect(() => () => {
+    mountedGuardRef.current.unmount();
+    speechSessionRef.current += 1;
+
+    void audioGateRef.current.enqueue(async () => {
+      try {
+        try {
+          if (recorder?.isRecording) {
+            await recorder.stop();
+          }
+        } catch {
+          // The recorder is being disposed. Idle-mode restoration still follows.
+        }
+        await Speech.stop();
+      } catch {
+        // Session teardown must continue even if native speech disposal fails.
+      } finally {
+        await restoreIdle();
+      }
+    });
+  }, [recorder, restoreIdle]);
 
   const transcribeAudio = useCallback(async (audioFile) => {
     if (!audioFile?.uri && !audioFile?.buffer) {
       throw new Error("Audio file is required");
     }
-    if (busyRef.current) return null;
+    if (busyRef.current || !mountedGuardRef.current.isMounted()) return null;
 
     busyRef.current = true;
-    setStatus(VOICE_STATUS.TRANSCRIBING);
-    setError(null);
+    setVoiceStatus(VOICE_STATUS.TRANSCRIBING);
+    setSafely(setError, null);
 
     try {
       const form = new FormData();
+      const normalizedUri =
+        audioFile.uri.startsWith("file://") ||
+        audioFile.uri.startsWith("content://") ||
+        audioFile.uri.startsWith("http")
+          ? audioFile.uri
+          : `file://${audioFile.uri}`;
+
       form.append("audio", {
-        uri: audioFile.uri,
+        uri: normalizedUri,
         name: audioFile.name || "genie-voice.m4a",
         type: audioFile.type || "audio/m4a",
       });
       form.append("language", audioFile.language || "vi");
 
       const response = await apiClient.post(ENDPOINTS.ai.voiceTranscribe, form, {
+        // The client default is application/json; multipart uploads must
+        // override it so RN networking builds the multipart body correctly
+        // (Android's OkHttp rejects FormData under a non-multipart type).
         headers: { "Content-Type": "multipart/form-data" },
+        transformRequest: [(data) => data],
         timeout: AI_REQUEST_TIMEOUT,
       });
       const text = response?.data?.text || response?.data?.data?.text || "";
-      setTranscript(text);
-      setTranscriptVersion((version) => version + 1);
-      setStatus(VOICE_STATUS.IDLE);
-      setVoiceLevel(0);
+      setSafely(setTranscript, text);
+      setSafely(setTranscriptVersion, (version) => version + 1);
+      setVoiceStatus(VOICE_STATUS.IDLE);
+      setSafely(setVoiceLevel, 0);
       return text;
     } catch (err) {
-      setError(err?.message || "Voice transcription failed");
-      setStatus(VOICE_STATUS.ERROR);
-      setVoiceLevel(0);
+      setSafely(setError, err?.message || "Voice transcription failed");
+      setVoiceStatus(VOICE_STATUS.ERROR);
+      setSafely(setVoiceLevel, 0);
       throw err;
     } finally {
       busyRef.current = false;
     }
-  }, []);
+  }, [setSafely, setVoiceStatus]);
 
   const startRecording = useCallback(async () => {
-    if (busyRef.current || status === VOICE_STATUS.LISTENING) return false;
-
-    setError(null);
-    setTranscript("");
-    setVoiceLevel(0);
-    stoppingRef.current = false;
-
-    const permission = await requestRecordingPermissionsAsync();
-    if (!permission.granted) {
-      setStatus(VOICE_STATUS.ERROR);
-      setError("VOICE_PERMISSION_DENIED");
+    if (
+      busyRef.current
+      || statusRef.current === VOICE_STATUS.LISTENING
+      || audioGateRef.current.isLocked()
+    ) {
       return false;
     }
 
-    await setAudioModeAsync({
-      allowsRecording: true,
-      playsInSilentMode: true,
-      interruptionMode: "doNotMix",
+    return audioGateRef.current.run(async () => {
+      if (!mountedGuardRef.current.isMounted()) return false;
+
+      setSafely(setError, null);
+      setSafely(setTranscript, "");
+      setSafely(setVoiceLevel, 0);
+      speechSessionRef.current += 1;
+
+      try {
+        await Speech.stop();
+        if (!mountedGuardRef.current.isMounted()) return false;
+
+        const started = await startAudioRecording({
+          requestPermission: requestRecordingPermissionsAsync,
+          setAudioMode: setAudioModeAsync,
+          recorder,
+          recordingOptions: VOICE_RECORDING_OPTIONS,
+          canContinue: mountedGuardRef.current.isMounted,
+        });
+
+        if (!started) {
+          setVoiceStatus(VOICE_STATUS.ERROR);
+          setSafely(setError, VOICE_ERROR_CODES.PERMISSION_DENIED);
+          return false;
+        }
+
+        setVoiceStatus(VOICE_STATUS.LISTENING);
+        return true;
+      } catch {
+        await restoreIdle();
+        setVoiceStatus(VOICE_STATUS.ERROR);
+        setSafely(setError, VOICE_ERROR_CODES.SESSION_FAILED);
+        setSafely(setVoiceLevel, 0);
+        return false;
+      }
     });
-    await recorder.prepareToRecordAsync(VOICE_RECORDING_OPTIONS);
-    recorder.record({ forDuration: 45 });
-    setStatus(VOICE_STATUS.LISTENING);
-    return true;
-  }, [recorder, status]);
+  }, [recorder, restoreIdle, setSafely, setVoiceStatus]);
 
   const stopRecordingAndTranscribe = useCallback(async () => {
-    if (status !== VOICE_STATUS.LISTENING) return "";
-    if (stoppingRef.current) return "";
-    stoppingRef.current = true;
-
-    await recorder.stop();
-    const uri = recorder.uri;
-    await setAudioModeAsync({
-      allowsRecording: false,
-      playsInSilentMode: true,
-      interruptionMode: "duckOthers",
-    });
-    setVoiceLevel(0);
-
-    if (!uri) {
-      setStatus(VOICE_STATUS.ERROR);
-      setError("VOICE_EMPTY_RECORDING");
-      stoppingRef.current = false;
+    if (
+      statusRef.current !== VOICE_STATUS.LISTENING
+      || audioGateRef.current.isLocked()
+    ) {
       return "";
     }
 
-    try {
-      return await transcribeAudio({
+    return audioGateRef.current.run(async () => {
+      let uri;
+      try {
+        uri = await stopAudioRecording({
+          recorder,
+          setAudioMode: setAudioModeAsync,
+        });
+      } catch {
+        setVoiceStatus(VOICE_STATUS.ERROR);
+        setSafely(setError, VOICE_ERROR_CODES.SESSION_FAILED);
+        setSafely(setVoiceLevel, 0);
+        return "";
+      }
+
+      setSafely(setVoiceLevel, 0);
+      if (!uri) {
+        setVoiceStatus(VOICE_STATUS.ERROR);
+        setSafely(setError, VOICE_ERROR_CODES.EMPTY_RECORDING);
+        return "";
+      }
+      if (!mountedGuardRef.current.isMounted()) return "";
+
+      return transcribeAudio({
         uri,
         name: uri.split("/").pop() || "genie-voice.m4a",
         type: uri.endsWith(".webm") ? "audio/webm" : "audio/m4a",
         language: "vi",
       });
-    } finally {
-      stoppingRef.current = false;
-    }
-  }, [recorder, status, transcribeAudio]);
+    });
+  }, [recorder, setSafely, setVoiceStatus, transcribeAudio]);
 
   useEffect(() => {
     if (status !== VOICE_STATUS.LISTENING) return;
@@ -141,43 +275,79 @@ export function useGenieVoice() {
     const metering = Number(recorderState?.metering);
     if (!Number.isFinite(metering)) return;
 
-    setVoiceLevel(Math.max(0, Math.min(1, (metering + 62) / 42)));
-  }, [recorderState?.metering, status]);
+    setSafely(setVoiceLevel, Math.max(0, Math.min(1, (metering + 62) / 42)));
+  }, [recorderState?.metering, setSafely, status]);
 
   const speakText = useCallback(async (text) => {
     const cleanText = String(text || "").trim();
-    if (!cleanText) return;
+    if (
+      !cleanText
+      || audioGateRef.current.isLocked()
+      || statusRef.current === VOICE_STATUS.LISTENING
+      || statusRef.current === VOICE_STATUS.TRANSCRIBING
+      || !mountedGuardRef.current.isMounted()
+    ) {
+      return false;
+    }
 
-    Speech.stop();
-    setStatus(VOICE_STATUS.SPEAKING);
-    setError(null);
-    setVoiceLevel(0.7);
+    return audioGateRef.current.run(async () => {
+      if (!mountedGuardRef.current.isMounted()) return false;
 
-    Speech.speak(cleanText, {
-      language: "vi-VN",
-      rate: 0.9,
-      pitch: 1.02,
-      onDone: () => {
-        setVoiceLevel(0);
-        setStatus(VOICE_STATUS.IDLE);
-      },
-      onStopped: () => {
-        setVoiceLevel(0);
-        setStatus(VOICE_STATUS.IDLE);
-      },
-      onError: () => {
-        setError("Voice playback failed");
-        setVoiceLevel(0);
-        setStatus(VOICE_STATUS.ERROR);
-      },
+      const speechSession = speechSessionRef.current + 1;
+      speechSessionRef.current = speechSession;
+
+      try {
+        await Speech.stop();
+        if (
+          !mountedGuardRef.current.isMounted()
+          || speechSessionRef.current !== speechSession
+        ) {
+          return false;
+        }
+
+        setVoiceStatus(VOICE_STATUS.SPEAKING);
+        setSafely(setError, null);
+        setSafely(setVoiceLevel, 0.7);
+
+        const isCurrentSpeech = () => (
+          mountedGuardRef.current.isMounted()
+          && speechSessionRef.current === speechSession
+        );
+
+        Speech.speak(cleanText, createSpeechCallbacks({
+          cleanText,
+          isCurrentSpeech,
+          setError,
+          setSafely,
+          setVoiceLevel,
+          setVoiceStatus,
+        }));
+        return true;
+      } catch {
+        if (speechSessionRef.current !== speechSession) return false;
+        setSafely(setError, VOICE_ERROR_CODES.SESSION_FAILED);
+        setSafely(setVoiceLevel, 0);
+        setVoiceStatus(VOICE_STATUS.ERROR);
+        return false;
+      }
     });
-  }, []);
+  }, [setSafely, setVoiceStatus]);
 
   const stopSpeaking = useCallback(() => {
-    Speech.stop();
-    setVoiceLevel(0);
-    setStatus(VOICE_STATUS.IDLE);
-  }, []);
+    const speechSession = speechSessionRef.current + 1;
+    speechSessionRef.current = speechSession;
+
+    return audioGateRef.current.enqueue(async () => {
+      try {
+        await Speech.stop();
+      } catch {
+        // Stopping an already disposed speech session is safe to ignore.
+      }
+      if (speechSessionRef.current !== speechSession) return;
+      setSafely(setVoiceLevel, 0);
+      setVoiceStatus(VOICE_STATUS.IDLE);
+    });
+  }, [setSafely, setVoiceStatus]);
 
   return {
     status,

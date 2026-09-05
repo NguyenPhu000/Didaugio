@@ -16,7 +16,7 @@ const getAspectRatioFromId = (id) => {
   const str = String(id || "");
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
-    hash = (hash * 31 + str.charCodeAt(i)) | 0;
+    hash = Math.trunc(Math.imul(hash, 31) + str.charCodeAt(i));
   }
   const ratios = [0.82, 0.92, 1.02];
   return ratios[Math.abs(hash) % ratios.length];
@@ -184,7 +184,7 @@ export const SavedCard = memo(function SavedCard({
             </Text>
           </View>
 
-          {rating && (
+          {!!rating && (
             <View className="flex-row items-center mt-1.5 gap-1">
               <Star size={12} fill="#FFB800" color="#FFB800" strokeWidth={0} />
               <Text

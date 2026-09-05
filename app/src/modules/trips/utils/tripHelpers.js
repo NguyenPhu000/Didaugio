@@ -148,7 +148,7 @@ export function getDisplayStatus(trip) {
   }
   if (daysUntil < 0) {
     const endDaysUntil = getDaysUntil(trip.endDate);
-    if (endDaysUntil !== null && endDaysUntil < 0) return "completed";
+    if (endDaysUntil === null || endDaysUntil <= 0) return "completed";
     return "ongoing";
   }
   return "upcoming";
@@ -188,7 +188,7 @@ export function getTimelineLabel(trip) {
   return i18n.t("tripHelpers.canAddLater");
 }
 
-export function getHeroTrip(trips) {
+export function getHeroTrips(trips) {
   const STATUS_PRIORITY = {
     ongoing: 0,
     upcoming: 1,
@@ -206,9 +206,15 @@ export function getHeroTrip(trips) {
       const aDate = getSafeDateTime(a.trip.startDate, Number.MAX_SAFE_INTEGER);
       const bDate = getSafeDateTime(b.trip.startDate, Number.MAX_SAFE_INTEGER);
       return aDate - bDate;
-    });
+    })
+    .map(({ trip }) => trip);
 
-  return candidates[0]?.trip ?? null;
+  return candidates;
+}
+
+export function getHeroTrip(trips) {
+  const heroTrips = getHeroTrips(trips);
+  return heroTrips[0] ?? null;
 }
 
 export function sortTripsForDashboard(trips) {
@@ -438,7 +444,7 @@ export function buildTripDays(trip) {
 /**
  * Determine which day number a date falls on within a trip.
  */
-export function getDayNumberFromDate(tripStartYmd, targetYmd, dayCount) {
+export function getDayNumberFromDate({ tripStartYmd, targetYmd, dayCount }) {
   if (!tripStartYmd || !targetYmd) return null;
   const start = new Date(`${tripStartYmd}T12:00:00`);
   const target = new Date(`${targetYmd}T12:00:00`);
@@ -513,11 +519,11 @@ export function buildTripDetailBookings({
       const linkedTripId = booking?.linkedTrip?.id != null ? String(booking.linkedTrip.id) : null;
       const linkedDayNumber = Number(booking?.linkedTrip?.dayNumber);
 
-      const fallbackDayNumber = getDayNumberFromDate(
+      const fallbackDayNumber = getDayNumberFromDate({
         tripStartYmd,
-        String(booking?.useDate || "").slice(0, 10),
+        targetYmd: String(booking?.useDate || "").slice(0, 10),
         dayCount,
-      );
+      });
 
       const dayNumber =
         Number.isInteger(linkedDayNumber) && linkedDayNumber > 0
@@ -772,7 +778,13 @@ export function getTransportIcon(transport) {
   if (!transport) return null;
   const t = transport.toLowerCase();
   if (t.includes("walk") || t.includes("đi bộ")) return "directions-walk";
-  if (t.includes("bike") || t.includes("xe máy") || t.includes("motorcycle")) return "motorcycle";
+  if (
+    t.includes("xe đạp") ||
+    t.includes("cycling") ||
+    t.includes("bicycle") ||
+    t === "bike"
+  ) return "directions-bike";
+  if (t.includes("xe máy") || t.includes("motorcycle") || t.includes("motorbike")) return "motorcycle";
   if (t.includes("bus") || t.includes("buýt")) return "directions-bus";
   if (t.includes("car") || t.includes("xe hơi") || t.includes("xe")) return "directions-car";
   return "swap-vert";

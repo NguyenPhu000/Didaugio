@@ -1,22 +1,11 @@
-docs
- didaugio.code-workspace
-.agent
-.cursor
-data
-awesome-design-md
-.md
-.vscode
-skills
-.env
-.agents/skills
-.vscode
-.github\workflows
-.agents
-.git_bk
-.agent
-.env
+# Dependencies
+node_modules/
+dist/
+dist-ssr/
+*.local
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -24,108 +13,110 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Environment & Credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.jks
+*.p8
+*.p12
+*.mobileprovision
 
-# Editor directories and files
+# Editor & System
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.tsbuildinfo
+bash.exe.stackdump
+didaugio.code-workspace
 
-# AI Agent skills directories (React Best Practices)
+# AI Agent & Tools
 .cursor/
 .claude/
 .gemini/
 .agent/
+.agents/
 .cursorrules
-node_modules
-# Keep environment variables out of version control
-thunder-collection.json
-.env
-scripts
-/generated/prisma
-prisma/migrations
-tests
-scripts
-check_db.js 
+.codex/
+agent-skills/
+skills/
+skills-lock.json
+awesome-design-md/
+understand-anything-plugin/
+.understand-anything/
+.gitnexus/
+.git_bk/
+.scannerwork/
+.sonarlint/
+.superpowers/
+benchmarks/
+scratch/
+plans/
+specs/
+
+# Build & Native generated
+.expo/
+web-build/
+expo-env.d.ts
+.kotlin/
+*.orig.*
+.metro-health-check*
+/ios/
+/android/
+/server/.backups/
+/generated/prisma/
+storage/sensitive/*
+!storage/sensitive/.gitkeep
+
+# Local DB & Scripts
+check_db.js
 debug_turf.js
-import_boundaries.js 
+import_boundaries.js
 inspect_geojson.js
 inspect_ward_geojson.js
 test_lookup.js
-scripts
 thunder-collection.json
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+data/
 
-# dependencies
-node_modules/
+# Documentation & Markdown
+/docs/
+/server/docs/
+*.md
+!.github/
+!.github/workflows/
+!.github/workflows/quality.yml
 
-# Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
-
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
-# generated native folders
-/ios
-/android
-
-.env.development
-.env.production
-.env
-.env
-bash.exe.stackdump
-
-# Understand Anything (Cursor): thư mục clone/build nặng — giữ .cursor-plugin/plugin.json trong git
-understand-anything-plugin/
-.gitnexus
-.github/workflows
-AGENTS.md
-CLAUDE.md
-agent-skills
-.codex
-skills-lock.json
-benchmarks
-.understand-anything
-D:/didaugio/.understand-anything
-superpowers
-plans
-specs
-.cursor/plans
-2026-07-11-place-spoken-guide.md
-2026-07-11-place-spoken-guide-design.md
+# Test directories & files (Hidden from commits)
+test/
+tests/
+__tests__/
+*.test.js
+*.test.jsx
+*.test.ts
+*.test.tsx
+*.test.cjs
+*.test.mjs
+*.spec.js
+*.spec.jsx
+*.spec.ts
+*.spec.tsx
+*.spec.cjs
+*.spec.mjs
+server/test/
+app/test/
+web/test/
+web/src/test/
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/

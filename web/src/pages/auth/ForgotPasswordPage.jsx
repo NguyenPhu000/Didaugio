@@ -1,30 +1,16 @@
+import { Mail, ArrowLeft, Send, CheckCircle2} from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import Mail from "lucide-react/dist/esm/icons/mail";
-import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
-import Send from "lucide-react/dist/esm/icons/send";
-import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
-import Shield from "lucide-react/dist/esm/icons/shield";
-import KeyRound from "lucide-react/dist/esm/icons/key-round";
-import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
-import {
-  Button,
-  Input,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardDescription,
-  Label,
-} from "@/components/ui";
+import { motion, AnimatePresence } from "motion/react";
+import { Button, Input, Label } from "@/components/ui";
 import { authService } from "@/apis";
 import { forgotPasswordSchema } from "@/schemas/auth";
-
-// const forgotPasswordSchema = z.object({...}); // Removed
+import AuthShell from "@/components/auth/AuthShell";
+import { fieldLabel, fieldInput, fieldError } from "@/components/auth/authStyles";
 
 const ForgotPasswordPage = () => {
   const { t } = useTranslation();
@@ -36,9 +22,7 @@ const ForgotPasswordPage = () => {
     handleSubmit,
     formState: { errors },
     watch,
-  } = useForm({
-    resolver: zodResolver(forgotPasswordSchema),
-  });
+  } = useForm({ resolver: zodResolver(forgotPasswordSchema) });
 
   const email = watch("email");
 
@@ -48,8 +32,6 @@ const ForgotPasswordPage = () => {
       await authService.forgotPassword(data.email);
       setEmailSent(true);
       toast.success(t("auth.forgotPassword.success"));
-
-      // Hiển thị token nếu ở dev mode (để test)
     } catch (error) {
       toast.error(error.message || t("auth.forgotPassword.failed"));
     } finally {
@@ -57,170 +39,62 @@ const ForgotPasswordPage = () => {
     }
   };
 
-  const handleResend = () => {
-    setEmailSent(false);
-  };
-
   return (
-    <div className="min-h-screen flex relative overflow-hidden">
-      {/* Grid Background */}
-      <div className="absolute inset-0 bg-grid-dots opacity-30 pointer-events-none"></div>
-      <div className="absolute inset-0 bg-grid-lines opacity-10 pointer-events-none"></div>
-
-      {/* Left Side - Tactical Info Panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-black relative overflow-hidden">
-        {/* Accent Bars */}
-        <div className="absolute top-0 left-0 w-2 h-full bg-[#F3E600]"></div>
-        <div className="absolute top-0 right-0 w-2 h-full bg-[#F3E600]"></div>
-
-        {/* Grid overlay */}
-        <div className="absolute inset-0 bg-grid-dots opacity-20"></div>
-
-        <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-          {/* Logo */}
-          <div>
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-12 h-12 border-2 border-[#F3E600] flex items-center justify-center">
-                <Shield className="h-6 w-6 text-[#F3E600]" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight">
-                  DIDAUGIO
-                </h2>
-                <p className="text-[#F3E600] text-xs font-mono uppercase tracking-wider">
-                  {t("auth.forgotPassword.subtitle")}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="space-y-8">
-            <div>
-              <h1 className="text-5xl font-black text-white uppercase leading-tight mb-4">
-                {t("auth.forgotPassword.heroTitle1")}
-                <br />
-                {t("auth.forgotPassword.heroTitle2")}
-                <br />
-                {t("auth.forgotPassword.heroTitle3")}
-              </h1>
-              <div className="w-24 h-1 bg-[#F3E600]"></div>
-            </div>
-
-            <p className="text-gray-400 font-mono text-sm uppercase leading-relaxed max-w-md">
-              {t("auth.forgotPassword.heroDesc").split("\n").map((line, i) => (
-                <span key={i}>
-                  {line}
-                  {i < t("auth.forgotPassword.heroDesc").split("\n").length - 1 && <br />}
-                </span>
-              ))}
-            </p>
-
-            {/* Security Features */}
-            <div className="space-y-3 max-w-md">
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 border border-[#F3E600] flex items-center justify-center shrink-0 mt-1">
-                  <KeyRound className="h-3 w-3 text-[#F3E600]" />
-                </div>
-                <p className="text-xs text-gray-400 uppercase font-mono">
-                  {t("auth.forgotPassword.featureSecure")}
-                </p>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 border border-[#F3E600] flex items-center justify-center shrink-0 mt-1">
-                  <Mail className="h-3 w-3 text-[#F3E600]" />
-                </div>
-                <p className="text-xs text-gray-400 uppercase font-mono">
-                  {t("auth.forgotPassword.featureEmail")}
-                </p>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 border border-[#F3E600] flex items-center justify-center shrink-0 mt-1">
-                  <Shield className="h-3 w-3 text-[#F3E600]" />
-                </div>
-                <p className="text-xs text-gray-400 uppercase font-mono">
-                  {t("auth.forgotPassword.featureExpiry")}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="text-xs text-gray-600 uppercase font-mono">
-            © 2026 CAN THO SMART TOURISM
-          </div>
-        </div>
-      </div>
-
-      {/* Right Side - Recovery Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-white relative">
-        <div className="w-full max-w-md relative z-10">
-          {/* Back Button */}
-          <Link
-            to="/auth/login"
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-black mb-8 transition-colors uppercase font-mono text-xs"
+    <AuthShell
+      title="Quên mật khẩu? Chúng tôi giúp bạn lấy lại nhanh chóng."
+      subtitle="Nhập email và chúng tôi sẽ gửi liên kết đặt lại mật khẩu an toàn."
+      maxWidth="max-w-[420px]"
+    >
+      <AnimatePresence mode="wait">
+        {!emailSent ? (
+          <motion.div
+            key="form"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           >
-            <ArrowLeft className="h-4 w-4" />
-            {t("auth.forgotPassword.backToLogin")}
-          </Link>
+            {/* Back link */}
+            <Link
+              to="/auth/login"
+              className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-900"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {t("auth.forgotPassword.backToLogin")}
+            </Link>
 
-          {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 border-2 border-black flex items-center justify-center">
-              <Shield className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-xl font-black uppercase">DIDAUGIO</h2>
-              <p className="text-[#F3E600] text-xs font-mono uppercase">
-                {t("auth.forgotPassword.mobileSubtitle")}
-              </p>
-            </div>
-          </div>
-
-          {/* Form Container */}
-          <div className="bg-white border-2 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-            {!emailSent ? (
-              <>
+            {/* Card */}
+            <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_16px_48px_-12px_rgba(15,23,42,0.16),0_4px_16px_-4px_rgba(15,23,42,0.08)]">
+              <div className="px-8 py-8 sm:px-10">
                 {/* Header */}
-                <div className="mb-6">
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="w-16 h-16 border-2 border-black bg-[#F3E600] flex items-center justify-center">
-                      <KeyRound className="h-8 w-8" />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 mb-2 justify-center">
-                    <div className="w-1 h-8 bg-[#F3E600]"></div>
-                    <h1 className="text-3xl font-black uppercase tracking-tight">
-                      {t("auth.forgotPassword.title")}
-                    </h1>
-                  </div>
-                  <p className="text-xs text-gray-500 uppercase font-mono text-center">
+                <div className="mb-8">
+                  <h1 className="text-[26px] font-bold tracking-tight text-slate-900 leading-tight">
+                    {t("auth.forgotPassword.title")}
+                  </h1>
+                  <p className="mt-1.5 text-[14px] text-slate-500 leading-relaxed">
                     {t("auth.forgotPassword.subtitle")}
                   </p>
                 </div>
 
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="email"
-                      className="tim-meta flex items-center gap-2"
-                    >
-                      <Mail className="h-4 w-4" />
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email" className={fieldLabel}>
                       {t("auth.forgotPassword.emailLabel")}
                     </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder={t("auth.forgotPassword.emailPlaceholder")}
-                      autoComplete="email"
-                      autoFocus
-                      className="rounded-none border-2 border-black h-12 uppercase font-mono text-sm focus-visible:border-[#F3E600] focus-visible:ring-0"
-                      {...register("email")}
-                    />
+                    <div className="relative">
+                      <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder={t("auth.forgotPassword.emailPlaceholder")}
+                        autoComplete="email"
+                        autoFocus
+                        className={`${fieldInput} pl-10`}
+                        {...register("email")}
+                      />
+                    </div>
                     {errors.email && (
-                      <p className="text-xs text-red-600 font-mono uppercase">
-                        {errors.email.message}
-                      </p>
+                      <p className={fieldError}>{errors.email.message}</p>
                     )}
                   </div>
 
@@ -228,85 +102,104 @@ const ForgotPasswordPage = () => {
                     type="submit"
                     loading={isLoading}
                     disabled={isLoading}
-                    className="w-full rounded-none border-2 border-black bg-[#F3E600] text-black hover:bg-black hover:text-[#F3E600] h-12 uppercase font-black text-sm transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
+                    className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#F3E600] text-[15px] font-bold text-slate-900 shadow-[0_4px_14px_rgba(243,230,0,0.45)] transition-all duration-300 hover:bg-[#e8d900] hover:shadow-[0_6px_22px_rgba(243,230,0,0.55)] active:scale-[0.99] disabled:opacity-60"
                   >
                     {isLoading ? (
                       t("auth.forgotPassword.submitting")
                     ) : (
                       <>
-                        <Send className="mr-2 h-4 w-4" />
+                        <Send className="h-4 w-4" />
                         {t("auth.forgotPassword.submit")}
                       </>
                     )}
                   </Button>
                 </form>
-              </>
-            ) : (
-              <>
-                {/* Success State */}
-                <div className="space-y-6 text-center">
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="w-16 h-16 border-2 border-black bg-[#F3E600] flex items-center justify-center">
-                      <CheckCircle className="h-8 w-8" />
-                    </div>
-                  </div>
+              </div>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="success"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {/* Success card */}
+            <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_16px_48px_-12px_rgba(15,23,42,0.16),0_4px_16px_-4px_rgba(15,23,42,0.08)]">
+              <div className="px-8 py-10 text-center sm:px-10">
+                {/* Animated check */}
+                <motion.div
+                  className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#F3E600]/20"
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.1, type: "spring", stiffness: 200, damping: 18 }}
+                >
+                  <CheckCircle2 className="h-10 w-10 text-slate-800" strokeWidth={1.5} />
+                </motion.div>
 
-                  <div>
-                    <h2 className="text-2xl font-black uppercase mb-2">
-                      {t("auth.forgotPassword.emailSent")}
-                    </h2>
-                    <p className="text-xs text-gray-500 uppercase font-mono">
-                      {t("auth.forgotPassword.checkInbox")}
-                    </p>
-                  </div>
+                <h2 className="text-[24px] font-bold tracking-tight text-slate-900">
+                  {t("auth.forgotPassword.emailSent")}
+                </h2>
+                <p className="mt-2 text-sm text-slate-500 leading-relaxed">
+                  {t("auth.forgotPassword.checkInbox")}
+                </p>
 
-                  <div className="bg-[#F3E600] border-2 border-black p-4">
-                    <AlertCircle className="h-8 w-8 mx-auto mb-3" />
-                    <p className="text-xs font-mono uppercase leading-relaxed" dangerouslySetInnerHTML={{ __html: t("auth.forgotPassword.emailSentNote", { email }) }} />
-                  </div>
-
-                  <div className="space-y-2 text-xs text-gray-600 uppercase font-mono bg-gray-50 border border-gray-200 p-4">
-                    <p>• {t("auth.forgotPassword.checkSpam")}</p>
-                    <p>• {t("auth.forgotPassword.linkExpiry")}</p>
-                    <p>• {t("auth.forgotPassword.contactSupport")}</p>
-                  </div>
-
-                  <div className="flex flex-col gap-2 pt-4">
-                    <Button
-                      variant="outline"
-                      onClick={handleResend}
-                      className="w-full rounded-none border-2 border-black h-11 hover:bg-gray-100 uppercase font-black text-xs"
-                    >
-                      {t("auth.forgotPassword.tryDifferentEmail")}
-                    </Button>
-                    <Link
-                      to="/auth/login"
-                      className="inline-block w-full rounded-none border-2 border-black bg-white text-black hover:bg-gray-100 h-11 px-6 uppercase font-black text-xs transition-all flex items-center justify-center"
-                    >
-                      <ArrowLeft className="mr-2 h-4 w-4" />
-                      {t("auth.forgotPassword.backToLogin")}
-                    </Link>
-                  </div>
+                {/* Email highlight */}
+                <div className="mt-5 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-5 py-2.5">
+                  <Mail className="h-4 w-4 shrink-0 text-slate-400" />
+                  <span className="text-sm font-semibold text-slate-800">{email}</span>
                 </div>
-              </>
-            )}
-          </div>
 
-          {/* Footer */}
-          <div className="mt-6 text-center">
-            <p className="text-xs text-gray-400 uppercase font-mono">
-              {t("auth.forgotPassword.needHelp")}{" "}
-              <a
-                href="mailto:support@didaugio.com"
-                className="text-black underline hover:text-[#F3E600]"
-              >
-                support@didaugio.com
-              </a>
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+                {/* Tips */}
+                <ul className="mt-6 space-y-2 text-left text-sm text-slate-500">
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#F3E600]" />
+                    {t("auth.forgotPassword.checkSpam")}
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#F3E600]" />
+                    {t("auth.forgotPassword.linkExpiry")}
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#F3E600]" />
+                    {t("auth.forgotPassword.contactSupport")}
+                  </li>
+                </ul>
+
+                {/* Actions */}
+                <div className="mt-8 flex flex-col gap-3">
+                  <Link
+                    to="/auth/login"
+                    className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-slate-900 text-[15px] font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.99]"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    {t("auth.forgotPassword.backToLogin")}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setEmailSent(false)}
+                    className="flex h-11 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                  >
+                    {t("auth.forgotPassword.tryDifferentEmail")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <p className="mt-4 text-center text-[11px] tracking-wide text-slate-400">
+        {t("auth.forgotPassword.needHelp")}{" "}
+        <a
+          href="mailto:support@didaugio.com"
+          className="font-medium text-slate-600 hover:underline underline-offset-4"
+        >
+          support@didaugio.com
+        </a>
+      </p>
+    </AuthShell>
   );
 };
 

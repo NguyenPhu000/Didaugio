@@ -1,9 +1,14 @@
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useWindowDimensions } from "react-native";
 import { getMapPlacesApi } from "../api/mapApi";
-import { QUERY_KEYS } from "../../../constants/query-keys";
 import { normalizePlaces } from "../../../lib/place";
+import { createMapViewport } from "../utils/mapViewport";
+import { isValidMapViewport } from "../utils/mapViewportValidation";
+import { regionToZoom } from "../utils/mapZoom";
+import { getMapPlacesQueryOptions } from "./useMapPlacesQueryOptions";
 
-const MAP_PLACES_LIMIT = 500;
+const MAP_VIEWPORT_DEBOUNCE_MS = 250;
 
 const toNumberOrNull = (value) => {
   if (value === null || value === undefined || value === "") return null;
@@ -36,11 +41,38 @@ const extractPlacesPayload = (res) => {
   return [];
 };
 
-export function useMapPlaces() {
+export function useMapPlaces(region) {
+  const { width: viewportWidth } = useWindowDimensions();
+  const latitude = region?.latitude;
+  const longitude = region?.longitude;
+  const latitudeDelta = region?.latitudeDelta;
+  const longitudeDelta = region?.longitudeDelta;
+
+  const zoom = useMemo(() => {
+    const z = regionToZoom(region, viewportWidth);
+    return Number.isFinite(z) && z > 0 ? Math.round(z) : 11;
+  }, [region, viewportWidth]);
+
+  const viewport = useMemo(() => {
+    const vp = createMapViewport({ latitude, longitude, latitudeDelta, longitudeDelta });
+    if (!vp) return null;
+    return { ...vp, zoom };
+  }, [latitude, longitude, latitudeDelta, longitudeDelta, zoom]);
+
+  const [debouncedViewport, setDebouncedViewport] = useState(viewport);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedViewport(viewport), MAP_VIEWPORT_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [viewport]);
+
   return useQuery({
-    queryKey: QUERY_KEYS.places.list({ status: "approved", limit: MAP_PLACES_LIMIT }),
-    queryFn: () => getMapPlacesApi({ limit: MAP_PLACES_LIMIT }),
-    staleTime: 5 * 60 * 1000,
+    queryKey: ["places", "v2", "map", debouncedViewport],
+    queryFn: ({ signal }) => getMapPlacesApi(debouncedViewport, signal),
+    enabled: isValidMapViewport(debouncedViewport),
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    ...getMapPlacesQueryOptions(),
     select: (res) =>
       normalizePlaces(extractPlacesPayload(res))
         .map(normalizeMapPlace)

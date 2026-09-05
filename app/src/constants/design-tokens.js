@@ -40,7 +40,64 @@ const NEUTRAL = {
   900: "#0A0A0B",
 };
 
-const ACTIVE_FONT_FAMILY = "Afacad";
+const SEMANTIC_COLORS = {
+  star: "#F59E0B",
+  starSurface: "#FEF3C7",
+  starText: "#92400E",
+  success: "#10B981",
+  warning: "#F59E0B",
+  danger: "#EF4444",
+  dangerSurface: "#FDECEC",
+  info: PRIMARY_BLUE[600],
+  infoSurface: "#ECF8FA",
+  slate: {
+    50: "#F8FAFC",
+    100: "#F1F5F9",
+    200: "#E2E8F0",
+    400: "#94A3B8",
+    500: "#64748B",
+    600: "#475569",
+    800: "#1E293B",
+    900: "#0F172A",
+    950: "#020617",
+  },
+  apple: {
+    black: "#000000",
+    deep: "#0B0D12",
+    deepSurface: "#121620",
+    ink: "#1D1D1F",
+    surface: "#F5F5F7",
+    white: WHITE,
+  },
+  status: {
+    upcoming: {
+      accent: "#38BDF8",
+      background: "rgba(56, 189, 248, 0.15)",
+    },
+    active: {
+      accent: "#34D399",
+      background: "rgba(52, 211, 153, 0.15)",
+    },
+    completed: {
+      accent: "#94A3B8",
+      background: "rgba(148, 163, 184, 0.15)",
+    },
+    cancelled: {
+      accent: "#F87171",
+      background: "rgba(248, 113, 113, 0.15)",
+    },
+  },
+  booking: {
+    pending: { color: "#D97706", bg: "#FFF9E6" },
+    confirmed: { color: "#15803D", bg: "#DCFCE7" },
+    completed: { color: "#1D1D1F", bg: "#EFEFEF" },
+    cancelled: { color: "rgba(0,0,0,0.48)", bg: "#F5F5F7" },
+    rejected: { color: "#8A4B12", bg: "#FFF5EB" },
+    neutral: { color: "rgba(0,0,0,0.48)", bg: "#F5F5F7" },
+  },
+};
+
+const ACTIVE_FONT_FAMILY = "BeVietnamPro";
 
 const FONT_FAMILIES = {
   BeVietnamPro: {
@@ -77,10 +134,11 @@ export const TOKENS = {
       gradient: [PRIMARY_BLUE[400], PRIMARY_BLUE[500], PRIMARY_BLUE[600]],
     },
     neutral: NEUTRAL,
-    success: "#10B981",
-    warning: "#F59E0B",
-    error: "#EF4444",
-    info: PRIMARY_BLUE[500],
+    semantic: SEMANTIC_COLORS,
+    success: SEMANTIC_COLORS.success,
+    warning: SEMANTIC_COLORS.warning,
+    error: SEMANTIC_COLORS.danger,
+    info: SEMANTIC_COLORS.info,
     surface: {
       light: WHITE,
       dark: BLACK,

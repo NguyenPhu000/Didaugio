@@ -1,20 +1,56 @@
-import axios from "axios";
-import { API_BASE_URL, REQUEST_TIMEOUT } from "../constants/api";
+import axios, { isCancel } from "axios";
+import { API_BASE_CANDIDATES, API_BASE_URL, REQUEST_TIMEOUT } from "../constants/api";
 import { useAuthStore } from "../stores/authStore";
 import { ENDPOINTS } from "./endpoints";
 import i18n from "@/i18n";
 
+const apiBaseCandidates = API_BASE_CANDIDATES.length > 0
+  ? API_BASE_CANDIDATES
+  : [API_BASE_URL].filter(Boolean);
+let activeBaseURL = apiBaseCandidates[0] || "";
+
 const client = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: activeBaseURL,
   timeout: REQUEST_TIMEOUT,
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
-    "ngrok-skip-browser-warning": "true",
+    // Only sent in development tunnels (for example ngrok). Never reaches production.
+    ...(__DEV__ && { "ngrok-skip-browser-warning": "true" }),
   },
 });
 
+const normalizeBaseURL = (url) => String(url || "").replace(/\/+$/, "");
+
+const getCurrentBaseURL = (config = {}) =>
+  normalizeBaseURL(config.baseURL || activeBaseURL || API_BASE_URL);
+
+const getNextBaseURL = (currentBaseURL, attemptedBases = []) => {
+  const attempted = new Set(attemptedBases.map(normalizeBaseURL));
+  const current = normalizeBaseURL(currentBaseURL);
+  if (current) attempted.add(current);
+
+  return apiBaseCandidates.find((baseURL) => {
+    const normalized = normalizeBaseURL(baseURL);
+    return normalized && !attempted.has(normalized);
+  }) || null;
+};
+
+const shouldFallbackToNextBase = (error) =>
+  apiBaseCandidates.length > 1 &&
+  !error?.response &&
+  (
+    ["ERR_NETWORK", "ECONNABORTED", "ETIMEDOUT"].includes(error?.code) ||
+    String(error?.message || "").toLowerCase().includes("network")
+  );
+
+const setActiveBaseURL = (baseURL) => {
+  activeBaseURL = baseURL;
+  client.defaults.baseURL = baseURL;
+};
+
 client.interceptors.request.use((config) => {
+  config.baseURL = config.baseURL || activeBaseURL;
   const token = useAuthStore.getState().getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -90,17 +126,33 @@ const processQueue = (error, token = null) => {
 };
 
 // Retry logic cho GET requests trên mobile network
-const MAX_RETRIES = 2;
-const RETRY_DELAY_MS = 1000;
+const MAX_RETRIES = 1;
+const RETRY_DELAY_MS = 500;
 
 client.interceptors.response.use(
   (response) => response.data,
   async (error) => {
+    if (isCancel(error) || error?.code === "ERR_CANCELED") {
+      return Promise.reject(error);
+    }
+
     const originalRequest = error.config;
     if (!originalRequest) {
       return Promise.reject(buildError(error));
     }
 
+    if (shouldFallbackToNextBase(error)) {
+      originalRequest._attemptedBases = originalRequest._attemptedBases || [];
+      const currentBaseURL = getCurrentBaseURL(originalRequest);
+      originalRequest._attemptedBases.push(currentBaseURL);
+      const nextBaseURL = getNextBaseURL(currentBaseURL, originalRequest._attemptedBases);
+
+      if (nextBaseURL) {
+        setActiveBaseURL(nextBaseURL);
+        originalRequest.baseURL = nextBaseURL;
+        return client(originalRequest);
+      }
+    }
     // Retry cho GET requests bị network error hoặc 5xx
     const retryCount = originalRequest._retryCount || 0;
     const shouldRetry =
@@ -110,7 +162,7 @@ client.interceptors.response.use(
 
     if (shouldRetry) {
       originalRequest._retryCount = retryCount + 1;
-      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * retryCount));
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * (retryCount + 1)));
       return client(originalRequest);
     }
 
@@ -148,15 +200,15 @@ client.interceptors.response.use(
             originalRequest.headers = originalRequest.headers || {};
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
             return client(originalRequest);
-          })
-          .catch((err) => Promise.reject(err));
+          });
       }
 
       isRefreshing = true;
 
       try {
+        const refreshBaseURL = getCurrentBaseURL(originalRequest);
         const res = await axios.post(
-          `${API_BASE_URL}/auth/refresh`,
+          `${refreshBaseURL}${ENDPOINTS.auth.refresh}`,
           { refreshToken },
           { headers: { "Content-Type": "application/json" } },
         );
@@ -201,6 +253,8 @@ function buildError(error) {
     message,
     status: error?.response?.status,
     code: error?.response?.data?.errorCode || "UNKNOWN_ERROR",
+    requestId: error?.response?.headers?.["x-request-id"],
+    attemptedBases: error?.config?._attemptedBases || apiBaseCandidates,
     raw: error,
   };
 }

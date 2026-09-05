@@ -1,6 +1,11 @@
-import { useRef, useState } from "react";
+// MAP: RegisterScreen
+// ├── UI: @/components/ui/GridBackground, @/components/primitives/PasswordValidationBar
+// └── API: @/modules/auth/hooks/useRegister
+
+import { useRef, useState, useCallback, useMemo, forwardRef } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,13 +17,187 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { Link, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
-import { MaterialIconsRounded } from "../../src/components/primitives/MaterialIconsRounded";
+import Feather from "@expo/vector-icons/Feather";
 import { useRegister } from "../../src/modules/auth/hooks/useRegister";
-import { cn } from "../../src/lib/cn";
+import i18n from "../../src/i18n";
 import { useTranslation } from "react-i18next";
 import { GridBackground } from "../../src/components/ui/GridBackground";
-import { LinearGradient } from "expo-linear-gradient";
+
+/* ──────────────────────────────────────────────────────────────────
+   Sub-components
+   ────────────────────────────────────────────────────────────────── */
+
+const Field = forwardRef(function Field(
+  {
+    icon,
+    value,
+    onChangeText,
+    placeholder,
+    secureTextEntry,
+    autoComplete,
+    textContentType,
+    returnKeyType,
+    onSubmitEditing,
+    rightAdornment,
+    keyboardType,
+    autoCapitalize,
+  },
+  ref,
+) {
+  const [focused, setFocused] = useState(false);
+  const iconColor = focused ? "#7DD3FC" : "#6B7280";
+  return (
+    <View
+      className="flex-row items-center h-[56px] px-1.5"
+      style={{
+        backgroundColor: focused ? "rgba(212, 255, 79, 0.04)" : "transparent",
+        borderRadius: 14,
+      }}
+    >
+      <View className="w-11 items-center">
+        <Feather name={icon} size={18} color={iconColor} />
+      </View>
+      <TextInput
+        ref={ref}
+        value={value}
+        onChangeText={onChangeText}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        placeholder={placeholder}
+        placeholderTextColor="#4B5563"
+        secureTextEntry={secureTextEntry}
+        autoComplete={autoComplete}
+        textContentType={textContentType}
+        returnKeyType={returnKeyType}
+        onSubmitEditing={onSubmitEditing}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize ?? "none"}
+        className="flex-1 text-[15px] text-white h-full font-medium"
+        selectionColor="#7DD3FC"
+      />
+      {rightAdornment}
+    </View>
+  );
+});
+
+function PasswordStrength({ password }) {
+  const { score, color } = useMemo(() => {
+    let score = 0;
+    if (password.length >= 8) score += 1;
+    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score += 1;
+    if (/\d/.test(password)) score += 1;
+    if (/[^A-Za-z0-9]/.test(password)) score += 1;
+    const palette = [
+      "#FF6B6B",
+      "#F59E0B",
+      "#7DD3FC",
+      "#7DD3FC",
+      "#7DD3FC",
+    ];
+    return { score, color: palette[score] };
+  }, [password]);
+
+  if (!password) return null;
+  const labels = [
+    "auth.register.strengthWeak",
+    "auth.register.strengthFair",
+    "auth.register.strengthGood",
+    "auth.register.strengthStrong",
+  ];
+  return (
+    <View className="mt-3 mb-1">
+      <View className="flex-row gap-1.5 mb-2">
+        {[0, 1, 2, 3].map((i) => (
+          <View
+            key={i}
+            className="flex-1 h-[3px] rounded-full"
+            style={{
+              backgroundColor:
+                i < score ? color : "rgba(255,255,255,0.06)",
+            }}
+          />
+        ))}
+      </View>
+      <Text
+        className="text-[10px] font-bold tracking-[0.2em] uppercase"
+        style={{ color }}
+      >
+        {i18n.t(labels[Math.min(score, labels.length - 1)])}
+      </Text>
+    </View>
+  );
+}
+
+function PrimaryButton({ onPress, loading, label }) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <View
+      className="rounded-full p-[1.5px]"
+      style={{
+        backgroundColor: pressed ? "#7DD3FC" : "rgba(212, 255, 79, 0.5)",
+        shadowColor: "#7DD3FC",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: pressed ? 0.6 : 0.25,
+        shadowRadius: 24,
+      }}
+    >
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => setPressed(true)}
+        onPressOut={() => setPressed(false)}
+        disabled={loading}
+        className="flex-row items-center justify-center h-[56px] rounded-full"
+        style={{
+          backgroundColor: "#7DD3FC",
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        }}
+      >
+        {loading ? (
+          <ActivityIndicator color="#0B0B0F" size="small" />
+        ) : (
+          <>
+            <Text className="text-[#0B0B0F] text-[15px] font-extrabold tracking-[0.1px]">
+              {label}
+            </Text>
+            <View
+              className="ml-3 w-7 h-7 rounded-full items-center justify-center"
+              style={{ backgroundColor: "rgba(11, 11, 15, 0.18)" }}
+            >
+              <Feather name="arrow-right" size={15} color="#0B0B0F" />
+            </View>
+          </>
+        )}
+      </Pressable>
+    </View>
+  );
+}
+
+function ErrorBanner({ message, type = "error" }) {
+  const isError = type === "error";
+  const accent = isError ? "#FF6B6B" : "#7DD3FC";
+  const text = isError ? "#FF8B85" : "#7DD3FC";
+  const icon = isError ? "alert-circle" : "check-circle";
+  const bg = isError ? "rgba(255, 59, 48, 0.08)" : "rgba(212, 255, 79, 0.08)";
+  const border = isError ? "rgba(255, 59, 48, 0.25)" : "rgba(212, 255, 79, 0.25)";
+  return (
+    <View
+      className="flex-row items-center rounded-2xl px-4 py-3 mb-5"
+      style={{ backgroundColor: bg, borderColor: border, borderWidth: 1 }}
+    >
+      <Feather name={icon} size={16} color={accent} />
+      <Text
+        className="flex-1 text-[12.5px] font-semibold ml-2.5"
+        style={{ color: text }}
+      >
+        {message}
+      </Text>
+    </View>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   RegisterScreen
+   ────────────────────────────────────────────────────────────────── */
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
@@ -31,312 +210,248 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const [fullNameFocused, setFullNameFocused] = useState(false);
-  const [usernameFocused, setUsernameFocused] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
-  const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
 
   const usernameRef = useRef(null);
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
   const confirmPasswordRef = useRef(null);
 
-  const handleRegister = async () => {
-    const result = await register({ fullName, username, email, password, confirmPassword });
+  const handleRegister = useCallback(async () => {
+    const result = await register({
+      fullName,
+      username,
+      email,
+      password,
+      confirmPassword,
+    });
     if (result?.email) {
       router.replace({
         pathname: "/(auth)/verify-otp",
         params: { email: result.email },
       });
     }
-  };
+  }, [register, fullName, username, email, password, confirmPassword, router]);
 
   return (
-    <GridBackground 
-      backgroundColor="#020617" 
-      cellSize={48} 
-      lineColor="rgba(255,255,255,0.04)"
+    <GridBackground
+      backgroundColor="#0B0B0F"
+      tintColor="#0B0B0F"
+      tintOpacity={0.6}
+      cellSize={56}
+      lineColor="rgba(125, 211, 252, 0.05)"
       backgroundImage={require("../../assets/sky.jpg")}
     >
       <StatusBar style="light" />
 
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
-          bounces={true}
+          bounces={false}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{
             flexGrow: 1,
-            justifyContent: "center",
-            paddingTop: insets.top + 40,
-            paddingBottom: Math.max(insets.bottom + 20, 40)
+            paddingTop: insets.top + 28,
+            paddingBottom: Math.max(insets.bottom + 24, 36),
           }}
           className="px-6"
           showsVerticalScrollIndicator={false}
         >
-          {/* Brand header */}
-          <View className="items-center mb-6">
-            <View 
-              className="w-16 h-16 rounded-[18px] bg-white items-center justify-center mb-3 shadow-md elevation-2"
-              style={Platform.OS === "ios" ? {
-                shadowColor: "#000000",
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.1,
-                shadowRadius: 12,
-              } : null}
-            >
-              <MaterialIconsRounded name="travel-explore" size={32} color="#007AFF" />
-            </View>
-            <Text className="text-[28px] font-extrabold text-white tracking-[-0.5px]">{t("common.appName")}</Text>
-            <Text className="text-sm text-white/60 mt-1 font-medium">{t("auth.register.subtitle")}</Text>
+          {/* ── Eyebrow micro-tag ─────────────────────────────── */}
+          <View className="flex-row items-center self-center mb-6 px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.04]">
+            <View className="w-1.5 h-1.5 rounded-full bg-[#7DD3FC] mr-2" />
+            <Text className="text-[10px] font-bold tracking-[0.2em] text-white/70 uppercase">
+              {t("common.appName")}
+            </Text>
           </View>
 
-          {/* Glassmorphic Register Card */}
-          <View 
-            className="bg-white/95 rounded-[24px] p-6 w-full shadow-xl elevation-4"
-            style={Platform.OS === "ios" ? {
-              shadowColor: "#000000",
-              shadowOffset: { width: 0, height: 12 },
-              shadowOpacity: 0.15,
-              shadowRadius: 24,
-            } : null}
-          >
-            <Text className="text-[30px] font-extrabold text-[#000000] mb-1.5">{t("auth.register.title")}</Text>
-         
-
-            {/* Section 1: Personal Info Grouped Cell */}
-            <Text className="text-[11px] font-bold text-[#8E8E93] mb-2 ml-1 tracking-[0.5px]">{t("auth.register.personalInfo")}</Text>
-            <View className="rounded-[14px] bg-[#F2F2F7] overflow-hidden border border-[#E5E5EA] mb-5">
-              {/* Họ tên */}
-              <View className={cn("flex-row items-center h-[52px] px-4 bg-transparent", fullNameFocused && "bg-[#E5E5EA]")}>
-                <View className="w-8 items-start">
-                  <Feather
-                    name="user"
-                    size={19}
-                    color={fullNameFocused ? "#007AFF" : "#8E8E93"}
-                  />
-                </View>
-                <TextInput
-                  value={fullName}
-                  onChangeText={setFullName}
-                  onFocus={() => setFullNameFocused(true)}
-                  onBlur={() => setFullNameFocused(false)}
-                  autoCapitalize="words"
-                  autoComplete="name"
-                  placeholder={t("auth.register.fullName")}
-                  placeholderTextColor="#AEAEB2"
-                  className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
-                  textContentType="name"
-                  returnKeyType="next"
-                  onSubmitEditing={() => usernameRef.current?.focus()}
-                />
-              </View>
-
-              <View className="h-[1px] bg-[#E5E5EA] ml-12" />
-
-              {/* Username */}
-              <View className={cn("flex-row items-center h-[52px] px-4 bg-transparent", usernameFocused && "bg-[#E5E5EA]")}>
-                <View className="w-8 items-start">
-                  <Feather
-                    name="at-sign"
-                    size={19}
-                    color={usernameFocused ? "#007AFF" : "#8E8E93"}
-                  />
-                </View>
-                <TextInput
-                  ref={usernameRef}
-                  value={username}
-                  onChangeText={setUsername}
-                  onFocus={() => setUsernameFocused(true)}
-                  onBlur={() => setUsernameFocused(false)}
-                  autoComplete="username"
-                  autoCapitalize="none"
-                  placeholder={t("auth.register.username")}
-                  placeholderTextColor="#AEAEB2"
-                  className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
-                  textContentType="username"
-                  returnKeyType="next"
-                  onSubmitEditing={() => emailRef.current?.focus()}
-                />
-              </View>
-
-              <View className="h-[1px] bg-[#E5E5EA] ml-12" />
-
-              {/* Email */}
-              <View className={cn("flex-row items-center h-[52px] px-4 bg-transparent", emailFocused && "bg-[#E5E5EA]")}>
-                <View className="w-8 items-start">
-                  <Feather
-                    name="mail"
-                    size={19}
-                    color={emailFocused ? "#007AFF" : "#8E8E93"}
-                  />
-                </View>
-                <TextInput
-                  ref={emailRef}
-                  value={email}
-                  onChangeText={setEmail}
-                  onFocus={() => setEmailFocused(true)}
-                  onBlur={() => setEmailFocused(false)}
-                  keyboardType="email-address"
-                  autoComplete="email"
-                  autoCapitalize="none"
-                  placeholder={t("auth.register.email")}
-                  placeholderTextColor="#AEAEB2"
-                  className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
-                  textContentType="emailAddress"
-                  returnKeyType="next"
-                  onSubmitEditing={() => passwordRef.current?.focus()}
-                />
-              </View>
-            </View>
-
-            {/* Section 2: Security Grouped Cell */}
-            <Text className="text-[11px] font-bold text-[#8E8E93] mb-2 ml-1 tracking-[0.5px]">{t("auth.register.securityPassword")}</Text>
-            <View className="rounded-[14px] bg-[#F2F2F7] overflow-hidden border border-[#E5E5EA] mb-5">
-              {/* Mật khẩu */}
-              <View className={cn("flex-row items-center h-[52px] px-4 bg-transparent", passwordFocused && "bg-[#E5E5EA]")}>
-                <View className="w-8 items-start">
-                  <Feather
-                    name="lock"
-                    size={19}
-                    color={passwordFocused ? "#007AFF" : "#8E8E93"}
-                  />
-                </View>
-                <TextInput
-                  ref={passwordRef}
-                  value={password}
-                  onChangeText={setPassword}
-                  onFocus={() => setPasswordFocused(true)}
-                  onBlur={() => setPasswordFocused(false)}
-                  secureTextEntry={!showPassword}
-                  autoComplete="new-password"
-                  autoCapitalize="none"
-                  placeholder={t("auth.register.password")}
-                  placeholderTextColor="#AEAEB2"
-                  className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
-                  textContentType="newPassword"
-                  returnKeyType="next"
-                  onSubmitEditing={() => confirmPasswordRef.current?.focus()}
-                />
-                <Pressable
-                  onPress={() => setShowPassword((v) => !v)}
-                  hitSlop={12}
-                  className="p-1"
-                >
-                  <Feather
-                    name={showPassword ? "eye-off" : "eye"}
-                    size={18}
-                    color="#8E8E93"
-                  />
-                </Pressable>
-              </View>
-
-              <View className="h-[1px] bg-[#E5E5EA] ml-12" />
-
-              {/* Xác nhận mật khẩu */}
-              <View className={cn("flex-row items-center h-[52px] px-4 bg-transparent", confirmPasswordFocused && "bg-[#E5E5EA]")}>
-                <View className="w-8 items-start">
-                  <Feather
-                    name="check-circle"
-                    size={19}
-                    color={confirmPasswordFocused ? "#007AFF" : "#8E8E93"}
-                  />
-                </View>
-                <TextInput
-                  ref={confirmPasswordRef}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  onFocus={() => setConfirmPasswordFocused(true)}
-                  onBlur={() => setConfirmPasswordFocused(false)}
-                  secureTextEntry={!showConfirmPassword}
-                  autoComplete="new-password"
-                  autoCapitalize="none"
-                  placeholder={t("auth.register.confirmPassword")}
-                  placeholderTextColor="#AEAEB2"
-                  className="flex-1 text-[15px] text-[#1C1C1E] h-full font-medium"
-                  textContentType="password"
-                  returnKeyType="done"
-                  onSubmitEditing={handleRegister}
-                />
-                <Pressable
-                  onPress={() => setShowConfirmPassword((v) => !v)}
-                  hitSlop={12}
-                  className="p-1"
-                >
-                  <Feather
-                    name={showConfirmPassword ? "eye-off" : "eye"}
-                    size={18}
-                    color="#8E8E93"
-                  />
-                </Pressable>
-              </View>
-            </View>
-
-            {/* Error Message */}
-            {error ? (
-              <View className="flex-row items-center bg-[#FFFAFA] border border-[#FFD6D6] rounded-xl px-3 py-2.5 gap-2 mb-5">
-                <Feather name="alert-circle" size={16} color="#FF3B30" />
-                <Text className="flex-1 text-[#FF3B30] text-[12.5px] font-semibold">{error}</Text>
-              </View>
-            ) : null}
-
-            {/* Success Message */}
-            {successMessage ? (
-              <View className="flex-row items-center bg-[#F5FDF7] border border-[#D3F4DB] rounded-xl px-3 py-2.5 gap-2 mb-5">
-                <Feather name="check-circle" size={16} color="#34C759" />
-                <Text className="flex-1 text-[#34C759] text-[12.5px] font-semibold">{successMessage}</Text>
-              </View>
-            ) : null}
-
-            {/* Main Action Button */}
-            <View 
-              className="rounded-[14px] overflow-hidden mt-2"
-              style={Platform.OS === "ios" ? {
-                shadowColor: "#007AFF",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-              } : {
-                elevation: 3,
+          {/* ── Brand header với cosmic icon ──────────────────── */}
+          <View className="items-center mb-7">
+            <View
+              className="mb-5 rounded-full overflow-hidden"
+              style={{
+                width: 96,
+                height: 96,
+                shadowColor: "#7DD3FC",
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.55,
+                shadowRadius: 32,
               }}
             >
-              <Pressable
-                onPress={handleRegister}
-                disabled={isLoading}
-                style={({ pressed }) => pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }}
-              >
-                <LinearGradient
-                  colors={["#007AFF", "#0056B3"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  className="h-[52px] items-center justify-center"
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="#ffffff" size="small" />
-                  ) : (
-                    <Text className="text-white text-base font-bold">{t("auth.register.submit")}</Text>
-                  )}
-                </LinearGradient>
-              </Pressable>
+              <Image
+                source={require("../../assets/icon.png")}
+                style={{ width: 96, height: 96 }}
+                resizeMode="cover"
+              />
             </View>
+            <Text className="text-[38px] font-extrabold text-white tracking-[-1.2px] leading-[1.05] text-center">
+              {t("auth.register.title")}
+            </Text>
+            <Text className="text-[14px] text-white/55 mt-1.5 font-medium max-w-[280px] text-center">
+              {t("auth.register.subtitle")}
+            </Text>
+          </View>
 
-            {/* Footer switcher */}
-            <View className="flex-row justify-center items-center mt-5 gap-1.5">
-              <Text className="text-[#8E8E93] text-sm font-medium">{t("auth.register.hasAccount")}</Text>
-              <Link href="/(auth)/login" asChild>
-                <Pressable hitSlop={8} className="active:opacity-70">
-                  <Text className="text-[#007AFF] text-sm font-semibold">{t("auth.register.loginNow")}</Text>
-                </Pressable>
-              </Link>
+          {/* ── Section: Personal Info (Double-Bezel Card) ──── */}
+          <Text className="text-[10px] font-bold text-white/40 mb-2 ml-1 tracking-[0.2em] uppercase">
+            {t("auth.register.personalInfo")}
+          </Text>
+          <View
+            className="rounded-[24px] p-[1.5px] mb-5"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.08)",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 16 },
+              shadowOpacity: 0.35,
+              shadowRadius: 36,
+            }}
+          >
+            <View
+              className="rounded-[22.5px] px-5 py-3"
+              style={{ backgroundColor: "rgba(20, 20, 26, 0.72)" }}
+            >
+              <Field
+                icon="user"
+                placeholder={t("auth.register.fullName")}
+                value={fullName}
+                onChangeText={setFullName}
+                autoComplete="name"
+                textContentType="name"
+                returnKeyType="next"
+                onSubmitEditing={() => usernameRef.current?.focus()}
+                autoCapitalize="words"
+              />
+              <View className="h-px bg-white/[0.06] my-1 ml-11" />
+              <Field
+                ref={usernameRef}
+                icon="at-sign"
+                placeholder={t("auth.register.username")}
+                value={username}
+                onChangeText={setUsername}
+                autoComplete="username"
+                textContentType="username"
+                returnKeyType="next"
+                onSubmitEditing={() => emailRef.current?.focus()}
+              />
+              <View className="h-px bg-white/[0.06] my-1 ml-11" />
+              <Field
+                ref={emailRef}
+                icon="mail"
+                placeholder={t("auth.register.email")}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoComplete="email"
+                textContentType="emailAddress"
+                returnKeyType="next"
+                onSubmitEditing={() => passwordRef.current?.focus()}
+              />
             </View>
+          </View>
+
+          {/* ── Section: Security (Double-Bezel Card) ────────── */}
+          <Text className="text-[10px] font-bold text-white/40 mb-2 ml-1 tracking-[0.2em] uppercase">
+            {t("auth.register.securityPassword")}
+          </Text>
+          <View
+            className="rounded-[24px] p-[1.5px] mb-5"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.08)",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 16 },
+              shadowOpacity: 0.35,
+              shadowRadius: 36,
+            }}
+          >
+            <View
+              className="rounded-[22.5px] px-5 py-3"
+              style={{ backgroundColor: "rgba(20, 20, 26, 0.72)" }}
+            >
+              <Field
+                ref={passwordRef}
+                icon="lock"
+                placeholder={t("auth.register.password")}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoComplete="new-password"
+                textContentType="newPassword"
+                returnKeyType="next"
+                onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+                rightAdornment={
+                  <Pressable
+                    onPress={() => setShowPassword((v) => !v)}
+                    hitSlop={12}
+                    className="w-9 h-9 rounded-full items-center justify-center bg-white/[0.04]"
+                  >
+                    <Feather
+                      name={showPassword ? "eye-off" : "eye"}
+                      size={16}
+                      color="#9CA3AF"
+                    />
+                  </Pressable>
+                }
+              />
+              <View className="ml-11">
+                <PasswordStrength password={password} />
+              </View>
+              <View className="h-px bg-white/[0.06] my-1 ml-11" />
+              <Field
+                ref={confirmPasswordRef}
+                icon="check-circle"
+                placeholder={t("auth.register.confirmPassword")}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                autoComplete="new-password"
+                textContentType="password"
+                returnKeyType="done"
+                onSubmitEditing={handleRegister}
+                rightAdornment={
+                  <Pressable
+                    onPress={() => setShowConfirmPassword((v) => !v)}
+                    hitSlop={12}
+                    className="w-9 h-9 rounded-full items-center justify-center bg-white/[0.04]"
+                  >
+                    <Feather
+                      name={showConfirmPassword ? "eye-off" : "eye"}
+                      size={16}
+                      color="#9CA3AF"
+                    />
+                  </Pressable>
+                }
+              />
+            </View>
+          </View>
+
+          {/* Error / Success */}
+          {error ? <ErrorBanner message={error} type="error" /> : null}
+          {successMessage ? (
+            <ErrorBanner message={successMessage} type="success" />
+          ) : null}
+
+          {/* ── Primary CTA ────────────────────────────────────── */}
+          <PrimaryButton
+            onPress={handleRegister}
+            loading={isLoading}
+            label={t("auth.register.submit")}
+          />
+
+          {/* ── Footer switcher ────────────────────────────────── */}
+          <View className="flex-row justify-center items-center mt-6 gap-1.5">
+            <Text className="text-white/45 text-sm font-medium">
+              {t("auth.register.hasAccount")}
+            </Text>
+            <Link href="/(auth)/login" asChild>
+              <Pressable hitSlop={8} className="active:opacity-60">
+                <Text className="text-[#7DD3FC] text-sm font-bold">
+                  {t("auth.register.loginNow")}
+                </Text>
+              </Pressable>
+            </Link>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -1,7 +1,6 @@
 import { memo, useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +13,7 @@ import * as ImagePicker from "expo-image-picker";
 import { BottomSheetView } from "@gorhom/bottom-sheet";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { PALETTE, TOKENS } from "../constants/placeSheetConstants";
+import { showAppAlertLegacy } from "../../../utils/appAlert";
 import { compressImageToDataUrl } from "@/lib/image-compress";
 import {
   buildReviewMediaPayload,
@@ -84,7 +84,7 @@ export const ReviewComposerSheetContent = memo(function ReviewComposerSheetConte
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
+        showAppAlertLegacy(
           t("place.detail.reviewPhotoPermissionTitle"),
           t("place.detail.reviewPhotoPermissionMessage"),
         );
@@ -112,8 +112,8 @@ export const ReviewComposerSheetContent = memo(function ReviewComposerSheetConte
       setSelectedMedia((current) =>
         [...current, ...compressed].slice(0, REVIEW_MEDIA_LIMIT),
       );
-    } catch (_error) {
-      Alert.alert(
+    } catch {
+      showAppAlertLegacy(
         t("place.detail.reviewPhotoErrorTitle"),
         t("place.detail.reviewPhotoErrorMessage"),
       );

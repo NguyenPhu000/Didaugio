@@ -24,15 +24,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/Dialog";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/Label";
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { resolveMediaUrl, isPdfSource, isImageSource } from "@/utils/mediaUrl";
 import ContractPdfViewer from "@/components/business/ContractPdfViewer";
+
+const getDocumentSource = (detail, type, fallbackField) => {
+  const document = (detail?.sensitiveDocuments || []).find((item) => item.type === type);
+  return document || fallbackField || null;
+};
 
 const FieldRow = ({ label, value, mono, isSensitive, showSensitive, onToggle }) => {
   const { t } = useTranslation();
@@ -374,6 +379,10 @@ const BusinessReviewApproveModal = ({
 
   const typeLabel =
     BUSINESS_TYPE_LABELS[detail?.businessType] || detail?.businessType || "—";
+  const idFrontSource = getDocumentSource(detail, "id_card_front", detail?.idCardFront);
+  const idBackSource = getDocumentSource(detail, "id_card_back", detail?.idCardBack);
+  const licenseSource = getDocumentSource(detail, "business_license", detail?.businessLicense);
+  const certSource = getDocumentSource(detail, "certificate", null);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -526,20 +535,7 @@ const BusinessReviewApproveModal = ({
                   )}
                 </div>
 
-                {(() => {
-                  const getDocSource = (type, fallbackField) => {
-                    const doc = (detail?.sensitiveDocuments || []).find((d) => d.type === type);
-                    if (doc) return doc;
-                    return fallbackField || null;
-                  };
-
-                  const idFrontSource = getDocSource("id_card_front", detail.idCardFront);
-                  const idBackSource = getDocSource("id_card_back", detail.idCardBack);
-                  const licenseSource = getDocSource("business_license", detail.businessLicense);
-                  const certSource = getDocSource("certificate", null);
-
-                  return (
-                    <div className="space-y-4">
+                <div className="space-y-4">
                       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                         <div>
                           <p className="text-base font-semibold text-foreground">
@@ -570,9 +566,7 @@ const BusinessReviewApproveModal = ({
                           />
                         )}
                       </div>
-                    </div>
-                  );
-                })()}
+                </div>
 
                 {!rejectMode ? (
                   <>

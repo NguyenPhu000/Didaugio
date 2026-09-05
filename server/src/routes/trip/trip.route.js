@@ -1,14 +1,17 @@
 import express from "express";
 import tripController from "../../controllers/trip/trip.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
-import { validateBody } from "../../middlewares/validateSchema.js";
+import {
+  validateAiBody,
+  validateBody,
+} from "../../middlewares/validateSchema.js";
+import { aiUserLimiter } from "../../middlewares/rateLimitMiddleware.js";
 import {
   createTripSchema,
   updateTripSchema,
   addDestinationSchema,
   updateDestinationSchema,
   moveDestinationSchema,
-  reorderDestinationsSchema,
   linkBookingToTripSchema,
   reorderTripStopsSchema,
   generateTripSchema,
@@ -28,7 +31,8 @@ router.get("/trips", authenticate, tripController.getMyTrips);
 router.post(
   "/trips/generate",
   authenticate,
-  validateBody(generateTripSchema),
+  aiUserLimiter,
+  validateAiBody(generateTripSchema),
   tripController.generateTrip,
 );
 router.post(
@@ -81,33 +85,21 @@ router.patch(
 router.delete("/trips/:id", authenticate, tripController.deleteTrip);
 router.post("/trips/:id/duplicate", authenticate, tripController.duplicateTrip);
 router.post(
-  "/trips/:id/destinations",
+  "/trips/:id/stops",
   authenticate,
   validateBody(addDestinationSchema),
   tripController.addDestination,
 );
 router.delete(
-  "/trips/:id/destinations/:destId",
+  "/trips/:id/stops/:destId",
   authenticate,
   tripController.removeDestination,
 );
 router.patch(
-  "/trips/:id/destinations/reorder",
-  authenticate,
-  validateBody(reorderDestinationsSchema),
-  tripController.reorderDestinations,
-);
-router.patch(
-  "/trips/:id/destinations/:destId",
+  "/trips/:id/stops/:destId",
   authenticate,
   validateBody(updateDestinationSchema),
   tripController.updateDestination,
-);
-router.patch(
-  "/trips/:id/destinations/:destId/move",
-  authenticate,
-  validateBody(moveDestinationSchema),
-  tripController.moveDestination,
 );
 router.post(
   "/trips/:id/share",

@@ -23,7 +23,18 @@ const ROLE_NAME_TO_ID = {
   guest: ROLES.GUEST,
 };
 
-const ADMIN_ROLE_IDS = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.STAFF];
+const ADMIN_ROLE_IDS = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
+
+export const resolveSocketToken = (handshake = {}) => {
+  const authToken = handshake.auth?.token;
+  if (typeof authToken === "string" && authToken.trim()) return authToken.trim();
+
+  const authorization = handshake.headers?.authorization;
+  const bearerMatch = typeof authorization === "string"
+    ? authorization.match(/^Bearer\s+(.+)$/iu)
+    : null;
+  return bearerMatch?.[1]?.trim() || null;
+};
 
 const resolveRoleId = (decoded = {}) => {
   if (decoded.roleId) return decoded.roleId;
@@ -76,10 +87,7 @@ export const initSocketIO = (httpServer, allowedOrigins = []) => {
 
   // Auth middleware - verify JWT + check user status + session validity
   io.use(async (socket, next) => {
-    const token =
-      socket.handshake.auth?.token ||
-      socket.handshake.query?.token ||
-      socket.handshake.headers?.authorization?.split(" ")[1];
+    const token = resolveSocketToken(socket.handshake);
 
     if (!token) {
       return next(new Error("Authentication required"));
@@ -92,7 +100,13 @@ export const initSocketIO = (httpServer, allowedOrigins = []) => {
       // Kiểm tra user có bị ban/inactive không
       const user = await prisma.user.findUnique({
         where: { id: Number(userId) },
-        select: { id: true, status: true, deletedAt: true },
+        select: {
+          id: true,
+          status: true,
+          deletedAt: true,
+          roleId: true,
+          businessId: true,
+        },
       });
 
       if (!user || user.deletedAt) {
@@ -116,7 +130,8 @@ export const initSocketIO = (httpServer, allowedOrigins = []) => {
       }
 
       socket.userId = userId;
-      socket.roleId = resolveRoleId(decoded);
+      socket.roleId = user.roleId;
+      socket.businessId = user.roleId === ROLES.STAFF ? user.businessId : null;
       next();
     } catch (err) {
       return next(new Error("Invalid token"));
@@ -138,13 +153,15 @@ export const initSocketIO = (httpServer, allowedOrigins = []) => {
       socket.join("role:admin");
     }
 
-    let businessId = null;
+    let businessId = socket.businessId || null;
     try {
-      const business = await prisma.business.findUnique({
-        where: { ownerId: Number(userId) },
-        select: { id: true },
-      });
-      businessId = business?.id || null;
+      if (!businessId && roleId === ROLES.BUSINESS) {
+        const business = await prisma.business.findUnique({
+          where: { ownerId: Number(userId) },
+          select: { id: true },
+        });
+        businessId = business?.id || null;
+      }
       if (businessId) {
         socket.join(`business:${businessId}`);
       }

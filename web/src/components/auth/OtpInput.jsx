@@ -22,11 +22,11 @@ const OtpInput = ({ value, onChange, disabled = false, error = false }) => {
       <div className={`grid grid-cols-6 gap-2 ${error ? "animate-shake" : ""}`}>
         {digits.map((digit, index) => {
           const active = normalizedValue.length === index;
-          let stateClass = "border-slate-200";
+          let stateClass = "border-slate-200 bg-white";
           if (error) {
-            stateClass = "border-red-400";
+            stateClass = "border-rose-400 bg-rose-50/40";
           } else if (active || digit) {
-            stateClass = "border-blue-500 ring-2 ring-blue-100";
+            stateClass = "border-emerald-700 ring-2 ring-emerald-700/15 bg-white";
           }
 
           return (
@@ -51,7 +51,7 @@ const OtpInput = ({ value, onChange, disabled = false, error = false }) => {
         autoComplete="one-time-code"
         maxLength={OTP_LENGTH}
         className="absolute inset-0 h-full w-full cursor-default opacity-0"
-        aria-label="Ma OTP"
+        aria-label="Mã OTP"
       />
     </div>
   );

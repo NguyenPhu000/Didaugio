@@ -2,7 +2,7 @@ import express from "express";
 import * as tagController from "../../controllers/tag/tag.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { requirePermission } from "../../middlewares/permissionMiddleware.js";
-import { blockGuestFromAdmin } from "../../middlewares/blockGuestFromAdmin.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import {
   validateBody,
   validateParams,
@@ -49,7 +49,7 @@ router.get("/:id", validateParams(tagIdParamSchema), tagController.getTagById);
 router.post(
   "/",
   authenticate,
-  blockGuestFromAdmin,
+  requireBackOfficeRole,
   requirePermission("categories.manage_tags"),
   validateBody(createTagSchema),
   tagController.createTag,
@@ -58,7 +58,7 @@ router.post(
 router.post(
   "/bulk",
   authenticate,
-  blockGuestFromAdmin,
+  requireBackOfficeRole,
   requirePermission("categories.manage_tags"),
   validateBody(bulkCreateTagsSchema),
   tagController.bulkCreateTags,
@@ -67,7 +67,7 @@ router.post(
 router.put(
   "/:id",
   authenticate,
-  blockGuestFromAdmin,
+  requireBackOfficeRole,
   requirePermission("categories.manage_tags"),
   validateParams(tagIdParamSchema),
   validateBody(updateTagSchema),
@@ -77,7 +77,7 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
-  blockGuestFromAdmin,
+  requireBackOfficeRole,
   requirePermission("categories.manage_tags"),
   validateParams(tagIdParamSchema),
   tagController.deleteTag,
@@ -86,7 +86,7 @@ router.delete(
 router.post(
   "/:id/recalculate",
   authenticate,
-  blockGuestFromAdmin,
+  requireBackOfficeRole,
   requirePermission("categories.manage_tags"),
   validateParams(tagIdParamSchema),
   tagController.recalculateUsageCount,

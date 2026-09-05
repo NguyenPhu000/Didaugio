@@ -15,7 +15,24 @@ cloudinary.config({
  */
 export const generateMapMarkerUrl = async (base64Data, folder = "didaugio/markers") => {
   try {
-    if (!base64Data || !base64Data.startsWith("data:image")) return null;
+    if (!base64Data) return null;
+
+    // Cloudinary-hosted place images do not need a second upload. Reuse the
+    // existing public id and request the same marker transformation.
+    if (!base64Data.startsWith("data:image")) {
+      const publicId = extractPublicIdFromCloudinaryUrl(base64Data);
+      if (!publicId) return null;
+
+      return cloudinary.url(publicId, {
+        width: 120,
+        height: 120,
+        crop: "fill",
+        gravity: "center",
+        radius: 24,
+        fetch_format: "png",
+        secure: true,
+      });
+    }
     
     // Upload ảnh gốc lên cấu hình
     const result = await cloudinary.uploader.upload(base64Data, {
@@ -63,11 +80,19 @@ const extractPublicIdFromCloudinaryUrl = (imageUrl) => {
   }
 };
 
-export const deleteMapMarkerImage = async (imageUrl) => {
+export const shouldDeleteMapMarkerPublicId = (publicId) =>
+  typeof publicId === "string" && publicId.startsWith("didaugio/markers/");
+
+export const getMapMarkerPublicId = (imageUrl) => {
   const publicId = extractPublicIdFromCloudinaryUrl(imageUrl);
+  return shouldDeleteMapMarkerPublicId(publicId) ? publicId : null;
+};
+
+export const deleteMapMarkerImage = async (imageUrl) => {
+  const publicId = getMapMarkerPublicId(imageUrl);
 
   if (!publicId) {
-    return { result: "skipped", reason: "invalid_marker_url" };
+    return { result: "skipped", reason: "derived_or_invalid_marker_url" };
   }
 
   try {

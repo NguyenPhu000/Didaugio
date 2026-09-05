@@ -1,3 +1,4 @@
+import { logger } from "../lib/logger";
 import safeAsyncStorage from "../utils/safeAsyncStorage";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { QUERY_KEYS } from "../constants/query-keys";
@@ -5,14 +6,13 @@ import {
   REACT_QUERY_PERSIST_BUSTER,
   TRIP_OFFLINE_MAX_AGE_MS,
 } from "../constants/trip-offline-cache";
-
-const PERSIST_STORAGE_KEY = "didaugio-react-query-cache";
+import { OFFLINE_STORAGE_KEYS } from "../constants/storage";
 
 const tripsRootKey = QUERY_KEYS.trips.all()[0];
 
 function slimPlace(place) {
   if (!place || typeof place !== "object") return place;
-  const { thumbnail, images, ...rest } = place;
+  const { thumbnail, images, image_data, imageData, reviews, ...rest } = place;
 
   const slimThumbnail =
     typeof thumbnail === "string" && /^https?:\/\//i.test(thumbnail.trim())
@@ -21,11 +21,12 @@ function slimPlace(place) {
 
   const first = Array.isArray(images) ? images[0] : null;
   const slimImages =
-    first && (first.secureUrl || first.thumbnailUrl)
+    first && typeof (first.secureUrl || first.thumbnailUrl || first.url) === "string"
       ? [
           {
             ...(first.secureUrl ? { secureUrl: first.secureUrl } : {}),
             ...(first.thumbnailUrl ? { thumbnailUrl: first.thumbnailUrl } : {}),
+            ...(first.url ? { url: first.url } : {}),
           },
         ]
       : undefined;
@@ -61,7 +62,7 @@ function slimTrip(trip) {
 
 const basePersister = createAsyncStoragePersister({
   storage: safeAsyncStorage,
-  key: PERSIST_STORAGE_KEY,
+  key: OFFLINE_STORAGE_KEYS.QUERY_PERSIST_CACHE,
   throttleTime: 1000,
 });
 
@@ -94,12 +95,12 @@ export const asyncStoragePersister = {
           return q;
         });
 
-        // Size guard: bỏ qua persist nếu payload quá lớn (> 1.5MB)
-        // để tránh SQLITE_FULL trên thiết bị
+        // Size guard: nâng hạn mức size guard từ 1.5MB lên 4.5MB
+        // kết hợp loại bỏ base64 để cho phép lưu trữ offline dữ liệu lớn mà không bị cảnh báo
         try {
           const serialized = JSON.stringify(slimmedQueries);
-          if (serialized.length > 1_500_000) {
-            console.warn(
+          if (serialized.length > 4_500_000) {
+            logger.warn(
               `[queryPersist] Cache quá lớn (${(serialized.length / 1024 / 1024).toFixed(1)}MB), bỏ qua persist.`
             );
             return;
@@ -119,14 +120,14 @@ export const asyncStoragePersister = {
       }
       return await basePersister.persistClient(persistedClient);
     } catch (err) {
-      console.warn("[queryPersist] Ghi cache thất bại (đĩa đầy hoặc lỗi):", err);
+      logger.warn("[queryPersist] Ghi cache thất bại (đĩa đầy hoặc lỗi):", err);
     }
   },
   restoreClient: async () => {
     try {
       return await basePersister.restoreClient();
     } catch (err) {
-      console.warn("[queryPersist] Đọc cache thất bại:", err);
+      logger.warn("[queryPersist] Đọc cache thất bại:", err);
       return undefined;
     }
   },
@@ -134,7 +135,7 @@ export const asyncStoragePersister = {
     try {
       return await basePersister.removeClient();
     } catch (err) {
-      console.warn("[queryPersist] Xóa cache thất bại:", err);
+      logger.warn("[queryPersist] Xóa cache thất bại:", err);
     }
   },
 };

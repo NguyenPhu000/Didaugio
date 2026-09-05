@@ -163,7 +163,7 @@ export const signBusinessContractSchema = z
   .object({
     otp: z
       .string({ required_error: "Mã OTP là bắt buộc" })
-      .length(6, "Mã OTP phải có đúng 6 chữ số"),
+      .regex(/^\d{6}$/u, "Mã OTP phải có đúng 6 chữ số"),
     acceptedTerms: z.literal(true, {
       errorMap: () => ({ message: "Bạn cần đồng ý điều khoản hợp đồng" }),
     }),
@@ -187,10 +187,10 @@ export const signBusinessContractSchema = z
       .object({
         userAgent: z.string().max(1000).optional(),
         timezone: z.string().max(120).optional(),
-        ip: z.string().max(45).optional(),
         otpVerified: z.boolean().optional(),
         phoneVerified: z.string().max(20).optional(),
       })
+      .strict()
       .optional(),
   })
   .strict();

@@ -1,116 +1,189 @@
 import { memo, useCallback, useMemo } from "react";
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { Image } from "expo-image";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import { Pressable } from "@/components/primitives/Pressable";
-import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
-} from "../../../constants/design-tokens";
+import Animated from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
+import { TOKENS } from "../../../constants/design-tokens";
+import { resolvePlaceImageUri } from "../../../lib/media-url";
+import { getPlaceLocation } from "../utils/exploreHelpers";
 import {
-  resolvePlaceImageUri,
-  getOptimizedCloudinaryUrl,
-} from "../../../lib/media-url";
-import {
-  getPlaceLocation,
-} from "../utils/exploreHelpers";
-import { getCategoryIconName } from "../../../constants/categoryIcons";
+  CREAM,
+  Eyebrow,
+  INK,
+  MetaChip,
+  POSTER_INSET,
+  POSTER_MEDIA_RADIUS,
+  POSTER_RADIUS,
+  PosterMedia,
+  PosterScrim,
+  SectionHeading,
+  STAR,
+  posterShadow,
+  usePressScale,
+} from "./cinematic";
 
-// Tinh chỉnh lại tỷ lệ: Hẹp hơn một chút và cao hơn để ra dáng ảnh Portrait cao cấp
-const CARD_W = 148;
-const IMAGE_H = 190;
-const CARD_GAP = 16; // Tăng gap lên 16px để tạo khoảng thở
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+/**
+ * Card poster: rộng hơn card cũ (164) và ảnh chiếm trọn khung thay vì 148px
+ * phía trên — diện tích ảnh tăng ~2.3 lần.
+ */
+const CARD_W = 212;
+const CARD_H = 282;
+const CARD_GAP = 12;
 const ITEM_LENGTH = CARD_W + CARD_GAP;
+const MEDIA_W = CARD_W - POSTER_INSET * 2;
 
 const keyExtractor = (item, index) =>
   item?.id != null ? String(item.id) : `cat-place-${index}`;
 
 function CategoryPlaceCard({ place, onPress }) {
-  const rawImageUri = resolvePlaceImageUri(place);
-  const imageUri = rawImageUri?.includes("res.cloudinary.com")
-    ? getOptimizedCloudinaryUrl(rawImageUri, 300) // Tăng res lên chút cho nét
-    : rawImageUri;
-
+  const { t } = useTranslation();
+  const imageUri = resolvePlaceImageUri(place);
   const location = getPlaceLocation(place);
   const rating = Number(place?.ratingAvg ?? place?.averageRating);
   const hasRating = Number.isFinite(rating) && rating > 0;
+  const categoryName = place?.category?.name;
+
+  const { onPressIn, onPressOut, cardStyle, mediaStyle } = usePressScale();
 
   return (
-    <Pressable haptic="light" onPress={onPress} style={styles.cardContainer}>
-      {/* 1. Khối Hình Ảnh Độc Lập (Không bị viền trắng bao quanh) */}
-      <View style={styles.imageWrapper}>
-        {imageUri ? (
-          <Image
-            source={{ uri: imageUri }}
-            contentFit="cover"
-            transition={300}
-            cachePolicy="memory-disk"
-            style={StyleSheet.absoluteFillObject}
-          />
-        ) : (
-          <View style={styles.imagePlaceholder}>
-            <MaterialIconsRounded
-              name="travel-explore"
-              size={32}
-              color={APPLE_THEME.textMuted}
-            />
+    <AnimatedPressable
+      onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      accessibilityRole="button"
+      accessibilityLabel={place?.name}
+      accessibilityHint={t("explore.accessibility.openPlace")}
+      style={[
+        cardStyle,
+        {
+          width: CARD_W,
+          height: CARD_H,
+          padding: POSTER_INSET,
+          borderRadius: POSTER_RADIUS,
+          borderCurve: "continuous",
+          backgroundColor: "#F7F3EB",
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: "rgba(11,11,12,0.06)",
+          ...posterShadow,
+        },
+      ]}
+    >
+      {/* Lõi trong: ảnh full-bleed, bo cong đồng tâm với vỏ ngoài */}
+      <View
+        style={{
+          flex: 1,
+          borderRadius: POSTER_MEDIA_RADIUS,
+          borderCurve: "continuous",
+          overflow: "hidden",
+          backgroundColor: CREAM,
+        }}
+      >
+        <Animated.View style={[StyleSheet.absoluteFillObject, mediaStyle]}>
+          <PosterMedia uri={imageUri} width={MEDIA_W} />
+        </Animated.View>
+
+        <PosterScrim bottomHeight="62%" topHeight="30%" strength={0.78} />
+
+        {hasRating ? (
+          <View style={{ position: "absolute", top: 10, right: 10 }}>
+            <MetaChip icon="star" iconColor={STAR} label={rating.toFixed(1)} compact />
           </View>
-        )}
+        ) : null}
 
-        {/* 2. Rating Badge kiểu kính mờ (Glassmorphism) tinh tế */}
-        {hasRating && (
-          <View style={styles.ratingBadge}>
-            <MaterialIconsRounded name="star" size={12} color="#FBBF24" />
-            <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
-          </View>
-        )}
-      </View>
+        <View style={{ position: "absolute", left: 13, right: 13, bottom: 13, gap: 3 }}>
+          {categoryName ? <Eyebrow>{categoryName}</Eyebrow> : null}
 
-      {/* 3. Typography tự do, phóng khoáng bên dưới ảnh */}
-      <View style={styles.infoContainer}>
-        <Text style={styles.placeTitle} numberOfLines={1}>
-          {place?.name}
-        </Text>
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontSize: 16.5,
+              lineHeight: 21,
+              letterSpacing: -0.4,
+              fontFamily: TOKENS.font.heading,
+            }}
+            numberOfLines={2}
+          >
+            {place?.name}
+          </Text>
 
-        {location && (
-          <View style={styles.locationRow}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 1 }}>
             <MaterialIconsRounded
               name="place"
               size={12}
-              color={APPLE_THEME.textMuted}
+              color="rgba(255,255,255,0.62)"
             />
-            <Text style={styles.locationText} numberOfLines={1}>
+            <Text
+              style={{
+                flex: 1,
+                color: "rgba(255,255,255,0.72)",
+                fontSize: 11.5,
+                fontFamily: TOKENS.font.medium,
+              }}
+              numberOfLines={1}
+            >
               {location}
             </Text>
           </View>
-        )}
+        </View>
       </View>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
-function ViewMoreButton({ onPress }) {
+function ViewMoreCard({ onPress, label }) {
+  const { onPressIn, onPressOut, cardStyle } = usePressScale({ mediaTo: 1 });
+
   return (
-    <Pressable
-      haptic="light"
+    <AnimatedPressable
       onPress={onPress}
-      className="w-[148px] h-[190px] rounded-[20px] items-center justify-center bg-slate-100"
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={label}
+      style={[
+        cardStyle,
+        {
+          width: CARD_W,
+          height: CARD_H,
+          borderRadius: POSTER_RADIUS,
+          borderCurve: "continuous",
+          backgroundColor: CREAM,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: "rgba(11,11,12,0.08)",
+          ...posterShadow,
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 12,
+        },
+      ]}
     >
-      <View className="w-12 h-12 rounded-full bg-white items-center justify-center shadow-sm">
-        <MaterialIconsRounded
-          name="arrow-forward"
-          size={20}
-          color={APPLE_THEME.text}
-        />
+      <View
+        style={{
+          width: 46,
+          height: 46,
+          borderRadius: 23,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: INK,
+        }}
+      >
+        <MaterialIconsRounded name="arrow-forward" size={20} color="#FFFFFF" />
       </View>
-    </Pressable>
+      <Text
+        style={{
+          color: INK,
+          fontSize: 13.5,
+          letterSpacing: -0.2,
+          fontFamily: TOKENS.font.semibold,
+        }}
+      >
+        {label}
+      </Text>
+    </AnimatedPressable>
   );
 }
 
@@ -120,168 +193,65 @@ function Separator() {
 
 function CategoryPlacesSectionInner({
   categoryName,
-  categoryId,
   places,
   onPressPlace,
   onPressViewAll,
-  icon,
 }) {
-  const categoryIcon = getCategoryIconName({ name: categoryName, icon });
+  const { t } = useTranslation();
+  const viewAllLabel = t("common.viewAll");
+
+  const dataWithViewMore = useMemo(
+    () => [...(places || []), { id: "__view-more__" }],
+    [places],
+  );
+
+  /**
+   * Snap theo offset tuyệt đối: FlatList có paddingHorizontal nên
+   * snapToInterval một mình sẽ lệch đúng bằng phần padding đầu.
+   */
+  const snapToOffsets = useMemo(
+    () => dataWithViewMore.map((_, index) => index * ITEM_LENGTH),
+    [dataWithViewMore],
+  );
 
   const renderItem = useCallback(
     ({ item, index }) => {
       if (index === places.length) {
-        return <ViewMoreButton onPress={onPressViewAll} />;
+        return <ViewMoreCard onPress={onPressViewAll} label={viewAllLabel} />;
       }
-      return (
-        <CategoryPlaceCard place={item} onPress={() => onPressPlace(item)} />
-      );
+      return <CategoryPlaceCard place={item} onPress={() => onPressPlace(item)} />;
     },
-    [places, onPressPlace, onPressViewAll],
-  );
-
-  const dataWithViewMore = useMemo(
-    () => [...places, { id: "view-more-btn" }],
-    [places],
+    [places, onPressPlace, onPressViewAll, viewAllLabel],
   );
 
   if (!places?.length) return null;
 
   return (
-    <View style={styles.sectionContainer}>
-      {/* Section Header */}
-      <View style={styles.headerRow}>
-        <View style={styles.headerTitleGroup}>
-          <View style={styles.headerIconCircle}>
-            <MaterialCommunityIcons
-              name={categoryIcon}
-              size={16}
-              color={APPLE_THEME.focusBlue}
-            />
-          </View>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {categoryName}
-          </Text>
-        </View>
+    <View style={{ marginTop: 34 }}>
+      <View style={{ paddingHorizontal: TAB_SCREEN_PADDING, marginBottom: 14 }}>
+        <SectionHeading
+          title={categoryName}
+        />
       </View>
 
-      {/* Danh sách cuộn ngang */}
       <FlatList
         data={dataWithViewMore}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         horizontal
         showsHorizontalScrollIndicator={false}
-        snapToInterval={ITEM_LENGTH}
+        snapToOffsets={snapToOffsets}
+        snapToAlignment="start"
         decelerationRate="fast"
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={{
+          paddingHorizontal: TAB_SCREEN_PADDING,
+          paddingVertical: 4,
+        }}
         ItemSeparatorComponent={Separator}
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: TAB_SCREEN_PADDING,
-    marginBottom: 16,
-    paddingBottom: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.06)",
-  },
-  headerTitleGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    flex: 1,
-  },
-  headerIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,113,227,0.08)",
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontFamily: TOKENS.font.heading,
-    color: APPLE_THEME.text,
-    letterSpacing: -0.5,
-  },
-  listContent: {
-    paddingHorizontal: TAB_SCREEN_PADDING,
-    paddingBottom: 8,
-  },
-  cardContainer: {
-    width: CARD_W,
-  },
-  imageWrapper: {
-    width: CARD_W,
-    height: IMAGE_H,
-    borderRadius: 20,
-    borderCurve: "continuous",
-    overflow: "hidden",
-    backgroundColor: APPLE_THEME.surfaceMuted,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.03)", // Viền siêu mỏng tạo độ nét
-  },
-  imagePlaceholder: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: APPLE_THEME.surfaceMuted,
-  },
-  ratingBadge: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.9)", // Nền trắng sáng sang trọng
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  ratingText: {
-    color: APPLE_THEME.text,
-    fontSize: 11,
-    fontFamily: TOKENS.font.bold,
-  },
-  infoContainer: {
-    marginTop: 12, // Đẩy text ra ngoài ảnh
-    gap: 4,
-    paddingHorizontal: 2,
-  },
-  placeTitle: {
-    fontSize: 15,
-    fontFamily: TOKENS.font.bold,
-    color: APPLE_THEME.text,
-    letterSpacing: -0.3,
-  },
-  locationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  locationText: {
-    fontSize: 13,
-    fontFamily: TOKENS.font.medium,
-    color: APPLE_THEME.textMuted,
-    flex: 1,
-  },
-});
-
 export const CategoryPlacesSection = memo(CategoryPlacesSectionInner);
+export { CARD_W as CATEGORY_CARD_W, CARD_H as CATEGORY_CARD_H };

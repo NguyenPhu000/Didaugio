@@ -3,7 +3,9 @@ import * as controller from "../../controllers/booking/booking.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { checkBusinessOwnership } from "../../middlewares/businessOwnership.js";
 import { requireActiveBusiness } from "../../middlewares/requireActiveBusiness.js";
+import { requireActiveSubscription } from "../../middlewares/subscriptionFeatureLock.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
+import { requireBusinessOwner } from "../../middlewares/requireBusinessOwner.js";
 import { validateBody } from "../../middlewares/validateSchema.js";
 import { auditLog } from "../../middlewares/auditLogMiddleware.js";
 import {
@@ -41,6 +43,7 @@ router.post(
 );
 
 router.use(requireActiveBusiness({ requireContractSigned: true }));
+router.use(requireActiveSubscription);
 
 router.get("/", hasPermission("bookings.view"), controller.getAll);
 router.get("/stats", hasPermission("bookings.view"), controller.getStats);
@@ -85,8 +88,8 @@ router.post(
   controller.quickReject,
 );
 
-router.get("/:id", checkBusinessOwnership("booking"), controller.getById);
-router.get("/:id/qr", checkBusinessOwnership("booking"), controller.getQR);
+router.get("/:id", checkBusinessOwnership("booking"), hasPermission("bookings.view"), controller.getById);
+router.get("/:id/qr", checkBusinessOwnership("booking"), hasPermission("bookings.view"), controller.getQR);
 
 router.put(
   "/:id/confirm",
@@ -144,6 +147,7 @@ router.put(
 router.put(
   "/:id/payment",
   checkBusinessOwnership("booking"),
+  requireBusinessOwner,
   hasPermission("bookings.complete"),
   validateBody(markPaidSchema),
   auditLog({
@@ -161,6 +165,7 @@ router.put(
 router.put(
   "/:id/refund",
   checkBusinessOwnership("booking"),
+  requireBusinessOwner,
   hasPermission("bookings.cancel"),
   validateBody(refundBookingSchema),
   auditLog({

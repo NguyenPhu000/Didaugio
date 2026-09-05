@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Ban, CheckCheck, X } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,

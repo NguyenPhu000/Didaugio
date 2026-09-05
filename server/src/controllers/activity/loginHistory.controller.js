@@ -18,7 +18,7 @@ export const getAll = async (req, res, next) => {
         data: null,
         message: "Dữ liệu không hợp lệ",
         errorCode: ERROR_CODES.VALIDATION_ERROR,
-        errors: validation.error.errors,
+        errors: validation.error.issues,
       });
     }
 
@@ -98,7 +98,7 @@ export const revoke = async (req, res, next) => {
         data: null,
         message: "Dữ liệu không hợp lệ",
         errorCode: ERROR_CODES.VALIDATION_ERROR,
-        errors: validation.error.errors,
+        errors: validation.error.issues,
       });
     }
 

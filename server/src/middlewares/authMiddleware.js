@@ -1,24 +1,15 @@
 import jwt from "jsonwebtoken";
-import { ROLES } from "../config/constants.js";
 import { setOnline } from "../utils/onlineManager.js";
 import prisma from "../config/prismaClient.js";
+import { getUserStatusCached } from "../utils/userStatusCache.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-const ROLE_NAME_TO_ID = {
-  super_admin: ROLES.SUPER_ADMIN,
-  admin: ROLES.ADMIN,
-  business: ROLES.BUSINESS,
-  staff: ROLES.STAFF,
-  user: ROLES.USER,
-  guest: ROLES.GUEST,
-};
-
-const resolveRoleId = (decoded = {}) => {
-  if (decoded.roleId) return decoded.roleId;
-  const roleKey = String(decoded.roleName || decoded.role || "").toLowerCase();
-  return ROLE_NAME_TO_ID[roleKey] || null;
-};
+const fetchUserRecordFromDb = (userId) =>
+  prisma.user.findUnique({
+    where: { id: userId, deletedAt: null },
+    select: { roleId: true, status: true, role: { select: { name: true } } },
+  });
 
 export const authenticate = async (req, res, next) => {
   try {
@@ -32,7 +23,7 @@ export const authenticate = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         data: null,
-        message: "Token khong duoc cung cap",
+        message: "Token không được cung cấp",
         errorCode: "NO_TOKEN",
       });
     }
@@ -40,17 +31,14 @@ export const authenticate = async (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const userId = decoded.userId || decoded.id;
 
-    // Fetch the latest roleId directly from the DB to support dynamic role changes (e.g. business approved)
-    const userRecord = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { roleId: true, status: true, role: { select: { name: true } } },
-    });
+    // Fetch user status with Redis cache (TTL 30s) for multi-instance scalability
+    const userRecord = await getUserStatusCached(userId, () => fetchUserRecordFromDb(userId));
 
     if (!userRecord) {
       return res.status(401).json({
         success: false,
         data: null,
-        message: "Tai khoan nguoi dung khong ton tai",
+        message: "Tài khoản người dùng không tồn tại",
         errorCode: "USER_NOT_FOUND",
       });
     }
@@ -59,7 +47,7 @@ export const authenticate = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         data: null,
-        message: "Tai khoan cua ban da bi khoa",
+        message: "Tài khoản của bạn đã bị khóa",
         errorCode: "ACCOUNT_BANNED",
       });
     }
@@ -68,7 +56,7 @@ export const authenticate = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         data: null,
-        message: "Tai khoan chua duoc kich hoat",
+        message: "Tài khoản chưa được kích hoạt",
         errorCode: "ACCOUNT_INACTIVE",
       });
     }
@@ -89,7 +77,7 @@ export const authenticate = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         data: null,
-        message: "Token da het han",
+        message: "Token đã hết hạn",
         errorCode: "TOKEN_EXPIRED",
       });
     }
@@ -98,7 +86,7 @@ export const authenticate = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         data: null,
-        message: "Token khong hop le",
+        message: "Token không hợp lệ",
         errorCode: "INVALID_TOKEN",
       });
     }
@@ -106,7 +94,7 @@ export const authenticate = async (req, res, next) => {
     return res.status(500).json({
       success: false,
       data: null,
-      message: "Loi xac thuc",
+      message: "Lỗi xác thực",
       errorCode: "AUTH_ERROR",
     });
   }
@@ -128,7 +116,7 @@ export const authenticateOptional = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         data: null,
-        message: "Authorization header khong hop le",
+        message: "Authorization header không hợp lệ",
         errorCode: "INVALID_AUTH_HEADER",
       });
     }
@@ -137,123 +125,14 @@ export const authenticateOptional = async (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const userId = decoded.userId || decoded.id;
 
-    // Fetch the latest roleId directly from the DB to support dynamic role changes
-    const userRecord = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { roleId: true, status: true, role: { select: { name: true } } },
-    });
-
-    if (userRecord) {
-      if (userRecord.status === "banned" || userRecord.status === "inactive") {
-        return res.status(403).json({
-          success: false,
-          data: null,
-          message: "Tai khoan khong hop le",
-          errorCode: "ACCOUNT_INVALID",
-        });
-      }
-    }
-
-    req.user = {
-      ...decoded,
-      userId: userId,
-      id: userId,
-      roleId: userRecord ? userRecord.roleId : resolveRoleId(decoded),
-      roleName: userRecord ? userRecord.role.name : decoded.roleName,
-    };
-
-    setOnline(req.user.userId);
-
-    return next();
-  } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({
-        success: false,
-        data: null,
-        message: "Token da het han",
-        errorCode: "TOKEN_EXPIRED",
-      });
-    }
-
-    return res.status(401).json({
-      success: false,
-      data: null,
-      message: "Token khong hop le",
-      errorCode: "INVALID_TOKEN",
-    });
-  }
-};
-/**
- * @deprecated Use hasPermission() from permissionMiddleware.js instead.
- * This middleware only checks roleId directly, bypassing the permission system.
- * Kept for backward compatibility only.
- */
-export const authorize = (allowedRoles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        data: null,
-        message: "Chua xac thuc",
-        errorCode: "NOT_AUTHENTICATED",
-      });
-    }
-
-    if (!allowedRoles.includes(req.user.roleId)) {
-      return res.status(403).json({
-        success: false,
-        data: null,
-        message: "Khong co quyen truy cap",
-        errorCode: "FORBIDDEN",
-      });
-    }
-
-    next();
-  };
-};
-
-/** Admin CMS: SUPER_ADMIN, ADMIN, STAFF */
-export const isAdminOrStaff = authorize([
-  ROLES.SUPER_ADMIN,
-  ROLES.ADMIN,
-  ROLES.STAFF,
-]);
-
-/**
- * SSE-specific auth: accepts token from query param.
- * Only use this for Server-Sent Events endpoints where
- * the client cannot set Authorization headers.
- */
-export const authenticateSSE = async (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
-    const queryToken = req.query?.token;
-    const token = (authHeader && authHeader.startsWith("Bearer "))
-      ? authHeader.split(" ")[1]
-      : queryToken;
-
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        data: null,
-        message: "Token khong duoc cung cap",
-        errorCode: "NO_TOKEN",
-      });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const userId = decoded.userId || decoded.id;
-
-    const userRecord = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { roleId: true, status: true, role: { select: { name: true } } },
-    });
+    // Fetch user status with Redis cache (TTL 30s)
+    const userRecord = await getUserStatusCached(userId, () => fetchUserRecordFromDb(userId));
 
     if (!userRecord) {
       return res.status(401).json({
         success: false,
         data: null,
-        message: "Tai khoan nguoi dung khong ton tai",
+        message: "Tài khoản người dùng không tồn tại",
         errorCode: "USER_NOT_FOUND",
       });
     }
@@ -262,7 +141,7 @@ export const authenticateSSE = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         data: null,
-        message: "Tai khoan khong hop le",
+        message: "Tài khoản không hợp lệ",
         errorCode: "ACCOUNT_INVALID",
       });
     }
@@ -277,15 +156,53 @@ export const authenticateSSE = async (req, res, next) => {
 
     setOnline(req.user.userId);
 
-    next();
+    return next();
   } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        data: null,
+        message: "Token đã hết hạn",
+        errorCode: "TOKEN_EXPIRED",
+      });
+    }
+
     return res.status(401).json({
       success: false,
       data: null,
-      message: "Token khong hop le",
+      message: "Token không hợp lệ",
       errorCode: "INVALID_TOKEN",
     });
   }
 };
 
-export default { authenticate, authenticateOptional, authenticateSSE, authorize, isAdminOrStaff };
+/**
+ * @deprecated Use hasPermission() from permissionMiddleware.js instead.
+ * This middleware only checks roleId directly, bypassing the permission system.
+ * Kept for backward compatibility only.
+ */
+export const authorize = (allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        data: null,
+        message: "Chưa xác thực",
+        errorCode: "NOT_AUTHENTICATED",
+      });
+    }
+
+    if (!allowedRoles.includes(req.user.roleId)) {
+      return res.status(403).json({
+        success: false,
+        data: null,
+        message: "Không có quyền truy cập",
+        errorCode: "FORBIDDEN",
+      });
+    }
+
+    next();
+  };
+};
+
+export default { authenticate, authenticateOptional, authorize };

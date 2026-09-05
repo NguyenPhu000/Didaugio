@@ -24,6 +24,26 @@ import CustomAlertModal from "../../../../components/composed/CustomAlertModal";
 
 const getDestinationClientId = (dest) => dest?.stopId ?? dest?.id;
 
+const getOrderedDestinationIds = (destinations, selectedDay, destId, startTime) => {
+  const dayDests = destinations.filter((destination) => destination.dayNumber === selectedDay);
+  const sorted = [...dayDests].sort((a, b) => {
+    const aTime = a.id === destId ? startTime : a.startTime;
+    const bTime = b.id === destId ? startTime : b.startTime;
+    const aDate = parseTimeToDate(aTime);
+    const bDate = parseTimeToDate(bTime);
+    if (aDate && bDate) return aDate - bDate;
+    if (aDate) return -1;
+    if (bDate) return 1;
+    return a.order - b.order;
+  });
+  const orderedIds = sorted.map(getDestinationClientId);
+  const orderChanged = orderedIds.some((id, index) => {
+    const destination = dayDests.find((item) => getDestinationClientId(item) === id);
+    return destination && destination.order !== index;
+  });
+  return orderChanged ? orderedIds : null;
+};
+
 function ItineraryTab({
   trip,
   bookings,
@@ -288,23 +308,13 @@ function ItineraryTab({
             setEditingDest(null);
 
             if (timeChanged && data.startTime) {
-              const dayDests = destinations.filter((d) => d.dayNumber === selectedDay);
-              const sorted = [...dayDests].sort((a, b) => {
-                const aTime = a.id === destId ? data.startTime : a.startTime;
-                const bTime = b.id === destId ? data.startTime : b.startTime;
-                const aDate = parseTimeToDate(aTime);
-                const bDate = parseTimeToDate(bTime);
-                if (aDate && bDate) return aDate - bDate;
-                if (aDate) return -1;
-                if (bDate) return 1;
-                return a.order - b.order;
-              });
-              const orderedIds = sorted.map(getDestinationClientId);
-              const orderChanged = orderedIds.some((id, i) => {
-                const dest = dayDests.find((d) => getDestinationClientId(d) === id);
-                return dest && dest.order !== i;
-              });
-              if (orderChanged) {
+              const orderedIds = getOrderedDestinationIds(
+                destinations,
+                selectedDay,
+                destId,
+                data.startTime,
+              );
+              if (orderedIds) {
                 reorderMutation.mutate({ dayNumber: selectedDay, orderedIds });
               }
             }

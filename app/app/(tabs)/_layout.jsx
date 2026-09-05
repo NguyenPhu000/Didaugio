@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { InteractionManager, Platform, Pressable, StyleSheet, View } from "react-native";
-import { Tabs, usePathname, useRouter } from "expo-router";
+import { Tabs, useGlobalSearchParams, usePathname, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { BlurView } from "expo-blur";
@@ -16,10 +16,9 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { getCmsExploreLandingApi } from "../../src/api/cms";
-import { QUERY_KEYS } from "../../src/constants/query-keys";
-import { getHomeApi as getExploreHomeApi } from "../../src/modules/explore/api/exploreApi";
-import { getMapPlacesApi } from "../../src/modules/map/api/mapApi";
-import { useAuthStore } from "../../src/stores/authStore";
+import { getCategoriesApi } from "../../src/modules/explore/api/exploreApi";
+import { buildExploreQueryOptions } from "../../src/modules/explore/hooks/useExplore";
+import { shouldHideFloatingTabBar } from "../../src/modules/map/utils/tripRoutePreview";
 
 /** Nang thanh tab cao hon so voi mep day (cong them vao safe area). */
 const EXTRA_FLOAT_LIFT = 26;
@@ -72,7 +71,6 @@ const SWIPE_TAB_KEYS = TABS.map((tab) => tab.key);
 const SWIPE_DISTANCE = 34;
 const SWIPE_VELOCITY = 360;
 const MAX_DRAG_OFFSET = 12;
-const MAP_PLACES_PREFETCH_LIMIT = 500;
 const PUBLIC_PREFETCH_STALE_TIME = 5 * 60 * 1000;
 
 function resolveTabKey(pathname) {
@@ -112,38 +110,37 @@ function forStackedCardTransition({ current }) {
   };
 }
 
-function prefetchTabData(queryClient, isLoggedIn) {
-  // Chỉ prefetch các dữ liệu tĩnh hoặc thiết yếu cho màn hình đầu tiên (Explore/Map)
-  queryClient.prefetchQuery({
-    queryKey: ["cms-explore-landing"],
-    queryFn: () => getCmsExploreLandingApi().then((res) => res?.data || res),
-    staleTime: PUBLIC_PREFETCH_STALE_TIME,
-  });
+function prefetchTabData(queryClient, activeTab) {
+  if (activeTab === "explore") {
+    queryClient.prefetchQuery({
+      queryKey: ["cms-explore-landing"],
+      queryFn: ({ signal }) =>
+        getCmsExploreLandingApi({ signal }).then((res) => res?.data || res),
+      staleTime: PUBLIC_PREFETCH_STALE_TIME,
+    });
 
-  queryClient.prefetchQuery({
-    queryKey: ["home-categories"],
-    queryFn: () => getExploreHomeApi({ limit: 1 }),
-    staleTime: 10 * 60 * 1000,
-  });
+    queryClient.prefetchQuery({
+      queryKey: ["home-categories"],
+      queryFn: ({ signal }) => getCategoriesApi({ signal }),
+      staleTime: 10 * 60 * 1000,
+    });
 
-  queryClient.prefetchQuery({
-    queryKey: QUERY_KEYS.places.list({
-      status: "approved",
-      limit: MAP_PLACES_PREFETCH_LIMIT,
-    }),
-    queryFn: () => getMapPlacesApi({ limit: MAP_PLACES_PREFETCH_LIMIT }),
-    staleTime: PUBLIC_PREFETCH_STALE_TIME,
-  });
+    queryClient.prefetchInfiniteQuery(buildExploreQueryOptions());
+  }
 }
 
 function FloatingBottomTabBar() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
+  const params = useGlobalSearchParams();
   const { t } = useTranslation();
 
   const currentKey = useMemo(() => resolveTabKey(pathname), [pathname]);
-  const hideForImmersiveRoute = currentKey === "ai";
+  const hideForImmersiveRoute = shouldHideFloatingTabBar(
+    currentKey,
+    params.tripPreviewId,
+  );
   const dragX = useSharedValue(0);
   const dragActive = useSharedValue(0);
 
@@ -350,25 +347,25 @@ const styles = StyleSheet.create({
 
 export default function TabsLayout() {
   const queryClient = useQueryClient();
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const isGuest = useAuthStore((s) => s.isGuest);
-  const isLoggedIn = !!accessToken && !isGuest;
+  const pathname = usePathname();
+  const activeTab = resolveTabKey(pathname);
 
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => {
-      prefetchTabData(queryClient, isLoggedIn);
+      prefetchTabData(queryClient, activeTab);
     });
 
     return () => {
       task.cancel?.();
     };
-  }, [isLoggedIn, queryClient]);
+  }, [activeTab, queryClient]);
 
   return (
     <View style={{ flex: 1 }}>
       <Tabs
         screenOptions={{
           headerShown: false,
+          freezeOnBlur: true,
           tabBarStyle: { display: "none" },
           sceneStyleInterpolator: forStackedCardTransition,
           transitionSpec: {

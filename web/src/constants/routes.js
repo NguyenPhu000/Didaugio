@@ -52,6 +52,7 @@ export const ADMIN_ROUTES = {
   CASHFLOW: "/admin/cashflow",
   SUBSCRIPTIONS: "/admin/subscriptions",
   SUBSCRIPTION_PLANS: "/admin/subscriptions/plans",
+  AI: "/admin/ai",
 };
 
 export const BUSINESS_ROUTES = {

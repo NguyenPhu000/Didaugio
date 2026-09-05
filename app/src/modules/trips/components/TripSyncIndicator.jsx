@@ -4,8 +4,9 @@ import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 import { useNetworkStatus } from "../hooks/useTripsOffline";
+import { OFFLINE_STORAGE_KEYS } from "../../../constants/storage";
 
-const PENDING_KEY = "@pending_trip_actions";
+const PENDING_KEY = OFFLINE_STORAGE_KEYS.PENDING_TRIP_ACTIONS;
 
 async function getPendingCount() {
   try {

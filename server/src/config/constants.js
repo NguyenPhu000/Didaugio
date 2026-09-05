@@ -38,7 +38,6 @@ export const ADMIN_ROLE_IDS = new Set([ROLES.SUPER_ADMIN, ROLES.ADMIN]);
 export const BACK_OFFICE_ROLE_IDS = new Set([
   ROLES.SUPER_ADMIN,
   ROLES.ADMIN,
-  ROLES.STAFF,
 ]);
 export const BUSINESS_PORTAL_ROLE_IDS = new Set([ROLES.BUSINESS, ROLES.STAFF]);
 
@@ -148,6 +147,7 @@ export const BOOKING_STATUS = {
 
 export const PAYMENT_STATUS = {
   UNPAID: "unpaid",
+  PARTIALLY_PAID: "partially_paid",
   PAID: "paid",
   PARTIALLY_REFUNDED: "partially_refunded",
   FULLY_REFUNDED: "fully_refunded",
@@ -220,6 +220,7 @@ export const DOMAIN_JOB_STATUS = {
 
 export const DOMAIN_JOB_TYPES = {
   REBUILD_ROUTE_METRICS: "RebuildRouteMetrics",
+  DELETE_CLOUDINARY_ASSET: "DeleteCloudinaryAsset",
 };
 
 export const BUSINESS_STATUS = {

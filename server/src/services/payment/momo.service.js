@@ -1,5 +1,4 @@
 import crypto from "node:crypto";
-import fetch from "node-fetch";
 
 const MOMO_API_URL = process.env.MOMO_API_URL || "https://test-payment.momo.vn/v2/gateway/api";
 const MOMO_PARTNER_CODE = process.env.MOMO_PARTNER_CODE || "";
@@ -101,6 +100,10 @@ export async function createPaymentUrl({ amount, transactionRef, orderInfo, retu
  * @returns {{ valid: boolean, error: string|null }}
  */
 export function verifyIpnSignature(body) {
+  if (!MOMO_PARTNER_CODE || !MOMO_ACCESS_KEY || !MOMO_SECRET_KEY) {
+    return { valid: false, error: "MoMo is not configured" };
+  }
+
   const {
     partnerCode,
     orderId,

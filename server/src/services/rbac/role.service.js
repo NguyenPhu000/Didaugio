@@ -301,18 +301,13 @@ export const updateRolePermissions = async (roleId, permissionData, currentUser 
     );
   }
 
-  // Check hierarchy
-  const currentUserLevel = canEditRolePermissions(currentUser?.roleId, role.id) ? 1 : 999;
-  const targetRoleLevel = 2;
-
-  if (currentUser?.roleId !== ROLES.SUPER_ADMIN) {
-    if (currentUserLevel >= targetRoleLevel) {
-      throw new ServiceError(
-        "Bạn không có quyền thay đổi quyền của vai trò này",
-        403,
-        ERROR_CODES.FORBIDDEN,
-      );
-    }
+  // Enforce the same hierarchy for every caller, including service-level calls.
+  if (!currentUser?.roleId || !canEditRolePermissions(currentUser.roleId, role.id)) {
+    throw new ServiceError(
+      "Bạn không có quyền thay đổi quyền của vai trò này",
+      403,
+      ERROR_CODES.FORBIDDEN,
+    );
   }
 
   // Kiểm tra tất cả permission IDs có tồn tại không

@@ -8,19 +8,14 @@ import { normalizeGenieResponse } from "../lib/genieAssistantExperience";
 import { ENDPOINTS } from "../../../api/endpoints";
 import apiClient from "../../../api/client";
 import { AI_REQUEST_TIMEOUT } from "../../../constants/api";
+import { buildSafeChatContext } from "../lib/chatContext";
 
-const MAX_SUGGESTED_PLACES = 6;
-
-/** Regex phát hiện yêu cầu lịch trình → ưu tiên gọi hybrid-plan (dùng word boundary cho tiếng Anh) */
-const ITINERARY_PATTERN = /(lịch trình|lên lịch|kế hoạch|\bitinerary\b|\bplan\b|lộ trình|chặng đi)/i;
+const MAX_SUGGESTED_PLACES = 20;
 
 /** Regex phát hiện truy vấn liên quan địa điểm (gợi ý, ăn gì, chơi gì...) */
 const PLACE_QUERY_PATTERN = /(suggest|gợi ý|đi đâu|ăn gì|chơi gì|check.?in|review|quán|nhà hàng|cafe|cà phê|khách sạn|chợ|bãi biển|du lịch|tham quan)/i;
 
 function extractReply(response) {
-  // Axios interceptor in client.js returns response.data directly,
-  // so `response` here is already the server's response body:
-  // { success, data: { reply, relatedPlaces }, message }
   const nested = response?.data?.reply;
   if (typeof nested === "string" && nested.trim()) return nested.trim();
 
@@ -33,27 +28,28 @@ function extractReply(response) {
   return "";
 }
 
+/** Tối ưu xếp hạng địa điểm gợi ý theo Rating & khoảng cách GPS nếu có */
 function normalizePlaces(places = []) {
   if (!Array.isArray(places)) return [];
   const seen = new Set();
-  const result = [];
+  const candidates = [];
   for (const raw of places) {
     const id = Number(raw?.id);
     if (!id || seen.has(id)) continue;
     seen.add(id);
 
-    result.push({
+    candidates.push({
       id,
       name: raw.name || "Địa điểm",
       address: raw.address || "",
       latitude: raw.latitude,
       longitude: raw.longitude,
       description: raw.description || "",
-      // Giữ nguyên toàn bộ image fields để resolvePlaceImageUri hoạt động đúng
       images: raw.images || [],
       thumbnailUrl: raw.thumbnailUrl || null,
       thumbnail: raw.thumbnail || null,
       imageUrl: raw.imageUrl || null,
+      imageData: raw.imageData || null,
       image: raw.image || null,
       priceFrom: Number(raw.priceFrom ?? raw.price_from ?? 0),
       priceTo: Number(raw.priceTo ?? raw.price_to ?? 0),
@@ -66,10 +62,10 @@ function normalizePlaces(places = []) {
       ward: raw.ward || null,
       district: raw.district || null,
     });
-
-    if (result.length >= MAX_SUGGESTED_PLACES) break;
   }
-  return result;
+
+  candidates.sort((a, b) => b.ratingAvg - a.ratingAvg);
+  return candidates.slice(0, MAX_SUGGESTED_PLACES);
 }
 
 function getFriendlyErrorMessage(err, t) {
@@ -85,16 +81,26 @@ function getFriendlyErrorMessage(err, t) {
   return mapAIError(err);
 }
 
+function snapshotValue(value) {
+  if (Array.isArray(value)) return value.map(snapshotValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, snapshotValue(item)]),
+    );
+  }
+  return value;
+}
+
 export function useGroqChat() {
   const { t } = useTranslation();
   const sessionContext = useAIContextStore((s) => s.sessionContext);
   const oldConversationMemory = useAIContextStore((s) => s.conversationMemory);
   const clearOldConversation = useAIContextStore((s) => s.clearConversation);
+
   const allMessages = useAIPlannerStore((s) => s.messages);
   const appendMessage = useAIPlannerStore((s) => s.appendMessage);
   const clearChatMessages = useAIPlannerStore((s) => s.clearChatMessages);
 
-  // Migrate old conversationMemory from aiContextStore → aiPlannerStore (one-time only)
   const migrationDoneRef = useRef(false);
   useEffect(() => {
     if (migrationDoneRef.current) return;
@@ -123,106 +129,99 @@ export function useGroqChat() {
   );
 
   const abortRef = useRef(null);
+  const lastFailedRequestRef = useRef(null);
 
   const sendMessage = useCallback(
-    async (text) => {
-      // Lấy fresh state từ store để tránh race condition khi gửi tin nhắn liên tục
-      const freshMessages = useAIPlannerStore.getState().messages.filter((m) => m.source === "chat");
-      const payload = buildApiPayload(freshMessages, text);
+    async (text, options = {}) => {
+      const appendUserMessage = options.appendUserMessage !== false;
+      const retryRequest = options.retryRequest;
+      const isPlaceQuery = PLACE_QUERY_PATTERN.test(text);
+      let request = retryRequest;
 
-      appendMessage({ role: "user", content: text, source: "chat" });
+      if (!request) {
+        const freshMessages = useAIPlannerStore
+          .getState()
+          .messages.filter((message) => message.source === "chat");
+        const payload = buildApiPayload(freshMessages, text);
+        const messages = payload.messages.map(({ role, content }) => ({ role, content }));
+        const id = `chat-${Date.now()}`;
+        const body = snapshotValue({
+          messages,
+          context: buildSafeChatContext(sessionContext, isPlaceQuery),
+        });
+
+        request = { id, text, body };
+        if (appendUserMessage) {
+          appendMessage({ id, role: "user", content: text, source: "chat" });
+        }
+      }
 
       if (abortRef.current) abortRef.current.abort();
       abortRef.current = new AbortController();
 
-      const isItineraryRequest = ITINERARY_PATTERN.test(text);
-      const isPlaceQuery = PLACE_QUERY_PATTERN.test(text);
-      const hasCoords = sessionContext.currentLocation?.latitude && sessionContext.currentLocation?.longitude;
-
       try {
-        let response;
+        const response = await apiClient.post(
+          ENDPOINTS.ai.groqChat,
+          request.body,
+          { signal: abortRef.current.signal, timeout: AI_REQUEST_TIMEOUT },
+        );
 
-        if (isItineraryRequest && hasCoords) {
-          response = await apiClient.post(
-            "/api/ai/hybrid-plan",
-            {
-              currentCoords: sessionContext.currentLocation,
-            },
-            {
-              signal: abortRef.current.signal,
-              timeout: AI_REQUEST_TIMEOUT,
-            }
-          );
+        const normalized = normalizeGenieResponse(response);
+        const reply = normalized.reply || extractReply(response) || t("aiChat.noReplyContent");
+        const relatedPlaces = normalizePlaces(normalized.suggestedPlaces);
+        const requestLogId = normalized.requestLogId ?? null;
 
-          const planData = response?.data?.data;
-          if (!planData || !planData.timeline) {
-            throw new Error(t("aiChat.invalidItineraryData"));
-          }
+        appendMessage({
+          role: "assistant",
+          content: reply,
+          suggestedPlaces: relatedPlaces,
+          quickReplies: normalized.quickReplies,
+          requestLogId,
+          source: "chat",
+        });
 
-          const replyMessage = t("aiChat.itineraryReady");
-
-          appendMessage({
-            role: "assistant",
-            content: replyMessage,
-            hybridPlan: planData,
-            source: "chat",
-          });
-
-          return { reply: replyMessage, hybridPlan: planData };
-        } else {
-          const cleanMessages = payload.messages.map(({ role, content }) => ({
-            role,
-            content,
-          }));
-
-          response = await apiClient.post(
-            ENDPOINTS.ai.groqChat,
-            {
-              messages: cleanMessages,
-              context: {
-                currentCoords: sessionContext.currentLocation,
-                currentCity: sessionContext.currentCity,
-                timeOfDay: sessionContext.timeOfDay,
-                preferences: sessionContext.preferences,
-                travelPreferences: sessionContext.userProfile?.travelPreferences,
-                visitedPlaceIds: sessionContext.visitedPlaceIds,
-                isPlaceQuery,
-              },
-            },
-            {
-              signal: abortRef.current.signal,
-              timeout: AI_REQUEST_TIMEOUT,
-            },
-          );
-
-          const normalized = normalizeGenieResponse(response);
-          const reply = normalized.reply || extractReply(response) || t("aiChat.noReplyContent");
-          const relatedPlaces = normalizePlaces(normalized.suggestedPlaces);
-
-          appendMessage({
-            role: "assistant",
-            content: reply,
-            suggestedPlaces: relatedPlaces,
-            quickReplies: normalized.quickReplies,
-            actions: normalized.actions,
-            source: "chat",
-          });
-
-          return { reply, relatedPlaces };
-        }
+        lastFailedRequestRef.current = null;
+        return { reply, suggestedPlaces: relatedPlaces, requestLogId };
       } catch (err) {
-        if (err?.name === "CanceledError" || err?.name === "AbortError") {
-          return null;
+        if (err?.name === "AbortError" || err?.code === "ERR_CANCELED") {
+          return;
         }
-        throw new Error(getFriendlyErrorMessage(err, t));
+
+        lastFailedRequestRef.current = request;
+        const errorMessage = getFriendlyErrorMessage(err, t);
+
+        appendMessage({
+          role: "assistant",
+          content: errorMessage,
+          isError: true,
+          source: "chat",
+        });
+
+        throw new Error("request failed");
       }
     },
-    [sessionContext, appendMessage, t],
+    [appendMessage, sessionContext, t],
   );
 
-  const abort = useCallback(() => {
-    abortRef.current?.abort();
-  }, []);
+  const retryLastMessage = useCallback(() => {
+    if (!lastFailedRequestRef.current) return Promise.resolve();
+    const req = lastFailedRequestRef.current;
+    lastFailedRequestRef.current = null;
 
-  return { sendMessage, abort, clearConversation: clearChatMessages, conversationMemory };
+    const state = useAIPlannerStore.getState();
+    const lastMsg = state.messages[state.messages.length - 1];
+    if (lastMsg?.isError) {
+      state.removeMessage(lastMsg.id);
+    }
+
+    return sendMessage(req.text, { retryRequest: req, appendUserMessage: false }).catch(() => {});
+  }, [sendMessage]);
+
+  return {
+    messages: conversationMemory,
+    sendMessage,
+    retryLastMessage,
+    clearHistory: clearChatMessages,
+    hasFailedMessage: Boolean(lastFailedRequestRef.current),
+  };
 }

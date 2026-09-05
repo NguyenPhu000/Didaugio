@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/Label";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -11,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { PermissionCheckbox } from "./permission-checkbox";
 import { roleService } from "@/apis/roleService";
@@ -49,30 +48,40 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
         roleService.getRolePermissions(role.id),
       ]);
 
-      const permData = permissionsResponse?.data || permissionsResponse;
-      if (permData && permData.permissions) {
-        setAllPermissions(permData.permissions);
+      // 1. Parse toàn bộ quyền hệ thống nhóm theo module
+      const rawPermData = permissionsResponse?.data ?? permissionsResponse;
+      const groupedPerms = rawPermData?.permissions ?? rawPermData ?? {};
+      setAllPermissions(groupedPerms);
 
-        const currentPermissionIds = new Set();
-        const rolePermData = rolePermissionsResponse?.data || rolePermissionsResponse;
-        if (
-          rolePermData?.success &&
-          rolePermData.data?.permissions
-        ) {
-          Object.values(rolePermData.data.permissions).forEach(
-            (perms) => {
-              perms.forEach((p) => currentPermissionIds.add(p.id));
-            },
-          );
-        }
+      // 2. Parse danh sách quyền hiện tại của vai trò này
+      const currentPermissionIds = new Set();
+      const rawRoleData = rolePermissionsResponse?.data ?? rolePermissionsResponse;
+      const rolePerms = rawRoleData?.permissions ?? rawRoleData ?? {};
 
-        setSelectedPermissions(currentPermissionIds);
-        setInitialPermissions(currentPermissionIds);
-
-        const modules = Object.keys(permData.permissions);
-        setExpandedModules(new Set(modules.slice(0, 3)));
+      if (Array.isArray(rolePerms)) {
+        rolePerms.forEach((p) => {
+          if (p?.id != null) currentPermissionIds.add(p.id);
+          else if (typeof p === "number") currentPermissionIds.add(p);
+        });
+      } else if (rolePerms && typeof rolePerms === "object") {
+        Object.values(rolePerms).forEach((perms) => {
+          if (Array.isArray(perms)) {
+            perms.forEach((p) => {
+              if (p?.id != null) currentPermissionIds.add(p.id);
+              else if (typeof p === "number") currentPermissionIds.add(p);
+            });
+          }
+        });
       }
+
+      setSelectedPermissions(currentPermissionIds);
+      setInitialPermissions(new Set(currentPermissionIds));
+
+      // Mở rộng tất cả các module để người dùng xem được ngay
+      const modules = Object.keys(groupedPerms);
+      setExpandedModules(new Set(modules));
     } catch (error) {
+      console.error("Lỗi tải quyền của vai trò:", error);
       const errorMsg =
         error.response?.data?.message ||
         error.message ||
@@ -88,6 +97,7 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
   }, [fetchData]);
 
   const handleTogglePermission = (permissionId) => {
+    if (readOnly) return;
     setSelectedPermissions((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(permissionId)) {
@@ -100,6 +110,7 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
   };
 
   const handleSelectAll = () => {
+    if (readOnly) return;
     const allIds = new Set();
     Object.values(filteredPermissions).forEach((perms) => {
       perms.forEach((p) => allIds.add(p.id));
@@ -108,10 +119,12 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
   };
 
   const handleDeselectAll = () => {
+    if (readOnly) return;
     setSelectedPermissions(new Set());
   };
 
   const handleToggleModule = (module) => {
+    if (readOnly) return;
     const modulePermissions = filteredPermissions[module] || [];
     const moduleIds = modulePermissions.map((p) => p.id);
     const allSelected = moduleIds.every((id) => selectedPermissions.has(id));
@@ -128,6 +141,7 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
   };
 
   const handleSave = async () => {
+    if (readOnly) return;
     try {
       setSaving(true);
       const permissionIds = Array.from(selectedPermissions);
@@ -228,10 +242,10 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
   if (loading) {
     return (
       <div className="space-y-4 py-4">
-        <Skeleton className="h-10 w-full border border-black" />
-        <Skeleton className="h-10 w-full border border-black" />
-        <Skeleton className="h-40 w-full border border-black" />
-        <Skeleton className="h-40 w-full border border-black" />
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <Skeleton className="h-40 w-full rounded-2xl" />
+        <Skeleton className="h-40 w-full rounded-2xl" />
       </div>
     );
   }
@@ -240,10 +254,10 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
     <div className="space-y-4 pb-4">
       {/* Read-only banner */}
       {readOnly && (
-        <div className="bg-yellow-50 border border-[#F3E600] p-3 flex items-center gap-2">
-          <Shield className="h-4 w-4 text-yellow-600" />
-          <p className="text-xs font-mono text-yellow-800 uppercase">
-            Chế độ xem quyền — Super Admin tự động có toàn quyền truy cập
+        <div className="bg-blue-50/70 border border-blue-200/80 rounded-2xl p-3.5 flex items-center gap-2.5">
+          <Shield className="h-4 w-4 text-blue-600 shrink-0" />
+          <p className="text-xs font-medium text-blue-900">
+            Chế độ xem quyền — Super Admin tự động có toàn quyền truy cập hệ thống
           </p>
         </div>
       )}
@@ -251,29 +265,27 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
       {/* Search and Filter */}
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <div className="relative flex-1 w-full">
-          <div className="absolute left-0 top-0 h-full w-10 bg-black flex items-center justify-center text-white">
-            <Search className="h-4 w-4" />
-          </div>
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <Input
-            placeholder="TÌM KIẾM QUYỀN..."
+            placeholder="Tìm kiếm quyền theo tên..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-12 h-10 rounded-none border border-black bg-white focus-visible:ring-0 focus-visible:border-black focus:bg-yellow-50 uppercase text-xs font-mono"
+            className="pl-10 h-10 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-xs font-medium text-slate-900 focus-visible:ring-2 focus-visible:ring-slate-300"
           />
         </div>
         <Select value={moduleFilter} onValueChange={setModuleFilter}>
-          <SelectTrigger className="w-full sm:w-[200px] h-10 rounded-none border border-black bg-white uppercase text-xs font-bold">
-            <SelectValue placeholder="LỌC MODULE" />
+          <SelectTrigger className="w-full sm:w-[200px] h-10 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800">
+            <SelectValue placeholder="Lọc module" />
           </SelectTrigger>
-          <SelectContent className="rounded-none border-2 border-black bg-white">
-            <SelectItem value="all" className="uppercase font-mono text-xs">
-              TẤT CẢ MODULES
+          <SelectContent className="rounded-xl border border-slate-200 bg-white shadow-lg">
+            <SelectItem value="all" className="text-xs font-medium">
+              Tất cả modules
             </SelectItem>
             {Object.keys(allPermissions).map((module) => (
               <SelectItem
                 key={module}
                 value={module}
-                className="uppercase font-mono text-xs"
+                className="text-xs font-medium"
               >
                 {MODULE_DISPLAY_NAMES[module] || module}
               </SelectItem>
@@ -283,19 +295,19 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
       </div>
 
       {/* Progress and Actions */}
-      <div className="bg-white p-4 border border-black flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-white p-4 rounded-2xl border border-black/[0.04] shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="space-y-2 w-full sm:w-auto">
-          <div className="flex items-center justify-between sm:justify-start gap-3 text-xs font-bold text-black uppercase tracking-wider">
-            <span className="font-mono">
-              ĐÃ CHỌN: {stats.selected} / {stats.total}
+          <div className="flex items-center justify-between sm:justify-start gap-3 text-xs font-semibold text-slate-900">
+            <span>
+              Đã chọn: <strong className="font-mono">{stats.selected}</strong> / <span className="font-mono text-slate-500">{stats.total}</span>
             </span>
-            <span className="bg-[#F3E600] text-black px-2 py-0.5 font-mono">
+            <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded-full font-mono text-[11px] font-semibold">
               {Math.round(stats.percentage)}%
             </span>
           </div>
-          <div className="w-full sm:w-[240px] h-1 bg-gray-200 border border-gray-300">
+          <div className="w-full sm:w-[240px] h-1.5 bg-slate-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#F3E600] transition-all duration-300"
+              className="h-full bg-slate-950 transition-all duration-300 rounded-full"
               style={{ width: `${stats.percentage}%` }}
             />
           </div>
@@ -307,20 +319,20 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
               size="sm"
               onClick={handleSelectAll}
               disabled={stats.selected === stats.total}
-              className="flex-1 sm:flex-none rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
+              className="flex-1 sm:flex-none rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold cursor-pointer"
             >
-              <CheckCircle className="h-3 w-3 mr-2" />
-              CHỌN TẤT
+              <CheckCircle className="h-3.5 w-3.5 mr-1.5 text-emerald-600" />
+              Chọn tất cả
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={handleDeselectAll}
               disabled={stats.selected === 0}
-              className="flex-1 sm:flex-none rounded-none border border-black hover:bg-black hover:text-white uppercase text-xs font-bold"
+              className="flex-1 sm:flex-none rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold cursor-pointer"
             >
-              <XCircle className="h-3 w-3 mr-2" />
-              BỎ CHỌN
+              <XCircle className="h-3.5 w-3.5 mr-1.5 text-slate-400" />
+              Bỏ chọn
             </Button>
           </div>
         )}
@@ -329,9 +341,9 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
       {/* Permissions List */}
       <div className="space-y-3">
         {Object.keys(filteredPermissions).length === 0 ? (
-          <div className="text-center py-12 text-gray-500 bg-white border border-black border-dashed">
-            <SearchX className="h-12 w-12 mx-auto mb-2 opacity-30" />
-            <p className="uppercase font-mono text-xs">KHÔNG TÌM THẤY QUYỀN</p>
+          <div className="text-center py-12 text-slate-400 bg-white rounded-2xl border border-black/[0.04]">
+            <SearchX className="h-10 w-10 mx-auto mb-2 opacity-40 stroke-[1.5]" />
+            <p className="text-xs font-semibold">Không tìm thấy quyền phù hợp</p>
           </div>
         ) : (
           Object.entries(filteredPermissions).map(([module, permissions]) => {
@@ -350,10 +362,10 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
             return (
               <div
                 key={module}
-                className="border border-black overflow-hidden transition-all hover:shadow-hard"
+                className="rounded-2xl border border-black/[0.04] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden transition-all"
               >
                 <div
-                  className="flex items-center justify-between p-4 bg-white cursor-pointer select-none hover:bg-gray-50 border-l-4 border-l-transparent hover:border-l-[#F3E600] transition-all"
+                  className="flex items-center justify-between p-4 bg-white cursor-pointer select-none hover:bg-slate-50/80 transition-all"
                   onClick={() => toggleModuleExpand(module)}
                 >
                   <div className="flex items-center gap-3">
@@ -362,31 +374,28 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
                         checked={moduleCheckedState}
                         onCheckedChange={() => handleToggleModule(module)}
                         disabled={readOnly}
-                        className="data-[state=checked]:bg-[#F3E600] data-[state=checked]:border-black data-[state=checked]:text-black rounded-none border-2"
+                        className="rounded-md border-slate-300 data-[state=checked]:bg-slate-900 data-[state=checked]:border-slate-900"
                       />
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-1 bg-black"></div>
-                      <div>
-                        <Label className="font-bold text-black text-sm cursor-pointer uppercase tracking-tight">
-                          {MODULE_DISPLAY_NAMES[module] || module}
-                        </Label>
-                        <p className="text-xs text-gray-500 font-mono mt-0.5 uppercase">
-                          {moduleSelected}/{moduleTotal} QUYỀN
-                        </p>
-                      </div>
+                    <div>
+                      <Label className="font-bold text-slate-950 text-sm cursor-pointer">
+                        {MODULE_DISPLAY_NAMES[module] || module}
+                      </Label>
+                      <p className="text-xs text-slate-500 font-mono mt-0.5">
+                        {moduleSelected}/{moduleTotal} quyền
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Badge
                       variant="secondary"
-                      className="bg-black text-white rounded-none px-2.5 py-1 font-mono text-xs uppercase"
+                      className="bg-slate-100 text-slate-700 hover:bg-slate-100 rounded-full px-2.5 py-0.5 text-xs font-medium"
                     >
                       {module}
                     </Badge>
                     <ChevronDown
                       className={cn(
-                        "h-4 w-4 text-black transition-transform duration-200",
+                        "h-4 w-4 text-slate-400 transition-transform duration-200",
                         isExpanded ? "rotate-180" : "",
                       )}
                     />
@@ -394,7 +403,7 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
                 </div>
 
                 {isExpanded && (
-                  <div className="p-4 space-y-2 bg-gray-50 border-t-2 border-black">
+                  <div className="p-4 space-y-2 bg-slate-50/50 border-t border-black/[0.04]">
                     {permissions.map((permission) => (
                       <PermissionCheckbox
                         key={permission.id}
@@ -415,29 +424,29 @@ export function RolePermissionTab({ role, onUpdated, onClose, readOnly = false }
       </div>
 
       {/* Footer Actions */}
-      <div className="flex justify-end gap-3 pt-4 mt-6 border-t-2 border-black sticky bottom-0 bg-white p-4 -mx-4 -mb-4 shadow-hard z-10 sm:static sm:bg-transparent sm:p-0 sm:shadow-none">
+      <div className="flex justify-end gap-3 pt-4 mt-6 border-t border-black/[0.04] sticky bottom-0 bg-white p-4 -mx-4 -mb-4 shadow-lg sm:static sm:bg-transparent sm:p-0 sm:shadow-none">
         <Button
           variant="outline"
           onClick={onClose}
-          className="rounded-none border border-black hover:bg-gray-100 uppercase text-xs font-bold"
+          className="rounded-xl border-slate-200 hover:bg-slate-50 text-xs font-semibold cursor-pointer"
         >
-          {readOnly ? "ĐÓNG" : "HỦY"}
+          {readOnly ? "Đóng" : "Hủy"}
         </Button>
         {!readOnly && (
           <Button
             onClick={handleSave}
             disabled={!hasChanges || saving}
-            className="rounded-none bg-black hover:bg-[#F3E600] hover:text-black text-white border border-black shadow-hard uppercase text-xs font-bold"
+            className="rounded-xl bg-slate-900 hover:bg-slate-950 text-white text-xs font-semibold shadow-sm cursor-pointer"
           >
             {saving ? (
               <span className="flex items-center gap-2">
-                <RefreshCw className="h-3 w-3 animate-spin" />
-                ĐANG LƯU...
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                Đang lưu...
               </span>
             ) : (
               <span className="flex items-center gap-2">
-                <Save className="h-3 w-3" />
-                LƯU THAY ĐỔI
+                <Save className="h-3.5 w-3.5" />
+                Lưu thay đổi
               </span>
             )}
           </Button>

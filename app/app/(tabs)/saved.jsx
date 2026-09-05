@@ -1,6 +1,9 @@
+// MAP: SavedTabScreen
+// ├── UI: @/modules/saved/components/{SavedCard, NoteEditorModal, SavedStates}, @/modules/map/components/filters/FilterPickerModal
+// └── API: @/modules/saved/hooks/useSaved, @/modules/saved/hooks/useSavedOffline
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   RefreshControl,
   ScrollView,
   Text,
@@ -10,6 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { showAppAlertLegacy } from "../../src/utils/appAlert";
 import * as Haptics from "expo-haptics";
 import { GuestGate } from "../../src/components/ui/GuestGate";
 import { OfflineBanner } from "../../src/components/ui/OfflineBanner";
@@ -171,14 +175,14 @@ export default function SavedScreen() {
       });
       handleCloseNoteEditor();
     } catch {
-      Alert.alert(t("saved.alert.noteError"), t("common.tryAgain"));
+      showAppAlertLegacy(t("saved.alert.noteError"), t("common.tryAgain"));
     }
   }, [handleCloseNoteEditor, noteDraft, noteTarget?.placeId, saveMutation, t]);
 
   const handleUnsave = useCallback(
     (placeId) => {
       if (!placeId || unsaveMutation.isPending) return;
-      Alert.alert(t("saved.alert.unsaveTitle"), t("common.confirmDelete"), [
+      showAppAlertLegacy(t("saved.alert.unsaveTitle"), t("common.confirmDelete"), [
         { text: t("common.cancel"), style: "cancel" },
         {
           text: t("common.delete"),

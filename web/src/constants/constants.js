@@ -1,7 +1,9 @@
 import i18n from "@/i18n";
+import { resolveApiBaseUrl } from "./apiConfig";
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8081/api";
+export const API_BASE_URL = resolveApiBaseUrl(import.meta.env.VITE_API_URL, {
+  production: import.meta.env.PROD,
+});
 
 export const PAGINATION = {
   DEFAULT_PAGE: 1,

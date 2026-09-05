@@ -1,23 +1,31 @@
+// MAP: GroqChatScreen
+// ├── UI: @/modules/ai/components/chat/{MessageBubble, TypingIndicator, ChatInputBar}, @/components/reacticx/glow
+// └── API: @/modules/ai/hooks/useGroqChat, @/modules/ai/hooks/useGenieVoice, @/stores/aiContextStore
+
 import {
   View,
   Text,
   Pressable,
-  ScrollView,
   Platform,
   StyleSheet,
   KeyboardAvoidingView,
+  Image,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
-import { ArrowLeft, Home, MapPinned, MessageCircle, Sparkles, Trash2 } from "lucide-react-native";
+import { ArrowLeft, ArrowDown, Home, MessageCircle, Trash2 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+
+import avaGenie from "../../assets/ai/ava_Genie.png";
 
 import { useGroqChat } from "../../src/modules/ai/hooks/useGroqChat";
 import { useGenieVoice } from "../../src/modules/ai/hooks/useGenieVoice";
 import { useAIContextStore } from "../../src/stores/aiContextStore";
 import { TOKENS } from "../../src/constants/design-tokens";
+import { VOICE_ERROR_CODES } from "../../src/constants/voice-error-codes";
 
 // Split components
 import { MessageBubble } from "../../src/modules/ai/components/chat/MessageBubble";
@@ -29,7 +37,7 @@ import { Glow } from "../../src/components/reacticx/glow";
 import { StreamingText } from "../../src/components/reacticx/streaming-text";
 
 // Utils
-import { clientHaversine, getTimeBasedSuggestions } from "../../src/modules/ai/lib/chatUtils";
+import { getTimeBasedSuggestions } from "../../src/modules/ai/lib/chatUtils";
 
 export default function GroqChatScreen() {
   const [inputText, setInputText] = useState("");
@@ -38,6 +46,7 @@ export default function GroqChatScreen() {
 
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+  const lastConsumedVoiceErrorRef = useRef(null);
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -50,6 +59,7 @@ export default function GroqChatScreen() {
 
   const {
     status: voiceStatus,
+    error: voiceError,
     startRecording,
     stopRecordingAndTranscribe,
   } = useGenieVoice();
@@ -57,136 +67,50 @@ export default function GroqChatScreen() {
   const isRecording = voiceStatus === "listening";
   const isTranscribing = voiceStatus === "transcribing";
 
-  const [interactivePlans, setInteractivePlans] = useState({});
-
-  // Sync local plan state when new messages include a hybrid plan.
+  // Surface pre-upload voice failures (permission denied, empty recording,
+  // session errors) in the chat error banner instead of failing silently.
+  // Transcription HTTP errors are handled by handleToggleRecord's catch.
+  // Use a ref to avoid re-triggering after user closes the banner.
   useEffect(() => {
-    conversationMemory.forEach((msg) => {
-      if (msg.hybridPlan && msg.id) {
-        setInteractivePlans((prev) => {
-          if (prev[msg.id]) return prev;
-          return {
-            ...prev,
-            [msg.id]: msg.hybridPlan,
-          };
-        });
+    if (voiceStatus !== "error" || !voiceError) return;
+    if (voiceError === lastConsumedVoiceErrorRef.current) return;
+    lastConsumedVoiceErrorRef.current = voiceError;
+    if (voiceError === VOICE_ERROR_CODES.PERMISSION_DENIED) {
+      setError("Genie cần quyền micro để nghe bạn nói. Hãy cấp quyền trong Cài đặt nghen!");
+    } else if (voiceError === VOICE_ERROR_CODES.EMPTY_RECORDING) {
+      setError("Genie chưa nghe được gì, bạn thử nói lại nghen!");
+    } else if (voiceError === VOICE_ERROR_CODES.SESSION_FAILED) {
+      setError("Không thể mở phiên ghi âm, thử lại nghen!");
+    }
+  }, [voiceStatus, voiceError]);
+
+  // Scroll to bottom on initial load with existing history AND when new messages arrive
+  const prevMsgCountRef = useRef(0);
+  const initialScrollDoneRef = useRef(false);
+
+  useEffect(() => {
+    const currentLength = conversationMemory.length;
+    if (currentLength > 0) {
+      const isInitial = !initialScrollDoneRef.current;
+      if (isInitial || currentLength > prevMsgCountRef.current) {
+        initialScrollDoneRef.current = true;
+        const timer = setTimeout(
+          () => scrollRef.current?.scrollToEnd({ animated: !isInitial }),
+          isInitial ? 60 : 100,
+        );
+        prevMsgCountRef.current = currentLength;
+        return () => clearTimeout(timer);
       }
-    });
-  }, [conversationMemory]);
+    }
+    prevMsgCountRef.current = currentLength;
+  }, [conversationMemory.length]);
 
-  const handleRemovePlace = useCallback((msgId, index) => {
-    setInteractivePlans((prev) => {
-      const plan = prev[msgId];
-      if (!plan || !plan.timeline) return prev;
-
-      const newTimeline = [...plan.timeline];
-      const removedItem = newTimeline[index];
-      const place = removedItem.place;
-
-      newTimeline.splice(index, 1);
-
-      if (index > 0 && newTimeline[index - 1]) {
-        const prevItem = newTimeline[index - 1];
-        const nextItem = newTimeline[index];
-
-        if (nextItem && prevItem.place && nextItem.place) {
-          const dist = clientHaversine(
-            parseFloat(prevItem.place.latitude),
-            parseFloat(prevItem.place.longitude),
-            parseFloat(nextItem.place.latitude),
-            parseFloat(nextItem.place.longitude)
-          );
-          const duration = Math.max(1, Math.round(dist * 2.5));
-          prevItem.navigationToNext = {
-            distanceKm: parseFloat(dist.toFixed(1)),
-            durationMin: duration,
-          };
-        } else {
-          prevItem.navigationToNext = null;
-        }
-      }
-
-      const priceFrom = place?.priceFrom || 0;
-      const priceTo = place?.priceTo || 0;
-
-      const category = (place?.categoryName || "").toLowerCase();
-      let costType = "tickets";
-      if (category.includes("ăn") || category.includes("uống") || category.includes("restaurant") || category.includes("food") || category.includes("cà phê") || category.includes("cafe")) {
-        costType = "food";
-      } else if (category.includes("di chuyển") || category.includes("xe") || category.includes("taxi")) {
-        costType = "transportEstimated";
-      }
-
-      const summary = { ...plan.tripSummary };
-      summary.totalEstimatedPriceFrom = Math.max(0, summary.totalEstimatedPriceFrom - priceFrom);
-      summary.totalEstimatedPriceTo = Math.max(0, summary.totalEstimatedPriceTo - priceTo);
-
-      if (summary.costBreakdown && summary.costBreakdown[costType]) {
-        const breakdown = { ...summary.costBreakdown };
-        breakdown[costType] = {
-          from: Math.max(0, breakdown[costType].from - priceFrom),
-          to: Math.max(0, breakdown[costType].to - priceTo),
-        };
-        summary.costBreakdown = breakdown;
-      }
-
-      return {
-        ...prev,
-        [msgId]: {
-          ...plan,
-          tripSummary: summary,
-          timeline: newTimeline,
-        },
-      };
-    });
-  }, []);
-
-  const handleSwapPlace = useCallback((msgId, index) => {
-    setInteractivePlans((prev) => {
-      const plan = prev[msgId];
-      if (!plan || !plan.timeline) return prev;
-
-      const newTimeline = [...plan.timeline];
-      if (index >= newTimeline.length - 1) return prev;
-
-      const temp = newTimeline[index];
-      newTimeline[index] = newTimeline[index + 1];
-      newTimeline[index + 1] = temp;
-
-      const tempTime = newTimeline[index].timeSlot;
-      newTimeline[index].timeSlot = newTimeline[index + 1].timeSlot;
-      newTimeline[index + 1].timeSlot = tempTime;
-
-      for (let i = 0; i < newTimeline.length; i++) {
-        const current = newTimeline[i];
-        const next = newTimeline[i + 1];
-
-        if (next && current.place && next.place) {
-          const dist = clientHaversine(
-            parseFloat(current.place.latitude),
-            parseFloat(current.place.longitude),
-            parseFloat(next.place.latitude),
-            parseFloat(next.place.longitude)
-          );
-          const duration = Math.max(1, Math.round(dist * 2.5));
-          current.navigationToNext = {
-            distanceKm: parseFloat(dist.toFixed(1)),
-            durationMin: duration,
-          };
-        } else {
-          current.navigationToNext = null;
-        }
-      }
-
-      return {
-        ...prev,
-        [msgId]: {
-          ...plan,
-          timeline: newTimeline,
-        },
-      };
-    });
-  }, []);
+  const handleContentSizeChange = useCallback(() => {
+    if (!initialScrollDoneRef.current && conversationMemory.length > 0) {
+      initialScrollDoneRef.current = true;
+      scrollRef.current?.scrollToEnd({ animated: false });
+    }
+  }, [conversationMemory.length]);
 
   useEffect(() => {
     let active = true;
@@ -224,10 +148,14 @@ export default function GroqChatScreen() {
     };
   }, [setCurrentCity, updateLocation]);
 
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const isSendingRef = useRef(false);
+
   const handleSend = useCallback(
-    async (text) => {
-      const msg = (text ?? inputText).trim();
-      if (!msg || isSending) return;
+    async (textOverride) => {
+      const msg = (typeof textOverride === "string" ? textOverride : inputText).trim();
+      if (!msg || isSendingRef.current) return;
+      isSendingRef.current = true;
       setInputText("");
       setError(null);
       setIsSending(true);
@@ -237,18 +165,31 @@ export default function GroqChatScreen() {
       } catch (err) {
         setError(err.message || "Đã có lỗi xảy ra");
       } finally {
+        isSendingRef.current = false;
         setIsSending(false);
-        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
       }
     },
-    [inputText, isSending, sendMessage],
+    [inputText, sendMessage],
   );
+
+  const handleScroll = useCallback((event) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    const contentHeight = event.nativeEvent.contentSize.height;
+    const layoutHeight = event.nativeEvent.layoutMeasurement.height;
+    const isFarFromBottom = contentHeight - offsetY - layoutHeight > 250;
+    setShowScrollBottom(isFarFromBottom);
+  }, []);
 
   const handleToggleRecord = useCallback(async () => {
     if (isRecording) {
-      const text = await stopRecordingAndTranscribe();
-      if (text) {
-        setInputText((prev) => (prev ? `${prev} ${text}` : text));
+      try {
+        const text = await stopRecordingAndTranscribe();
+        if (text) {
+          setInputText((prev) => (prev ? `${prev} ${text}` : text));
+        }
+      } catch (err) {
+        setError(err?.message || "Không thể nhận dạng giọng nói, thử lại nghen!");
       }
     } else {
       await startRecording();
@@ -271,17 +212,26 @@ export default function GroqChatScreen() {
     if (isSending) return;
     clearConversation();
     setError(null);
-    setInteractivePlans({});
   }, [isSending, clearConversation]);
 
   const hasMessages = conversationMemory.length > 0;
   const isLoadingOrSending = isSending || isTranscribing;
   const canSend = inputText.trim().length > 0 && !isLoadingOrSending;
 
+  const renderChatItem = useCallback(
+    ({ item }) => (
+      <MessageBubble
+        message={item}
+        onViewPlace={handleViewPlace}
+      />
+    ),
+    [handleViewPlace]
+  );
+
   return (
     <KeyboardAvoidingView
       style={s.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? HEADER_HEIGHT : 0}
     >
       {/* Premium Header */}
@@ -303,7 +253,7 @@ export default function GroqChatScreen() {
               colors={["#2563EB", "#7C3AED", "#DB2777"]}
               style={s.avatarContainer}
             >
-              <Sparkles size={18} color="#FFFFFF" />
+              <Image source={avaGenie} style={s.avatarImage} resizeMode="cover" />
             </LinearGradient>
           </Glow>
           
@@ -342,26 +292,32 @@ export default function GroqChatScreen() {
         </View>
       </View>
 
-      <ScrollView
+      <FlashList
         ref={scrollRef}
+        data={hasMessages ? conversationMemory : []}
+        keyExtractor={(item, index) => item.id ?? `${item.role}-${index}`}
+        onScroll={handleScroll}
+        onContentSizeChange={handleContentSizeChange}
+        scrollEventThrottle={16}
+        estimatedItemSize={140}
+        getItemType={(item) => (item?.plan || item?.suggestedPlaces?.length > 0 ? "complex" : "simple")}
+        overrideItemLayout={(layout, item) => {
+          layout.size = item?.plan || item?.suggestedPlaces?.length > 0 ? 340 : 110;
+        }}
+        renderItem={renderChatItem}
         style={s.flex1}
-        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={hasMessages ? s.scrollContentMessages : s.scrollContentEmpty}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
-        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
-      >
-        {!hasMessages ? (
+        ListEmptyComponent={
           <View style={s.emptyContainer}>
             <Glow style="breathe" speed={0.72} intensity={0.62} colors={["#2563EB", "#7C3AED", "#DB2777"]}>
               <LinearGradient
                 colors={["#2563EB", "#7C3AED", "#DB2777"]}
                 style={s.heroAvatarRing}
               >
-                <View style={s.heroAvatarInner}>
-                  <MapPinned size={33} color="#2563EB" />
-                </View>
+                <Image source={avaGenie} style={s.heroAvatarImage} resizeMode="cover" />
               </LinearGradient>
             </Glow>
 
@@ -375,42 +331,43 @@ export default function GroqChatScreen() {
               onSelect={handleSend}
             />
           </View>
-        ) : (
-          <View style={s.messageGap}>
-            {conversationMemory.map((msg, index) => (
-              <MessageBubble
-                key={msg.id ?? `${msg.role}-${index}`}
-                message={msg}
-                onViewPlace={handleViewPlace}
-                interactivePlan={interactivePlans[msg.id]}
-                onRemovePlace={handleRemovePlace}
-                onSwapPlace={handleSwapPlace}
-              />
-            ))}
-          </View>
-        )}
+        }
+        ListFooterComponent={
+          <>
+            {isLoadingOrSending && (
+              <View style={s.thinkingWrap}>
+                <View style={s.thinkingLabelRow}>
+                  <MessageCircle size={12} color="#2563EB" />
+                  <Text style={s.thinkingLabel}>Genie</Text>
+                </View>
+                <View style={s.thinkingBubble}>
+                  <StreamingText text="Đang suy nghĩ..." style={s.thinkingText} />
+                </View>
+              </View>
+            )}
 
-        {isLoadingOrSending && (
-          <View style={s.thinkingWrap}>
-            <View style={s.thinkingLabelRow}>
-              <MessageCircle size={12} color="#2563EB" />
-              <Text style={s.thinkingLabel}>Genie</Text>
-            </View>
-            <View style={s.thinkingBubble}>
-              <StreamingText text="Đang suy nghĩ..." style={s.thinkingText} />
-            </View>
-          </View>
-        )}
+            {error && (
+              <View style={s.errorBanner}>
+                <Text style={s.errorText} selectable>{error}</Text>
+                <Pressable onPress={() => setError(null)}>
+                  <Text style={s.closeText}>Đóng</Text>
+                </Pressable>
+              </View>
+            )}
+          </>
+        }
+      />
 
-        {error && (
-          <View style={s.errorBanner}>
-            <Text style={s.errorText} selectable>{error}</Text>
-            <Pressable onPress={() => setError(null)}>
-              <Text style={s.closeText}>Đóng</Text>
-            </Pressable>
-          </View>
-        )}
-      </ScrollView>
+      {showScrollBottom && (
+        <Pressable
+          onPress={() => scrollRef.current?.scrollToEnd({ animated: true })}
+          style={s.scrollBottomBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Cuộn xuống tin nhắn mới nhất"
+        >
+          <ArrowDown size={18} color="#2563EB" />
+        </Pressable>
+      )}
 
       <ChatInputBar
         inputText={inputText}
@@ -468,11 +425,17 @@ const s = StyleSheet.create({
     backgroundColor: "#F1F5F9",
   },
   avatarContainer: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    padding: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarImage: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
   },
   headerTitle: {
     fontSize: 16,
@@ -490,13 +453,6 @@ const s = StyleSheet.create({
     height: 8,
     justifyContent: "center",
     alignItems: "center",
-  },
-  onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#10B981",
-    position: "absolute",
   },
   onlineDotCore: {
     width: 6,
@@ -519,12 +475,18 @@ const s = StyleSheet.create({
     paddingVertical: 20,
   },
   heroAvatarRing: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    padding: 3,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
+  },
+  heroAvatarImage: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
   },
   heroAvatarInner: {
     width: 76,
@@ -561,9 +523,6 @@ const s = StyleSheet.create({
     maxWidth: 310,
     marginBottom: 32,
     fontFamily: TOKENS.font.body,
-  },
-  messageGap: {
-    gap: 16,
   },
   thinkingWrap: {
     alignItems: "flex-start",
@@ -626,5 +585,20 @@ const s = StyleSheet.create({
     fontSize: 12.5,
     fontFamily: TOKENS.font.semibold,
     marginLeft: 10,
+  },
+  scrollBottomBtn: {
+    position: "absolute",
+    right: 20,
+    bottom: 90,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 6px 18px rgba(15, 23, 42, 0.16)",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    zIndex: 20,
   },
 });

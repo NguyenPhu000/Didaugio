@@ -8,17 +8,17 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import {
-  IconChevronDown,
-  IconChevronLeft,
-  IconChevronRight,
-  IconChevronsLeft,
-  IconChevronsRight,
-  IconCircleCheckFilled,
-  IconClock,
-  IconX,
-  IconStarFilled,
-  IconLayoutColumns,
-} from "@tabler/icons-react";
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  CheckCircle2,
+  Clock,
+  X,
+  Star,
+  Columns3,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,19 +54,19 @@ export default function RecentPlacesTable({ places }) {
   const STATUS_MAP = {
     approved: {
       label: t("admin.recentTable.approved"),
-      icon: IconCircleCheckFilled,
-      color: "fill-green-500 dark:fill-green-400",
+      icon: CheckCircle2,
+      color: "text-green-500 dark:text-green-400",
       badgeClass: "text-green-700 bg-green-50 border-green-200",
     },
     pending: {
       label: t("admin.recentTable.pending"),
-      icon: IconClock,
+      icon: Clock,
       color: "text-yellow-500",
       badgeClass: "text-yellow-700 bg-yellow-50 border-yellow-200",
     },
     rejected: {
       label: t("admin.recentTable.rejected"),
-      icon: IconX,
+      icon: X,
       color: "text-red-500",
       badgeClass: "text-red-700 bg-red-50 border-red-200",
     },
@@ -86,7 +86,7 @@ export default function RecentPlacesTable({ places }) {
           </Link>
           {row.original.isFeatured && (
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-              <IconStarFilled className="h-3 w-3 fill-yellow-400 text-yellow-400 mr-1" />
+              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 mr-1" />
               {t("admin.recentTable.hot")}
             </Badge>
           )}
@@ -113,7 +113,7 @@ export default function RecentPlacesTable({ places }) {
       header: t("admin.recentTable.rating"),
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <IconStarFilled className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+          <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
           <span className="font-mono text-xs">
             {row.original.averageRating
               ? Number(row.original.averageRating).toFixed(1)
@@ -203,9 +203,9 @@ export default function RecentPlacesTable({ places }) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
-                <IconLayoutColumns />
+                <Columns3 className="h-4 w-4" />
                 <span className="hidden lg:inline">{t("admin.recentTable.columns")}</span>
-                <IconChevronDown />
+                <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
@@ -315,7 +315,7 @@ export default function RecentPlacesTable({ places }) {
               disabled={!table.getCanPreviousPage()}
             >
               <span className="sr-only">{t("admin.recentTable.firstPage")}</span>
-              <IconChevronsLeft />
+              <ChevronsLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
@@ -325,7 +325,7 @@ export default function RecentPlacesTable({ places }) {
               disabled={!table.getCanPreviousPage()}
             >
               <span className="sr-only">{t("admin.recentTable.prevPage")}</span>
-              <IconChevronLeft />
+              <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
@@ -335,7 +335,7 @@ export default function RecentPlacesTable({ places }) {
               disabled={!table.getCanNextPage()}
             >
               <span className="sr-only">{t("admin.recentTable.nextPage")}</span>
-              <IconChevronRight />
+              <ChevronRight className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
@@ -345,7 +345,7 @@ export default function RecentPlacesTable({ places }) {
               disabled={!table.getCanNextPage()}
             >
               <span className="sr-only">{t("admin.recentTable.lastPage")}</span>
-              <IconChevronsRight />
+              <ChevronsRight className="h-4 w-4" />
             </Button>
           </div>
         </div>

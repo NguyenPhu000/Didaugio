@@ -7,7 +7,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../constants/design-tokens";
 import { getOptimizedCloudinaryUrl, resolveMediaUrl } from "../../../lib/media-url";
@@ -15,6 +15,7 @@ import { getOptimizedCloudinaryUrl, resolveMediaUrl } from "../../../lib/media-u
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function FeaturedEventCampaignCardInner({ event, width, onPress }) {
+  const { t } = useTranslation();
   const scale = useSharedValue(1);
 
   const imageUri = useMemo(() => {
@@ -30,17 +31,16 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
     const now = Date.now();
     const start = event?.startDate ? new Date(event.startDate).getTime() : null;
     const end = event?.endDate ? new Date(event.endDate).getTime() : null;
-    if (start && end && now >= start && now <= end) return "Đang diễn ra";
-    if (end && now > end) return "Đã kết thúc";
-    return "Sắp mở";
-  }, [event?.endDate, event?.startDate]);
+    if (start && end && now >= start && now <= end) return t("explore.event.ongoing");
+    if (end && now > end) return t("explore.event.ended");
+    return t("explore.event.upcoming");
+  }, [event?.endDate, event?.startDate, t]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
   const handlePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress?.(event);
   }, [event, onPress]);
 
@@ -53,6 +53,9 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
       onPressOut={() => {
         scale.value = withSpring(1, TOKENS.spring.press);
       }}
+      accessibilityRole="button"
+      accessibilityLabel={event?.title}
+      accessibilityHint={t("explore.accessibility.openEvent")}
       style={[styles.card, animatedStyle, { width }]}
     >
       {imageUri ? (
@@ -65,7 +68,7 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
         />
       ) : (
         <LinearGradient
-          colors={["#052E2B", "#0F766E", "#134E4A"]}
+          colors={["#181819", "#403C36", "#847765"]}
           style={StyleSheet.absoluteFillObject}
         />
       )}
@@ -78,7 +81,7 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
       <View style={styles.topRow}>
         <View style={styles.featuredBadge}>
           <MaterialIconsRounded name="campaign" size={13} color="#FFFFFF" />
-          <Text style={styles.featuredText}>NỔI BẬT</Text>
+          <Text style={styles.featuredText}>{t("explore.event.featuredBadge")}</Text>
         </View>
         <View style={styles.statusPill}>
           <View style={styles.statusDot} />
@@ -87,7 +90,7 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
       </View>
 
       <View style={styles.copy}>
-        <Text style={styles.kicker}>Community event</Text>
+        <Text style={styles.kicker}>{t("explore.event.kicker")}</Text>
         <Text style={styles.title} numberOfLines={2}>
           {event?.title}
         </Text>
@@ -98,15 +101,11 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
         ) : null}
 
         <View style={styles.metricRow}>
-          <Metric icon="people" value={participantCount} label="tham gia" />
-          <Metric icon="photo-camera" value={checkInCount} label="check-in" />
-          <Metric icon="route" value={legCount} label="chặng" />
+          <Metric icon="people" value={participantCount} label={t("explore.event.participantLabel")} />
+          <Metric icon="photo-camera" value={checkInCount} label={t("explore.event.checkInLabel")} />
+          <Metric icon="route" value={legCount} label={t("explore.event.legLabel")} />
         </View>
 
-        <View style={styles.cta}>
-          <Text style={styles.ctaText}>Mở chiến dịch</Text>
-          <MaterialIconsRounded name="arrow-forward" size={14} color="#06352F" />
-        </View>
       </View>
     </AnimatedPressable>
   );
@@ -126,7 +125,7 @@ const styles = StyleSheet.create({
     height: 214,
     borderRadius: 30,
     overflow: "hidden",
-    backgroundColor: "#052E2B",
+    backgroundColor: "#181819",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.25)",
   },
@@ -144,7 +143,9 @@ const styles = StyleSheet.create({
     height: 30,
     paddingHorizontal: 11,
     borderRadius: 15,
-    backgroundColor: "rgba(239,68,68,0.92)",
+    backgroundColor: "#181819",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.46)",
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
@@ -185,7 +186,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   kicker: {
-    color: "#A7F3D0",
+    color: "rgba(255,255,255,0.74)",
     fontFamily: TOKENS.font.bold,
     fontSize: 10,
     letterSpacing: 1.4,
@@ -233,13 +234,13 @@ const styles = StyleSheet.create({
     paddingLeft: 13,
     paddingRight: 9,
     borderRadius: 17,
-    backgroundColor: "#D1FAE5",
+    backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
   },
   ctaText: {
-    color: "#06352F",
+    color: "#181819",
     fontFamily: TOKENS.font.bold,
     fontSize: 12,
   },

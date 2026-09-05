@@ -105,15 +105,6 @@ export const loginHistoryService = {
    * @returns {number|null}
    */
   getCurrentSessionId: () => {
-    try {
-      const authStorage = localStorage.getItem("auth-storage");
-      if (authStorage) {
-        const { state } = JSON.parse(authStorage);
-        return state?.currentSessionId || null;
-      }
-    } catch (error) {
-      console.error("Failed to get current session ID:", error);
-    }
     return null;
   },
 };

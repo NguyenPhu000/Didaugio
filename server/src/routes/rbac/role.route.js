@@ -3,7 +3,7 @@ import * as roleController from "../../controllers/rbac/role.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { requirePermission } from "../../middlewares/permissionMiddleware.js";
 import { auditLog } from "../../middlewares/auditLogMiddleware.js";
-import { blockGuestFromAdmin } from "../../middlewares/blockGuestFromAdmin.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import {
   validateBody,
   validateParams,
@@ -19,7 +19,7 @@ import {
 const router = express.Router();
 
 // 🔒 SECURITY: Block GUEST role from all role management routes
-router.use(authenticate, blockGuestFromAdmin);
+router.use(authenticate, requireBackOfficeRole);
 
 /**
  * [GET] /api/roles - Lấy danh sách vai trò
@@ -61,7 +61,8 @@ router.get(
  * [PUT] /api/roles/:id/permissions - Cập nhật quyền cho vai trò
  * Params: id
  * Body: { permissionIds: [1, 2, 3] }
- * Permission: roles.manage_permissions (chỉ SUPER_ADMIN)
+ * Permission: roles.manage_permissions. Super Admin có thể chỉnh role thấp hơn;
+ * Admin chỉ có thể chỉnh business/staff/user theo hierarchy.
  */
 router.put(
   "/:id/permissions",

@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { queryKeys } from "@/constants/query-keys";
 import { useApiQuery } from "./useApiQuery";
@@ -25,10 +26,10 @@ export function useSubscriptionPlans() {
   );
 }
 
-export function useProration(targetPlanId) {
+export function useProration(targetPlanId, billingCycle = "monthly") {
   return useApiQuery(
-    queryKeys.subscriptions.proration(targetPlanId),
-    () => subscriptionService.getProration(targetPlanId),
+    queryKeys.subscriptions.proration(targetPlanId, billingCycle),
+    () => subscriptionService.getProration(targetPlanId, billingCycle),
     { enabled: !!targetPlanId, staleTime: 30 * 1000 },
   );
 }
@@ -69,15 +70,18 @@ export function useAdminPlans() {
 
 export function useUpgradeSubscription() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   return useApiMutation(
-    (targetPlanId) => subscriptionService.upgrade(targetPlanId),
+    ({ targetPlanId, billingCycle }) =>
+      subscriptionService.upgrade(targetPlanId, billingCycle),
     {
       onSuccess: () => {
         invalidateQueries(queryClient, [
           queryKeys.subscriptions.current(),
           queryKeys.subscriptions.invoices(),
         ]);
+        toast.success(t("subscription.toast.upgradeScheduled"));
       },
     },
   );
@@ -85,6 +89,7 @@ export function useUpgradeSubscription() {
 
 export function useDowngradeSubscription() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   return useApiMutation(
     (targetPlanId) => subscriptionService.downgrade(targetPlanId),
@@ -94,7 +99,7 @@ export function useDowngradeSubscription() {
           queryKeys.subscriptions.current(),
           queryKeys.subscriptions.invoices(),
         ]);
-        toast.success("ÄÃ£ lÃªn lá»‹ch háº¡ gÃ³i cuá»‘i chu ká»³");
+        toast.success(t("subscription.toast.downgradeScheduled"));
       },
     },
   );
@@ -102,6 +107,7 @@ export function useDowngradeSubscription() {
 
 export function useCancelScheduledDowngrade() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   return useApiMutation(
     () => subscriptionService.cancelScheduledDowngrade(),
@@ -110,7 +116,7 @@ export function useCancelScheduledDowngrade() {
         invalidateQueries(queryClient, [
           queryKeys.subscriptions.current(),
         ]);
-        toast.success("ÄÃ£ há»§y lá»‹ch háº¡ gÃ³i");
+        toast.success(t("subscription.toast.downgradeCanceled"));
       },
     },
   );
@@ -118,6 +124,7 @@ export function useCancelScheduledDowngrade() {
 
 export function useCancelSubscription() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   return useApiMutation(
     (reason) => subscriptionService.cancelSubscription(reason),
@@ -126,7 +133,25 @@ export function useCancelSubscription() {
         invalidateQueries(queryClient, [
           queryKeys.subscriptions.current(),
         ]);
-        toast.success("Hủy gói dịch vụ thành công");
+        toast.success(t("subscription.toast.subscriptionCanceled"));
+      },
+    },
+  );
+}
+
+export function usePayInvoiceFromWallet() {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useApiMutation(
+    (invoiceId) => subscriptionService.payInvoiceFromWallet(invoiceId),
+    {
+      onSuccess: () => {
+        invalidateQueries(queryClient, [
+          queryKeys.subscriptions.current(),
+          queryKeys.subscriptions.invoices(),
+        ]);
+        toast.success(t("subscription.toast.invoicePaidFromWallet"));
       },
     },
   );
@@ -134,6 +159,7 @@ export function useCancelSubscription() {
 
 export function useAdminCreatePlan() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   return useApiMutation(
     (data) => subscriptionService.createAdminPlan(data),
@@ -143,7 +169,7 @@ export function useAdminCreatePlan() {
           queryKeys.subscriptions.adminPlans(),
           queryKeys.subscriptions.plans(),
         ]);
-        toast.success("Tạo gói thành công");
+        toast.success(t("subscription.toast.adminPlanCreated"));
       },
     },
   );
@@ -151,6 +177,7 @@ export function useAdminCreatePlan() {
 
 export function useAdminUpdatePlan() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   return useApiMutation(
     ({ id, data }) => subscriptionService.updateAdminPlan(id, data),
@@ -160,7 +187,7 @@ export function useAdminUpdatePlan() {
           queryKeys.subscriptions.adminPlans(),
           queryKeys.subscriptions.plans(),
         ]);
-        toast.success("Cập nhật gói thành công");
+        toast.success(t("subscription.toast.adminPlanUpdated"));
       },
     },
   );
@@ -168,6 +195,7 @@ export function useAdminUpdatePlan() {
 
 export function useAdminUpdateSubStatus() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   return useApiMutation(
     ({ id, status, cancelReason }) =>
@@ -178,7 +206,7 @@ export function useAdminUpdateSubStatus() {
           queryKeys.subscriptions.adminList(),
           queryKeys.subscriptions.adminStats(),
         ]);
-        toast.success("Cập nhật trạng thái thành công");
+        toast.success(t("subscription.toast.adminSubStatusUpdated"));
       },
     },
   );

@@ -1,7 +1,10 @@
+// MAP: EventDetailScreen
+// ├── UI: @/components/primitives/MaterialIconsRounded, @/components/composed/NotificationBell
+// └── API: @/modules/explore/hooks/useEvents
+
 import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Modal,
   Pressable,
@@ -18,6 +21,7 @@ import * as Location from "expo-location";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { showAppAlertLegacy } from "../../src/utils/appAlert";
 import safeAsyncStorage from "../../src/utils/safeAsyncStorage";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useAuthStore } from "../../src/stores/authStore";
@@ -105,7 +109,7 @@ export default function EventDetailScreen() {
 
   const handleJoinEvent = useCallback(async () => {
     if (!user) {
-      Alert.alert("Cần đăng nhập", "Đăng nhập để tham gia sự kiện và nhận bản sao chuyến đi.", [
+      showAppAlertLegacy("Cần đăng nhập", "Đăng nhập để tham gia sự kiện và nhận bản sao chuyến đi.", [
         { text: "Để sau", style: "cancel" },
         { text: "Đăng nhập", onPress: () => router.push("/(auth)/login") },
       ]);
@@ -122,19 +126,19 @@ export default function EventDetailScreen() {
         );
       }
       await refetch();
-      Alert.alert("Đã tham gia", "Chuyến đi mẫu đã được clone về tài khoản của bạn.", [
+      showAppAlertLegacy("Đã tham gia", "Chuyến đi mẫu đã được clone về tài khoản của bạn.", [
         { text: "Xem chuyến đi", onPress: () => router.replace("/(tabs)/trips") },
         { text: "Ở lại", style: "cancel" },
       ]);
     } catch (error) {
-      Alert.alert("Không thể tham gia", error?.message || "Vui lòng thử lại.");
+      showAppAlertLegacy("Không thể tham gia", error?.message || "Vui lòng thử lại.");
     }
   }, [id, joinEventMutation, refetch, router, user]);
 
   const getCurrentLocation = useCallback(async () => {
     const permission = await Location.requestForegroundPermissionsAsync();
     if (permission.status !== "granted") {
-      Alert.alert("Cần quyền vị trí", "Bật vị trí để xác nhận bạn đang ở gần điểm check-in.");
+      showAppAlertLegacy("Cần quyền vị trí", "Bật vị trí để xác nhận bạn đang ở gần điểm check-in.");
       return null;
     }
 
@@ -152,7 +156,7 @@ export default function EventDetailScreen() {
   const handleCheckInDestination = useCallback(async (destination) => {
     const placeId = getDestinationPlaceId(destination);
     if (!event?.isJoined) {
-      Alert.alert("Chưa tham gia", "Bạn cần tham gia sự kiện trước khi check-in.");
+      showAppAlertLegacy("Chưa tham gia", "Bạn cần tham gia sự kiện trước khi check-in.");
       return;
     }
     if (!placeId) return;
@@ -162,7 +166,7 @@ export default function EventDetailScreen() {
 
     const distance = getDestinationDistance(destination, location);
     if (distance !== null && distance > CHECK_IN_RADIUS_M) {
-      Alert.alert(
+      showAppAlertLegacy(
         "Chưa đủ gần điểm",
         `Bạn đang cách điểm này khoảng ${Math.round(distance)}m. Check-in mở khi trong bán kính ${CHECK_IN_RADIUS_M}m.`,
       );
@@ -171,7 +175,7 @@ export default function EventDetailScreen() {
 
     const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
     if (cameraPermission.status !== "granted") {
-      Alert.alert("Cần quyền camera", "Bật camera để chụp khoảnh khắc check-in.");
+      showAppAlertLegacy("Cần quyền camera", "Bật camera để chụp khoảnh khắc check-in.");
       return;
     }
 
@@ -188,9 +192,11 @@ export default function EventDetailScreen() {
       const manipulated = await ImageManipulator.manipulateAsync(
         result.assets[0].uri,
         [{ resize: { width: 400, height: 400 } }],
-        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG },
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true },
       );
-      const imageUrl = await imageUriToBase64(manipulated.uri);
+      const imageUrl = manipulated.base64
+        ? `data:image/jpeg;base64,${manipulated.base64}`
+        : await imageUriToBase64(manipulated.uri);
       await createMomentMutation.mutateAsync({
         id,
         payload: {
@@ -204,9 +210,9 @@ export default function EventDetailScreen() {
       setOptimisticChecked((prev) => ({ ...prev, [placeId]: true }));
       await safeAsyncStorage.setItem(`didaugio:event:${id}:checkedin:${placeId}`, "true");
       await Promise.all([refetch(), refetchMoments()]);
-      Alert.alert("Check-in thành công", "Khoảnh khắc đã được thêm vào tường sự kiện.");
+      showAppAlertLegacy("Check-in thành công", "Khoảnh khắc đã được thêm vào tường sự kiện.");
     } catch (error) {
-      Alert.alert("Check-in thất bại", error?.message || "Vui lòng thử lại.");
+      showAppAlertLegacy("Check-in thất bại", error?.message || "Vui lòng thử lại.");
     } finally {
       setUploadingPlaceId(null);
     }
@@ -404,7 +410,7 @@ export default function EventDetailScreen() {
         </View>
       </ScrollView>
 
-      <BlurView intensity={56} tint="light" style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom + 8, 16) }]}>
+      <BlurView intensity={56} tint="dark" style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom + 8, 16) }]}>
         {event.isJoined ? (
           <View style={styles.joinedButton}>
             <MaterialIconsRounded name="check-circle" size={18} color="#0F8A7A" />
@@ -430,7 +436,7 @@ export default function EventDetailScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Khoảnh khắc ẩn danh</Text>
               <Pressable onPress={() => setSelectedMoment(null)} style={styles.modalClose}>
-                <MaterialIconsRounded name="close" size={18} color="#0F2320" />
+                <MaterialIconsRounded name="close" size={18} color="#FFFFFF" />
               </Pressable>
             </View>
             <View style={styles.modalImage}>
@@ -452,7 +458,7 @@ export default function EventDetailScreen() {
 function StatTile({ icon, label, value }) {
   return (
     <View style={styles.statTile}>
-      <MaterialIconsRounded name={icon} size={16} color="#0F8A7A" />
+      <MaterialIconsRounded name={icon} size={16} color="#34D399" />
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
@@ -470,11 +476,11 @@ function TabButton({ active, label, onPress }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#F2F6F1",
+    backgroundColor: "#0B0D12",
   },
   centered: {
     flex: 1,
-    backgroundColor: "#F2F6F1",
+    backgroundColor: "#0B0D12",
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
@@ -482,7 +488,7 @@ const styles = StyleSheet.create({
   },
   hero: {
     height: 360,
-    backgroundColor: "#062D2A",
+    backgroundColor: "#0B0D12",
   },
   heroTop: {
     position: "absolute",
@@ -498,7 +504,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "rgba(0,0,0,0.36)",
+    backgroundColor: "rgba(0,0,0,0.45)",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: StyleSheet.hairlineWidth,
@@ -508,7 +514,7 @@ const styles = StyleSheet.create({
     height: 34,
     paddingHorizontal: 12,
     borderRadius: 17,
-    backgroundColor: "rgba(255,255,255,0.16)",
+    backgroundColor: "rgba(0,0,0,0.45)",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.26)",
     flexDirection: "row",
@@ -519,7 +525,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: "#6EE7B7",
+    backgroundColor: "#34D399",
   },
   liveText: {
     color: "#FFFFFF",
@@ -533,7 +539,7 @@ const styles = StyleSheet.create({
     bottom: 30,
   },
   heroEyebrow: {
-    color: "#A7F3D0",
+    color: "#34D399",
     fontFamily: TOKENS.font.bold,
     fontSize: 11,
     letterSpacing: 1.6,
@@ -547,7 +553,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   heroMeta: {
-    color: "rgba(255,255,255,0.74)",
+    color: "rgba(255,255,255,0.8)",
     fontFamily: TOKENS.font.semibold,
     fontSize: 13,
     marginTop: 10,
@@ -560,17 +566,17 @@ const styles = StyleSheet.create({
   campaignCard: {
     borderRadius: 28,
     padding: 16,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#121620",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(15,35,32,0.08)",
-    shadowColor: "#0F2320",
+    borderColor: "rgba(255,255,255,0.15)",
+    shadowColor: "#000000",
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.25,
     shadowRadius: 24,
     elevation: 5,
   },
   sectionLabel: {
-    color: "rgba(15,35,32,0.42)",
+    color: "rgba(255,255,255,0.6)",
     fontFamily: TOKENS.font.bold,
     fontSize: 10,
     letterSpacing: 1.2,
@@ -585,18 +591,20 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 78,
     borderRadius: 18,
-    backgroundColor: "#F3FAF6",
+    backgroundColor: "rgba(255,255,255,0.06)",
     alignItems: "center",
     justifyContent: "center",
     gap: 3,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.1)",
   },
   statValue: {
-    color: "#0F2320",
+    color: "#FFFFFF",
     fontFamily: TOKENS.font.bold,
     fontSize: 18,
   },
   statLabel: {
-    color: "rgba(15,35,32,0.48)",
+    color: "rgba(255,255,255,0.6)",
     fontFamily: TOKENS.font.semibold,
     fontSize: 11,
   },
@@ -607,29 +615,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   progressTitle: {
-    color: "#0F2320",
+    color: "#FFFFFF",
     fontFamily: TOKENS.font.bold,
     fontSize: 15,
   },
   progressValue: {
-    color: "#0F8A7A",
+    color: "#34D399",
     fontFamily: TOKENS.font.bold,
     fontSize: 13,
   },
   progressTrack: {
     height: 9,
     borderRadius: 999,
-    backgroundColor: "rgba(15,35,32,0.08)",
+    backgroundColor: "rgba(255,255,255,0.12)",
     overflow: "hidden",
     marginTop: 10,
   },
   progressFill: {
     height: "100%",
     borderRadius: 999,
-    backgroundColor: "#0F8A7A",
+    backgroundColor: "#34D399",
   },
   progressHint: {
-    color: "rgba(15,35,32,0.56)",
+    color: "rgba(255,255,255,0.65)",
     fontFamily: TOKENS.font.medium,
     fontSize: 12,
     lineHeight: 18,
@@ -638,21 +646,21 @@ const styles = StyleSheet.create({
   noticeCard: {
     borderRadius: 18,
     padding: 14,
-    backgroundColor: "#FFF7ED",
+    backgroundColor: "rgba(245,158,11,0.15)",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(180,83,9,0.18)",
+    borderColor: "rgba(245,158,11,0.3)",
     flexDirection: "row",
     gap: 10,
   },
   noticeText: {
     flex: 1,
-    color: "#92400E",
+    color: "#FCD34D",
     fontFamily: TOKENS.font.semibold,
     fontSize: 13,
     lineHeight: 19,
   },
   description: {
-    color: "rgba(15,35,32,0.66)",
+    color: "rgba(255,255,255,0.85)",
     fontFamily: TOKENS.font.medium,
     fontSize: 14,
     lineHeight: 22,
@@ -661,7 +669,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: 4,
     borderRadius: 999,
-    backgroundColor: "rgba(15,35,32,0.06)",
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
   tabButton: {
     flex: 1,
@@ -674,19 +682,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   tabText: {
-    color: "rgba(15,35,32,0.52)",
+    color: "rgba(255,255,255,0.6)",
     fontFamily: TOKENS.font.bold,
     fontSize: 13,
   },
   tabTextActive: {
-    color: "#0F8A7A",
+    color: "#0B0D12",
   },
   routeCard: {
     borderRadius: 26,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#121620",
     padding: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(15,35,32,0.08)",
+    borderColor: "rgba(255,255,255,0.15)",
   },
   stopRow: {
     flexDirection: "row",
@@ -700,32 +708,35 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: "#E7F6EF",
+    backgroundColor: "rgba(52,211,153,0.15)",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(52,211,153,0.3)",
   },
   stopNodeDone: {
-    backgroundColor: "#0F8A7A",
+    backgroundColor: "#059669",
+    borderColor: "#34D399",
   },
   stopNodeText: {
-    color: "#0F8A7A",
+    color: "#34D399",
     fontFamily: TOKENS.font.bold,
     fontSize: 12,
   },
   stopLine: {
     flex: 1,
     width: 2,
-    backgroundColor: "rgba(15,35,32,0.08)",
+    backgroundColor: "rgba(255,255,255,0.12)",
   },
   stopCard: {
     flex: 1,
     marginBottom: 14,
     borderRadius: 22,
-    backgroundColor: "#F8FBF7",
+    backgroundColor: "#19202E",
     padding: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(15,35,32,0.06)",
+    borderColor: "rgba(255,255,255,0.1)",
   },
   stopHead: {
     flexDirection: "row",
@@ -736,7 +747,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 18,
     overflow: "hidden",
-    backgroundColor: "#E7F6EF",
+    backgroundColor: "#121620",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -744,13 +755,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   stopTitle: {
-    color: "#0F2320",
+    color: "#FFFFFF",
     fontFamily: TOKENS.font.bold,
     fontSize: 15,
     lineHeight: 19,
   },
   stopMeta: {
-    color: "rgba(15,35,32,0.48)",
+    color: "rgba(255,255,255,0.65)",
     fontFamily: TOKENS.font.semibold,
     fontSize: 11,
     marginTop: 5,
@@ -766,12 +777,12 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "rgba(255,255,255,0.12)",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(15,35,32,0.12)",
+    borderColor: "rgba(255,255,255,0.2)",
   },
   secondaryActionText: {
-    color: "#0F2320",
+    color: "#FFFFFF",
     fontFamily: TOKENS.font.bold,
     fontSize: 12,
   },
@@ -781,7 +792,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0F8A7A",
+    backgroundColor: "#059669",
     flexDirection: "row",
     gap: 6,
   },
@@ -795,10 +806,10 @@ const styles = StyleSheet.create({
   },
   momentWall: {
     borderRadius: 26,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#121620",
     padding: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(15,35,32,0.08)",
+    borderColor: "rgba(255,255,255,0.15)",
   },
   momentGrid: {
     flexDirection: "row",
@@ -810,7 +821,7 @@ const styles = StyleSheet.create({
     height: (SCREEN_W - 32 - 28 - 16) / 3,
     borderRadius: 16,
     overflow: "hidden",
-    backgroundColor: "#E7F6EF",
+    backgroundColor: "#19202E",
   },
   emptyMoments: {
     minHeight: 180,
@@ -820,13 +831,13 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   emptyTitle: {
-    color: "#0F2320",
+    color: "#FFFFFF",
     fontFamily: TOKENS.font.bold,
     fontSize: 16,
     textAlign: "center",
   },
   emptyText: {
-    color: "rgba(15,35,32,0.48)",
+    color: "rgba(255,255,255,0.65)",
     fontFamily: TOKENS.font.medium,
     fontSize: 13,
     lineHeight: 19,
@@ -840,12 +851,12 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingHorizontal: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(15,35,32,0.08)",
+    borderTopColor: "rgba(255,255,255,0.15)",
   },
   joinButton: {
     height: 52,
     borderRadius: 26,
-    backgroundColor: "#0F8A7A",
+    backgroundColor: "#059669",
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
@@ -859,16 +870,16 @@ const styles = StyleSheet.create({
   joinedButton: {
     height: 52,
     borderRadius: 26,
-    backgroundColor: "#E7F6EF",
+    backgroundColor: "rgba(255,255,255,0.12)",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(15,138,122,0.22)",
+    borderColor: "rgba(52,211,153,0.3)",
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
     gap: 8,
   },
   joinedButtonText: {
-    color: "#0F8A7A",
+    color: "#34D399",
     fontFamily: TOKENS.font.bold,
     fontSize: 14,
   },
@@ -876,17 +887,17 @@ const styles = StyleSheet.create({
     height: 42,
     paddingHorizontal: 20,
     borderRadius: 21,
-    backgroundColor: "#0F2320",
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
   },
   darkButtonText: {
-    color: "#FFFFFF",
+    color: "#0B0D12",
     fontFamily: TOKENS.font.bold,
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.88)",
+    backgroundColor: "rgba(0,0,0,0.92)",
     alignItems: "center",
     justifyContent: "center",
     padding: 18,
@@ -895,7 +906,9 @@ const styles = StyleSheet.create({
     width: "100%",
     borderRadius: 28,
     overflow: "hidden",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#121620",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.15)",
   },
   modalHeader: {
     height: 54,
@@ -905,7 +918,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   modalTitle: {
-    color: "#0F2320",
+    color: "#FFFFFF",
     fontFamily: TOKENS.font.bold,
     fontSize: 14,
   },

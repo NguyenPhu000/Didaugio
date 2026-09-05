@@ -94,58 +94,6 @@ export async function settleCompletedLedger(tx, bookingId, businessId, businessE
 }
 
 /**
- * Refund ledger: decrement frozen balance for cancelled/rejected paid bookings.
- * Also decrements platform wallet for the commission portion.
- * Called INSIDE an existing Prisma $transaction (tx is passed in).
- *
- * @param {import("@prisma/client").Prisma.TransactionClient} tx
- * @param {number} bookingId
- * @param {number} businessId
- * @param {number} businessEarned
- * @param {number} [commissionAmount=0]
- */
-export async function refundLedger(tx, bookingId, businessId, businessEarned, commissionAmount = 0) {
-  const hasBeenSettled = await tx.financialLedger.findFirst({
-    where: {
-      bookingId,
-      type: "SETTLE",
-    },
-  });
-  const debitField = hasBeenSettled ? "balance" : "frozenBalance";
-
-  // Decrement the balance bucket that currently holds the business earnings.
-  await tx.partnerWallet.update({
-    where: { businessId },
-    data: {
-      [debitField]: { decrement: businessEarned },
-    },
-  });
-
-  // Decrement platform wallet for commission reversal
-  if (commissionAmount > 0) {
-    const platformWallet = await tx.platformWallet.findFirst();
-    if (platformWallet) {
-      await tx.platformWallet.update({
-        where: { id: platformWallet.id },
-        data: {
-          balance: { decrement: commissionAmount },
-          totalEarned: { decrement: commissionAmount },
-        },
-      });
-    }
-  }
-
-  await tx.financialLedger.create({
-    data: {
-      bookingId,
-      type: "REFUND",
-      amount: businessEarned + commissionAmount,
-      description: `Hoan tra cho booking #${bookingId}`,
-    },
-  });
-}
-
-/**
  * Get available balance for a business partner wallet.
  *
  * @param {number} businessId

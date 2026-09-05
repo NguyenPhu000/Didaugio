@@ -18,6 +18,7 @@ import {
 import ServiceError from "../../utils/serviceError.js";
 import { generateUniqueUsername } from "../../utils/username.js";
 import { invalidateUserCache } from "../../utils/permissionCache.js";
+import { invalidateUserStatusCache } from "../../utils/userStatusCache.js";
 
 import { isOnline as checkOnlineStatus } from "../../utils/onlineManager.js";
 
@@ -412,14 +413,6 @@ export const deleteUser = async (id) => {
     );
   }
 
-  if (existingUser.deletedAt) {
-    throw new ServiceError(
-      "Người dùng đã bị xóa trước đó",
-      400,
-      ERROR_CODES.VALIDATION_ERROR,
-    );
-  }
-
   // Last Super Admin protection
   const userWithRole = await prisma.user.findUnique({
     where: { id: userId },
@@ -427,7 +420,7 @@ export const deleteUser = async (id) => {
   });
   if (userWithRole?.roleId === ROLES.SUPER_ADMIN) {
     const superAdminCount = await prisma.user.count({
-      where: { roleId: ROLES.SUPER_ADMIN, deletedAt: null },
+      where: { roleId: ROLES.SUPER_ADMIN },
     });
     if (superAdminCount <= 1) {
       throw new ServiceError(
@@ -438,21 +431,53 @@ export const deleteUser = async (id) => {
     }
   }
 
-  const deletedUser = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      deletedAt: new Date(),
-      status: USER_STATUS.INACTIVE,
-    },
-    select: {
-      id: true,
-      email: true,
-      deletedAt: true,
-    },
+  // Hard delete khỏi Database (Xóa vĩnh viễn user và các bản ghi phụ thuộc)
+  const deletedUser = await prisma.$transaction(async (tx) => {
+    await tx.auditLog.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.aiPromptHistory.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.reviewReply.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.review.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.eventParticipant.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.eventMoment.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.userCheckin.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.savedTrip.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.tripExecutionOperation.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.tripExecutionSession.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.tripPlan.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.userSession.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.userPermission.deleteMany({ where: { userId } }).catch(() => {});
+    await tx.userProfile.deleteMany({ where: { userId } }).catch(() => {});
+
+    return await tx.user.delete({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+      },
+    });
   });
+
+  invalidateUserCache(userId);
+  invalidateUserStatusCache(userId);
 
   return deletedUser;
 };
+
+async function assertRoleChangeAllowed({ targetUser, validRoleId, currentUser }) {
+  if (targetUser.roleId === ROLES.SUPER_ADMIN && validRoleId !== ROLES.SUPER_ADMIN) {
+    const superAdminCount = await prisma.user.count({ where: { roleId: ROLES.SUPER_ADMIN, deletedAt: null } });
+    if (superAdminCount <= 1) throw new ServiceError("Không thể thay đổi vai trò của Super Admin cuối cùng", 403, ERROR_CODES.FORBIDDEN);
+  }
+  if (!currentUser?.roleId) throw new ServiceError("Khong xac dinh duoc quyen cua nguoi thuc hien", 403, ERROR_CODES.FORBIDDEN);
+  if (isSuperAdminRole(currentUser.roleId)) {
+    if (isSuperAdminRole(targetUser.roleId) && targetUser.id !== currentUser.id) throw new ServiceError("Không thể chỉnh sửa vai trò của Super Admin khác", 403, ERROR_CODES.FORBIDDEN);
+    if (isSuperAdminRole(validRoleId) && targetUser.id !== currentUser.id) throw new ServiceError("Khong the gan them vai tro Super Admin tu man quan ly user", 403, ERROR_CODES.FORBIDDEN);
+    return;
+  }
+  if (!canManageRoleId(currentUser.roleId, targetUser.roleId)) throw new ServiceError("Bạn không có quyền chỉnh sửa người dùng này", 403, ERROR_CODES.FORBIDDEN);
+  if (!canAssignRoleId(currentUser.roleId, validRoleId)) throw new ServiceError("Bạn không có quyền gán vai trò này", 403, ERROR_CODES.FORBIDDEN);
+}
 
 export const updateUserRole = async (userId, newRoleId, currentUser) => {
   const validUserId = idSchema.parse(userId);
@@ -494,62 +519,7 @@ export const updateUserRole = async (userId, newRoleId, currentUser) => {
     );
   }
 
-  // Last Super Admin protection — cannot demote the last super admin
-  if (targetUser.roleId === ROLES.SUPER_ADMIN && validRoleId !== ROLES.SUPER_ADMIN) {
-    const superAdminCount = await prisma.user.count({
-      where: { roleId: ROLES.SUPER_ADMIN, deletedAt: null },
-    });
-    if (superAdminCount <= 1) {
-      throw new ServiceError(
-        "Không thể thay đổi vai trò của Super Admin cuối cùng",
-        403,
-        ERROR_CODES.FORBIDDEN,
-      );
-    }
-  }
-
-  // Check hierarchy
-  if (!currentUser?.roleId) {
-    throw new ServiceError(
-      "Khong xac dinh duoc quyen cua nguoi thuc hien",
-      403,
-      ERROR_CODES.FORBIDDEN,
-    );
-  }
-  
-  // Super Admin bypass: Super Admin can do anything except demote another Super Admin
-  if (isSuperAdminRole(currentUser.roleId)) {
-    if (isSuperAdminRole(targetUser.roleId) && targetUser.id !== currentUser.id) {
-      throw new ServiceError(
-        "Không thể chỉnh sửa vai trò của Super Admin khác",
-        403,
-        ERROR_CODES.FORBIDDEN,
-      );
-    }
-    if (isSuperAdminRole(validRoleId) && targetUser.id !== currentUser.id) {
-      throw new ServiceError(
-        "Khong the gan them vai tro Super Admin tu man quan ly user",
-        403,
-        ERROR_CODES.FORBIDDEN,
-      );
-    }
-  } else {
-    // Normal hierarchy check for Admin and below
-    if (!canManageRoleId(currentUser.roleId, targetUser.roleId)) {
-      throw new ServiceError(
-        "Bạn không có quyền chỉnh sửa người dùng này",
-        403,
-        ERROR_CODES.FORBIDDEN,
-      );
-    }
-    if (!canAssignRoleId(currentUser.roleId, validRoleId)) {
-      throw new ServiceError(
-        "Bạn không có quyền gán vai trò này",
-        403,
-        ERROR_CODES.FORBIDDEN,
-      );
-    }
-  }
+  await assertRoleChangeAllowed({ targetUser, validRoleId, currentUser });
 
   const updatedUser = await prisma.user.update({
     where: { id: validUserId },
@@ -579,6 +549,7 @@ export const updateUserRole = async (userId, newRoleId, currentUser) => {
   });
 
   invalidateUserCache(validUserId);
+  invalidateUserStatusCache(validUserId);
 
   return updatedUser;
 };

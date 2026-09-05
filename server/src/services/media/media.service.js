@@ -7,9 +7,23 @@ cloudinary.config({
   secure: true,
 });
 
-export async function uploadPlaceImage(base64Data, folder = "didaugio/places") {
+export const buildPlaceImageThumbnailUrl = (publicId) =>
+  cloudinary.url(publicId, {
+    width: 400,
+    height: 400,
+    crop: "fill",
+    fetch_format: "auto",
+    quality: "auto",
+  });
+
+export async function uploadPlaceImage(
+  base64Data,
+  folder = "didaugio/places",
+  { publicId } = {},
+) {
   const result = await cloudinary.uploader.upload(base64Data, {
     folder,
+    ...(publicId ? { public_id: publicId, overwrite: false } : {}),
     resource_type: "image",
     transformation: [
       { quality: "auto", fetch_format: "auto" },
@@ -27,13 +41,7 @@ export async function uploadPlaceImage(base64Data, folder = "didaugio/places") {
   return {
     publicId: result.public_id,
     secureUrl: result.secure_url,
-    thumbnailUrl: cloudinary.url(result.public_id, {
-      width: 400,
-      height: 400,
-      crop: "fill",
-      fetch_format: "auto",
-      quality: "auto",
-    }),
+    thumbnailUrl: buildPlaceImageThumbnailUrl(result.public_id),
     blurhash: null,
   };
 }

@@ -21,7 +21,8 @@ function hashToken(token) {
  * Tạo invitation link cho staff
  */
 export const createInvitation = async (businessId, createdById, data) => {
-  const { email, roleId } = data;
+  const { email } = data;
+  const roleId = data.roleId ?? data.businessRoleId ?? null;
 
   const [activeStaffCount, pendingInvitationCount] = await Promise.all([
     prisma.user.count({
@@ -45,7 +46,7 @@ export const createInvitation = async (businessId, createdById, data) => {
   if (roleId) {
     const role = await prisma.businessRole.findFirst({
       where: {
-        id: roleId,
+        id: Number(roleId),
         OR: [
           { businessId: null, isDefault: true },
           { businessId },

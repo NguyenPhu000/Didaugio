@@ -13,6 +13,9 @@ export const ENDPOINTS = {
   places: {
     home: "/places/home",
     list: "/places",
+    v2List: "/v2/places",
+    v2Map: "/v2/places/map",
+    v2Nearby: "/v2/places/nearby",
     services: "/places/services",
     detail: (id) => `/places/${id}`,
     detailBySlug: (slug) => `/places/slug/${slug}`,
@@ -27,6 +30,7 @@ export const ENDPOINTS = {
     summary: "/profile/summary",
     update: "/profile",
     updateAvatar: "/profile/avatar",
+    deleteAccount: "/profile/account",
     savedPlaces: "/profile/saved-places",
     savedPlaceById: (placeId) => `/profile/saved-places/${placeId}`,
     savedCollections: "/profile/saved-collections",
@@ -41,15 +45,15 @@ export const ENDPOINTS = {
     updateTrip: (id) => `/profile/trips/${id}`,
     deleteTrip: (id) => `/profile/trips/${id}`,
     duplicateTrip: (id) => `/profile/trips/${id}/duplicate`,
-    addDestination: (tripId) => `/profile/trips/${tripId}/destinations`,
+    addDestination: (tripId) => `/profile/trips/${tripId}/stops`,
     removeDestination: (tripId, destId) =>
-      `/profile/trips/${tripId}/destinations/${destId}`,
+      `/profile/trips/${tripId}/stops/${destId}`,
     linkBookingToTrip: (tripId, bookingId) =>
       `/profile/trips/${tripId}/bookings/${bookingId}/link`,
     reorderTripStops: (tripId) => `/profile/trips/${tripId}/stops/reorder`,
     moveTripStop: (tripId, stopId) => `/profile/trips/${tripId}/stops/${stopId}/move`,
     tripSession: (tripId) => `/profile/trips/${tripId}/session`,
-    updateDestination: (tripId, destId) => `/profile/trips/${tripId}/destinations/${destId}`,
+    updateDestination: (tripId, destId) => `/profile/trips/${tripId}/stops/${destId}`,
     tripShare: (id) => `/profile/trips/${id}/share`,
     tripShareById: (tripId, shareId) => `/profile/trips/${tripId}/share/${shareId}`,
     accessTripShare: (shareCode) => `/profile/shared-trip/${shareCode}`,
@@ -81,12 +85,9 @@ export const ENDPOINTS = {
     byBooking: (bookingId) => `/payments/by-booking/${bookingId}`,
   },
   ai: {
-    placeSummary: "/ai/place-summary",
-    chat: "/ai/chat",
     navigate: "/ai/navigate",
     groqChat: "/ai/groq-chat",
     voiceTranscribe: "/ai/voice/transcribe",
-    voiceSpeech: "/ai/voice/speech",
   },
   routing: {
     health: "/routes/health",
@@ -96,6 +97,9 @@ export const ENDPOINTS = {
   navigation: {
     navigate: "/navigation/navigate",
     telemetry: "/navigation/telemetry",
+  },
+  telemetry: {
+    place: (placeId) => `/telemetry/places/${placeId}`,
   },
   boundaries: {
     districts: "/boundaries/districts",

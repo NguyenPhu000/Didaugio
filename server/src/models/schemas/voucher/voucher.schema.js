@@ -54,3 +54,37 @@ export const updateVoucherSchema = z.object({
 export const bulkDeactivateSchema = z.object({
   voucherIds: z.array(z.number().int()).min(1, "Phải chọn ít nhất 1 voucher"),
 });
+
+/**
+ * Public schema: query lấy danh sách voucher khả dụng cho 1 service/business.
+ * `amount` (optional) dùng để lọc các voucher có minOrderValue <= amount
+ * và tính discountAmount/finalPrice chính xác theo context booking.
+ */
+export const applicableVoucherQuerySchema = z.object({
+  businessId: z.coerce.number().int().positive().optional(),
+  serviceId: z.coerce.number().int().positive({
+    message: "serviceId không hợp lệ",
+  }),
+  amount: z.coerce.number().nonnegative().optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+/**
+ * Public schema: validate voucher code do User nhập thủ công.
+ * Code sẽ được trim + uppercase trước khi lookup.
+ */
+export const validateVoucherBodySchema = z.object({
+  code: z
+    .string({ required_error: "Vui lòng nhập mã voucher" })
+    .trim()
+    .min(3, "Mã voucher phải có ít nhất 3 ký tự")
+    .max(50)
+    .transform((v) => v.toUpperCase()),
+  serviceId: z.coerce
+    .number({ invalid_type_error: "serviceId phải là số" })
+    .int()
+    .positive({ message: "serviceId không hợp lệ" }),
+  originalPrice: z.coerce
+    .number({ invalid_type_error: "originalPrice phải là số" })
+    .nonnegative({ message: "Giá gốc không được âm" }),
+});

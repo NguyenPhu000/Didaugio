@@ -6,7 +6,6 @@ import { useAuthStore } from "@/stores/authStore";
 
 export const useLogout = ({ onBeforeNavigate } = {}) => {
   const navigate = useNavigate();
-  const refreshToken = useAuthStore((state) => state.refreshToken);
   const logout = useAuthStore((state) => state.logout);
   const setLogoutInProgress = useAuthStore(
     (state) => state.setLogoutInProgress,
@@ -22,12 +21,10 @@ export const useLogout = ({ onBeforeNavigate } = {}) => {
     setLogoutInProgress(true);
 
     try {
-      if (refreshToken) {
-        await authService.logout(refreshToken, {
-          skipAuthRefresh: true,
-          skipAuthRedirect: true,
-        });
-      }
+      await authService.logout({
+        skipAuthRefresh: true,
+        skipAuthRedirect: true,
+      });
     } catch {
       // Local auth state is still cleared in finally to avoid stale sessions.
     } finally {
@@ -40,7 +37,6 @@ export const useLogout = ({ onBeforeNavigate } = {}) => {
     }
   }, [
     isLoggingOut,
-    refreshToken,
     setLogoutInProgress,
     logout,
     onBeforeNavigate,

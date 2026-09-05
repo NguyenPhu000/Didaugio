@@ -104,10 +104,16 @@ export const createPlaceSchema = z.object({
     .int()
     .positive(),
 
-  districtId: z
-    .number({ required_error: "Quận/Huyện không được để trống" })
-    .int()
-    .positive(),
+  provinceCode: z
+    .string()
+    .regex(/^\d+$/, "Mã tỉnh/thành không hợp lệ")
+    .optional(),
+  wardCode: z
+    .string()
+    .regex(/^\d+$/, "Mã phường/xã không hợp lệ")
+    .optional()
+    .nullable(),
+  districtId: z.number().int().positive().optional().nullable(),
 
   wardId: z.number().int().positive().optional().nullable(),
 
@@ -123,8 +129,8 @@ export const createPlaceSchema = z.object({
         required_error: "Vĩ độ không được để trống",
         invalid_type_error: "Vĩ độ phải là một số thực hợp lệ",
       })
-      .min(8, "Vĩ độ không hợp lệ (Cần Thơ: 9-11)")
-      .max(11, "Vĩ độ không hợp lệ (Cần Thơ: 9-11)")
+      .min(8, "Vĩ độ không hợp lệ tại Việt Nam")
+      .max(24, "Vĩ độ không hợp lệ tại Việt Nam")
   ),
 
   longitude: z.preprocess(
@@ -134,8 +140,8 @@ export const createPlaceSchema = z.object({
         required_error: "Kinh độ không được để trống",
         invalid_type_error: "Kinh độ phải là một số thực hợp lệ",
       })
-      .min(104, "Kinh độ không hợp lệ (Cần Thơ: 104-106)")
-      .max(107, "Kinh độ không hợp lệ (Cần Thơ: 104-106)")
+      .min(102, "Kinh độ không hợp lệ tại Việt Nam")
+      .max(110, "Kinh độ không hợp lệ tại Việt Nam")
   ),
 
   phone: z
@@ -179,6 +185,14 @@ export const createPlaceSchema = z.object({
   tagIds: z.array(z.number().int().positive()).max(20).optional(),
   businessId: z.number().int().positive().optional().nullable(),
   spokenGuide: spokenGuideSchema.optional(),
+}).superRefine((value, context) => {
+  if (!value.provinceCode && !value.districtId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["provinceCode"],
+      message: "Tỉnh/thành không được để trống",
+    });
+  }
 });
 
 export const updatePlaceSchema = z.object({
@@ -187,16 +201,18 @@ export const updatePlaceSchema = z.object({
   description: z.string().max(5000).optional().nullable(),
   shortDescription: z.string().max(500).optional().nullable(),
   categoryId: z.number().int().positive().optional(),
-  districtId: z.number().int().positive().optional(),
+  provinceCode: z.string().regex(/^\d+$/).optional(),
+  wardCode: z.string().regex(/^\d+$/).optional().nullable(),
+  districtId: z.number().int().positive().optional().nullable(),
   wardId: z.number().int().positive().optional().nullable(),
   address: z.string().min(5).max(500).optional(),
   latitude: z.preprocess(
     (val) => (val === "" || val === undefined || val === null ? undefined : val),
-    z.coerce.number({ invalid_type_error: "Vĩ độ phải là một số thực hợp lệ" }).min(8).max(11).optional()
+    z.coerce.number({ invalid_type_error: "Vĩ độ phải là một số thực hợp lệ" }).min(8).max(24).optional()
   ),
   longitude: z.preprocess(
     (val) => (val === "" || val === undefined || val === null ? undefined : val),
-    z.coerce.number({ invalid_type_error: "Kinh độ phải là một số thực hợp lệ" }).min(104).max(107).optional()
+    z.coerce.number({ invalid_type_error: "Kinh độ phải là một số thực hợp lệ" }).min(102).max(110).optional()
   ),
   phone: z
     .preprocess(trimAndEmptyToNull, z.string().regex(PHONE_REGEX, "Số điện thoại phải có 10-11 chữ số").optional().nullable())
@@ -239,6 +255,7 @@ export const getPlacesQuerySchema = paginationLargeSchema.extend({
     .optional(),
   priceRange: z.enum(["all", ...PRICE_RANGE_VALUES]).optional(),
   minRating: z.coerce.number().min(0).max(5).optional(),
+  compact: z.coerce.boolean().optional(),
   isFeatured: z.coerce.boolean().optional(),
   isVerified: z.coerce.boolean().optional(),
   sortBy: z
@@ -250,14 +267,50 @@ export const getPlacesQuerySchema = paginationLargeSchema.extend({
 export const nearbyPlacesQuerySchema = z.object({
   latitude: z.coerce
     .number({ required_error: "Vĩ độ không được để trống" })
-    .min(8)
-    .max(11),
+    .min(-90)
+    .max(90),
   longitude: z.coerce
     .number({ required_error: "Kinh độ không được để trống" })
-    .min(104)
-    .max(107),
+    .min(-180)
+    .max(180),
   radius: z.coerce.number().int().min(100).max(50000).default(5000),
   limit: z.coerce.number().int().min(1).max(50).default(10),
+  categoryId: z.coerce.number().int().positive().optional(),
+});
+
+const v2PlaceFiltersSchema = z.object({
+  provinceCode: z.string().trim().min(1).max(20).regex(/^\d+$/u),
+  wardCode: z.string().trim().min(1).max(20).regex(/^\d+$/u).optional(),
+  search: z.string().trim().max(200).optional(),
+  categoryId: z.coerce.number().int().positive().optional(),
+  priceRange: z.enum(["all", ...PRICE_RANGE_VALUES]).optional(),
+  minRating: z.coerce.number().min(0).max(5).optional(),
+  isFeatured: z.coerce.boolean().optional(),
+  sortBy: z.enum(["newest", "oldest", "rating", "popular", "views", "name"]).default("newest"),
+});
+
+export const placeV2ListQuerySchema = v2PlaceFiltersSchema.extend({
+  cursor: z.string().min(16).max(2048).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const placeV2MapQuerySchema = z.object({
+  west: z.coerce.number().min(-180).max(180),
+  south: z.coerce.number().min(-90).max(90),
+  east: z.coerce.number().min(-180).max(180),
+  north: z.coerce.number().min(-90).max(90),
+  zoom: z.coerce.number().min(1).max(22),
+  limit: z.coerce.number().int().min(1).max(200).default(100),
+}).superRefine((value, context) => {
+  if (value.west >= value.east) context.addIssue({ code: z.ZodIssueCode.custom, path: ["west"], message: "west must be smaller than east" });
+  if (value.south >= value.north) context.addIssue({ code: z.ZodIssueCode.custom, path: ["south"], message: "south must be smaller than north" });
+});
+
+export const placeV2NearbyQuerySchema = z.object({
+  latitude: z.coerce.number().min(-90).max(90),
+  longitude: z.coerce.number().min(-180).max(180),
+  radiusMeters: z.coerce.number().int().min(100).max(50_000).default(5_000),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
   categoryId: z.coerce.number().int().positive().optional(),
 });
 

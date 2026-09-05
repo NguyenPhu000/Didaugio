@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { useTranslation } from "react-i18next";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { CATEGORY_COLORS, TOKENS } from "@/constants/design-tokens";
 import { resolvePlaceImageUri } from "@/lib/media-url";
@@ -120,16 +120,24 @@ const MapPlacePreviewCard = memo(function MapPlacePreviewCard({
               accessibilityRole="button"
               accessibilityLabel={t("common.close", { defaultValue: "Close" })}
               hitSlop={10}
-              className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 active:bg-slate-200"
+              className="h-11 w-11 items-center justify-center rounded-full bg-slate-100 active:bg-slate-200"
             >
-              <MaterialIconsRounded name="close" size={16} color="#475569" />
+              <MaterialIconsRounded
+                name="close"
+                size={16}
+                color={TOKENS.color.semantic.slate[600]}
+              />
             </Pressable>
           </View>
 
           <View className="mt-2 flex-row items-center gap-1.5">
             {rating > 0 ? (
               <>
-                <MaterialIconsRounded name="star" size={14} color="#F59E0B" />
+                <MaterialIconsRounded
+                  name="star"
+                  size={14}
+                  color={TOKENS.color.semantic.star}
+                />
                 <Text className="text-[12px] font-bold text-slate-800">{rating.toFixed(1)}</Text>
                 <Text className="text-[12px] text-slate-400">·</Text>
               </>
@@ -140,7 +148,11 @@ const MapPlacePreviewCard = memo(function MapPlacePreviewCard({
           </View>
 
           <View className="mt-1.5 flex-row items-center gap-1.5">
-            <MaterialIconsRounded name="place" size={14} color="#94A3B8" />
+            <MaterialIconsRounded
+              name="place"
+              size={14}
+              color={TOKENS.color.semantic.slate[400]}
+            />
             <Text numberOfLines={1} className="flex-1 text-[12px] font-medium text-slate-500">
               {locationLabel}
             </Text>
@@ -151,7 +163,11 @@ const MapPlacePreviewCard = memo(function MapPlacePreviewCard({
               {travelLoading ? (
                 <ActivityIndicator size="small" color={TOKENS.color.primary[500]} />
               ) : (
-                <MaterialIconsRounded name="near-me" size={13} color="#0284C7" />
+                <MaterialIconsRounded
+                  name="near-me"
+                  size={13}
+                  color={TOKENS.color.semantic.info}
+                />
               )}
               <Text className="text-[11px] font-bold text-sky-700">
                 {travelLoading ? t("place.calculating") : travelLabel}
@@ -171,7 +187,11 @@ const MapPlacePreviewCard = memo(function MapPlacePreviewCard({
           <Text className="text-[13px] font-bold text-white" style={{ fontFamily: TOKENS.font.semibold }}>
             {t("place.viewDetail", { defaultValue: "Xem chi tiết" })}
           </Text>
-          <MaterialIconsRounded name="arrow-forward" size={16} color="#FFFFFF" />
+          <MaterialIconsRounded
+            name="arrow-forward"
+            size={16}
+            color={TOKENS.color.surface.light}
+          />
         </Pressable>
         <Pressable
           onPress={handleStartRoute}
@@ -180,7 +200,11 @@ const MapPlacePreviewCard = memo(function MapPlacePreviewCard({
           className="h-11 w-11 items-center justify-center rounded-[15px] bg-slate-100 active:bg-slate-200"
           style={{ borderCurve: "continuous" }}
         >
-          <MaterialIconsRounded name="directions" size={19} color="#0F172A" />
+          <MaterialIconsRounded
+            name="directions"
+            size={19}
+            color={TOKENS.color.semantic.slate[900]}
+          />
         </Pressable>
       </View>
     </View>

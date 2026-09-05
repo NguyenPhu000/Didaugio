@@ -13,7 +13,7 @@ import { TRIP_QUERY_KEYS } from "../../../constants/query-keys";
 export function useEvents(params = {}) {
   return useQuery({
     queryKey: ["events", params],
-    queryFn: () => getEventsApi(params).then((res) => res?.data || res || []),
+    queryFn: ({ signal }) => getEventsApi(params, { signal }).then((res) => res?.data || res || []),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -23,7 +23,7 @@ export function useEvents(params = {}) {
 export function useEventDetail(id, enabled = true) {
   return useQuery({
     queryKey: ["event-detail", id],
-    queryFn: () => getEventDetailApi(id).then((res) => res?.data || res),
+    queryFn: ({ signal }) => getEventDetailApi(id, { signal }).then((res) => res?.data || res),
     enabled: !!id && enabled,
     staleTime: 1 * 60 * 1000, // 1 minute
   });
@@ -32,8 +32,8 @@ export function useEventDetail(id, enabled = true) {
 export function useEventMoments(id, params = {}, enabled = true) {
   return useQuery({
     queryKey: ["event-moments", id, params],
-    queryFn: () =>
-      getMomentsApi(id, params).then((res) => res?.data || res || []),
+    queryFn: ({ signal }) =>
+      getMomentsApi(id, params, { signal }).then((res) => res?.data || res || []),
     enabled: !!id && enabled,
     staleTime: 30 * 1000, // 30 seconds
   });

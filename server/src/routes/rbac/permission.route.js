@@ -2,7 +2,7 @@ import express from "express";
 import * as permissionController from "../../controllers/rbac/permission.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { requirePermission } from "../../middlewares/permissionMiddleware.js";
-import { blockGuestFromAdmin } from "../../middlewares/blockGuestFromAdmin.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import { validateQuery } from "../../middlewares/validateSchema.js";
 import {
   permissionByModuleQuerySchemaRoute,
@@ -12,7 +12,7 @@ import {
 const router = express.Router();
 
 // 🔒 SECURITY: Block GUEST role from all permission routes
-router.use(authenticate, blockGuestFromAdmin);
+router.use(authenticate, requireBackOfficeRole);
 
 /**
  * [GET] /api/permissions - Lấy danh sách permissions

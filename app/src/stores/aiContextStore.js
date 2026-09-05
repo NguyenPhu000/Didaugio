@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import safeAsyncStorage from "../utils/safeAsyncStorage";
+import { createRandomId } from "../utils/createRandomId";
 
 const { persist, createJSONStorage } = require("zustand/middleware");
 
@@ -14,7 +15,7 @@ function normalizeConversationMessage(message) {
 
   return {
     ...message,
-    id: message.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: message.id || createRandomId("message"),
     role: message.role === "user" ? "user" : "assistant",
     content:
       typeof message.content === "string"
@@ -42,6 +43,7 @@ export const useAIContextStore = create(
         timeOfDay: null,
       },
 
+      // TODO (Tech Debt): Refactor to Option B — Merge conversation memory into single source of truth with aiPlannerStore
       conversationMemory: [],
 
       voiceState: {

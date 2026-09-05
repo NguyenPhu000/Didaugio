@@ -28,10 +28,27 @@ export const registerSchema = z
     password: z
       .string()
       .min(8, () => i18n.t("validation.passwordMin", { min: 8 }))
-      .regex(PASSWORD_REGEX, () => i18n.t("validation.passwordComplexity")),
+      .regex(PASSWORD_REGEX, () => i18n.t("validation.passwordPattern")),
     confirmPassword: z.string().min(8, () => i18n.t("validation.passwordMin", { min: 8 })),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: () => i18n.t("validation.passwordMismatch"),
     path: ["confirmPassword"],
   });
+
+export const resetPasswordSchema = z
+  .object({
+    newPassword: z
+      .string()
+      .min(8, () => i18n.t("validation.passwordMin", { min: 8 }))
+      .regex(PASSWORD_REGEX, () => i18n.t("validation.passwordPattern")),
+    confirmPassword: z
+      .string()
+      .min(1, () => i18n.t("validation.confirmPasswordRequired")),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: () => i18n.t("validation.passwordMismatch"),
+    path: ["confirmPassword"],
+  });
+
+

@@ -1,11 +1,5 @@
-import { chatWithGroq } from "../../services/ai/groq.service.js";
-import prisma from "../../config/prismaClient.js";
-import { 
-  findPlacesNearby, 
-  findNearestDistrict, 
-  findNearestWard, 
-  findRelatedPlacesByKeywords 
-} from "../../utils/spatialQuery.js";
+import { processGroqChat } from "../../services/ai/groq.service.js";
+import { toAiServiceError } from "../../services/ai/aiProviderPolicy.js";
 
 /**
  * POST /api/ai/groq-chat
@@ -24,91 +18,28 @@ export const handleGroqChat = async (req, res) => {
       });
     }
 
-    // 1. Lấy thông tin travelPreferences từ Profile của user
-    const userId = req.user?.id;
-    let travelPreferences = null;
-    if (userId) {
-      const profile = await prisma.userProfile.findUnique({
-        where: { userId },
-        select: { travelPreferences: true },
-      });
-      travelPreferences = profile?.travelPreferences;
-    }
-
-    // 2. Tìm địa điểm lân cận bằng Spatial Query nếu client gửi tọa độ
-    let systemPlaces = [];
-    let locationContext = null;
-    const currentCoords = context.currentCoords || context.coords;
-
-    if (currentCoords && currentCoords.latitude && currentCoords.longitude) {
-      const lat = parseFloat(currentCoords.latitude);
-      const lng = parseFloat(currentCoords.longitude);
-      
-      if (!isNaN(lat) && !isNaN(lng)) {
-        // Spatial query với Bounding Box pre-filter
-        systemPlaces = await findPlacesNearby(lat, lng, 10, 10);
-        
-        // Reverse geocoding tại server
-        const district = await findNearestDistrict(lat, lng);
-        const ward = await findNearestWard(lat, lng);
-        if (district) {
-          locationContext = {
-            district: district.name,
-            ward: ward ? ward.name : null,
-            coords: { latitude: lat, longitude: lng },
-          };
-        }
-      }
-    }
-
-    // 3. Fallback tìm theo từ khóa tin nhắn cuối nếu không có tọa độ hoặc không tìm thấy điểm lân cận
-    if (systemPlaces.length === 0) {
-      const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
-      systemPlaces = await findRelatedPlacesByKeywords(lastUserMessage);
-    }
-
-    // 4. Đóng gói Enriched Context gửi cho Groq Service
-    const enrichedContext = {
-      ...context,
-      systemPlaces,
-      travelPreferences,
-      locationContext,
-    };
-
-    const { reply, suggestedPlaceIds } = await chatWithGroq(messages, enrichedContext);
-
-    console.log("[GroqChat] Reply length:", reply?.length, "Reply preview:", reply?.substring(0, 100));
-    console.log("[GroqChat] suggestedPlaceIds:", suggestedPlaceIds);
-    console.log("[GroqChat] Messages sent:", messages.length, "System places:", systemPlaces.length);
-
-    // 5. Khớp các địa điểm được AI gợi ý
-    let responsePlaces = [];
-    if (suggestedPlaceIds.length > 0) {
-      responsePlaces = systemPlaces.filter((p) => suggestedPlaceIds.includes(p.id));
-    } else {
-      // Fallback: khớp theo tên địa điểm xuất hiện trong văn bản trả về
-      responsePlaces = systemPlaces.filter((p) =>
-        reply.toLowerCase().includes(p.name.toLowerCase()),
-      );
-    }
+    const userId = req.user?.userId || req.user?.id;
+    const { reply, relatedPlaces, requestLogId } = await Promise.resolve(processGroqChat({
+      messages,
+      context,
+      userId,
+    }));
 
     return res.status(200).json({
       success: true,
       data: {
         reply,
-        relatedPlaces: responsePlaces,
+        relatedPlaces,
+        ...(requestLogId ? { requestLogId } : {}),
       },
       message: "Thành công",
     });
   } catch (error) {
-    const isQuotaError =
-      error?.status === 429 || /quota|rate.?limit|too many requests/i.test(error?.message || "");
-    const isUnavailable =
-      error?.status === 503 || /service unavailable|overloaded/i.test(error?.message || "");
+    const aiError = toAiServiceError(error);
+    const errorCode = aiError.code;
+    console.info("[AI]", { feature: "chat-controller", code: errorCode });
 
-    console.error("[GroqChat]", error?.status || "", (error?.message || "").split("\n")[0]);
-
-    if (isQuotaError) {
+    if (errorCode === "QUOTA_EXCEEDED") {
       return res.status(429).json({
         success: false,
         data: null,
@@ -117,7 +48,7 @@ export const handleGroqChat = async (req, res) => {
       });
     }
 
-    if (isUnavailable) {
+    if (errorCode === "AI_UNAVAILABLE") {
       return res.status(503).json({
         success: false,
         data: null,
@@ -126,11 +57,20 @@ export const handleGroqChat = async (req, res) => {
       });
     }
 
-    return res.status(500).json({
+    if (errorCode === "AI_TIMEOUT") {
+      return res.status(504).json({
+        success: false,
+        data: null,
+        message: "Trợ lý AI phản hồi quá lâu, vui lòng thử lại sau.",
+        errorCode,
+      });
+    }
+
+    return res.status(aiError.statusCode || 502).json({
       success: false,
       data: null,
       message: "Trợ lý AI đang gặp sự cố, vui lòng thử lại sau.",
-      errorCode: "AI_ERROR",
+      errorCode,
     });
   }
 };

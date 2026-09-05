@@ -6,11 +6,14 @@ import {
 } from "@tanstack/react-query";
 import { persistQueryClient } from "@tanstack/react-query-persist-client";
 import { asyncStoragePersister, shouldPersistTripQuery } from "./queryPersist";
+import { logger } from "../lib/logger";
 import {
   REACT_QUERY_PERSIST_BUSTER,
   TRIP_OFFLINE_GC_MS,
   TRIP_OFFLINE_MAX_AGE_MS,
 } from "../constants/trip-offline-cache";
+
+const QUERY_RESTORE_TIMEOUT_MS = 1_500;
 
 function createAppQueryClient() {
   const client = new QueryClient({
@@ -20,7 +23,7 @@ function createAppQueryClient() {
         gcTime: 30 * 60 * 1000,
         retry: 2,
         refetchOnWindowFocus: false,
-        refetchOnReconnect: "always",
+        refetchOnReconnect: true,
       },
       mutations: {
         retry: 1,
@@ -52,11 +55,29 @@ export const QueryProvider = ({ children }) => {
 
     const [unsubscribe, restorePromise] = persistQueryClient(persistOptions);
 
-    restorePromise.finally(() => {
-      setIsRestoring(false);
-    });
+    let active = true;
+    let restoreReleased = false;
+    const releaseRestoreGate = () => {
+      if (restoreReleased) return;
+      restoreReleased = true;
+      if (active) setIsRestoring(false);
+    };
+    const restoreTimeout = setTimeout(releaseRestoreGate, QUERY_RESTORE_TIMEOUT_MS);
 
-    return unsubscribe;
+    restorePromise
+      .catch((error) => {
+        logger.warn("Query cache restore failed", error);
+      })
+      .finally(() => {
+        clearTimeout(restoreTimeout);
+        releaseRestoreGate();
+      });
+
+    return () => {
+      active = false;
+      clearTimeout(restoreTimeout);
+      unsubscribe();
+    };
   }, [queryClient]);
 
   return (

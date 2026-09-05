@@ -8,20 +8,10 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AIEntryButton } from "./AIEntryButton";
-
-const HIDE_PATHS = new Set([
-  "/(tabs)/ai",
-  "/ai",
-  "/ai/chat",
-  "/(auth)/login",
-  "/login",
-  "/(auth)/register",
-  "/register",
-  "/onboarding",
-]);
+import { shouldHideAIFloatingButton } from "./aiFloatingButtonVisibility";
 
 /**
- * @param {{ router: import('expo-router').Router, pathname: string }} props
+ * @param {{ router: import('expo-router').Router, pathname?: string }} props
  */
 export function AIFloatingButton({ router, pathname }) {
   const insets = useSafeAreaInsets();
@@ -80,12 +70,7 @@ export function AIFloatingButton({ router, pathname }) {
     ],
   }));
 
-  const shouldHide =
-    HIDE_PATHS.has(pathname) ||
-    pathname.startsWith("/place/") ||
-    pathname.startsWith("/booking/") ||
-    pathname.startsWith("/profile/booking/") ||
-    pathname.startsWith("/trip/");
+  const shouldHide = shouldHideAIFloatingButton(pathname);
 
   if (shouldHide) return null;
 

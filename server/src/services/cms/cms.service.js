@@ -1,6 +1,57 @@
 import prisma from "../../config/prismaClient.js";
 import ServiceError from "../../utils/serviceError.js";
 import { ERROR_CODES } from "../../config/messages.js";
+const publicTripWhere = { metadata: { path: ["isPublic"], equals: true } };
+const sampleTripSelect = {
+  id: true,
+  title: true,
+  coverImage: true,
+  totalDays: true,
+  stops: {
+    orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
+    select: {
+      id: true,
+      dayNumber: true,
+      sequence: true,
+      place: {
+        select: {
+          id: true,
+          name: true,
+          thumbnail: true,
+          images: {
+            take: 1,
+            orderBy: [{ isCover: "desc" }, { order: "asc" }],
+            select: { secureUrl: true, thumbnailUrl: true },
+          },
+        },
+      },
+    },
+  },
+};
+
+export const serializeExploreSampleTrip = (trip) => ({
+  id: trip.id,
+  title: trip.title,
+  thumbnail: trip.coverImage,
+  coverImage: trip.coverImage,
+  totalDays: trip.totalDays,
+  stops: (trip.stops || []).map((stop) => ({
+    id: stop.id,
+    dayNumber: stop.dayNumber,
+    sequence: stop.sequence,
+    place: stop.place
+      ? {
+          id: stop.place.id,
+          name: stop.place.name,
+          thumbnail: stop.place.thumbnail,
+          images: (stop.place.images || []).map((image) => ({
+            secureUrl: image.secureUrl,
+            thumbnailUrl: image.thumbnailUrl,
+          })),
+        }
+      : null,
+  })),
+});
 
 /**
  * Lấy toàn bộ data cần thiết cho Explore landing screen trong 1 request duy nhất.
@@ -52,50 +103,11 @@ export const getExploreLandingData = async () => {
     }),
 
     // 3. Lịch trình mẫu công khai — destinations dùng đúng tên relation từ schema
-    prisma.trip.findMany({
-      where: { isPublic: true },
+    prisma.tripPlan.findMany({
+      where: publicTripWhere,
       take: 6,
-      select: {
-        id: true,
-        title: true,
-        thumbnail: true,
-        totalDays: true,
-        estimatedCost: true,
-        travelStyle: true,
-        cloneCount: true,
-        destinations: {
-          orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-          select: {
-            id: true,
-            dayNumber: true,
-            order: true,
-            startTime: true,
-            endTime: true,
-            place: {
-              select: {
-                id: true,
-                name: true,
-                address: true,
-                thumbnail: true,
-                latitude: true,
-                longitude: true,
-                category: { select: { id: true, name: true } },
-                images: {
-                  take: 2,
-                  orderBy: [{ isCover: "desc" }, { id: "asc" }],
-                  select: {
-                    secureUrl: true,
-                    thumbnailUrl: true,
-                    imageData: true,
-                    isCover: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      orderBy: { cloneCount: "desc" },
+      select: sampleTripSelect,
+      orderBy: { updatedAt: "desc" },
     }),
 
     // 4. Thông báo hệ thống mới nhất (targetType = "all", status = "sent")
@@ -115,7 +127,12 @@ export const getExploreLandingData = async () => {
     }),
   ]);
 
-  return { banners, featuredPlaces, sampleTrips, announcement };
+  return {
+    banners,
+    featuredPlaces,
+    sampleTrips: sampleTrips.map(serializeExploreSampleTrip),
+    announcement,
+  };
 };
 
 /**
@@ -168,51 +185,13 @@ export const getFeaturedPlaces = async ({ limit = 8 } = {}) => {
  * Lấy danh sách lịch trình mẫu công khai
  */
 export const getSampleTrips = async ({ limit = 6 } = {}) => {
-  return prisma.trip.findMany({
-    where: { isPublic: true },
+  const plans = await prisma.tripPlan.findMany({
+    where: publicTripWhere,
     take: Math.min(limit, 12),
-    select: {
-      id: true,
-      title: true,
-      thumbnail: true,
-      totalDays: true,
-      estimatedCost: true,
-      travelStyle: true,
-      cloneCount: true,
-      destinations: {
-        orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-        select: {
-          id: true,
-          dayNumber: true,
-          order: true,
-          startTime: true,
-          endTime: true,
-          place: {
-            select: {
-              id: true,
-              name: true,
-              address: true,
-              thumbnail: true,
-              latitude: true,
-              longitude: true,
-              category: { select: { id: true, name: true } },
-              images: {
-                take: 2,
-                orderBy: [{ isCover: "desc" }, { id: "asc" }],
-                select: {
-                  secureUrl: true,
-                  thumbnailUrl: true,
-                  imageData: true,
-                  isCover: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    orderBy: { cloneCount: "desc" },
+    select: sampleTripSelect,
+    orderBy: { updatedAt: "desc" },
   });
+  return plans.map(serializeExploreSampleTrip);
 };
 
 /**

@@ -109,15 +109,11 @@ export {
   useStaff,
   useStaffDetail,
   useStaffStats,
-  useAuditLog,
-  useStaffActivity,
   useCreateStaff,
   useUpdateStaff,
-  useRemoveStaff,
   useDeactivateStaff,
   useActivateStaff,
   useResetStaffPassword,
-  useBulkAssignRole,
 } from "./useStaffQueries";
 
 // Vouchers

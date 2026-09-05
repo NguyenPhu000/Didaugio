@@ -1,7 +1,10 @@
+// MAP: PaymentResultScreen
+// ├── UI: @/components/primitives/MaterialIconsRounded
+// └── API: @/modules/booking/api/bookingApi
+
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   BackHandler,
   Image,
   Platform,
@@ -12,8 +15,13 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { showAppAlertLegacy } from "../../src/utils/appAlert";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { getMyBookingDetailApi } from "@/modules/booking/api/bookingApi";
+import {
+  normalizePaymentBookingId,
+  resolvePaymentResultStatus,
+} from "@/modules/booking/utils/paymentResult";
 import { formatPriceLocale, formatLongDate } from "../../src/utils/dateFormat";
 
 const THEME = {
@@ -248,12 +256,13 @@ function BookingInfoCard({ booking }) {
 }
 
 export default function PaymentResultScreen() {
-  const { status, bookingId, reason } = useLocalSearchParams();
+  const { bookingId, reason } = useLocalSearchParams();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const normalizedBookingId = normalizePaymentBookingId(bookingId);
 
   const [isChecking, setIsChecking] = useState(false);
-  const [currentStatus, setCurrentStatus] = useState(status);
+  const [currentStatus, setCurrentStatus] = useState("pending_verify");
   const [booking, setBooking] = useState(null);
   const [loadingBooking, setLoadingBooking] = useState(true);
 
@@ -268,15 +277,20 @@ export default function PaymentResultScreen() {
   }, [router]);
 
   useEffect(() => {
-    if (!bookingId) {
+    if (!normalizedBookingId) {
       setLoadingBooking(false);
       return;
     }
     let cancelled = false;
     setLoadingBooking(true);
-    getMyBookingDetailApi(bookingId)
+    getMyBookingDetailApi(normalizedBookingId)
       .then((res) => {
-        if (!cancelled) setBooking(res?.data || res);
+        if (cancelled) return;
+        const data = res?.data || res;
+        setBooking(data);
+        setCurrentStatus(
+          resolvePaymentResultStatus(data?.payment?.status || data?.paymentStatus),
+        );
       })
       .catch(() => {})
       .finally(() => {
@@ -285,41 +299,36 @@ export default function PaymentResultScreen() {
     return () => {
       cancelled = true;
     };
-  }, [bookingId]);
-
-  useEffect(() => {
-    if (status) setCurrentStatus(status);
-  }, [status]);
+  }, [normalizedBookingId]);
 
   const handleRecheck = async () => {
-    if (!bookingId) return;
+    if (!normalizedBookingId) return;
     setIsChecking(true);
     try {
-      const res = await getMyBookingDetailApi(bookingId);
+      const res = await getMyBookingDetailApi(normalizedBookingId);
       const data = res?.data ?? res;
       const paymentStatus = data?.payment?.status || data?.paymentStatus;
+      const verifiedStatus = resolvePaymentResultStatus(paymentStatus);
+      setCurrentStatus(verifiedStatus);
+      setBooking(data);
 
-      if (paymentStatus === "paid") {
-        setCurrentStatus("success");
-        setBooking(data);
-      } else if (paymentStatus === "failed" || paymentStatus === "fully_refunded") {
-        setCurrentStatus("failed");
-        setBooking(data);
-      } else {
-        Alert.alert(
+      if (verifiedStatus === "pending_verify") {
+        showAppAlertLegacy(
           "Đang xác nhận",
           "Hệ thống vẫn đang xử lý giao dịch. Vui lòng thử lại sau ít phút."
         );
       }
     } catch {
-      Alert.alert("Lỗi", "Không thể kiểm tra trạng thái. Vui lòng thử lại.");
+      showAppAlertLegacy("Lỗi", "Không thể kiểm tra trạng thái. Vui lòng thử lại.");
     } finally {
       setIsChecking(false);
     }
   };
 
   const handleViewDetails = () => {
-    router.replace(`/profile/booking/${bookingId}`);
+    if (normalizedBookingId) {
+      router.replace(`/profile/booking/${normalizedBookingId}`);
+    }
   };
 
   const handleGoHome = () => {
@@ -327,7 +336,9 @@ export default function PaymentResultScreen() {
   };
 
   const handleRetryPayment = () => {
-    router.replace(`/payment/checkout?bookingId=${bookingId}`);
+    if (normalizedBookingId) {
+      router.replace(`/payment/checkout?bookingId=${normalizedBookingId}`);
+    }
   };
 
   const config = STATUS_CONFIG[currentStatus] || STATUS_CONFIG.pending_verify;

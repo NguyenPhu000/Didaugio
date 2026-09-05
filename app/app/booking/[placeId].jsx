@@ -1,6 +1,9 @@
+// MAP: BookingScreen
+// ├── UI: @/modules/booking/components/{StepIndicator, ServiceCard, ResourcePicker, VoucherApplyField, PaymentMethodSelector, OrderSummary, RefundPolicyModal}
+// └── API: @/modules/booking/hooks/useBooking, @/modules/booking/hooks/useServiceAvailability, @/modules/place/hooks/usePlaceDetail
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   ActivityIndicator,
   Pressable,
   ScrollView,
@@ -19,14 +22,29 @@ import {
 } from "../../src/modules/booking/hooks/useBooking";
 import { useServiceAvailability } from "../../src/modules/booking/hooks/useServiceAvailability";
 import { usePlaceDetail } from "../../src/modules/place/hooks/usePlaceDetail";
-import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../src/constants/design-tokens";
+import {
+  BOOKING_APPLE_THEME as APPLE_THEME,
+  TOKENS,
+} from "../../src/constants/design-tokens";
 import {
   useCreateTrip,
   useTrips,
 } from "../../src/modules/trips/hooks/useTrips";
 import { StepIndicator } from "../../src/modules/booking/components/StepIndicator";
 import { ServiceCard } from "../../src/modules/booking/components/ServiceCard";
+import { ResourcePicker } from "../../src/modules/booking/components/ResourcePicker";
+import { VoucherApplyField } from "../../src/modules/booking/components/VoucherApplyField";
+import { useValidateVoucherCode } from "../../src/modules/booking/hooks/useVoucherQueries";
+import {
+  buildBookingPayload,
+  getActiveResources,
+  getResourceSlotAvailability,
+  getSelectedResource,
+  reconcileSelectedResource,
+  requiresResourceSelection,
+} from "../../src/modules/booking/utils/resourceAvailability";
 import { useTranslation } from "react-i18next";
+import { showAppAlert } from "../../src/utils/appAlert";
 
 const buildTimeSlots = ({
   startHour = 6,
@@ -93,9 +111,10 @@ const addMonths = (date, delta) => {
   return next;
 };
 
-const buildCalendarDays = (monthDate) => {
+const buildCalendarDays = (monthDate, nowTs = Date.now()) => {
   const monthStart = normalizeMonthStart(monthDate);
   const month = monthStart.getMonth();
+  const todayValue = formatDateYmd(new Date(nowTs));
   const firstWeekdayOffset = (monthStart.getDay() + 6) % 7;
   const gridStart = new Date(monthStart);
   gridStart.setDate(monthStart.getDate() - firstWeekdayOffset);
@@ -108,6 +127,7 @@ const buildCalendarDays = (monthDate) => {
       day: date.getDate(),
       date,
       isCurrentMonth: date.getMonth() === month,
+      isToday: formatDateYmd(date) === todayValue,
     };
   });
 };
@@ -178,6 +198,7 @@ export default function BookingScreen() {
 
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState(null);
+  const [selectedResourceId, setSelectedResourceId] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedDate, setSelectedDate] = useState(() =>
     formatDateYmd(new Date()),
@@ -199,7 +220,18 @@ export default function BookingScreen() {
   const [guestPhone, setGuestPhone] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [requestNote, setRequestNote] = useState("");
-  const didPrefillContactRef = useRef(false);
+  const [voucher, setVoucher] = useState({
+    voucherId: null,
+    code: "",
+    discountAmount: 0,
+    finalPrice: null,
+  });
+  const contactTouchedRef = useRef({
+    name: false,
+    phone: false,
+    email: false,
+  });
+  const contactUserIdRef = useRef(null);
 
   const { data: place } = usePlaceDetail(placeId);
   const { data: services = [], isLoading: servicesLoading } =
@@ -207,11 +239,34 @@ export default function BookingScreen() {
   const { data: trips = [] } = useTrips(isLoggedIn);
   const bookingMutation = useCreateBooking();
   const createTripMutation = useCreateTrip();
+  const validateVoucherMutation = useValidateVoucherCode();
 
   const { data: availabilityData } = useServiceAvailability(
     selectedService?.id,
     selectedDate,
   );
+
+  const isResourceBooking =
+    selectedService?.bookingModel === "resource" ||
+    requiresResourceSelection(availabilityData);
+  const activeResources = useMemo(
+    () => getActiveResources(availabilityData),
+    [availabilityData],
+  );
+  const selectedResource = useMemo(
+    () => getSelectedResource(availabilityData, selectedResourceId),
+    [availabilityData, selectedResourceId],
+  );
+
+  useEffect(() => {
+    setSelectedResourceId(null);
+  }, [selectedService?.id]);
+
+  useEffect(() => {
+    setSelectedResourceId((current) =>
+      reconcileSelectedResource(current, availabilityData),
+    );
+  }, [availabilityData]);
 
   useEffect(() => {
     const timer = setInterval(() => setNowTs(Date.now()), 30_000);
@@ -219,18 +274,56 @@ export default function BookingScreen() {
   }, []);
 
   useEffect(() => {
-    if (didPrefillContactRef.current || !currentUser) return;
+    if (!currentUser) {
+      contactUserIdRef.current = null;
+      contactTouchedRef.current = { name: false, phone: false, email: false };
+      return;
+    }
+
+    const userId = currentUser.id || currentUser.email || "current-user";
+    const isNewUser = contactUserIdRef.current !== userId;
+    if (isNewUser) {
+      contactTouchedRef.current = { name: false, phone: false, email: false };
+    }
 
     const profile = currentUser.profile || {};
-    setGuestName(profile.fullName || currentUser.fullName || "");
-    setGuestPhone(profile.phone || currentUser.phone || "");
-    setGuestEmail(currentUser.email || "");
-    didPrefillContactRef.current = true;
+    const nextContact = {
+      name: profile.fullName || currentUser.fullName || "",
+      phone: profile.phone || currentUser.phone || "",
+      email: currentUser.email || "",
+    };
+
+    if (isNewUser || !contactTouchedRef.current.name) {
+      setGuestName(nextContact.name);
+    }
+    if (isNewUser || !contactTouchedRef.current.phone) {
+      setGuestPhone(nextContact.phone);
+    }
+    if (isNewUser || !contactTouchedRef.current.email) {
+      setGuestEmail(nextContact.email);
+    }
+
+    contactUserIdRef.current = userId;
   }, [currentUser]);
 
+  const handleGuestNameChange = useCallback((value) => {
+    contactTouchedRef.current.name = true;
+    setGuestName(value);
+  }, []);
+
+  const handleGuestPhoneChange = useCallback((value) => {
+    contactTouchedRef.current.phone = true;
+    setGuestPhone(value);
+  }, []);
+
+  const handleGuestEmailChange = useCallback((value) => {
+    contactTouchedRef.current.email = true;
+    setGuestEmail(value);
+  }, []);
+
   const calendarDays = useMemo(
-    () => buildCalendarDays(calendarMonth),
-    [calendarMonth],
+    () => buildCalendarDays(calendarMonth, nowTs),
+    [calendarMonth, nowTs],
   );
   const calendarMonthLabel = useMemo(
     () => formatMonthYearLabel(calendarMonth),
@@ -263,26 +356,23 @@ export default function BookingScreen() {
 
     if (availabilityData?.bookingModel === "capacity" && availabilityData?.slots) {
       const slotData = availabilityData.slots.find(
-        (s) => s.time?.startsWith(`${dateValue}T${timeValue}`) || s.time?.includes(`T${timeValue}:`),
+        (s) => s.time === timeValue,
       );
       if (slotData && !slotData.available) return false;
     }
 
-    if (availabilityData?.bookingModel === "resource" && availabilityData?.bookedSlots?.length > 0) {
-      const slotStart = new Date(`${dateValue}T${timeValue}:00`);
-      const slotDurationMs = (selectedService?.slotDurationMinutes || 60) * 60_000;
-      const slotEnd = new Date(slotStart.getTime() + slotDurationMs);
-
-      const isBooked = availabilityData.bookedSlots.some((booked) => {
-        const bookedStart = new Date(booked.startTime);
-        const bookedEnd = new Date(booked.endTime);
-        return bookedStart < slotEnd && bookedEnd > slotStart;
+    if (isResourceBooking) {
+      return getResourceSlotAvailability({
+        availability: availabilityData,
+        resourceId: selectedResourceId,
+        date: dateValue,
+        time: timeValue,
+        quantity,
       });
-      if (isBooked) return false;
     }
 
     return true;
-  }, [availabilityData, nowTs, selectedService]);
+  }, [availabilityData, isResourceBooking, nowTs, quantity, selectedResourceId]);
 
   const createdTripDefaultTitle = useMemo(() => {
     const placeLabel = place?.name ? ` - ${place.name}` : "";
@@ -310,6 +400,64 @@ export default function BookingScreen() {
   const unitPrice =
     selectedService?.salePrice ?? selectedService?.price ?? null;
   const totalPrice = unitPrice !== null ? unitPrice * quantity : null;
+  const maxQuantity = useMemo(() => {
+    const availableQuantity = isResourceBooking
+      ? selectedResource?.capacity ?? 20
+      : availabilityData?.slots?.find((slot) => slot.time === selectedTime)?.remaining ?? 20;
+
+    return Math.min(availableQuantity, 20);
+  }, [availabilityData?.slots, isResourceBooking, selectedResource?.capacity, selectedTime]);
+
+  // Khi đổi service → reset voucher (voucher cũ có thể không còn áp dụng cho service mới).
+  useEffect(() => {
+    if (!selectedService?.id) return;
+    setVoucher((prev) =>
+      prev?.voucherId ? { voucherId: null, code: "", discountAmount: 0, finalPrice: null } : prev,
+    );
+  }, [selectedService?.id]);
+
+  // Khi quantity thay đổi → re-validate voucher đang áp dụng để cập nhật discountAmount/finalPrice.
+  // Lưu serviceId trong ref để effect không phụ thuộc cả object service (gây loop).
+  const appliedServiceIdRef = useRef(null);
+  useEffect(() => {
+    if (!voucher?.voucherId || totalPrice == null || !voucher.code) return;
+    const serviceId = Number(selectedService?.id);
+    if (!Number.isInteger(serviceId) || serviceId <= 0) return;
+    if (appliedServiceIdRef.current !== serviceId) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await validateVoucherMutation.mutateAsync({
+          code: voucher.code,
+          serviceId,
+          originalPrice: Number(totalPrice) || 0,
+        });
+        if (cancelled) return;
+        const data = res?.data || res;
+        setVoucher({
+          voucherId: data?.id || data?.voucherId || voucher.voucherId,
+          code: data?.code || voucher.code,
+          discountAmount: Number(data?.discountAmount) || 0,
+          finalPrice:
+            data?.finalPrice != null
+              ? Number(data.finalPrice)
+              : Math.max(0, (Number(totalPrice) || 0) - (Number(data?.discountAmount) || 0)),
+        });
+      } catch {
+        // Lỗi → clear để user apply lại bằng tay
+        setVoucher({ voucherId: null, code: "", discountAmount: 0, finalPrice: null });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quantity, selectedService?.id]);
+
+  useEffect(() => {
+    appliedServiceIdRef.current = selectedService?.id || null;
+  }, [selectedService?.id]);
   const isSelectedTimeAvailable = isSlotAvailable(selectedDate, selectedTime);
   const slotWarningRef = useRef("");
 
@@ -325,11 +473,12 @@ export default function BookingScreen() {
     if (slotWarningRef.current === warningKey) return;
     slotWarningRef.current = warningKey;
 
-    Alert.alert(
-      t("booking.alerts.slotUnavailable.title"),
-      t("booking.alerts.slotUnavailable.message"),
-      [{ text: t("booking.alerts.slotUnavailable.ok") }],
-    );
+    showAppAlert({
+      title: t("booking.alerts.slotUnavailable.title"),
+      message: t("booking.alerts.slotUnavailable.message"),
+      type: "warning",
+      buttons: [{ text: t("booking.alerts.slotUnavailable.ok") }],
+    });
   }, [step, isSelectedTimeAvailable, selectedDate, selectedTime, t]);
 
   const depositInfo = useMemo(() => {
@@ -361,6 +510,7 @@ export default function BookingScreen() {
   const canProceedFromStep2 =
     !!selectedTime &&
     isSelectedTimeAvailable &&
+    (!isResourceBooking || !!selectedResource) &&
     (tripLinkMode !== "existing" || !!selectedTripId);
   const normalizedGuestName = guestName.trim();
   const normalizedGuestPhone = guestPhone.trim();
@@ -475,24 +625,44 @@ export default function BookingScreen() {
 
   const handleConfirmBooking = async () => {
     if (!hasValidContact) {
-      Alert.alert(
-        t("booking.alerts.missingContact.title"),
-        t("booking.alerts.missingContact.message"),
-      );
+      showAppAlert({
+        title: t("booking.alerts.missingContact.title"),
+        message: t("booking.alerts.missingContact.message"),
+        type: "warning",
+        buttons: [{ text: t("common.close") }],
+      });
       return;
     }
 
     if (!isSelectedTimeAvailable) {
-      Alert.alert(
-        t("booking.alerts.slotUnavailable.title"),
-        t("booking.alerts.slotUnavailable.expired"),
-      );
+      showAppAlert({
+        title: t("booking.alerts.slotUnavailable.title"),
+        message: t("booking.alerts.slotUnavailable.expired"),
+        type: "warning",
+        buttons: [{ text: t("common.close") }],
+      });
+      setStep(2);
+      return;
+    }
+
+    if (isResourceBooking && !selectedResource) {
+      showAppAlert({
+        title: t("booking.alerts.resourceRequired.title"),
+        message: t("booking.alerts.resourceRequired.message"),
+        type: "warning",
+        buttons: [{ text: t("common.close") }],
+      });
       setStep(2);
       return;
     }
 
     if (tripLinkMode === "existing" && !selectedTripId) {
-      Alert.alert(t("booking.alerts.selectTrip.title"), t("booking.alerts.selectTrip.message"));
+      showAppAlert({
+        title: t("booking.alerts.selectTrip.title"),
+        message: t("booking.alerts.selectTrip.message"),
+        type: "warning",
+        buttons: [{ text: t("common.close") }],
+      });
       setStep(2);
       return;
     }
@@ -527,7 +697,9 @@ export default function BookingScreen() {
         }
       }
 
-      const bookingRes = await bookingMutation.mutateAsync({
+      const bookingRes = await bookingMutation.mutateAsync(buildBookingPayload({
+        bookingModel: isResourceBooking ? "resource" : "capacity",
+        resourceId: selectedResourceId,
         placeId: parseInt(placeId, 10),
         serviceId: selectedService?.id,
         tripId: tripIdPayload || undefined,
@@ -538,7 +710,8 @@ export default function BookingScreen() {
         guestPhone: normalizedGuestPhone,
         guestEmail: normalizedGuestEmail || undefined,
         note: normalizedRequestNote || null,
-      });
+        voucherId: voucher?.voucherId || undefined,
+      }));
 
       const linkedTrip = bookingRes?.data?.linkedTrip || null;
       if (linkedTrip) {
@@ -562,10 +735,12 @@ export default function BookingScreen() {
         setBookingDone(true);
       }
     } catch (error) {
-      Alert.alert(
-        t("booking.errors.bookingFailed"),
-        error?.message || t("booking.errors.generic"),
-      );
+      showAppAlert({
+        title: t("booking.errors.bookingFailed"),
+        message: error?.message || t("booking.errors.generic"),
+        type: "error",
+        buttons: [{ text: t("common.close") }],
+      });
     }
   };
 
@@ -735,8 +910,8 @@ export default function BookingScreen() {
         <Pressable
           onPress={() => (step > 1 ? setStep(step - 1) : router.back())}
           style={{
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             borderRadius: 14,
             backgroundColor: BOOKING_THEME.glass,
             alignItems: "center",
@@ -744,6 +919,8 @@ export default function BookingScreen() {
             borderWidth: 1,
             borderColor: BOOKING_THEME.glassBorder,
           }}
+          accessibilityRole="button"
+          accessibilityLabel={t("common.back")}
         >
           <MaterialIconsRounded
             name="arrow-back"
@@ -941,16 +1118,21 @@ export default function BookingScreen() {
                 >
                   <Pressable
                     onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                    disabled={quantity <= 1}
                     style={{
-                      width: 32,
-                      height: 32,
+                      width: 44,
+                      height: 44,
                       borderRadius: 10,
                       backgroundColor: BOOKING_THEME.glass,
                       alignItems: "center",
                       justifyContent: "center",
                       borderWidth: 1,
                       borderColor: BOOKING_THEME.glassBorder,
+                      opacity: quantity <= 1 ? 0.45 : 1,
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`− ${t("booking.fields.quantity")}`}
+                    accessibilityState={{ disabled: quantity <= 1 }}
                   >
                     <MaterialIconsRounded
                       name="remove"
@@ -971,23 +1153,25 @@ export default function BookingScreen() {
                   </Text>
                   <Pressable
                     onPress={() => {
-                      const maxQty = availabilityData?.slots
-                        ? availabilityData.slots.find((s) => s.time?.startsWith(`${selectedDate}T${selectedTime}`))?.remaining ?? 20
-                        : 20;
-                      if (quantity < Math.min(maxQty, 20)) {
+                      if (quantity < maxQuantity) {
                         setQuantity(quantity + 1);
                       }
                     }}
+                    disabled={quantity >= maxQuantity}
                     style={{
-                      width: 32,
-                      height: 32,
+                      width: 44,
+                      height: 44,
                       borderRadius: 10,
                       backgroundColor: BOOKING_THEME.glass,
                       alignItems: "center",
                       justifyContent: "center",
                       borderWidth: 1,
                       borderColor: BOOKING_THEME.glassBorder,
+                      opacity: quantity >= maxQuantity ? 0.45 : 1,
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`+ ${t("booking.fields.quantity")}`}
+                    accessibilityState={{ disabled: quantity >= maxQuantity }}
                   >
                     <MaterialIconsRounded
                       name="add"
@@ -1004,6 +1188,30 @@ export default function BookingScreen() {
                   backgroundColor: BOOKING_THEME.glassBorder,
                 }}
               />
+
+              {isResourceBooking ? (
+                <>
+                  <ResourcePicker
+                    resources={activeResources}
+                    selectedResourceId={selectedResourceId}
+                    onSelect={setSelectedResourceId}
+                    theme={BOOKING_THEME}
+                    title={t("booking.fields.selectResource")}
+                    emptyLabel={t("booking.resources.noneAvailable")}
+                  />
+                  {!selectedResource ? (
+                    <Text style={{ color: BOOKING_THEME.warning, fontSize: 12 }}>
+                      {t("booking.resources.required")}
+                    </Text>
+                  ) : null}
+                  <View
+                    style={{
+                      height: 1,
+                      backgroundColor: BOOKING_THEME.glassBorder,
+                    }}
+                  />
+                </>
+              ) : null}
 
               <View style={{ gap: 10 }}>
                 <Text
@@ -1035,8 +1243,8 @@ export default function BookingScreen() {
                       }}
                       disabled={!canMovePrevMonth}
                       style={{
-                        width: 30,
-                        height: 30,
+                        width: 44,
+                        height: 44,
                         borderRadius: 10,
                         borderWidth: 1,
                         borderColor: BOOKING_THEME.glassBorder,
@@ -1045,6 +1253,9 @@ export default function BookingScreen() {
                         justifyContent: "center",
                         opacity: canMovePrevMonth ? 1 : 0.35,
                       }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${calendarMonthLabel} ${t("common.back")}`}
+                      accessibilityState={{ disabled: !canMovePrevMonth }}
                     >
                       <MaterialIconsRounded
                         name="chevron-left"
@@ -1069,8 +1280,8 @@ export default function BookingScreen() {
                         setCalendarMonth((prev) => addMonths(prev, 1))
                       }
                       style={{
-                        width: 30,
-                        height: 30,
+                        width: 44,
+                        height: 44,
                         borderRadius: 10,
                         borderWidth: 1,
                         borderColor: BOOKING_THEME.glassBorder,
@@ -1078,6 +1289,8 @@ export default function BookingScreen() {
                         alignItems: "center",
                         justifyContent: "center",
                       }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${calendarMonthLabel} ${t("common.next")}`}
                     >
                       <MaterialIconsRounded
                         name="chevron-right"
@@ -1128,18 +1341,26 @@ export default function BookingScreen() {
                               );
                             }}
                             style={{
-                              height: 34,
+                              height: 44,
                               borderRadius: 10,
                               alignItems: "center",
                               justifyContent: "center",
                               backgroundColor: isSelected
                                 ? BOOKING_THEME.neon
                                 : BOOKING_THEME.glass,
-                              borderWidth: 1,
                               borderColor: isSelected
                                 ? BOOKING_THEME.neon
-                                : BOOKING_THEME.glassBorder,
+                                : dayItem.isToday
+                                  ? BOOKING_THEME.focusBlue
+                                  : BOOKING_THEME.glassBorder,
+                              borderWidth: dayItem.isToday ? 2 : 1,
                               opacity: selectable ? 1 : 0.35,
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${dayItem.day} ${calendarMonthLabel}${dayItem.isToday ? `, ${t("booking.fields.today")}` : ""}`}
+                            accessibilityState={{
+                              disabled: !selectable,
+                              selected: isSelected,
                             }}
                           >
                             <Text
@@ -1155,6 +1376,20 @@ export default function BookingScreen() {
                             >
                               {dayItem.day}
                             </Text>
+                            {dayItem.isToday && !isSelected ? (
+                              <View
+                                accessibilityElementsHidden
+                                importantForAccessibility="no"
+                                style={{
+                                  position: "absolute",
+                                  bottom: 4,
+                                  width: 4,
+                                  height: 4,
+                                  borderRadius: 2,
+                                  backgroundColor: BOOKING_THEME.focusBlue,
+                                }}
+                              />
+                            ) : null}
                           </Pressable>
                         </View>
                       );
@@ -1210,7 +1445,12 @@ export default function BookingScreen() {
                           backgroundColor: isActive
                             ? BOOKING_THEME.neonGlow
                             : BOOKING_THEME.glass,
+                          minHeight: 44,
+                          alignItems: "center",
                         }}
+                        accessibilityRole="button"
+                        accessibilityLabel={group.label}
+                        accessibilityState={{ selected: isActive }}
                       >
                         <Text
                           style={{
@@ -1252,7 +1492,7 @@ export default function BookingScreen() {
                       let remaining = null;
                       if (availabilityData?.bookingModel === "capacity" && availabilityData?.slots) {
                         const slotData = availabilityData.slots.find(
-                          (s) => s.time?.startsWith(`${selectedDate}T${slot.value}`) || s.time?.includes(`T${slot.value}:`),
+                          (s) => s.time === slot.value,
                         );
                         if (slotData) {
                           remaining = slotData.remaining;
@@ -1270,7 +1510,8 @@ export default function BookingScreen() {
                           style={{
                             minWidth: 64,
                             paddingHorizontal: 11,
-                            paddingVertical: 8,
+                            paddingVertical: 10,
+                            minHeight: 44,
                             borderRadius: 10,
                             borderWidth: 1,
                             borderColor: isSelected
@@ -1283,6 +1524,12 @@ export default function BookingScreen() {
                                 : BOOKING_THEME.glass,
                             opacity: available ? 1 : 0.45,
                             alignItems: "center",
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={slot.label}
+                          accessibilityState={{
+                            disabled: !available,
+                            selected: isSelected,
                           }}
                         >
                           <Text
@@ -1299,9 +1546,10 @@ export default function BookingScreen() {
                           {remaining !== null ? (
                             <Text
                               style={{
-                                color: remaining > 0
-                                  ? "#22C55E"
-                                  : "#EF4444",
+                                color:
+                                  remaining > 0
+                                    ? TOKENS.color.semantic.success
+                                    : TOKENS.color.semantic.danger,
                                 fontSize: 10,
                                 fontWeight: "600",
                               }}
@@ -1319,12 +1567,28 @@ export default function BookingScreen() {
                   {t("booking.timeSlotsCount", { count: visibleTimeSlots.length })}
                 </Text>
 
-                {!isSelectedTimeAvailable ? (
-                  <Text style={{ color: "#F59E0B", fontSize: 12 }}>
-                    {t("booking.slotUnavailableWarning")}
-                  </Text>
-                ) : null}
+              {!isSelectedTimeAvailable ? (
+                <Text style={{ color: BOOKING_THEME.warning, fontSize: 12 }}>
+                  {t("booking.slotUnavailableWarning")}
+                </Text>
+              ) : null}
               </View>
+
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: BOOKING_THEME.glassBorder,
+                }}
+              />
+
+              <VoucherApplyField
+                serviceId={selectedService?.id}
+                businessId={place?.businessId ?? selectedService?.place?.businessId}
+                amount={totalPrice ?? 0}
+                value={voucher}
+                onChange={setVoucher}
+                theme={BOOKING_THEME}
+              />
 
               <View
                 style={{
@@ -1369,7 +1633,12 @@ export default function BookingScreen() {
                           backgroundColor: selected
                             ? BOOKING_THEME.neonGlow
                             : BOOKING_THEME.glass,
+                          minHeight: 44,
+                          alignItems: "center",
                         }}
+                        accessibilityRole="button"
+                        accessibilityLabel={item.label}
+                        accessibilityState={{ selected }}
                       >
                         <Text
                           style={{
@@ -1414,6 +1683,9 @@ export default function BookingScreen() {
                               paddingHorizontal: 12,
                               paddingVertical: 10,
                             }}
+                            accessibilityRole="button"
+                            accessibilityLabel={trip.title || `Trip #${trip.id}`}
+                            accessibilityState={{ selected }}
                           >
                             <Text
                               style={{
@@ -1506,14 +1778,74 @@ export default function BookingScreen() {
                     </Text>
                     <Text
                       style={{
-                        color: BOOKING_THEME.neon,
-                        fontSize: 16,
-                        fontWeight: "800",
+                        color:
+                          voucher?.voucherId
+                            ? BOOKING_THEME.textMuted
+                            : BOOKING_THEME.neon,
+                        fontSize: voucher?.voucherId ? 13 : 16,
+                        fontWeight: voucher?.voucherId ? "600" : "800",
+                        textDecorationLine: voucher?.voucherId ? "line-through" : "none",
                       }}
                     >
                       {formatPrice(totalPrice, t("booking.pricing.contact"))}
                     </Text>
                   </View>
+
+                  {voucher?.voucherId && voucher.discountAmount > 0 ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: BOOKING_THEME.textSecondary,
+                          fontSize: 13,
+                        }}
+                      >
+                        {t("booking.voucher.discountApplied", {
+                          code: voucher.code,
+                        })}
+                      </Text>
+                      <Text
+                        style={{
+                          color: BOOKING_THEME.danger,
+                          fontSize: 13,
+                          fontWeight: "700",
+                        }}
+                      >
+                        -{formatPrice(voucher.discountAmount, t("booking.pricing.contact"))}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {voucher?.voucherId && voucher.finalPrice != null ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: BOOKING_THEME.textSecondary,
+                          fontSize: 13,
+                        }}
+                      >
+                        {t("booking.pricing.finalTotal")}
+                      </Text>
+                      <Text
+                        style={{
+                          color: BOOKING_THEME.neon,
+                          fontSize: 16,
+                          fontWeight: "800",
+                        }}
+                      >
+                        {formatPrice(voucher.finalPrice, t("booking.pricing.contact"))}
+                      </Text>
+                    </View>
+                  ) : null}
 
                   {depositInfo ? (
                     <>
@@ -1615,7 +1947,7 @@ export default function BookingScreen() {
 
                 <TextInput
                   value={guestName}
-                  onChangeText={setGuestName}
+                  onChangeText={handleGuestNameChange}
                   placeholder={t("booking.placeholders.name")}
                   placeholderTextColor={BOOKING_THEME.textMuted}
                   style={{
@@ -1634,7 +1966,7 @@ export default function BookingScreen() {
 
                 <TextInput
                   value={guestPhone}
-                  onChangeText={setGuestPhone}
+                  onChangeText={handleGuestPhoneChange}
                   placeholder={t("booking.placeholders.phone")}
                   placeholderTextColor={BOOKING_THEME.textMuted}
                   style={{
@@ -1653,7 +1985,7 @@ export default function BookingScreen() {
 
                 <TextInput
                   value={guestEmail}
-                  onChangeText={setGuestEmail}
+                  onChangeText={handleGuestEmailChange}
                   placeholder={t("booking.placeholders.email")}
                   placeholderTextColor={BOOKING_THEME.textMuted}
                   style={{
@@ -1693,7 +2025,7 @@ export default function BookingScreen() {
                 />
 
                 {!hasValidContact ? (
-                  <Text style={{ color: "#F59E0B", fontSize: 12 }}>
+                  <Text style={{ color: BOOKING_THEME.warning, fontSize: 12 }}>
                     {t("booking.contactValidation")}
                   </Text>
                 ) : null}
@@ -1725,6 +2057,13 @@ export default function BookingScreen() {
                 >
                   {formatBookingDateTime(selectedDate, selectedTime, t("booking.fields.notSelected"))}
                 </Text>
+                {isResourceBooking ? (
+                  <Text style={{ color: BOOKING_THEME.textSecondary, fontSize: 12 }}>
+                    {t("booking.fields.resource")}: {selectedResource
+                      ? [selectedResource.name, selectedResource.code].filter(Boolean).join(" • ")
+                      : t("booking.fields.notSelected")}
+                  </Text>
+                ) : null}
                 {depositInfo ? (
                   <Text
                     style={{ color: BOOKING_THEME.textSecondary, fontSize: 12 }}
@@ -1762,8 +2101,20 @@ export default function BookingScreen() {
                     paddingVertical: 10,
                     borderWidth: 1,
                     borderColor: BOOKING_THEME.glassBorderStrong,
+                    gap: 4,
                   }}
                 >
+                  {voucher?.voucherId && voucher.discountAmount > 0 ? (
+                    <Text
+                      style={{
+                        color: BOOKING_THEME.textSecondary,
+                        fontSize: 12,
+                        textDecorationLine: "line-through",
+                      }}
+                    >
+                      {formatPrice(totalPrice, t("booking.pricing.contact"))}
+                    </Text>
+                  ) : null}
                   <Text
                     style={{
                       color: BOOKING_THEME.neon,
@@ -1771,7 +2122,10 @@ export default function BookingScreen() {
                       fontWeight: "800",
                     }}
                   >
-                    {formatPrice(totalPrice, t("booking.pricing.contact"))}
+                    {formatPrice(
+                      voucher?.finalPrice != null ? voucher.finalPrice : totalPrice,
+                      t("booking.pricing.contact"),
+                    )}
                   </Text>
                 </View>
               ) : null}
@@ -1845,6 +2199,13 @@ export default function BookingScreen() {
                   ? 0
                   : 10,
             }}
+            accessibilityRole="button"
+            accessibilityLabel={step === 1 ? t("booking.buttons.next") : t("booking.buttons.confirm")}
+            accessibilityState={{
+              disabled:
+                (step === 1 && !selectedService) ||
+                (step === 2 && !canProceedFromStep2),
+            }}
           >
             <Text
               style={{
@@ -1863,9 +2224,9 @@ export default function BookingScreen() {
         ) : (
           <Pressable
             onPress={handleConfirmBooking}
-            disabled={isSubmittingBooking || !hasValidContact}
+            disabled={isSubmittingBooking || !hasValidContact || !canProceedFromStep2}
             style={{
-              backgroundColor: hasValidContact
+              backgroundColor: hasValidContact && canProceedFromStep2
                 ? BOOKING_THEME.neon
                 : BOOKING_THEME.surfaceMuted,
               borderRadius: 22,
@@ -1874,11 +2235,17 @@ export default function BookingScreen() {
               flexDirection: "row",
               justifyContent: "center",
               gap: 8,
-              shadowColor: hasValidContact ? BOOKING_THEME.neon : "transparent",
+              shadowColor: hasValidContact && canProceedFromStep2 ? BOOKING_THEME.neon : "transparent",
               shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: hasValidContact ? 0.35 : 0,
+              shadowOpacity: hasValidContact && canProceedFromStep2 ? 0.35 : 0,
               shadowRadius: 20,
-              elevation: hasValidContact ? 10 : 0,
+              elevation: hasValidContact && canProceedFromStep2 ? 10 : 0,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t("booking.buttons.confirmBooking")}
+            accessibilityState={{
+              disabled: isSubmittingBooking || !hasValidContact || !canProceedFromStep2,
+              busy: isSubmittingBooking,
             }}
           >
             {isSubmittingBooking ? (
@@ -1888,7 +2255,7 @@ export default function BookingScreen() {
                 name="check-circle"
                 size={18}
                 color={
-                  hasValidContact
+                  hasValidContact && canProceedFromStep2
                     ? BOOKING_THEME.white
                     : BOOKING_THEME.textSecondary
                 }

@@ -1,11 +1,67 @@
-import { memo, useCallback } from "react";
+import { memo, useCallback, useEffect } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { TOKENS } from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { EventCard, EVENT_CARD_W } from "./EventCard";
 
 const ITEM_LENGTH = EVENT_CARD_W + 14;
+
+/** Live dot: pulse halo vô hạn, tạo cảm giác "đang phát trực tiếp". */
+const PulseDot = memo(function PulseDot({ color = "#EF4444" }) {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(0.55);
+
+  useEffect(() => {
+    scale.value = withRepeat(
+      withTiming(2.4, { duration: 1400, easing: Easing.out(Easing.quad) }),
+      -1,
+      false,
+    );
+    opacity.value = withRepeat(
+      withTiming(0, { duration: 1400, easing: Easing.out(Easing.quad) }),
+      -1,
+      false,
+    );
+  }, [scale, opacity]);
+
+  const haloStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <View style={{ width: 12, height: 12, alignItems: "center", justifyContent: "center" }}>
+      <Animated.View
+        style={[
+          {
+            position: "absolute",
+            width: 7,
+            height: 7,
+            borderRadius: 3.5,
+            backgroundColor: color,
+          },
+          haloStyle,
+        ]}
+      />
+      <View
+        style={{
+          width: 7,
+          height: 7,
+          borderRadius: 3.5,
+          backgroundColor: color,
+        }}
+      />
+    </View>
+  );
+});
 
 const getItemLayout = (_, index) => ({
   length: ITEM_LENGTH,
@@ -34,21 +90,36 @@ function EventSectionInner({ events, onPressEvent, onPressViewAll }) {
       <View style={styles.header}>
         <View style={styles.titleBlock}>
           <View style={styles.eyebrowRow}>
-            <View style={styles.liveDot} />
-            <Text style={styles.eyebrow}>CỘNG ĐỒNG</Text>
+            <PulseDot color="#EF4444" />
+            <Text style={styles.eyebrow}>{t("explore.event.eyebrow")}</Text>
           </View>
           <View style={styles.titleRow}>
             <Text style={styles.title}>{t("explore.event.communityEvents")}</Text>
             <View style={styles.hotPill}>
-              <Text style={styles.hotText}>LIVE</Text>
+              <View
+                style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: 2.5,
+                  backgroundColor: "#FFFFFF",
+                  opacity: 0.92,
+                }}
+              />
+              <Text style={styles.hotText}>{t("explore.event.live")}</Text>
             </View>
           </View>
-          <Text style={styles.subtitle}>Tham gia, check-in và đi cùng mọi người</Text>
+          <Text style={styles.subtitle}>{t("explore.event.subtitle")}</Text>
         </View>
 
         {onPressViewAll ? (
-          <Pressable onPress={onPressViewAll} hitSlop={8} style={styles.viewAll}>
-            <Text style={styles.viewAllText}>Xem tất cả</Text>
+          <Pressable
+            onPress={onPressViewAll}
+            hitSlop={8}
+            style={styles.viewAll}
+            accessibilityRole="button"
+            accessibilityLabel={t("explore.event.viewAll")}
+          >
+            <Text style={styles.viewAllText}>{t("explore.event.viewAll")}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -79,10 +150,8 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: TAB_SCREEN_PADDING,
-    paddingBottom: 14,
+    paddingBottom: 0,
     marginBottom: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.06)",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
@@ -105,7 +174,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     color: "rgba(24,24,25,0.42)",
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: TOKENS.font.bold,
     letterSpacing: 1.2,
   },
@@ -122,18 +191,24 @@ const styles = StyleSheet.create({
     letterSpacing: -0.6,
   },
   hotPill: {
-    paddingHorizontal: 8,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "#FEE2E2",
+    paddingHorizontal: 9,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#EF4444",
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 5,
+    shadowColor: "#EF4444",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.32,
+    shadowRadius: 8,
+    elevation: 2,
   },
   hotText: {
-    color: "#DC2626",
-    fontSize: 9,
+    color: "#FFFFFF",
+    fontSize: 10.5,
     fontFamily: TOKENS.font.bold,
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
   },
   subtitle: {
     color: "rgba(24,24,25,0.48)",
@@ -145,12 +220,12 @@ const styles = StyleSheet.create({
     height: 32,
     paddingHorizontal: 14,
     borderRadius: 16,
-    backgroundColor: "rgba(239,68,68,0.08)",
+    backgroundColor: "#181819",
     alignItems: "center",
     justifyContent: "center",
   },
   viewAllText: {
-    color: "#DC2626",
+    color: "#FFFFFF",
     fontSize: 13,
     fontFamily: TOKENS.font.semibold,
   },

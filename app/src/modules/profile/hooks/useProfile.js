@@ -4,6 +4,7 @@ import {
   updateMyAvatarApi,
   updateMyProfileApi,
   updateNotificationSettingsApi,
+  deleteMyAccountApi,
 } from "../api/profileApi";
 
 const PROFILE_QUERY_KEY = ["my-profile"];
@@ -62,4 +63,8 @@ export function useUpdateNotificationSettings() {
       queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
     },
   });
+}
+
+export function useDeleteMyAccount() {
+  return useMutation({ mutationFn: deleteMyAccountApi });
 }

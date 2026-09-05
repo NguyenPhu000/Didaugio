@@ -32,7 +32,13 @@ import {
 } from "../../middlewares/validateSchema.js";
 import { businessDocUpload } from "../../middlewares/uploadMiddleware.js";
 import { requireActiveBusiness } from "../../middlewares/requireActiveBusiness.js";
+import { requireBusinessOwner } from "../../middlewares/requireBusinessOwner.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import { sanitizeBody } from "../../middlewares/sanitizeMiddleware.js";
+import {
+  otpSendLimiter,
+  otpVerificationLimiter,
+} from "../../middlewares/rateLimitMiddleware.js";
 import {
   registerBusinessSchema,
   updateBusinessSchema,
@@ -63,8 +69,8 @@ router.use((req, res, next) => {
 });
 
 // ========== Profile (Business Owner) ==========
-router.get("/profile", getProfile);
-router.post("/profile/decrypt", decryptProfile);
+router.get("/profile", requireBusinessOwner, getProfile);
+router.post("/profile/decrypt", requireBusinessOwner, decryptProfile);
 
 router.post(
   "/register",
@@ -82,6 +88,7 @@ router.post(
 
 router.put(
   "/profile",
+  requireBusinessOwner,
   businessDocUpload,
   sanitizeBody(["businessName", "fullName", "address", "taxCode"]),
   validateBody(updateBusinessSchema),
@@ -94,18 +101,27 @@ router.put(
 );
 
 // ========== Dashboard (Business Owner) ==========
-router.get("/dashboard", requireActiveBusiness(), getDashboard);
+router.get("/dashboard", requireBusinessOwner, requireActiveBusiness(), getDashboard);
 
 // ========== My Places (Business Owner - for service creation) ==========
-router.get("/places", requireActiveBusiness(), getMyPlaces);
+router.get(
+  "/places",
+  requireActiveBusiness(),
+  hasPermission("bookings.view"),
+  getMyPlaces,
+);
 
 router.post(
   "/profile/contract-otp",
+  requireBusinessOwner,
+  otpSendLimiter,
   sendContractOtp
 );
 
 router.put(
   "/profile/contract-sign",
+  requireBusinessOwner,
+  otpVerificationLimiter,
   validateBody(signBusinessContractSchema),
   auditLog({
     action: "SIGN_CONTRACT",
@@ -116,21 +132,43 @@ router.put(
 );
 
 // Download contract PDF (business owner or admin)
-router.get("/:id/contract", downloadContract);
+router.get("/:id/contract", authenticate, downloadContract);
 
 // ========== Admin (business.view, business.approve) ==========
+const businessAdminViewPermissions = [
+  "business.view",
+  "businesses.view",
+  "business.view_detail",
+  "business.manage",
+  "business.approve",
+  "system.view_analytics",
+];
+
+const businessAdminApprovePermissions = [
+  "business.approve",
+  "businesses.approve",
+  "business.manage",
+];
+
 router.get(
   "/",
-  hasPermission("business.view"),
+  requireBackOfficeRole,
+  hasPermission(businessAdminViewPermissions),
   validateQuery(getBusinessesQuerySchema),
   getAll,
 );
 
-router.get("/:id", hasPermission("business.view"), getById);
+router.get(
+  "/:id",
+  requireBackOfficeRole,
+  hasPermission(businessAdminViewPermissions),
+  getById,
+);
 
 router.put(
   "/:id/approve",
-  hasPermission("business.approve"),
+  requireBackOfficeRole,
+  hasPermission(businessAdminApprovePermissions),
   validateBody(approveBusinessSchema),
   auditLog({
     action: "APPROVE",
@@ -142,7 +180,8 @@ router.put(
 
 router.put(
   "/:id/reject",
-  hasPermission("business.approve"),
+  requireBackOfficeRole,
+  hasPermission(businessAdminApprovePermissions),
   sanitizeBody(["rejectionReason"]),
   validateBody(rejectBusinessSchema),
   auditLog({
@@ -158,7 +197,8 @@ router.put(
 
 router.put(
   "/:id/suspend",
-  hasPermission("business.approve"),
+  requireBackOfficeRole,
+  hasPermission(businessAdminApprovePermissions),
   sanitizeBody(["suspensionReason"]),
   validateBody(suspendBusinessSchema),
   auditLog({
@@ -174,7 +214,8 @@ router.put(
 
 router.put(
   "/:id/reactivate",
-  hasPermission("business.approve"),
+  requireBackOfficeRole,
+  hasPermission(businessAdminApprovePermissions),
   auditLog({
     action: "REACTIVATE",
     tableName: "businesses",
@@ -185,7 +226,8 @@ router.put(
 
 router.put(
   "/:id/terminate",
-  hasPermission("business.approve"),
+  requireBackOfficeRole,
+  hasPermission(businessAdminApprovePermissions),
   sanitizeBody(["terminationReason"]),
   validateBody(terminateBusinessSchema),
   auditLog({

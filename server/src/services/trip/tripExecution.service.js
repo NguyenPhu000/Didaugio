@@ -1,24 +1,18 @@
+import crypto from "node:crypto";
 import prisma from "../../config/prismaClient.js";
 import ServiceError from "../../utils/serviceError.js";
 import { ERROR_CODES } from "../../config/messages.js";
+import { assertTripAccess, CAPABILITIES } from "./tripAccessPolicy.service.js";
 
-const VALID_PLAN_STATUSES = new Set([
-  "draft",
-  "planned",
-  "active",
-  "paused",
-  "completed",
-  "cancelled",
-  "archived",
-]);
+const payloadHash = (value) => crypto
+  .createHash("sha256")
+  .update(JSON.stringify(value))
+  .digest("hex");
 
-const toPlanStatus = (status) =>
-  VALID_PLAN_STATUSES.has(status) ? status : "planned";
-
-const addDays = (date, days) => {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
+const conflict = (message, code = "TRIP_SESSION_VERSION_CONFLICT") => {
+  const error = new ServiceError(message, 409, ERROR_CODES.CONFLICT || code);
+  error.errorCode = code;
+  return error;
 };
 
 export class TripExecutionService {
@@ -27,205 +21,139 @@ export class TripExecutionService {
   }
 
   async resolveTripPlan(userId, tripId) {
-    const directPlan = await this.prisma.tripPlan.findFirst({
-      where: { id: tripId, userId },
-    });
-    if (directPlan) return directPlan;
-
-    const existingShadow = await this.prisma.tripPlan.findFirst({
-      where: {
-        userId,
-        metadata: { path: ["legacyTripId"], equals: tripId },
-      },
-    });
-    if (existingShadow) return existingShadow;
-
-    const legacyTrip = await this.prisma.trip.findFirst({
-      where: { id: tripId, userId },
-      include: {
-        destinations: {
-          orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
-        },
-      },
-    });
-    if (!legacyTrip) return null;
-
-    const startDate = legacyTrip.startDate || new Date();
-    const endDate =
-      legacyTrip.endDate ||
-      addDays(startDate, Math.max(legacyTrip.totalDays || 1, 1) - 1);
-
-    return this.prisma.$transaction(async (tx) => {
-      const plan = await tx.tripPlan.create({
-        data: {
-          userId,
-          title: legacyTrip.title,
-          description: legacyTrip.description,
-          coverImage: legacyTrip.thumbnail,
-          startDate,
-          endDate,
-          totalDays: legacyTrip.totalDays || 1,
-          status: toPlanStatus(legacyTrip.status),
-          source: legacyTrip.isAiGenerated ? "ai_generated" : "imported",
-          estimatedCost: legacyTrip.estimatedCost,
-          totalDistanceM:
-            legacyTrip.totalDistance != null
-              ? Math.round(Number(legacyTrip.totalDistance) * 1000)
-              : null,
-          metadata: {
-            legacyTripId: legacyTrip.id,
-            createdFor: "active_trip_session",
-          },
-        },
-      });
-
-      if (legacyTrip.destinations.length > 0) {
-        await tx.tripStop.createMany({
-          data: legacyTrip.destinations.map((dest) => ({
-            tripId: plan.id,
-            placeId: dest.placeId,
-            dayNumber: dest.dayNumber,
-            sequence: dest.order,
-            note: dest.note,
-            plannedDate: addDays(startDate, Math.max(dest.dayNumber || 1, 1) - 1),
-            arrivalTime: dest.startTime,
-            departureTime: dest.endTime,
-            durationMinutes: dest.durationMinutes,
-            estimatedCost: dest.estimatedCost,
-            transportToNext: dest.transportToNext,
-            routeDistanceM:
-              dest.distanceToNext != null
-                ? Math.round(Number(dest.distanceToNext) * 1000)
-                : null,
-            fulfilledAt: dest.visitedAt,
-            fulfillmentStatus:
-              dest.status === "visited" ? "checked_in" : "pending",
-            metadata: { legacyDestinationId: dest.id },
-          })),
-        });
-      }
-
-      return plan;
-    });
+    const id = Number(tripId);
+    if (!Number.isInteger(id) || id <= 0) return null;
+    const plan = await this.prisma.tripPlan.findUnique({ where: { id } });
+    assertTripAccess(userId, plan, CAPABILITIES.EXECUTE);
+    return plan;
   }
 
-  async mapStopId(planId, currentStopId) {
-    if (!currentStopId) return null;
-
-    const directStop = await this.prisma.tripStop.findFirst({
+  async mapStopId(planId, currentStopId, tx = this.prisma) {
+    if (currentStopId == null) return null;
+    const stop = await tx.tripStop.findFirst({
       where: { id: Number(currentStopId), tripId: planId },
       select: { id: true },
     });
-    if (directStop) return directStop.id;
-
-    const shadowStop = await this.prisma.tripStop.findFirst({
-      where: {
-        tripId: planId,
-        metadata: {
-          path: ["legacyDestinationId"],
-          equals: Number(currentStopId),
-        },
-      },
-      select: { id: true },
-    });
-
-    return shadowStop?.id ?? null;
+    if (!stop) throw conflict("Điểm dừng không thuộc hành trình", "TRIP_STOP_MISMATCH");
+    return stop.id;
   }
 
   async upsertSession(userId, tripId, data = {}) {
-    const {
-      deviceId,
-      status = "active",
-      currentStopId,
-      lastKnownLat,
-      lastKnownLng,
-      lastKnownHeading,
-      visitedIds = [],
-    } = data;
-
-    const tripPlan = await this.resolveTripPlan(userId, tripId);
-    if (!tripPlan) {
+    const plan = await this.resolveTripPlan(userId, tripId);
+    if (!plan) {
+      throw new ServiceError("Không tìm thấy hành trình", 404, ERROR_CODES.NOT_FOUND);
+    }
+    const operationId = String(data.operationId || "").trim();
+    const baseVersion = Number(data.baseVersion);
+    if (!operationId || !Number.isInteger(baseVersion) || baseVersion < 0) {
       throw new ServiceError(
-        "Khong tim thay hanh trinh du lich hoac ban khong co quyen truy cap",
-        404,
-        ERROR_CODES.NOT_FOUND,
+        "operationId và baseVersion là bắt buộc",
+        400,
+        ERROR_CODES.VALIDATION_ERROR,
       );
     }
+    const hash = payloadHash({ ...data, operationId: undefined });
 
-    const existing = await this.prisma.tripExecutionSession.findFirst({
-      where: { tripId: tripPlan.id, userId },
-    });
-
-    const sessionData = {
-      deviceId,
-      status,
-      currentStopId: await this.mapStopId(tripPlan.id, currentStopId),
-      lastKnownLat: lastKnownLat != null ? parseFloat(lastKnownLat) : null,
-      lastKnownLng: lastKnownLng != null ? parseFloat(lastKnownLng) : null,
-      lastKnownHeading:
-        lastKnownHeading != null ? parseFloat(lastKnownHeading) : null,
-      lastSyncAt: new Date(),
-      metadata: {
-        clientTripId: tripId,
-        visitedIds,
-      },
-    };
-
-    if (status === "paused") {
-      sessionData.pausedAt = new Date();
-    } else if (status === "active") {
-      sessionData.resumedAt = new Date();
-    } else if (status === "completed" || status === "cancelled") {
-      sessionData.endedAt = new Date();
-    }
-
-    if (existing) {
-      return this.prisma.tripExecutionSession.update({
-        where: { id: existing.id },
-        data: sessionData,
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.tripExecutionSession.findFirst({
+        where: { tripId: plan.id, userId },
       });
-    }
 
-    return this.prisma.tripExecutionSession.create({
-      data: {
-        tripId: tripPlan.id,
-        userId,
-        startedAt: new Date(),
-        ...sessionData,
-      },
+      if (existing) {
+        await tx.$queryRaw`SELECT id FROM trip_execution_sessions WHERE id = ${existing.id} FOR UPDATE`;
+        const replay = await tx.tripExecutionOperation.findUnique({
+          where: { sessionId_operationId: { sessionId: existing.id, operationId } },
+        });
+        if (replay) {
+          if (replay.payloadHash !== hash) {
+            throw conflict("operationId đã được dùng cho nội dung khác", "TRIP_OPERATION_CONFLICT");
+          }
+          return tx.tripExecutionSession.findUnique({ where: { id: existing.id } });
+        }
+        const current = await tx.tripExecutionSession.findUnique({ where: { id: existing.id } });
+        if (baseVersion !== current.clientStateVersion) {
+          throw conflict("Phiên trên thiết bị đã cũ hơn server");
+        }
+        const nextVersion = current.clientStateVersion + 1;
+        const session = await tx.tripExecutionSession.update({
+          where: { id: current.id },
+          data: this.buildSessionData(plan.id, data, nextVersion, await this.mapStopId(plan.id, data.currentStopId, tx)),
+        });
+        await tx.tripExecutionOperation.create({
+          data: {
+            sessionId: session.id,
+            tripId: plan.id,
+            userId,
+            operationId,
+            baseVersion,
+            nextVersion,
+            payloadHash: hash,
+          },
+        });
+        return session;
+      }
+
+      if (baseVersion !== 0) throw conflict("Phiên chưa tồn tại; baseVersion phải bằng 0");
+      const session = await tx.tripExecutionSession.create({
+        data: {
+          tripId: plan.id,
+          userId,
+          startedAt: new Date(),
+          ...this.buildSessionData(plan.id, data, 1, await this.mapStopId(plan.id, data.currentStopId, tx)),
+        },
+      });
+      await tx.tripExecutionOperation.create({
+        data: {
+          sessionId: session.id,
+          tripId: plan.id,
+          userId,
+          operationId,
+          baseVersion: 0,
+          nextVersion: 1,
+          payloadHash: hash,
+        },
+      });
+      return session;
     });
   }
 
-  async getSession(userId, tripId) {
-    const tripPlan = await this.resolveTripPlan(userId, tripId);
-    if (!tripPlan) return null;
+  buildSessionData(_tripId, data, version, currentStopId) {
+    const now = new Date();
+    const result = {
+      deviceId: data.deviceId || null,
+      status: data.status || "active",
+      lastKnownLat: data.lastKnownLat == null ? null : Number(data.lastKnownLat),
+      lastKnownLng: data.lastKnownLng == null ? null : Number(data.lastKnownLng),
+      lastKnownHeading: data.lastKnownHeading == null ? null : Number(data.lastKnownHeading),
+      lastSyncAt: now,
+      clientStateVersion: version,
+      metadata: { visitedIds: Array.isArray(data.visitedIds) ? data.visitedIds : [] },
+    };
+    if (data.currentStopId !== undefined) result.currentStopId = currentStopId;
+    if (result.status === "paused") result.pausedAt = now;
+    if (result.status === "active") result.resumedAt = now;
+    if (["completed", "cancelled"].includes(result.status)) result.endedAt = now;
+    return result;
+  }
 
+  async getSession(userId, tripId) {
+    const plan = await this.resolveTripPlan(userId, tripId);
+    if (!plan) return null;
     return this.prisma.tripExecutionSession.findFirst({
-      where: { tripId: tripPlan.id, userId },
-      include: {
-        currentStop: {
-          include: { place: true },
-        },
-      },
+      where: { tripId: plan.id, userId },
+      include: { currentStop: { include: { place: true } } },
     });
   }
 
   async endSession(userId, tripId, status = "completed") {
-    const tripPlan = await this.resolveTripPlan(userId, tripId);
-    if (!tripPlan) return null;
-
+    const plan = await this.resolveTripPlan(userId, tripId);
     const existing = await this.prisma.tripExecutionSession.findFirst({
-      where: { tripId: tripPlan.id, userId },
+      where: { tripId: plan.id, userId },
     });
     if (!existing) return null;
-
     return this.prisma.tripExecutionSession.update({
       where: { id: existing.id },
-      data: {
-        status,
-        endedAt: new Date(),
-        lastSyncAt: new Date(),
-      },
+      data: { status, endedAt: new Date(), lastSyncAt: new Date() },
     });
   }
 }

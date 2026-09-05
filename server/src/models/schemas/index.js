@@ -11,6 +11,7 @@ export {
   resendVerificationPublicSchema,
   loginGoogleSchema,
   logoutSchema,
+  browserLogoutSchema,
   revokeSessionParamSchema,
   updateProfileSchema,
 } from "./auth/auth.schema.js";
@@ -35,6 +36,7 @@ export * from "./rbac/roleRoute.schema.js";
 export * from "./rbac/permissionRoute.schema.js";
 export * from "./category/category.schema.js";
 export * from "./tag/tag.schema.js";
+export * from "./tag/tagGroup.schema.js";
 export * from "./place/place.schema.js";
 export * from "./business/business.schema.js";
 export * from "./business/staffInvitation.schema.js";
@@ -52,3 +54,6 @@ export * from "./trip/trip.schema.js";
 export * from "./event/event.schema.js";
 export * from "./banner/banner.schema.js";
 export * from "./payment/payment.schema.js";
+export * from "./location/location.schema.js";
+export * from "./ai/ai.schema.js";
+export * from "./adminAi/index.js";

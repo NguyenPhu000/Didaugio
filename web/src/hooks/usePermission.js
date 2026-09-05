@@ -80,6 +80,16 @@ export function usePermission() {
     return false;
   };
 
+  const canEditRolePermissions = (roleId) => {
+    const targetRoleId = Number(roleId);
+    if (targetRoleId === ROLES.SUPER_ADMIN) return false;
+    if (currentRoleId === ROLES.SUPER_ADMIN) return true;
+    if (currentRoleId === ROLES.ADMIN) {
+      return [ROLES.BUSINESS, ROLES.STAFF, ROLES.USER].includes(targetRoleId);
+    }
+    return false;
+  };
+
   return {
     hasPermission,
     hasAnyPermission,
@@ -87,6 +97,7 @@ export function usePermission() {
     hasFeature,
     canUseLimit,
     canAssignRole,
+    canEditRolePermissions,
     isSuperAdmin,
     isAdmin,
     isBusiness,

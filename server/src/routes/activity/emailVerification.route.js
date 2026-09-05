@@ -2,6 +2,7 @@ import express from "express";
 import * as emailVerificationController from "../../controllers/activity/emailVerification.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import { validateParams } from "../../middlewares/validateSchema.js";
 import { idSchema } from "../../models/index.js";
 import { z } from "zod";
@@ -24,6 +25,7 @@ const router = express.Router();
 router.get(
   "/",
   authenticate,
+  requireBackOfficeRole,
   hasPermission("email_verification.view"),
   emailVerificationController.getAll,
 );
@@ -37,6 +39,7 @@ router.get(
 router.post(
   "/",
   authenticate,
+  requireBackOfficeRole,
   hasPermission("email_verification.create"),
   emailVerificationController.create,
 );
@@ -49,6 +52,7 @@ router.post(
 router.post(
   "/resend/:userId",
   authenticate,
+  requireBackOfficeRole,
   hasPermission("email_verification.create"),
   validateParams(z.object({ userId: idSchema })),
   emailVerificationController.resend,
@@ -62,6 +66,7 @@ router.post(
 router.post(
   "/manual-verify/:userId",
   authenticate,
+  requireBackOfficeRole,
   hasPermission("email_verification.create"),
   validateParams(z.object({ userId: idSchema })),
   emailVerificationController.manualVerify,

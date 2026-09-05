@@ -3,6 +3,7 @@
     "save": "Lưu",
     "cancel": "Hủy",
     "close": "Đóng",
+    "offline": "Không có kết nối mạng",
     "confirm": "Xác nhận",
     "delete": "Xóa",
     "edit": "Chỉnh sửa",
@@ -33,6 +34,7 @@
     "optional": "Tùy chọn",
     "free": "Miễn phí",
     "appName": "iPoint Genie",
+    "appTagline": "Trợ lý hành trình thông minh",
     "offline": "Bạn đang offline — Hiển thị dữ liệu đã lưu",
     "days": "ngày",
     "people": "người",
@@ -61,7 +63,7 @@
     "login": {
       "title": "ĐĂNG NHẬP",
       "subtitle": "TRUY CẬP HỆ THỐNG",
-      "brandTagline": "Khám Phá Cần Thơ theo cách của bạn",
+      "brandTagline": "Khám Phá Cần Thơ theo cách của bạn nhó",
       "emailOrUsername": "Email hoặc tên đăng nhập",
       "password": "Mật khẩu",
       "rememberMe": "GHI NHỚ ĐĂNG NHẬP",
@@ -91,7 +93,11 @@
       "hasAccount": "Đã có tài khoản?",
       "loginNow": "Đăng nhập ngay",
       "success": "Đăng ký thành công!",
-      "failed": "Đăng ký thất bại"
+      "failed": "Đăng ký thất bại",
+      "strengthWeak": "Yếu",
+      "strengthFair": "Trung bình",
+      "strengthGood": "Tốt",
+      "strengthStrong": "Mạnh"
     },
     "forgotPassword": {
       "title": "QUÊN MẬT KHẨU",
@@ -117,6 +123,18 @@
     }
   },
   "onboarding": {
+    "welcomeTitle": "Chào mừng đến với iPoint Genie!",
+    "welcomeSubtitle": "Khám phá Cần Thơ theo cách của riêng bạn cùng trợ lý AI thông minh.",
+    "stepLabel": "Bước {{current}}/{{total}}",
+    "features": {
+      "aiTitle": "Trợ lý AI Genie",
+      "aiDesc": "Lên kế hoạch thông minh, gợi ý địa điểm phù hợp",
+      "mapTitle": "Bản đồ trực quan",
+      "mapDesc": "Khám phá địa điểm với bản đồ chi tiết và chỉ đường",
+      "exploreTitle": "Khám phá đa dạng",
+      "exploreDesc": "Ăn uống, du lịch, vui chơi, mua sắm và nhiều hơn nữa"
+    },
+    "selectMultiple": "Có thể chọn nhiều phong cách",
     "travelStyleTitle": "Bạn thích du lịch kiểu gì? 🌴",
     "travelStyleSubtitle": "Chọn những phong cách bạn yêu thích (có thể chọn nhiều)",
     "groupTitle": "Đi du lịch với ai? 👥",
@@ -132,7 +150,8 @@
       "greeting": "Bạn muốn khám phá gì hôm nay?",
       "subtitle": "Chọn danh mục, xem địa điểm nổi bật và bắt đầu hành trình tại Cần Thơ.",
       "searchPlaceholder": "Tìm địa điểm, món ăn, hoạt động...",
-      "location": "Cần Thơ"
+      "location": "Cần Thơ",
+      "searchHint": "Mở tìm kiếm và bộ lọc địa điểm"
     },
     "categories": {
       "all": "Tất cả"
@@ -170,6 +189,11 @@
       "noResults": "Không tìm thấy kết quả",
       "noPlacesDesc": "Hãy quay lại sau hoặc thử đổi danh mục khác.",
       "noResultsDesc": "Thử danh mục khác hoặc tìm kiếm theo tên."
+    },
+    "error": {
+      "title": "Không tải được địa điểm",
+      "description": "Kiểm tra kết nối rồi thử lại.",
+      "retry": "Thử lại"
     },
     "search": {
       "placeholder": "Tìm địa điểm, quán ăn, điểm vui chơi...",
@@ -219,7 +243,15 @@
       "viewAll": "Xem tất cả",
       "featuredBadge": "SỰ KIỆN NỔI BẬT",
       "onlineCount": "{{count}} ĐANG ONLINE",
-      "viewNow": "Xem ngay"
+      "viewNow": "Xem ngay",
+      "eyebrow": "CỘNG ĐỒNG",
+      "live": "LIVE",
+      "subtitle": "Tham gia, check-in và đi cùng mọi người",
+      "kicker": "Sự kiện cộng đồng",
+      "defaultDescription": "Cùng khám phá và gặp gỡ cộng đồng",
+      "participantLabel": "tham gia",
+      "checkInLabel": "check-in",
+      "legLabel": "chặng"
     },
     "sampleTrip": {
       "adventure": "Phiêu lưu",
@@ -230,7 +262,15 @@
       "budget": "Tiết kiệm",
       "luxury": "Cao cấp",
       "days": "{{count}} ngày",
-      "from": "Từ {{price}}"
+      "legs": "{{count}} chặng dừng",
+      "from": "Từ {{price}}",
+      "badge": "LỊCH TRÌNH MẪU • {{location}}",
+      "defaultTitle": "Hành trình trải nghiệm Cần Thơ",
+      "defaultRoute": "Khám phá vẻ đẹp Cần Thơ theo nhịp riêng",
+      "sectionTitle": "Lịch trình gợi ý",
+      "sectionBadge": "Hot",
+      "sectionSubtitle": "Khám phá Cần Thơ trọn vẹn cùng các gợi ý tối ưu",
+      "viewAll": "Tất cả"
     },
     "headerBrand": "iPoint Genie",
     "headerGreeting": "Xin chào, {{name}}",
@@ -238,7 +278,34 @@
     "cmsFallbackTitle": "Khám phá Cần Thơ",
     "cmsFallbackDesc": "Khám phá hàng trăm địa điểm hấp dẫn tại Cần Thơ",
     "heroBadge": "ĐỀ XUẤT CHO BẠN",
-    "heroExplore": "Khám phá"
+    "heroExplore": "Khám phá",
+    "announcement": {
+      "info": "CẬP NHẬT",
+      "warning": "LƯU Ý",
+      "success": "CẬP NHẬT",
+      "error": "KHẨN",
+      "details": "Xem chi tiết",
+      "collapse": "Thu gọn",
+      "dismiss": "Đóng thông báo",
+      "toggleHint": "Mở rộng hoặc thu gọn thông báo"
+    },
+    "accessibility": {
+      "clearCategory": "Xóa bộ lọc danh mục",
+      "openPlace": "Mở chi tiết địa điểm",
+      "savePlace": "Lưu {{name}}",
+      "unsavePlace": "Bỏ lưu {{name}}",
+      "saveHint": "Lưu địa điểm để xem lại sau",
+      "openEvent": "Mở chi tiết sự kiện",
+      "openTrip": "Mở chi tiết hành trình",
+      "openBanner": "Mở đề xuất nổi bật",
+      "clearSearch": "Xóa nội dung tìm kiếm"
+    },
+    "sheet": {
+      "place": "Địa điểm",
+      "allPlaces": "Tất cả địa điểm",
+      "placeCount": "{{count}} địa điểm",
+      "openPlace": "Khám phá địa điểm"
+    }
   },
   "saved": {
     "title": "Yêu thích",
@@ -357,9 +424,17 @@
     "clearCacheConfirm": "Xóa",
     "clearCacheSuccess": "Xong!",
     "clearCacheSuccessMessage": "Cache đã được xóa thành công.",
+    "clearCacheError": "Không thể xóa cache. Vui lòng thử lại.",
     "legal": "Pháp lý",
     "privacyPolicy": "Chính sách bảo mật",
     "termsOfService": "Điều khoản dịch vụ",
+    "legalUnavailable": "Trang pháp lý hiện chưa khả dụng.",
+    "deleteAccount": "Xóa tài khoản",
+    "deleteAccountSubtitle": "Xóa vĩnh viễn tài khoản và dữ liệu cá nhân",
+    "deleteAccountTitle": "Xóa tài khoản?",
+    "deleteAccountMessage": "Thao tác này xóa hồ sơ cá nhân, phiên đăng nhập, dữ liệu đã lưu và chuyến đi. Dữ liệu thanh toán và booking bắt buộc lưu sẽ được ẩn danh.",
+    "deleteAccountConfirm": "Xóa tài khoản",
+    "deleteAccountError": "Không thể xóa tài khoản. Vui lòng thử lại.",
     "appVersion": "Phiên bản ứng dụng",
     "logout": "Đăng xuất",
     "logoutConfirmTitle": "Đăng xuất?",
@@ -412,15 +487,16 @@
     "viewDetail": "Xem chi tiết booking"
   },
   "bookingTicket": {
-    "notAvailable": "Chua co thong tin",
-    "quantityValue": "{{count}} khach",
-    "location": "Dia diem",
-    "date": "Ngay",
-    "time": "Gio",
-    "quantity": "So khach",
-    "address": "Dia chi",
-    "total": "Tong tien",
-    "qrPending": "QR mo sau khi booking duoc xac nhan"
+    "notAvailable": "Chưa có thông tin",
+    "quantityValue": "{{count}} khách",
+    "quantityValue_plural": "{{count}} khách",
+    "location": "Địa điểm",
+    "date": "Ngày",
+    "time": "Giờ",
+    "quantity": "Số khách",
+    "address": "Địa chỉ",
+    "total": "Tổng tiền",
+    "qrPending": "QR mở sau khi booking được xác nhận"
   },
   "bookingDetail": {
     "title": "Chi tiết booking",
@@ -432,6 +508,7 @@
     "qrTitle": "Mã QR check-in",
     "qrDescription": "Quét mã này tại địa điểm để xác nhận booking.",
     "qrLoading": "Đang tải mã QR...",
+    "loadingQR": "Đang tải mã QR...",
     "qrNotLoaded": "Chưa tải được mã QR.",
     "qrUnavailable": "QR không khả dụng cho booking này.",
     "qrPending": "QR sẽ xuất hiện khi booking được xác nhận.",
@@ -537,10 +614,13 @@
       "place": "Địa điểm",
       "service": "Dịch vụ",
       "quantity": "Số lượng",
+      "resource": "Tài nguyên",
+      "selectResource": "Chọn tài nguyên",
       "usageDate": "Ngày sử dụng",
       "selectTime": "Chọn giờ sử dụng",
       "selected": "Đã chọn",
-      "notSelected": "Chưa chọn"
+      "notSelected": "Chưa chọn",
+      "today": "Hôm nay"
     },
     "timeGroups": {
       "morning": "Sáng",
@@ -568,7 +648,23 @@
       "contact": "Liên hệ",
       "depositLabel": "Tiền cọc: {{amount}}",
       "refundable": "Hoàn được {{percent}}%",
-      "nonRefundable": "Không hoàn tiền"
+      "nonRefundable": "Không hoàn tiền",
+      "finalTotal": "Thành tiền (sau giảm)"
+    },
+    "voucher": {
+      "title": "Mã giảm giá (Voucher)",
+      "placeholder": "Nhập mã (VD: CANTHO2026)",
+      "apply": "ÁP DỤNG",
+      "remove": "Bỏ voucher",
+      "validating": "Đang kiểm tra mã...",
+      "invalid": "Mã không hợp lệ hoặc không áp dụng được",
+      "discountLabel": "Đã giảm {{amount}}",
+      "discountApplied": "Voucher {{code}}",
+      "showList": "Có {{count}} mã khả dụng",
+      "hideList": "Ẩn danh sách",
+      "upTo": "(tối đa {{amount}})",
+      "minOrder": "Đơn tối thiểu {{amount}}",
+      "expires": "HSD: {{date}}"
     },
     "submitRequest": "Gửi yêu cầu đặt chỗ",
     "payAtPlace": "Thanh toán tại địa điểm",
@@ -582,6 +678,10 @@
       "note": "Yêu cầu đặc biệt (tùy chọn)"
     },
     "timeSlotsCount": "{{count}} khung giờ khả dụng",
+    "resources": {
+      "required": "Vui lòng chọn tài nguyên trước khi tiếp tục.",
+      "noneAvailable": "Không có tài nguyên khả dụng cho dịch vụ này."
+    },
     "slotUnavailableWarning": "Khung giờ này đã qua. Vui lòng chọn khung giờ khác.",
     "tripDescription": {
       "withService": "Đã đặt dịch vụ: {{service}}",
@@ -607,6 +707,10 @@
       "selectTrip": {
         "title": "Chọn một trip",
         "message": "Vui lòng chọn trip để liên kết booking này."
+      },
+      "resourceRequired": {
+        "title": "Cần chọn tài nguyên",
+        "message": "Vui lòng chọn tài nguyên khả dụng trước khi đặt chỗ."
       }
     },
     "errors": {
@@ -696,6 +800,8 @@
       "topRating": "Đánh giá nổi bật",
       "new": "Mới",
       "about": "Giới thiệu",
+      "listenGuide": "Nghe hướng dẫn bằng giọng nói",
+      "stopGuide": "Dừng hướng dẫn bằng giọng nói",
       "practicalInfo": "Thông tin địa điểm",
       "tagLabel": "Tag",
       "contactSection": "Liên hệ",
@@ -704,6 +810,7 @@
       "emailLabel": "Email",
       "facebookLabel": "Facebook",
       "openingHoursLabel": "Giờ mở cửa",
+      "viewWeeklyHours": "Xem giờ mở cửa cả tuần",
       "reviewsSection": "Đánh giá",
       "seeAllReviews": "Xem tất cả {{count}} đánh giá",
       "mapButton": "Bản đồ",
@@ -1230,6 +1337,7 @@
     "createTripAccessibility": "Tạo chuyến đi mới",
     "upcoming": "Sắp tới",
     "newTrip": "Chuyến đi mới",
+    "completedStamp": "ĐÃ HOÀN THÀNH",
     "destinations": "{{count}} điểm đến",
     "createFirst": "Tạo chuyến đi đầu tiên",
     "startExploring": "Bắt đầu hành trình khám phá thế giới của bạn",
@@ -1408,6 +1516,12 @@
     "details": "Chi tiết",
     "createFromSelection": "Tạo lịch trình từ lựa chọn",
     "creatingTrip": "Đang tạo chuyến đi...",
+    "tripCreatedSuccess": "Đã tạo lịch trình thành công!",
+    "viewCreatedTrip": "Xem chuyến đi vừa tạo",
+    "creatingTripProgress": "Đang khởi tạo lịch trình Cần Thơ...",
+    "stepAggregatePlaces": "Đang tổng hợp các địa điểm đã chọn",
+    "stepOptimizeRoute": "Đang tối ưu lộ trình & khoảng cách di chuyển",
+    "stepFinalizeTrip": "Đang lưu chuyến đi vào tài khoản của bạn",
     "suggestingPlaces": "Đang gợi ý địa điểm...",
     "processing": "Đang xử lý...",
     "inputPlaceholder": "Mô tả kế hoạch bạn muốn...",
@@ -1479,7 +1593,8 @@
     "estimatedCost": "Chi phí ~{{cost}} đ",
     "selectingCountShort": "Đang chọn: {{count}} địa điểm.",
     "previewMessage": "Em Genie đã lên khung lịch trình {{totalDays}} ngày và gợi ý {{suggestedCount}} địa điểm.",
-    "previewInstruction": "Bạn chọn địa điểm phía dưới rồi bấm **Chốt & tạo chuyến đi**."
+    "previewInstruction": "Bạn chọn địa điểm phía dưới rồi bấm **Chốt & tạo chuyến đi**.",
+    "newTopic": "Chủ đề mới"
   },
   "chatPanel": {
     "confirmDelete": "Xóa lịch sử chat?",
@@ -1703,7 +1818,25 @@
     "resume": "Tiếp tục",
     "previewTitle": "Xem trước cung đường",
     "previewSummary": "{{count}} địa điểm • {{segments}} chặng đường",
+    "previewSummaryFull": "{{count}} điểm đến · {{segments}} chặng · {{distance}} · {{duration}}",
+    "previewMinutes": "{{minutes}} phút",
+    "previewHoursMinutes": "{{hours}} giờ {{minutes}} phút",
+    "previewApproximateMinutes": "khoảng {{minutes}} phút",
+    "previewApproximateHoursMinutes": "khoảng {{hours}} giờ {{minutes}} phút",
     "previewFallback": "Một vài chặng đang dùng tuyến ước tính. Hãy kiểm tra cung đường trước khi bắt đầu.",
+    "previewFallbackCount": "{{count}} chặng dùng tuyến ước tính. Hãy kiểm tra trước khi bắt đầu.",
+    "previewReviewHint": "Kiểm tra thứ tự các điểm trước khi bắt đầu dẫn đường.",
+    "previewStartPoint": "Điểm khởi hành",
+    "previewStartHere": "Bắt đầu từ đây",
+    "previewStartButton": "Bắt đầu",
+    "previewDayTab": "Ngày {{day}}",
+    "previewToday": "Hôm nay",
+    "previewExpired": "Đã hết hạn",
+    "previewExpiredMessage": "Hành trình ngày {{date}} đã quá hạn",
+    "previewExpiredCta": "Đã hết hạn",
+    "previewAvailableFrom": "Có thể bắt đầu từ ngày {{date}}",
+    "previewEstimatedSegment": "Tuyến ước tính • {{distance}}",
+    "previewDistancePending": "Đang tính quãng đường",
     "previewNoStops": "Chuyến đi này chưa có địa điểm hợp lệ để dẫn đường.",
     "startGuidance": "Bắt đầu dẫn đường",
     "pauseJourney": "Tạm nghỉ",
@@ -1713,7 +1846,14 @@
     "map": "Bản đồ",
     "satellite": "Vệ tinh",
     "complete": "Hoàn tất",
-    "paused": "Tạm nghỉ"
+    "paused": "Tạm nghỉ",
+    "locationPermissionTitle": "Yêu cầu quyền vị trí",
+    "locationPermissionMessage": "Vui lòng cấp quyền vị trí trong Cài đặt để ứng dụng có thể dẫn đường thời gian thực.",
+    "locationPermissionCardTitle": "Bật vị trí để dẫn đường",
+    "locationPermissionCardMessage": "iPoint Genie cần quyền vị trí để cập nhật vị trí của bạn và hướng dẫn theo thời gian thực.",
+    "locationPermissionCancel": "Hủy",
+    "locationPermissionLater": "Để sau",
+    "locationPermissionOpenSettings": "Mở Cài đặt"
   },
   "travelMode": {
     "motorbike": "Xe máy",

@@ -1,8 +1,12 @@
-  import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// MAP: PlaceDetailScreen
+// ├── UI: @/modules/place/components/{PlaceHeroGallery, PlaceHeaderInfo, PlaceBookingCtaBar, PlaceOpeningHoursSheet, ReviewComposerSheet, AllReviewsSheet, TripSelectorSheet}
+// └── API: @/modules/place/hooks/usePlaceDetail, @/modules/saved/hooks/useSaved
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
   import {
-    Alert,
     FlatList,
     Linking,
+    Platform,
     Pressable,
     ScrollView,
     Text,
@@ -12,7 +16,7 @@
   import Animated, { FadeInDown } from "react-native-reanimated";
   import { useLocalSearchParams, useRouter } from "expo-router";
   import { Image } from "expo-image";
-  import { MaterialCommunityIcons } from "@expo/vector-icons";
+  import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
   import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
   import BottomSheet from "@gorhom/bottom-sheet";
   import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,7 +34,6 @@
     useUnsavePlace,
   } from "../../src/modules/saved/hooks/useSaved";
   import {
-    OpeningHours,
     DetailRow,
   } from "../../src/modules/place/components/PlaceDetailComponents";
   import { useAuthStore } from "../../src/stores/authStore";
@@ -49,7 +52,10 @@
   import {
     PALETTE,
     formatReviewCount,
+    PLACE_SHEET_BACKGROUND,
+    PLACE_SHEET_INDICATOR,
   } from "../../src/modules/place/constants/placeSheetConstants";
+  import { PlaceOpeningHoursSheet } from "../../src/modules/place/components/PlaceOpeningHoursSheet";
   import { TripSelectorSheet } from "../../src/modules/place/components/TripSelectorSheet";
   import { ReviewComposerSheetContent } from "../../src/modules/place/components/ReviewComposerSheet";
   import {
@@ -63,6 +69,8 @@
     shouldShowBookingCta,
   } from "../../src/modules/place/utils/spokenGuide";
   import { getReviewSubmissionError } from "../../src/modules/place/utils/reviewSubmissionError";
+  import { trackPlaceTelemetryApi } from "../../src/modules/place/api/placeApi";
+  import { showAppAlert } from "../../src/utils/appAlert";
 
   const MAIN_REVIEW_LIMIT = 2;
   const MAX_GALLERY_IMAGES = 8;
@@ -75,19 +83,6 @@
   const ICON_BUTTON_SHADOW = TOKENS.shadow.md;
   const BOTTOM_BAR_SHADOW = TOKENS.shadow.lg;
   const INTRO_SPEECH_KEY = "intro";
-
-  const SHEET_BACKGROUND = {
-    backgroundColor: PALETTE.surface,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderColor: PALETTE.border,
-  };
-
-  const SHEET_INDICATOR = {
-    backgroundColor: "rgba(0, 0, 0, 0.18)",
-    width: 36,
-  };
 
   function getAddressLine(place) {
     return [place?.address, place?.ward?.name, place?.district?.name]
@@ -122,7 +117,7 @@
     if (todayHours.isClosed) {
       return {
         label: t("place.detail.closedToday"),
-        color: "#EF4444",
+        color: TOKENS.color.semantic.danger,
         icon: "do-not-disturb-on",
       };
     }
@@ -210,6 +205,7 @@
       isLoading,
       isError,
       error,
+      refetch,
     } = usePlaceDetail(placeIdentifier);
     const resolvedPlaceId = useMemo(() => {
       const parsed = Number(place?.id);
@@ -229,10 +225,25 @@
     const [isSavedLocal, setIsSavedLocal] = useState(false);
     const [tripSheetKey, setTripSheetKey] = useState(0);
     const [activeSpeechKey, setActiveSpeechKey] = useState(null);
+    const viewedPlaceIdRef = useRef(null);
+
+    const trackPlaceAction = useCallback((action) => {
+      if (!resolvedPlaceId) return;
+
+      void trackPlaceTelemetryApi(resolvedPlaceId, action, Platform.OS).catch(() => {
+        // Analytics must never block a visitor's primary action.
+      });
+    }, [resolvedPlaceId]);
 
     useEffect(() => {
       setIsSavedLocal(Boolean(place?.isSaved));
     }, [place?.id, place?.isSaved]);
+
+    useEffect(() => {
+      if (!resolvedPlaceId || viewedPlaceIdRef.current === resolvedPlaceId) return;
+      viewedPlaceIdRef.current = resolvedPlaceId;
+      trackPlaceAction("VIEW");
+    }, [resolvedPlaceId, trackPlaceAction]);
 
     // Task 3 Step 1: Speech lifecycle cleanup
     const stopSpeech = useCallback(() => {
@@ -272,17 +283,18 @@
 
     const handleSaveToggle = useCallback(async () => {
       if (!accessToken) {
-        Alert.alert(
-          t("common.loginRequired"),
-          t("place.detail.loginToSave"),
-          [
+        showAppAlert({
+          title: t("common.loginRequired"),
+          message: t("place.detail.loginToSave"),
+          type: "confirm",
+          buttons: [
             { text: t("common.later"), style: "cancel" },
             {
               text: t("common.login"),
               onPress: () => router.push("/(auth)/login"),
             },
           ],
-        );
+        });
         return;
       }
 
@@ -317,6 +329,7 @@
     }, [accessToken, place, isSavedLocal, unsaveMutation, saveMutation, addToast, router, t]);
 
     const handleNavigate = useCallback(() => {
+      trackPlaceAction("DIRECTION");
       if (place?.latitude && place?.longitude) {
         router.push({
           pathname: "/(tabs)/map",
@@ -336,23 +349,24 @@
           params: { search: String(place.name || place.address) },
         });
       }
-    }, [place, router]);
+    }, [place, router, trackPlaceAction]);
 
     const handleAddToTrip = useCallback(() => {
       if (!place?.id) return;
 
       if (!accessToken) {
-        Alert.alert(
-          t("common.loginRequired"),
-          t("place.detail.loginToAddToTrip"),
-          [
+        showAppAlert({
+          title: t("common.loginRequired"),
+          message: t("place.detail.loginToAddToTrip"),
+          type: "confirm",
+          buttons: [
             { text: t("common.later"), style: "cancel" },
             {
               text: t("common.login"),
               onPress: () => router.push("/(auth)/login"),
             },
           ],
-        );
+        });
         return;
       }
       setTripSheetKey((prev) => prev + 1);
@@ -361,37 +375,40 @@
 
     const handleGetTicket = useCallback(() => {
       if (!accessToken) {
-        Alert.alert(
-          t("common.loginRequired"),
-          t("place.detail.loginToBook"),
-          [
+        showAppAlert({
+          title: t("common.loginRequired"),
+          message: t("place.detail.loginToBook"),
+          type: "confirm",
+          buttons: [
             { text: t("common.later"), style: "cancel" },
             {
               text: t("common.login"),
               onPress: () => router.push("/(auth)/login"),
             },
           ],
-        );
+        });
         return;
       }
 
       if (!place?.id) return;
+      trackPlaceAction("BOOKING_CLICK");
       router.push(`/booking/${place.id}`);
-    }, [accessToken, place?.id, router, t]);
+    }, [accessToken, place?.id, router, t, trackPlaceAction]);
 
     const handleOpenReviewComposer = useCallback(() => {
       if (!accessToken) {
-        Alert.alert(
-          t("common.loginRequired"),
-          t("place.detail.loginToWriteReview"),
-          [
+        showAppAlert({
+          title: t("common.loginRequired"),
+          message: t("place.detail.loginToWriteReview"),
+          type: "confirm",
+          buttons: [
             { text: t("common.later"), style: "cancel" },
             {
               text: t("common.login"),
               onPress: () => router.push("/(auth)/login"),
             },
           ],
-        );
+        });
         return;
       }
       writeReviewSheetRef.current?.expand();
@@ -402,20 +419,24 @@
         try {
           await createReviewMutation.mutateAsync(payload);
           writeReviewSheetRef.current?.close();
-          Alert.alert(
-            t("place.detail.reviewSubmitted"),
-            t("place.detail.reviewSubmittedDesc"),
-          );
+          showAppAlert({
+            title: t("place.detail.reviewSubmitted"),
+            message: t("place.detail.reviewSubmittedDesc"),
+            type: "success",
+            buttons: [{ text: t("common.close") }],
+          });
         } catch (error) {
           const submissionError = getReviewSubmissionError(error);
-          Alert.alert(
-            submissionError.kind === "cooldown"
+          showAppAlert({
+            title: submissionError.kind === "cooldown"
               ? t("place.detail.reviewCooldownTitle")
               : t("common.error"),
-            submissionError.kind === "cooldown"
+            message: submissionError.kind === "cooldown"
               ? t("place.detail.reviewCooldownMessage")
               : submissionError.message || t("place.detail.reviewSubmitError"),
-          );
+            type: "error",
+            buttons: [{ text: t("common.close") }],
+          });
         }
       },
       [createReviewMutation, t],
@@ -491,19 +512,52 @@
     if (isError || !place) {
       return (
         <View className="flex-1 items-center justify-center px-8 gap-3.5 bg-white">
-          <View className="w-[88px] h-[88px] rounded-[28px] items-center justify-center bg-[#FDECEC]">
+          <View
+            className="w-[88px] h-[88px] rounded-[28px] items-center justify-center"
+            style={{ backgroundColor: TOKENS.color.semantic.dangerSurface }}
+          >
             <MaterialIconsRounded
               name="error-outline"
               size={40}
-              color="#EF4444"
+              color={TOKENS.color.semantic.danger}
             />
           </View>
           <Text
-            className="text-xl leading-7 text-center  "
+            className="text-xl leading-7 text-center"
             style={{ color: PALETTE.text, fontFamily: TOKENS.font.heading }}
           >
             {error?.message || t("place.notFound")}
           </Text>
+          <View className="w-full flex-row gap-2.5 pt-2">
+            <Pressable
+              onPress={() => router.back()}
+              className="h-11 flex-1 items-center justify-center rounded-[14px] border border-slate-200 bg-white active:opacity-75"
+              style={{ borderCurve: "continuous" }}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.back")}
+            >
+              <Text
+                className="text-[14px]"
+                style={{ color: PALETTE.text, fontFamily: TOKENS.font.semibold }}
+              >
+                {t("common.back")}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => refetch()}
+              className="h-11 flex-1 items-center justify-center rounded-[14px] bg-slate-900 active:opacity-75"
+              style={{ borderCurve: "continuous" }}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.retry")}
+            >
+              <Text
+                className="text-[14px] text-white"
+                style={{ fontFamily: TOKENS.font.semibold }}
+              >
+                {t("common.retry")}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       );
     }
@@ -516,8 +570,11 @@
         >
           {/* ───── Task 2 Step 1: 16:10 Hero Gallery ───── */}
           <View
-            className="relative bg-[#E8EDF2]"
-            style={{ height: heroHeight }}
+            className="relative"
+            style={{
+              height: heroHeight,
+              backgroundColor: PALETTE.heroFallback,
+            }}
           >
             <FlatList
               ref={imageListRef}
@@ -561,13 +618,16 @@
                   />
                 ) : (
                   <View
-                    className="h-full items-center justify-center bg-[#E8EDF2]"
-                    style={{ width: SCREEN_WIDTH }}
+                    className="h-full items-center justify-center"
+                    style={{
+                      width: SCREEN_WIDTH,
+                      backgroundColor: PALETTE.heroFallback,
+                    }}
                   >
                     <MaterialIconsRounded
                       name="travel-explore"
                       size={54}
-                      color="#FFFFFF"
+                      color={TOKENS.color.surface.light}
                     />
                   </View>
                 );
@@ -686,7 +746,11 @@
                   onPress={handleOpenAllReviews}
                   className="flex-row items-center gap-0.5"
                 >
-                  <MaterialIconsRounded name="star" size={14} color="#FF9F0A" />
+                  <MaterialIconsRounded
+                    name="star"
+                    size={14}
+                    color={TOKENS.color.semantic.star}
+                  />
                   <Text
                     className="text-[13px]"
                     style={{
@@ -763,11 +827,15 @@
                   borderCurve: "continuous",
                 }}
               >
-                <MaterialIconsRounded name="near-me" size={17} color="#FFFFFF" />
+                <MaterialIconsRounded
+                  name="near-me"
+                  size={17}
+                  color={TOKENS.color.surface.light}
+                />
                 <Text
                   className="text-[13px]"
                   style={{
-                    color: "#FFFFFF",
+                    color: TOKENS.color.surface.light,
                     fontFamily: TOKENS.font.semibold,
                   }}
                 >
@@ -777,23 +845,31 @@
 
               <Pressable
                 onPress={handleSaveToggle}
-                className="h-12 w-12 items-center justify-center rounded-[16px] bg-[#F5F5F7] active:opacity-75"
-                style={{ borderCurve: "continuous" }}
+                className="h-12 w-12 items-center justify-center rounded-[16px] active:opacity-75"
+                style={{
+                  borderCurve: "continuous",
+                  backgroundColor: TOKENS.color.semantic.apple.surface,
+                }}
                 accessibilityRole="button"
                 accessibilityLabel={isSavedLocal ? t("place.saved") : t("place.save")}
               >
                 <MaterialIconsRounded
                   name={isSavedLocal ? "bookmark" : "bookmark-border"}
                   size={16}
-                  color={isSavedLocal ? "#FF9F0A" : PALETTE.text}
+                  color={
+                    isSavedLocal ? TOKENS.color.semantic.star : PALETTE.text
+                  }
                 />
               </Pressable>
 
               {place?.phone ? (
                 <Pressable
                   onPress={() => handleOpenUrl(`tel:${place.phone}`)}
-                  className="h-12 w-12 items-center justify-center rounded-[16px] bg-[#F5F5F7] active:opacity-75"
-                  style={{ borderCurve: "continuous" }}
+                  className="h-12 w-12 items-center justify-center rounded-[16px] active:opacity-75"
+                  style={{
+                    borderCurve: "continuous",
+                    backgroundColor: TOKENS.color.semantic.apple.surface,
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel={t("place.detail.quickCall")}
                 >
@@ -856,8 +932,11 @@
                     {totalReviews > MAIN_REVIEW_LIMIT ? (
                       <Pressable
                         onPress={handleOpenAllReviews}
-                        className="h-11 rounded-[14px] flex-row items-center justify-center gap-1.5 bg-[#F5F5F7] active:opacity-75"
-                        style={{ borderCurve: "continuous" }}
+                        className="h-11 rounded-[14px] flex-row items-center justify-center gap-1.5 active:opacity-75"
+                        style={{
+                          borderCurve: "continuous",
+                          backgroundColor: PALETTE.surfaceAlt,
+                        }}
                       >
                         <Text
                           className="text-[13px]"
@@ -905,12 +984,18 @@
                         accessibilityState={{
                           selected: activeSpeechKey === INTRO_SPEECH_KEY,
                         }}
-                        className={cn(
-                          "h-9 w-9 items-center justify-center rounded-full active:scale-95",
+                        className="h-11 w-11 items-center justify-center rounded-full active:scale-95"
+                        accessibilityLabel={t(
                           activeSpeechKey === INTRO_SPEECH_KEY
-                            ? "bg-[#087E8B]"
-                            : "bg-[#ECF8FA]",
+                            ? "place.detail.stopGuide"
+                            : "place.detail.listenGuide",
                         )}
+                        style={{
+                          backgroundColor:
+                            activeSpeechKey === INTRO_SPEECH_KEY
+                              ? TOKENS.color.semantic.info
+                              : TOKENS.color.semantic.infoSurface,
+                        }}
                       >
                         <MaterialIconsRounded
                           name={
@@ -921,8 +1006,8 @@
                           size={17}
                           color={
                             activeSpeechKey === INTRO_SPEECH_KEY
-                              ? "#FFFFFF"
-                              : "#087E8B"
+                              ? TOKENS.color.surface.light
+                              : TOKENS.color.semantic.info
                           }
                         />
                       </Pressable>
@@ -986,6 +1071,8 @@
                         )}`}
                         highlight
                         onPress={handleOpenHours}
+                        actionIcon="expand-more"
+                        accessibilityLabel={t("place.detail.viewWeeklyHours")}
                       />
                     ) : null}
 
@@ -1107,8 +1194,8 @@
               setTripSheetKey((prev) => prev + 1);
             }
           }}
-          backgroundStyle={SHEET_BACKGROUND}
-          handleIndicatorStyle={SHEET_INDICATOR}
+          backgroundStyle={PLACE_SHEET_BACKGROUND}
+          handleIndicatorStyle={PLACE_SHEET_INDICATOR}
         >
           <View className="flex-1">
             <TripSelectorSheet
@@ -1160,52 +1247,13 @@
         </BottomSheet>
 
         {/* ───── Task 3 Step 3: Weekly Hours Sheet ───── */}
-        <BottomSheet
+        <PlaceOpeningHoursSheet
           ref={hoursSheetRef}
-          index={-1}
-          snapPoints={["48%"]}
-          enablePanDownToClose
-          backgroundStyle={SHEET_BACKGROUND}
-          handleIndicatorStyle={SHEET_INDICATOR}
-        >
-          <View className="flex-1 px-5 pt-3">
-            <View className="mb-4 flex-row items-center justify-between">
-              <View className="gap-0.5">
-                <Text
-                  className="text-[18px]"
-                  style={{
-                    color: PALETTE.text,
-                    fontFamily: TOKENS.font.heading,
-                  }}
-                >
-                  {t("place.detail.openingHoursLabel")}
-                </Text>
-                <Text
-                  className="text-[13px]"
-                  style={{
-                    color: openState.color,
-                    fontFamily: TOKENS.font.semibold,
-                  }}
-                >
-                  {openState.label}
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => hoursSheetRef.current?.close()}
-                accessibilityRole="button"
-                accessibilityLabel={t("common.close")}
-                className="h-9 w-9 items-center justify-center rounded-full bg-[#F5F5F7] active:scale-95"
-              >
-                <MaterialIconsRounded
-                  name="close"
-                  size={18}
-                  color={PALETTE.textMuted}
-                />
-              </Pressable>
-            </View>
-            <OpeningHours hours={place?.openingHours} t={t} />
-          </View>
-        </BottomSheet>
+          hours={place?.openingHours}
+          openState={openState}
+          t={t}
+          onClose={() => hoursSheetRef.current?.close()}
+        />
       </View>
     );
   }

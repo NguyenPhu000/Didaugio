@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+// MAP: ExploreTabScreen
+// ├── UI: @/modules/explore/components/{FeaturedSection, ExperienceBentoSection, CategoryPlacesSection, CategoryPlacesSheet, SearchOverlay}
+// └── API: @/modules/explore/hooks/useExplore, @/modules/explore/hooks/useCategories
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Linking,
   StyleSheet,
   Text,
@@ -9,8 +12,9 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import * as Sentry from "@sentry/react-native";
+import { isSentryEnabled } from "../../src/config/sentry";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -18,7 +22,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { Pressable } from "@/components/primitives/Pressable";
-import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { RefreshControl } from "react-native-gesture-handler";
 
@@ -33,15 +36,21 @@ import {
   TOKENS,
 } from "../../src/constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "./_layout";
+import { TAB_SCREEN_PADDING } from "./tabTheme";
 import {
   normalizeText,
 } from "../../src/modules/explore/utils/exploreHelpers";
+import {
+  buildExploreContentVisibility,
+  resolveExploreSheetCategory,
+} from "../../src/modules/explore/utils/exploreViewModel";
 import { getCategoryIconName } from "../../src/constants/categoryIcons";
 
 import { FeaturedSection } from "../../src/modules/explore/components/FeaturedSection";
 import { ExperienceBentoSection } from "../../src/modules/explore/components/ExperienceBentoSection";
 import { CategoryPlacesSection } from "../../src/modules/explore/components/CategoryPlacesSection";
-import { ExploreSkeleton } from "../../src/modules/explore/components/ExploreSkeleton";
+import { CategoryPlacesSheet } from "../../src/modules/explore/components/CategoryPlacesSheet";
+import { Skeleton } from "../../src/components/ui/Skeleton";
 import { SearchOverlay } from "../../src/modules/explore/components/SearchOverlay";
 import { ExploreModernHeader } from "../../src/modules/explore/components/ExploreModernHeader";
 import { CategoryPills } from "../../src/modules/explore/components/CategoryPills";
@@ -57,6 +66,7 @@ import { AnnouncementBanner } from "../../src/modules/explore/components/Announc
 import { BlurCarousel } from "../../src/components/reacticx/blur-carousel";
 
 import { useSavePlace, useUnsavePlace, useSavedPlaces } from "../../src/modules/saved/hooks/useSaved";
+import { showAppAlert } from "../../src/utils/appAlert";
 
 const FOOD_HINTS = ["ẩm thực", "food", "restaurant", "ăn", "quán", "bánh"].map(
   (item) => normalizeText(item),
@@ -82,20 +92,47 @@ const getPlaceTimestamp = (place) => {
   return Number.isFinite(value) ? value : 0;
 };
 
+function ExplorePrimaryLoading() {
+  return (
+    <View style={styles.primaryLoading}>
+      <View style={styles.primaryLoadingHeading}>
+        <Skeleton width={148} height={22} borderRadius={8} />
+        <Skeleton width={58} height={18} borderRadius={999} />
+      </View>
+
+      <View style={styles.primaryLoadingCards}>
+        <Skeleton width="48%" height={282} borderRadius={28} />
+        <Skeleton width="48%" height={282} borderRadius={28} />
+      </View>
+
+      <View style={styles.primaryLoadingHeading}>
+        <Skeleton width={132} height={22} borderRadius={8} />
+        <Skeleton width={54} height={18} borderRadius={999} />
+      </View>
+
+      <View style={styles.primaryLoadingCards}>
+        <Skeleton width="48%" height={238} borderRadius={28} />
+        <Skeleton width="48%" height={238} borderRadius={28} />
+      </View>
+    </View>
+  );
+}
+
 export default function ExploreScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const isGuest = useAuthStore((s) => s.isGuest);
 
   const [searchVisible, setSearchVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [activeSheetCategory, setActiveSheetCategory] = useState(null);
   const { data: categories = [] } = useCategories();
 
   const {
     data: exploreData,
     isLoading,
+    isError: isExploreError,
     isRefetching,
     refetch,
     fetchNextPage,
@@ -103,11 +140,10 @@ export default function ExploreScreen() {
     isFetchingNextPage,
   } = useExplore({ categoryId: selectedCategory });
 
-  const { data: events = [], isLoading: isLoadingEvents, refetch: refetchEvents } = useEvents();
+  const { data: events = [], refetch: refetchEvents } = useEvents();
 
   const {
     data: cmsData,
-    isLoading: isLoadingCms,
     isRefetching: isCmsRefetching,
     refetch: refetchCms,
   } = useExploreCms();
@@ -161,10 +197,15 @@ export default function ExploreScreen() {
 
   const handleSavePlace = useCallback(async (place) => {
     if (!isLoggedIn) {
-      Alert.alert(t("explore.toast.loginToSave"), t("explore.toast.loginToSaveDesc"), [
-        { text: t("common.later"), style: "cancel" },
-        { text: t("common.login"), onPress: () => router.push("/(auth)/login") },
-      ]);
+      showAppAlert({
+        title: t("explore.toast.loginToSave"),
+        message: t("explore.toast.loginToSaveDesc"),
+        type: "confirm",
+        buttons: [
+          { text: t("common.later"), style: "cancel" },
+          { text: t("common.login"), onPress: () => router.push("/(auth)/login") },
+        ],
+      });
       return;
     }
     if (!place?.id) return;
@@ -195,7 +236,7 @@ export default function ExploreScreen() {
   const categoryTabs = useMemo(() => {
     const normalizedCategories = Array.isArray(categories) ? categories : [];
     return [
-      { key: "all", categoryId: null, label: t("explore.categories.all"), icon: "travel-explore" },
+      { key: "all", categoryId: null, label: t("explore.categories.all"), icon: "compass-outline" },
       ...normalizedCategories
         .filter((category) => category?.id != null && category?.name)
         .map((category) => ({
@@ -213,10 +254,8 @@ export default function ExploreScreen() {
     return matched?.name || null;
   }, [categories, selectedCategory]);
 
-  const popularPlaces = allPlaces;
-
-  const placesByCategory = useMemo(() => {
-    if (selectedCategory != null) return [];
+  const fullPlacesByCategory = useMemo(() => {
+    if (selectedCategory != null) return new Map();
 
     const categoryMap = new Map();
     for (const place of allPlaces) {
@@ -234,17 +273,27 @@ export default function ExploreScreen() {
         categoryMap.get(catId).places.push(place);
       }
     }
+    return categoryMap;
+  }, [allPlaces, selectedCategory]);
 
-    return Array.from(categoryMap.values())
+  const placesByCategory = useMemo(() => {
+    return Array.from(fullPlacesByCategory.values())
       .sort((a, b) => b.places.length - a.places.length)
       .map((cat) => ({ ...cat, places: cat.places.slice(0, 8) }));
-  }, [allPlaces, selectedCategory]);
+  }, [fullPlacesByCategory]);
 
   const handleViewCategoryPlaces = useCallback(
     (category) => {
-      router.push({ pathname: "/explore/category-places", params: { id: category.id, name: category.name } });
+      setActiveSheetCategory(
+        resolveExploreSheetCategory({
+          category,
+          fullPlacesByCategory,
+          allPlaces,
+          selectedCategoryName,
+        }),
+      );
     },
-    [router],
+    [fullPlacesByCategory, allPlaces, selectedCategoryName],
   );
 
   const culinaryPlaces = useMemo(() => {
@@ -311,7 +360,6 @@ export default function ExploreScreen() {
   const handleCloseSearch = useCallback(() => setSearchVisible(false), []);
 
   const handleRefresh = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     refetch();
     refetchEvents();
     refetchCms();
@@ -367,8 +415,44 @@ export default function ExploreScreen() {
     }
   }, [router, t]);
 
-  const isInitialLoading = isLoading || isLoadingEvents || isLoadingCms;
-  const showEmpty = allPlaces.length === 0 && !isInitialLoading;
+  const isPrimaryLoading = isLoading && allPlaces.length === 0;
+  const showExploreError = isExploreError && allPlaces.length === 0 && !isPrimaryLoading;
+  const showEmpty = allPlaces.length === 0 && !isPrimaryLoading && !showExploreError;
+  const showEmptyState = showExploreError || showEmpty;
+
+  const exploreReadySpanRef = useRef(null);
+
+  useEffect(() => {
+    if (!isSentryEnabled) return undefined;
+
+    const span = Sentry.startInactiveSpan({
+      name: "Explore Time to Content",
+      op: "ui.load",
+    });
+    exploreReadySpanRef.current = span;
+
+    return () => {
+      if (exploreReadySpanRef.current !== span) return;
+      span.end();
+      exploreReadySpanRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const span = exploreReadySpanRef.current;
+    if (!span || isPrimaryLoading) return;
+
+    span.setAttribute(
+      "content_state",
+      showExploreError ? "error" : showEmpty ? "empty" : "content",
+    );
+    span.setAttribute("place_count", allPlaces.length);
+    span.end();
+    exploreReadySpanRef.current = null;
+  }, [allPlaces.length, isPrimaryLoading, showEmpty, showExploreError]);
+
+  const { showGlobalContent, showFilteredContent } =
+    buildExploreContentVisibility(selectedCategory);
 
   const { width: screenWidth } = useWindowDimensions();
 
@@ -388,19 +472,16 @@ export default function ExploreScreen() {
   const emptyOpacity = useSharedValue(0);
 
   useEffect(() => {
-    emptyOpacity.value = showEmpty ? withTiming(1, { duration: 250 }) : 0;
-  }, [showEmpty, emptyOpacity]);
+    emptyOpacity.value = showEmptyState ? withTiming(1, { duration: 250 }) : 0;
+  }, [showEmptyState, emptyOpacity]);
 
   const emptyAnimStyle = useAnimatedStyle(() => ({ opacity: emptyOpacity.value }));
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <StatusBar style="dark" />
 
-      {isInitialLoading && !isRefetching ? (
-        <ExploreSkeleton />
-      ) : (
-        <Animated.ScrollView
+      <Animated.ScrollView
           showsVerticalScrollIndicator={false}
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={[styles.scrollContent, { paddingBottom: FLOATING_TAB_CLEARANCE }]}
@@ -427,11 +508,11 @@ export default function ExploreScreen() {
 
           <AnnouncementBanner announcement={announcement} />
 
-          {selectedCategory === null && banners.length > 0 ? (
+          {showGlobalContent && banners.length > 0 ? (
             <CmsBannerCarousel banners={banners} onPressBanner={handlePressBanner} />
           ) : null}
 
-          {selectedCategory === null && featuredEvents.length > 0 ? (
+          {showGlobalContent && featuredEvents.length > 0 ? (
             <View style={{ marginTop: 12, marginBottom: 4 }}>
               <BlurCarousel
                 data={featuredEvents}
@@ -450,10 +531,12 @@ export default function ExploreScreen() {
                 {selectedCategoryName} · {t("explore.results", { count: allPlaces.length })}
               </Text>
               <Pressable
-                haptic="light"
+                haptic="none"
                 onPress={() => handleSelectCategory(null)}
                 hitSlop={8}
                 style={styles.filterCloseBtn}
+                accessibilityRole="button"
+                accessibilityLabel={t("explore.accessibility.clearCategory")}
               >
                 <MaterialIconsRounded name="close" size={14} color={APPLE_THEME.text} />
               </Pressable>
@@ -461,7 +544,7 @@ export default function ExploreScreen() {
           ) : null}
 
           <View>
-            {featuredPlaces.length > 0 ? (
+            {showGlobalContent && featuredPlaces.length > 0 ? (
               <FeaturedSection
                 places={featuredPlaces}
                 onPressPlace={handlePressPlace}
@@ -470,58 +553,85 @@ export default function ExploreScreen() {
               />
             ) : null}
 
-            <SampleTripSection sampleTrips={sampleTrips} onPressTrip={handlePressTrip} />
+            {showGlobalContent ? (
+              <SampleTripSection
+                sampleTrips={sampleTrips}
+                onPressTrip={handlePressTrip}
+                onPressViewAll={() => router.push("/(tabs)/trips")}
+              />
+            ) : null}
 
-            {selectedCategory === null && regularEvents.length > 0 ? (
+            {showGlobalContent && regularEvents.length > 0 ? (
               <EventSection events={regularEvents} onPressEvent={handlePressEvent} />
             ) : null}
 
-            {culinaryPlaces.length >= 3 ? (
-              <ExperienceBentoSection places={culinaryPlaces} onPressPlace={handlePressPlace} />
-            ) : null}
+            {isPrimaryLoading ? (
+              <ExplorePrimaryLoading />
+            ) : (
+              <>
+                {culinaryPlaces.length >= 3 ? (
+                  <ExperienceBentoSection places={culinaryPlaces} onPressPlace={handlePressPlace} />
+                ) : null}
 
-            {curatedSections.map((section) => (
-              <CategoryPlacesSection
-                key={section.id}
-                categoryName={section.title}
-                categoryId={section.id}
-                places={section.places}
-                icon={section.icon}
-                onPressPlace={handlePressPlace}
-                onPressViewAll={handleOpenSearch}
-              />
-            ))}
-
-            {selectedCategory === null && placesByCategory.length > 0 ? (
-              <View style={{ marginTop: 16 }}>
-                {placesByCategory.map((category) => (
+                {curatedSections.map((section) => (
                   <CategoryPlacesSection
-                    key={category.id}
-                    categoryName={category.name}
-                    categoryId={category.id}
-                    places={category.places}
-                    icon={category.icon}
+                    key={section.id}
+                    categoryName={section.title}
+                    categoryId={section.id}
+                    places={section.places}
                     onPressPlace={handlePressPlace}
-                    onPressViewAll={() => handleViewCategoryPlaces(category)}
+                    onPressViewAll={() => handleViewCategoryPlaces(section)}
                   />
                 ))}
-              </View>
-            ) : null}
 
-            {selectedCategory != null && popularPlaces.length > 0 ? (
-              <CategoryPlacesSection
-                categoryName={selectedCategoryName}
-                categoryId={selectedCategory}
-                places={popularPlaces.slice(0, 8)}
-                onPressPlace={handlePressPlace}
-                onPressViewAll={() =>
-                  handleViewCategoryPlaces({ id: selectedCategory, name: selectedCategoryName })
-                }
-              />
-            ) : null}
+                {selectedCategory === null && placesByCategory.length > 0 ? (
+                  <View style={{ marginTop: 16 }}>
+                    {placesByCategory.map((category) => (
+                      <CategoryPlacesSection
+                        key={category.id}
+                        categoryName={category.name}
+                        categoryId={category.id}
+                        places={category.places}
+                        onPressPlace={handlePressPlace}
+                        onPressViewAll={() => handleViewCategoryPlaces(category)}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+
+                {showFilteredContent && allPlaces.length > 0 ? (
+                  <CategoryPlacesSection
+                    categoryName={selectedCategoryName}
+                    categoryId={selectedCategory}
+                    places={allPlaces.slice(0, 8)}
+                    onPressPlace={handlePressPlace}
+                    onPressViewAll={() =>
+                      handleViewCategoryPlaces({ id: selectedCategory, name: selectedCategoryName })
+                    }
+                  />
+                ) : null}
+              </>
+            )}
           </View>
 
-          {showEmpty ? (
+          {showExploreError ? (
+            <Animated.View style={[styles.emptyContainer, emptyAnimStyle]}>
+              <View style={styles.emptyIconWrapper}>
+                <MaterialIconsRounded name="cloud-off" size={32} color={APPLE_THEME.textMuted} />
+              </View>
+              <Text style={styles.emptyTitle}>{t("explore.error.title")}</Text>
+              <Text style={styles.emptyDesc}>{t("explore.error.description")}</Text>
+              <Pressable
+                haptic="none"
+                onPress={refetch}
+                style={styles.emptyActionBtn}
+                accessibilityRole="button"
+                accessibilityLabel={t("explore.error.retry")}
+              >
+                <Text style={styles.emptyActionText}>{t("explore.error.retry")}</Text>
+              </Pressable>
+            </Animated.View>
+          ) : showEmpty ? (
             <Animated.View style={[styles.emptyContainer, emptyAnimStyle]}>
               <View style={styles.emptyIconWrapper}>
                 <MaterialIconsRounded name="explore-off" size={32} color={APPLE_THEME.textMuted} />
@@ -533,7 +643,7 @@ export default function ExploreScreen() {
                 {selectedCategory == null ? t("explore.empty.noPlacesDesc") : t("explore.empty.noResultsDesc")}
               </Text>
               {selectedCategory != null ? (
-                <Pressable haptic="light" onPress={() => handleSelectCategory(null)} style={styles.emptyActionBtn}>
+                <Pressable haptic="none" onPress={() => handleSelectCategory(null)} style={styles.emptyActionBtn}>
                   <Text style={styles.emptyActionText}>{t("common.viewAll")}</Text>
                 </Pressable>
               ) : null}
@@ -545,10 +655,17 @@ export default function ExploreScreen() {
               <ActivityIndicator color={APPLE_THEME.focusBlue} />
             </View>
           ) : null}
-        </Animated.ScrollView>
-      )}
+      </Animated.ScrollView>
 
       <SearchOverlay visible={searchVisible} onClose={handleCloseSearch} />
+
+      <CategoryPlacesSheet
+        visible={!!activeSheetCategory}
+        category={activeSheetCategory}
+        places={activeSheetCategory?.places || []}
+        onClose={() => setActiveSheetCategory(null)}
+        onPressPlace={handlePressPlace}
+      />
     </View>
   );
 }
@@ -556,10 +673,25 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: APPLE_THEME.background,
+    backgroundColor: TOKENS.color.surface.light,
   },
   scrollContent: {
     paddingTop: 4,
+  },
+  primaryLoading: {
+    paddingHorizontal: TAB_SCREEN_PADDING,
+    paddingTop: 28,
+    paddingBottom: 16,
+    gap: 16,
+  },
+  primaryLoadingHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  primaryLoadingCards: {
+    flexDirection: "row",
+    gap: 12,
   },
   filterPill: {
     flexDirection: "row",
@@ -569,14 +701,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 40,
     borderRadius: 999,
-    backgroundColor: APPLE_THEME.surfaceMuted,
+    backgroundColor: TOKENS.color.surface.light,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(24,24,25,0.14)",
     gap: 10,
   },
   filterDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: APPLE_THEME.focusBlue,
+    backgroundColor: TOKENS.color.surface.dark,
   },
   filterText: {
     flex: 1,
@@ -592,7 +726,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: APPLE_THEME.white,
-    shadowColor: "#000",
+    shadowColor: TOKENS.color.semantic.apple.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 3,

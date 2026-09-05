@@ -1,0 +1,21 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      SENSITIVE_STORAGE_DIR: /var/lib/didaugio/sensitive
+    ports:
+      - "${API_BIND_ADDRESS:-127.0.0.1}:${PORT:-8080}:8080"
+    volumes:
+      - didaugio_sensitive_data:/var/lib/didaugio/sensitive
+
+volumes:
+  didaugio_sensitive_data:
+    # Keep the existing production volume name stable when the Compose project name changes.
+    name: ${SENSITIVE_VOLUME_NAME:-server_didaugio_sensitive_data}

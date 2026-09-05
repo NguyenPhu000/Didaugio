@@ -1,7 +1,11 @@
 import { ZodError } from "zod";
 import { ERROR_CODES } from "../config/messages.js";
 
-export const validateSchema = (schema, source = "body") => {
+export const validateSchema = (
+  schema,
+  source = "body",
+  { errorCode = ERROR_CODES.VALIDATION_ERROR } = {},
+) => {
   return async (req, res, next) => {
     try {
       if (req[source] == null || typeof req[source] !== "object") {
@@ -10,11 +14,12 @@ export const validateSchema = (schema, source = "body") => {
       const validatedData = await schema.parseAsync(req[source]);
 
       // Mutate in-place vì req.query có thể là read-only getter
-      const targetObject = req[source];
-      for (const key in targetObject) {
-        delete targetObject[key];
-      }
-      Object.assign(targetObject, validatedData);
+      Object.defineProperty(req, source, {
+        configurable: true,
+        enumerable: true,
+        value: validatedData,
+        writable: true,
+      });
 
       next();
     } catch (error) {
@@ -27,16 +32,11 @@ export const validateSchema = (schema, source = "body") => {
           code: err.code,
         }));
 
-        console.error(
-          "Validation Errors:",
-          JSON.stringify(formattedErrors, null, 2),
-        );
-
         return res.status(400).json({
           success: false,
           data: null,
           message: "Dữ liệu không hợp lệ",
-          errorCode: ERROR_CODES.VALIDATION_ERROR,
+          errorCode,
           errors: formattedErrors,
         });
       }
@@ -53,7 +53,15 @@ export const validateSchema = (schema, source = "body") => {
 };
 
 export const validateBody = (schema) => validateSchema(schema, "body");
+export const validateAiBody = (schema) =>
+  validateSchema(schema, "body", { errorCode: "AI_INVALID_REQUEST" });
 export const validateQuery = (schema) => validateSchema(schema, "query");
 export const validateParams = (schema) => validateSchema(schema, "params");
 
-export default { validateSchema, validateBody, validateQuery, validateParams };
+export default {
+  validateSchema,
+  validateBody,
+  validateAiBody,
+  validateQuery,
+  validateParams,
+};

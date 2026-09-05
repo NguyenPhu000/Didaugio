@@ -1,17 +1,21 @@
+// MAP: UserBookingDetailScreen
+// ├── UI: @/modules/booking/components/BookingTicketCard, @/modules/booking/components/RefundPolicyModal
+// └── API: @/modules/booking/hooks/useBooking
+
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
   Text,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { showAppAlertLegacy } from "../../../src/utils/appAlert";
 import safeAsyncStorage from "../../../src/utils/safeAsyncStorage";
 import {
   BOOKING_APPLE_THEME as THEME,
@@ -32,7 +36,6 @@ import { useSavePlace } from "../../../src/modules/saved/hooks/useSaved";
 import { useOffline } from "../../../src/hooks/useOffline";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
-import { formatShortDate, formatDateTimeLocale } from "../../../src/utils/dateFormat";
 
 
 const QR_CACHE_KEY = "@booking_qr_cache";
@@ -51,28 +54,6 @@ const formatCurrency = (value) => {
   const amount = Number(value || 0);
   const locale = i18n.language === "vi" ? "vi-VN" : "en-US";
   return `${amount.toLocaleString(locale)}đ`;
-};
-
-const formatDateTime = (booking, notDeterminedLabel) => {
-  if (booking?.useDate || booking?.useTime) {
-    const date = formatShortDate(booking?.useDate) || "--/--/----";
-    return `${date} • ${booking?.useTime || "--:--"}`;
-  }
-
-  if (booking?.bookingAt) {
-    const at = new Date(booking.bookingAt);
-    if (!Number.isNaN(at.getTime())) {
-      return formatDateTimeLocale(at, {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    }
-  }
-
-  return notDeterminedLabel || "Not determined";
 };
 
 export default function BookingDetailScreen() {
@@ -162,9 +143,9 @@ export default function BookingDetailScreen() {
 
     try {
       await savePlaceMutation.mutateAsync({ placeId });
-      Alert.alert(t("bookingDetail.alerts.saved.title"), t("bookingDetail.alerts.saved.message"));
+      showAppAlertLegacy(t("bookingDetail.alerts.saved.title"), t("bookingDetail.alerts.saved.message"));
     } catch (error) {
-      Alert.alert(
+      showAppAlertLegacy(
         t("bookingDetail.alerts.saveFailed.title"),
         error?.message || t("bookingDetail.alerts.saveFailed.message"),
       );
@@ -174,7 +155,7 @@ export default function BookingDetailScreen() {
   const handleLinkBookingToTrip = async (tripId) => {
     const normalizedTripId = Number(tripId);
     if (!Number.isInteger(normalizedTripId) || normalizedTripId <= 0) {
-      Alert.alert(t("bookingDetail.alerts.selectTrip.title"), t("bookingDetail.alerts.selectTrip.message"));
+      showAppAlertLegacy(t("bookingDetail.alerts.selectTrip.title"), t("bookingDetail.alerts.selectTrip.message"));
       return;
     }
 
@@ -184,9 +165,9 @@ export default function BookingDetailScreen() {
         tripId: normalizedTripId,
       });
       await refetch();
-      Alert.alert(t("bookingDetail.alerts.linkSuccess.title"), t("bookingDetail.alerts.linkSuccess.message"));
+      showAppAlertLegacy(t("bookingDetail.alerts.linkSuccess.title"), t("bookingDetail.alerts.linkSuccess.message"));
     } catch (error) {
-      Alert.alert(
+      showAppAlertLegacy(
         t("bookingDetail.alerts.linkFailed.title"),
         error?.message || t("bookingDetail.alerts.linkFailed.message"),
       );
@@ -220,7 +201,7 @@ export default function BookingDetailScreen() {
 
       await handleLinkBookingToTrip(tripId);
     } catch (error) {
-      Alert.alert(
+      showAppAlertLegacy(
         t("bookingDetail.errors.tripCreateTitle"),
         error?.message || t("bookingDetail.errors.generic"),
       );
@@ -243,12 +224,12 @@ export default function BookingDetailScreen() {
       await cancelBookingMutation.mutateAsync({ bookingId, cancelReason });
       setShowRefundPolicyModal(false);
       await refetch();
-      Alert.alert(
+      showAppAlertLegacy(
         t("bookingDetail.cancel.alertSuccessTitle"),
         t("bookingDetail.cancel.alertSuccessMessage"),
       );
     } catch (error) {
-      Alert.alert(
+      showAppAlertLegacy(
         t("bookingDetail.cancel.alertErrorTitle"),
         error?.message || t("bookingDetail.cancel.alertErrorMessage"),
       );

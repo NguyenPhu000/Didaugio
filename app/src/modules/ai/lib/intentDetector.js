@@ -4,17 +4,20 @@
  */
 
 const INTENTS = {
-  NAVIGATE: /đi đến|chỉ đường|bao xa|mấy phút|cách đây|đường đến|làm sao đến|tìm đường/i,
+  NAVIGATE: /đi đến|chỉ đường|chỉ tôi lộ trình|lộ trình từ|bao xa|mấy phút|cách đây|đường đến|làm sao đến|tìm đường/i,
   BOOK: /đặt|book|mua vé|giá vé|còn chỗ|đặt chỗ|đặt bàn|đặt phòng|reservation/i,
   EAT: /ăn gì|món ngon|quán|nhà hàng|đặc sản|quán ăn|đồ ăn|ăn uống|thức ăn|cơm|phở|bún/i,
   NEARBY: /gần đây|xung quanh|khu vực này|gần tôi|quanh đây|lân cận|trong vòng/i,
-  SCHEDULE: /lịch trình|lên lịch|lập lịch|tạo lịch|hành trình|kế hoạch|tạo kế hoạch|mấy ngày|tour|chuyến đi|trip|itinerary|\bplan\b|tạo plan|lên plan|travel plan/i,
+  SCHEDULE: /lịch trình|lên lịch|lập lịch|tạo lịch|kế hoạch|tạo kế hoạch|mấy ngày|tour|chuyến đi|trip|itinerary|\bplan\b|tạo plan|lên plan|travel plan/i,
   VOICE: /giới thiệu|kể về|nói về|thông tin về|cho biết|tìm hiểu|khám phá|mô tả/i,
   WEATHER: /thời tiết|trời|mưa|nắng|nhiệt độ|nóng|lạnh|gió|bão/i,
   SAVE: /lưu lại|bookmark|yêu thích|favorite|danh sách|muốn đi|nhớ lại/i,
   REVIEW: /đánh giá|review|nhận xét|sao|rating|có tốt không|đáng đi không/i,
   OPEN_HOURS: /giờ mở cửa|mấy giờ|đóng cửa|còn mở|lúc nào|thứ mấy/i,
 };
+
+const TRAVEL_JOURNEY_PATTERN =
+  /h\u00e0nh tr\u00ecnh du l\u1ecbch/i;
 
 export const INTENT_TYPES = Object.freeze({
   NAVIGATE: "NAVIGATE",
@@ -39,6 +42,9 @@ export function detectIntent(text) {
   if (!text || typeof text !== "string") return INTENT_TYPES.GENERAL;
 
   const trimmed = text.trim();
+  if (TRAVEL_JOURNEY_PATTERN.test(trimmed)) {
+    return INTENT_TYPES.SCHEDULE;
+  }
   for (const [intent, pattern] of Object.entries(INTENTS)) {
     if (pattern.test(trimmed)) return intent;
   }
@@ -57,6 +63,12 @@ export function detectAllIntents(text) {
   const matched = Object.entries(INTENTS)
     .filter(([, pattern]) => pattern.test(trimmed))
     .map(([intent]) => intent);
+  if (
+    TRAVEL_JOURNEY_PATTERN.test(trimmed) &&
+    !matched.includes(INTENT_TYPES.SCHEDULE)
+  ) {
+    matched.push(INTENT_TYPES.SCHEDULE);
+  }
 
   return matched.length > 0 ? matched : [INTENT_TYPES.GENERAL];
 }

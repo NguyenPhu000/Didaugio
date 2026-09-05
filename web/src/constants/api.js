@@ -8,6 +8,7 @@ import {
   applyBusinessApiErrorUx,
 } from "@/utils/businessApiErrorUx";
 import { toast } from "sonner";
+import { withBrowserRefreshLock } from "@/auth/refreshLock";
 
 axios.defaults.headers.common["ngrok-skip-browser-warning"] = "true";
 
@@ -18,7 +19,11 @@ axios.defaults.headers.common["ngrok-skip-browser-warning"] = "true";
  */
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: { "Content-Type": "application/json" },
+  withCredentials: true,
+  headers: {
+    "Content-Type": "application/json",
+    "X-Client-Platform": "web",
+  },
   timeout: API_TIMEOUT,
 });
 
@@ -60,6 +65,70 @@ const isPublicAuthRequest = (requestUrl) =>
 const isRefreshRequest = (requestUrl) =>
   normalizeRequestPath(requestUrl) === "/auth/refresh";
 
+let browserCsrfToken = null;
+let browserCsrfRequest = null;
+
+const fetchBrowserCsrfToken = async () => {
+  const response = await axios.get(`${API_BASE_URL}/auth/csrf`, {
+    withCredentials: true,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Client-Platform": "web",
+    },
+    timeout: API_TIMEOUT,
+  });
+  const token = response?.data?.data?.csrfToken;
+  if (!token) {
+    throw new Error("Missing CSRF token");
+  }
+  browserCsrfToken = token;
+  return token;
+};
+
+const ensureBrowserCsrfToken = async () => {
+  if (browserCsrfToken) return browserCsrfToken;
+  if (!browserCsrfRequest) {
+    browserCsrfRequest = fetchBrowserCsrfToken().finally(() => {
+      browserCsrfRequest = null;
+    });
+  }
+  return browserCsrfRequest;
+};
+
+const resetBrowserCsrfToken = () => {
+  browserCsrfToken = null;
+};
+
+const requestBrowserRefresh = () => withBrowserRefreshLock(async () => {
+  const request = async () =>
+    axios.post(
+      `${API_BASE_URL}/auth/refresh`,
+      {},
+      {
+        withCredentials: true,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Client-Platform": "web",
+          "X-CSRF-Token": await ensureBrowserCsrfToken(),
+        },
+      },
+    );
+
+  try {
+    return await request();
+  } catch (error) {
+    const shouldRetryCsrf =
+      error?.response?.status === 403 &&
+      ["CSRF_TOKEN_MISSING", "CSRF_TOKEN_INVALID"].includes(
+        error?.response?.data?.errorCode,
+      );
+    if (!shouldRetryCsrf) throw error;
+
+    resetBrowserCsrfToken();
+    return request();
+  }
+});
+
 const redirectToLogin = () => {
   if (typeof window === "undefined") return;
   if (window.location.pathname !== AUTH_ROUTES.LOGIN) {
@@ -70,6 +139,27 @@ const redirectToLogin = () => {
 const clearAuthAndRedirect = () => {
   useAuthStore.getState().logout();
   redirectToLogin();
+};
+
+const shouldForceLogoutForError = (response, requestUrl, isPublicRequest) => {
+  if (isPublicRequest) return false;
+
+  const errorCode = response?.data?.errorCode;
+  const status = response?.status;
+  const normalizedPath = normalizeRequestPath(requestUrl);
+
+  if (errorCode === "USER_NOT_FOUND") return true;
+  if (errorCode === "TOKEN_EXPIRED") return true;
+  if (errorCode === "INVALID_TOKEN") return true;
+  if (errorCode === "ACCOUNT_BANNED") return true;
+  if (errorCode === "ACCOUNT_INACTIVE") return true;
+  if (status === 401) return true;
+
+  if (status === 403 && normalizedPath.startsWith("/business")) {
+    return ["BUSINESS_TERMINATED"].includes(errorCode);
+  }
+
+  return false;
 };
 
 let isRefreshing = false;
@@ -88,10 +178,38 @@ const rejectPendingQueue = (error) => {
   }
 };
 
-api.interceptors.request.use((config) => {
+let permissionSyncPromise = null;
+
+const syncCurrentUserPermissions = () => {
+  if (permissionSyncPromise) return permissionSyncPromise;
+
+  permissionSyncPromise = api
+    .get("/auth/me", {
+      skipPermissionToast: true,
+      skipAuthRedirect: true,
+    })
+    .then((response) => {
+      const freshUser = response?.data || response;
+      if (freshUser?.id) {
+        useAuthStore.getState().setUser(freshUser);
+      }
+      return freshUser;
+    })
+    .finally(() => {
+      permissionSyncPromise = null;
+    });
+
+  return permissionSyncPromise;
+};
+
+api.interceptors.request.use(async (config) => {
+  config.headers = config.headers || {};
   const accessToken = useAuthStore.getState().accessToken;
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
+  }
+  if (isRefreshRequest(config.url) && !config.headers["X-CSRF-Token"]) {
+    config.headers["X-CSRF-Token"] = await ensureBrowserCsrfToken();
   }
   return config;
 });
@@ -113,6 +231,25 @@ api.interceptors.response.use(
     const isLogoutInProgress = Boolean(useAuthStore.getState().isLoggingOut);
     const skipAuthRefresh = Boolean(originalRequest?.skipAuthRefresh);
     const skipAuthRedirect = Boolean(originalRequest?.skipAuthRedirect);
+
+    if (
+      isRefresh &&
+      response?.status === 403 &&
+      ["CSRF_TOKEN_MISSING", "CSRF_TOKEN_INVALID"].includes(
+        response?.data?.errorCode,
+      ) &&
+      !originalRequest._csrfRetry
+    ) {
+      originalRequest._csrfRetry = true;
+      resetBrowserCsrfToken();
+      if (typeof originalRequest.headers?.delete === "function") {
+        originalRequest.headers.delete("X-CSRF-Token");
+      }
+      if (originalRequest.headers) {
+        delete originalRequest.headers["X-CSRF-Token"];
+      }
+      return api(originalRequest);
+    }
 
     if (
       response?.status === 401 &&
@@ -139,30 +276,16 @@ api.interceptors.response.use(
           .catch((err) => Promise.reject(err));
       }
 
-      const refreshToken = useAuthStore.getState().refreshToken;
       originalRequest._retry = true;
-
-      if (!refreshToken) {
-        rejectPendingQueue(new Error("Missing refresh token"));
-        if (!skipAuthRedirect) {
-          clearAuthAndRedirect();
-        }
-        return Promise.reject(error);
-      }
 
       isRefreshing = true;
 
       try {
-        const refreshResponse = await axios.post(
-          `${API_BASE_URL}/auth/refresh`,
-          { refreshToken },
-          { headers: { "Content-Type": "application/json" } },
-        );
+        const refreshResponse = await requestBrowserRefresh();
 
         if (refreshResponse.data.success) {
           const {
             accessToken: newAccessToken,
-            refreshToken: newRefreshToken,
             user: refreshedUser,
           } = refreshResponse.data.data || {};
 
@@ -177,7 +300,6 @@ api.interceptors.response.use(
           useAuthStore.getState().setSession({
             user: refreshedUser,
             accessToken: newAccessToken,
-            refreshToken: newRefreshToken || refreshToken,
           });
           processQueue(null, newAccessToken);
           originalRequest.headers = originalRequest.headers || {};
@@ -196,6 +318,7 @@ api.interceptors.response.use(
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
+        failedQueue = [];
       }
     }
 
@@ -212,10 +335,28 @@ api.interceptors.response.use(
     // Handle 403 Forbidden — permissions may have been revoked mid-session
     if (response?.status === 403 && !isPublicRequest && hasAccessToken) {
       const errorCode = response?.data?.errorCode;
+      const normalizedPath = normalizeRequestPath(requestUrl);
+
+      // Owner-side staff changes invalidate server cache immediately. Refresh
+      // the persisted user once so the UI and the retried request use the same
+      // permission snapshot without forcing a logout or a manual reload.
+      if (
+        errorCode === "FORBIDDEN" &&
+        normalizedPath !== "/auth/me" &&
+        !originalRequest._permissionSynced
+      ) {
+        originalRequest._permissionSynced = true;
+        try {
+          await syncCurrentUserPermissions();
+          return api(originalRequest);
+        } catch {
+          // Continue through the normal forbidden response below.
+        }
+      }
 
       // If the 403 is from a permission/auth endpoint itself, force logout to avoid infinite loops
       const isPermissionEndpoint =
-        normalizeRequestPath(requestUrl).includes("/permissions") ||
+        normalizedPath.includes("/permissions") ||
         errorCode === "FORBIDDEN_USER" ||
         errorCode === "FORBIDDEN_SYSTEM_ROLE";
 
@@ -261,6 +402,15 @@ api.interceptors.response.use(
     apiError.status = response?.status;
     apiError.errorCode = response?.data?.errorCode;
     apiError.data = response?.data;
+
+    if (
+      hasAccessToken &&
+      shouldForceLogoutForError(response, requestUrl, isPublicRequest) &&
+      !isLogoutInProgress &&
+      !skipAuthRedirect
+    ) {
+      clearAuthAndRedirect();
+    }
 
     if (
       !originalRequest?.skipBusinessErrorUX &&

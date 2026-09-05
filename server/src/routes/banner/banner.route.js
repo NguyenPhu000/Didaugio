@@ -2,6 +2,7 @@ import express from "express";
 import * as bannerController from "../../controllers/banner/banner.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import {
   validateBody,
   validateParams,
@@ -15,7 +16,7 @@ import {
 const router = express.Router();
 
 // Tất cả routes đều yêu cầu authentication + permission
-router.use(authenticate, hasPermission("system.manage_banners"));
+router.use(authenticate, requireBackOfficeRole, hasPermission("system.manage_banners"));
 
 // GET /api/banners — Lấy danh sách banner
 router.get("/", bannerController.getBanners);

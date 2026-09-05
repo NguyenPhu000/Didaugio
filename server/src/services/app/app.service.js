@@ -2,7 +2,17 @@ import prisma from "../../config/prismaClient.js";
 import { ERROR_CODES } from "../../config/messages.js";
 import ServiceError from "../../utils/serviceError.js";
 import tripService, { TRIP_PLACE_SELECT } from "../trip/trip.service.js";
-import { deletePlaceImage, uploadPlaceImage } from "../media/media.service.js";
+import { uploadPlaceImage } from "../media/media.service.js";
+import { anonymousAiUserRef } from "../adminAi/aiLog.service.js";
+import { RATEABLE_AI_FEATURES } from "../ai/aiFeedbackPolicy.js";
+import eventEmitter, { EVENTS } from "../../utils/eventEmitter.js";
+import { applyPlaceBusinessSettings } from "../business/businessSettings.service.js";
+import { toMobileBannerMedia, toMobilePlaceMedia } from "../../utils/mobilePlaceMedia.js";
+import { replaceReviewMediaRecords } from "./reviewMediaLifecycle.service.js";
+import {
+  enqueueCloudinaryAssetCleanup,
+  enqueueCloudinaryAssetRollback,
+} from "../media/cloudinaryCleanupJob.service.js";
 
 const toInt = (value, fallback = null) => {
   const number = parseInt(value, 10);
@@ -252,6 +262,7 @@ const getDepositPolicy = (terms) => {
 
 export const getHomeData = async (query = {}) => {
   const limit = Math.min(Math.max(toInt(query.limit, 12), 1), 30);
+  const isMobileClient = query.client === "mobile";
 
   const [categories, featuredPlaces, banners] = await Promise.all([
     prisma.category.findMany({
@@ -290,6 +301,9 @@ export const getHomeData = async (query = {}) => {
             isCover: true,
           },
         },
+        business: {
+          select: { id: true, businessName: true, status: true, settings: true },
+        },
       },
       take: limit,
     }),
@@ -314,8 +328,10 @@ export const getHomeData = async (query = {}) => {
 
   return {
     categories,
-    featuredPlaces,
-    banners,
+    featuredPlaces: featuredPlaces
+      .map(applyPlaceBusinessSettings)
+      .map((place) => (isMobileClient ? toMobilePlaceMedia(place) : place)),
+    banners: isMobileClient ? banners.map(toMobileBannerMedia) : banners,
   };
 };
 
@@ -357,13 +373,16 @@ export const searchPlaces = async (query = {}) => {
           orderBy: [{ isCover: "desc" }, { order: "asc" }],
           select: { id: true, imageData: true, secureUrl: true, thumbnailUrl: true, isCover: true },
         },
+        business: {
+          select: { id: true, businessName: true, status: true, settings: true },
+        },
       },
     }),
     prisma.place.count({ where }),
   ]);
 
   return {
-    data: places,
+    data: places.map(applyPlaceBusinessSettings),
     pagination: {
       page,
       limit,
@@ -410,6 +429,9 @@ export const getPlaceDetail = async (placeId, userId = null) => {
           favorites: true,
         },
       },
+      business: {
+        select: { id: true, businessName: true, status: true, settings: true },
+      },
     },
   });
 
@@ -431,10 +453,7 @@ export const getPlaceDetail = async (placeId, userId = null) => {
     isSaved = !!favorite;
   }
 
-  return {
-    ...place,
-    isSaved,
-  };
+  return { ...applyPlaceBusinessSettings(place), isSaved };
 };
 
 export const getPlaceReviews = async (placeId, query = {}) => {
@@ -542,7 +561,10 @@ export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
       id: placeId,
       ...approvedPlaceWhere,
     },
-    select: { id: true },
+    select: {
+      id: true,
+      business: { select: { id: true } },
+    },
   });
 
   if (!place) {
@@ -563,9 +585,10 @@ export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
     : REVIEW_STATUS.VISIBLE;
 
   let media = [];
+  let transactionResult;
   try {
     media = await uploadReviewMedia(normalizedMedia);
-    const review = await prisma.$transaction(async (tx) => {
+    transactionResult = await prisma.$transaction(async (tx) => {
     const savedReview = await tx.review.upsert({
       where: {
         placeId_userId: {
@@ -596,18 +619,16 @@ export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
       },
     });
 
-    await tx.reviewMedia.deleteMany({ where: { reviewId: savedReview.id } });
-    if (media.length > 0) {
-      await tx.reviewMedia.createMany({
-        data: media.map((item) => ({
-          reviewId: savedReview.id,
-          mediaData: item.mediaData,
-          mediaType: item.mediaType,
-          caption: item.caption,
-          order: item.order,
-        })),
-      });
-    }
+    const oldMediaPublicIds = await replaceReviewMediaRecords(
+      tx,
+      savedReview.id,
+      media,
+    );
+    await enqueueCloudinaryAssetCleanup(tx, {
+      aggregate: "Review",
+      aggregateId: savedReview.id,
+      publicIds: oldMediaPublicIds,
+    });
 
     const aggregate = await tx.review.aggregate({
       where: {
@@ -627,7 +648,7 @@ export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
       },
     });
 
-    return tx.review.findUnique({
+    const review = await tx.review.findUnique({
       where: { id: savedReview.id },
       include: {
         media: {
@@ -642,18 +663,29 @@ export const createOrUpdateReview = async (placeId, userId, payload = {}) => {
         },
       },
     });
-    });
 
-    return normalizeReviewMediaResponse(review);
+    return { review };
+    });
   } catch (error) {
-    await Promise.allSettled(
-      media
-        .map((item) => item.publicId)
-        .filter(Boolean)
-        .map((publicId) => deletePlaceImage(publicId)),
-    );
+    await enqueueCloudinaryAssetRollback(prisma, {
+      aggregate: "Review",
+      aggregateId: 0,
+      publicIds: media.map((item) => item.publicId),
+    });
     throw error;
   }
+
+  const { review } = transactionResult;
+
+  eventEmitter.emit(EVENTS.REVIEW.CREATED, {
+    reviewId: review.id,
+    placeId,
+    businessId: place.business?.id,
+    userId,
+    rating,
+  });
+
+  return normalizeReviewMediaResponse(review);
 };
 
 export const getServices = async (query = {}) => {
@@ -736,7 +768,7 @@ export const getMyProfileSummary = async (userId) => {
       _count: {
         select: {
           favorites: true,
-          trips: true,
+          tripPlans: true,
           bookings: true,
           reviews: true,
         },
@@ -959,38 +991,105 @@ export const {
 } = tripService;
 
 
-export const submitFeedback = async ({
-  userId = null,
-  reportType,
-  title,
-  content,
-  targetType = null,
-  targetId = null,
-  screenshot = null,
-}) => {
-  if (!reportType || !title || !content) {
-    const error = new Error(
-      "Thieu thong tin bat buoc: reportType, title, content",
-    );
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const feedback = await prisma.feedbackReport.create({
-    data: {
-      reporterId: userId,
-      reportType,
-      targetType,
-      targetId,
-      title,
-      content,
-      screenshot,
-      status: "pending",
+function unavailableAiFeedbackTarget() {
+  return Object.assign(
+    new Error("AI feedback target is unavailable."),
+    {
+      statusCode: 404,
+      code: "AI_FEEDBACK_TARGET_UNAVAILABLE",
+      errorCode: "AI_FEEDBACK_TARGET_UNAVAILABLE",
     },
-  });
+  );
+}
 
-  return feedback;
-};
+export function createFeedbackSubmissionService({
+  client,
+  anonymousUserRef = anonymousAiUserRef,
+}) {
+  return async function submitFeedback({
+    userId = null,
+    reportType,
+    title,
+    content,
+    targetType = null,
+    targetId = null,
+    screenshot = null,
+  }) {
+    if (!reportType || !title || !content) {
+      const error = new Error(
+        "Thieu thong tin bat buoc: reportType, title, content",
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const createReport = async (transactionClient, reporterId = userId) =>
+      transactionClient.feedbackReport.create({
+        data: {
+          reporterId,
+          reportType,
+          targetType,
+          targetId,
+          title,
+          content,
+          screenshot,
+          status: "pending",
+        },
+      });
+
+    if (targetType !== "ai_request") {
+      return createReport(client);
+    }
+
+    const feedback =
+      title === "AI helpful"
+        ? "up"
+        : title === "AI not helpful"
+          ? "down"
+          : null;
+    if (reportType !== "ai_quality" || !feedback) {
+      const error = new Error("Phan hoi AI khong hop le");
+      error.statusCode = 400;
+      throw error;
+    }
+    if (userId == null) throw unavailableAiFeedbackTarget();
+
+    let ownerReference;
+    try {
+      ownerReference = anonymousUserRef(userId);
+    } catch {
+      throw unavailableAiFeedbackTarget();
+    }
+
+    return client.$transaction(async (transactionClient) => {
+      const requestLog = await transactionClient.aiRequestLog.findFirst({
+        where: {
+          id: targetId,
+          anonymousUserRef: ownerReference,
+          status: "success",
+          isTest: false,
+          feature: { in: RATEABLE_AI_FEATURES },
+        },
+        select: { id: true },
+      });
+      if (!requestLog) throw unavailableAiFeedbackTarget();
+
+      await transactionClient.aiRequestLog.update({
+        where: { id: targetId },
+        data: {
+          feedback,
+          feedbackReason: content,
+        },
+      });
+
+      return createReport(transactionClient, null);
+    });
+  };
+}
+
+export const submitFeedback = createFeedbackSubmissionService({
+  client: prisma,
+});
 
 export default {
   getHomeData,

@@ -1,10 +1,13 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { safeLazy as lazy } from "@/lib/safeLazy";
 import { useAuthStore } from "@/stores/authStore";
 import { ProtectedRoute } from "@/layouts";
 import { AdminLayout } from "@/layouts";
 import { BusinessLayout } from "@/layouts";
 import { ROLES } from "@/constants";
+import { usePermission } from "@/hooks/usePermission";
+import { PERMISSIONS } from "@/constants/permissions";
 import {
   AUTH_ROUTES,
   AUTH_PREFIX_ROUTES,
@@ -22,18 +25,23 @@ const VerifyEmailPublicPage = lazy(() => import("@/pages/auth/VerifyEmailPublicP
 const ResendVerificationPage = lazy(() => import("@/pages/auth/ResendVerificationPage"));
 const CheckEmailPage = lazy(() => import("@/pages/auth/CheckEmailPage"));
 const StaffInvitePage = lazy(() => import("@/pages/auth/StaffInvitePage"));
+const PrivacyPage = lazy(() => import("@/pages/legal/LegalPage").then((module) => ({ default: module.PrivacyPage })));
+const TermsPage = lazy(() => import("@/pages/legal/LegalPage").then((module) => ({ default: module.TermsPage })));
+const AccountDeletionPage = lazy(() => import("@/pages/legal/LegalPage").then((module) => ({ default: module.AccountDeletionPage })));
+
+// Shared pages - lazy loaded
+const ProfilePage = lazy(() => import("@/pages/shared/ProfilePage"));
+const NotificationsPage = lazy(() => import("@/pages/shared/NotificationsPage"));
+const NotFoundPage = lazy(() => import("@/pages/shared/NotFoundPage"));
 
 // Admin pages - lazy loaded
-const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
-const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
-const NotificationsPage = lazy(() => import("@/pages/NotificationsPage"));
+const DashboardPage = lazy(() => import("@/pages/admin/DashboardPage"));
 const SettingsPage = lazy(() => import("@/pages/admin/SettingsPage"));
-const UserManagePage = lazy(() => import("@/pages/UserManagePage"));
-const EmailVerificationPage = lazy(() => import("@/pages/EmailVerificationPage"));
-const PasswordResetPage = lazy(() => import("@/pages/PasswordResetPage"));
-const AuditLogsPage = lazy(() => import("@/pages/AuditLogsPage"));
-const LoginHistoryPage = lazy(() => import("@/pages/LoginHistoryPage"));
-const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
+const UserManagePage = lazy(() => import("@/pages/admin/UserManagePage"));
+const EmailVerificationPage = lazy(() => import("@/pages/admin/EmailVerificationPage"));
+const PasswordResetPage = lazy(() => import("@/pages/admin/PasswordResetPage"));
+const AuditLogsPage = lazy(() => import("@/pages/admin/AuditLogsPage"));
+const LoginHistoryPage = lazy(() => import("@/pages/admin/LoginHistoryPage"));
 const PlaceWizardPage = lazy(() => import("@/pages/admin/PlaceWizardPage"));
 const PlaceListPage = lazy(() => import("@/pages/admin/PlaceListPage"));
 const PlacePendingPage = lazy(() => import("@/pages/admin/PlacePendingPage"));
@@ -51,8 +59,9 @@ const AdminSubscriptionPage = lazy(() => import("@/pages/admin/AdminSubscription
 const AdminPlanManagementPage = lazy(() => import("@/pages/admin/AdminPlanManagementPage"));
 const AdminAnalyticsPage = lazy(() => import("@/pages/admin/AdminAnalyticsPage"));
 const CMSContentPage = lazy(() => import("@/pages/admin/CMSContentPage"));
-const RoleManagePage = lazy(() => import("@/pages/RoleManagePage"));
-const PermissionManagePage = lazy(() => import("@/pages/PermissionManagePage"));
+const RoleManagePage = lazy(() => import("@/pages/admin/RoleManagePage"));
+const PermissionManagePage = lazy(() => import("@/pages/admin/PermissionManagePage"));
+const AdminAiPage = lazy(() => import("@/pages/admin/ai/AdminAiPage"));
 
 // Business pages - lazy loaded
 const BusinessProfilePage = lazy(() => import("@/pages/business/BusinessProfilePage"));
@@ -93,7 +102,11 @@ const DashboardGate = () => {
   const { user } = useAuthStore();
   const roleId = resolveRoleId(user);
 
-  if (roleId === ROLES.BUSINESS || roleId === ROLES.STAFF) {
+  if (roleId === ROLES.STAFF) {
+    return <Navigate to={BUSINESS_ROUTES.BOOKINGS} replace />;
+  }
+
+  if (roleId === ROLES.BUSINESS) {
     return <Navigate to={BUSINESS_ROUTES.DASHBOARD} replace />;
   }
 
@@ -112,32 +125,110 @@ const DashboardGate = () => {
 const adminRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
 const dashboardRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
 const placeRoles = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
-const superAdminOnly = [ROLES.SUPER_ADMIN];
+const STAFF_OPERATION_ROUTES = new Set([
+  BUSINESS_ROUTES.BOOKING_SCHEDULE,
+  BUSINESS_ROUTES.BOOKINGS,
+  BUSINESS_ROUTES.BOOKING_DETAIL(":id"),
+]);
+
+import GlobalErrorBoundary from "@/components/common/GlobalErrorBoundary";
 
 /** Wrap page in ProtectedRoute + AdminLayout */
 const ProtectedAdmin = ({ children, roles }) => (
   <ProtectedRoute roles={roles}>
-    <AdminLayout>{children}</AdminLayout>
+    <AdminLayout>
+      <GlobalErrorBoundary
+        title="Lỗi phân hệ Quản trị (Admin)"
+        description="Phân hệ Admin gặp sự cố không mong muốn. Sự cố này đã được cách ly và không ảnh hưởng tới các phân hệ khác."
+      >
+        {children}
+      </GlobalErrorBoundary>
+    </AdminLayout>
   </ProtectedRoute>
 );
 
-const ProtectedBusiness = ({
+const ProtectedBusinessOwner = ({
   children,
   allowWhenPendingOrRejected = false,
   skipBusinessGuard = false,
 }) => (
-  <ProtectedRoute roles={[ROLES.BUSINESS, ROLES.STAFF]}>
+  <ProtectedRoute roles={[ROLES.BUSINESS]}>
     <BusinessLayout>
-      {skipBusinessGuard ? (
-        children
-      ) : (
-        <BusinessGuard allowWhenPendingOrRejected={allowWhenPendingOrRejected}>
-          {children}
-        </BusinessGuard>
-      )}
+      <GlobalErrorBoundary
+        title="Lỗi phân hệ Doanh nghiệp (Business)"
+        description="Phân hệ Doanh nghiệp gặp sự cố không mong muốn. Sự cố này đã được cách ly và không ảnh hưởng tới các phân hệ khác."
+      >
+        {skipBusinessGuard ? (
+          children
+        ) : (
+          <BusinessGuard allowWhenPendingOrRejected={allowWhenPendingOrRejected}>
+            {children}
+          </BusinessGuard>
+        )}
+      </GlobalErrorBoundary>
     </BusinessLayout>
   </ProtectedRoute>
 );
+
+const ProtectedAdminPermission = ({
+  children,
+  roles,
+  permission,
+  permissions = [],
+}) => {
+  const user = useAuthStore((state) => state.user);
+  const { hasAnyPermission, isLoading } = usePermission();
+  const requiredPermissions = permission ? [permission, ...permissions] : permissions;
+  const permissionsLoaded = Array.isArray(user?.permissions);
+
+  if (isLoading) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="min-h-[40vh] grid place-items-center bg-[#FAF9F5]"
+      >
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
+        <span className="sr-only">Đang kiểm tra quyền truy cập</span>
+      </div>
+    );
+  }
+
+  if (
+    requiredPermissions.length > 0 &&
+    permissionsLoaded &&
+    !hasAnyPermission(requiredPermissions)
+  ) {
+    return <Navigate to={ADMIN_ROUTES.PROFILE} replace />;
+  }
+
+  return <ProtectedAdmin roles={roles}>{children}</ProtectedAdmin>;
+};
+
+const ProtectedStaffOperations = ({ children }) => {
+  const user = useAuthStore((state) => state.user);
+  const isStaff = resolveRoleId(user) === ROLES.STAFF;
+  const { hasPermission } = usePermission();
+  const permissionsLoaded = Array.isArray(user?.permissions);
+  const canViewBookings = !permissionsLoaded || hasPermission("bookings.view");
+
+  if (isStaff && !canViewBookings) {
+    return <Navigate to={ADMIN_ROUTES.PROFILE} replace />;
+  }
+
+  return (
+    <ProtectedRoute roles={[ROLES.BUSINESS, ROLES.STAFF]}>
+      <BusinessLayout>
+        <GlobalErrorBoundary
+          title="Không thể tải khu vực vận hành đặt chỗ"
+          description="Vui lòng tải lại trang hoặc thử lại sau ít phút."
+        >
+          {isStaff ? children : <BusinessGuard>{children}</BusinessGuard>}
+        </GlobalErrorBoundary>
+      </BusinessLayout>
+    </ProtectedRoute>
+  );
+};
 
 const ProtectedShared = ({ children }) => {
   const user = useAuthStore((state) => state.user);
@@ -192,6 +283,9 @@ const AppRoutes = () => {
 
       {/* Staff invite (public) */}
       <Route path="/invite" element={<StaffInvitePage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/account-deletion" element={<AccountDeletionPage />} />
 
       {/* Redirect root to dashboard - Business -> business dashboard */}
       <Route path="/" element={<RootRedirect />} />
@@ -297,9 +391,12 @@ const AppRoutes = () => {
       <Route
         path={ADMIN_ROUTES.ROLES}
         element={
-          <ProtectedAdmin roles={superAdminOnly}>
+          <ProtectedAdminPermission
+            roles={adminRoles}
+            permission={PERMISSIONS.ROLES.VIEW}
+          >
             <RoleManagePage />
-          </ProtectedAdmin>
+          </ProtectedAdminPermission>
         }
       />
 
@@ -307,9 +404,15 @@ const AppRoutes = () => {
       <Route
         path={ADMIN_ROUTES.PERMISSIONS}
         element={
-          <ProtectedAdmin roles={superAdminOnly}>
+          <ProtectedAdminPermission
+            roles={adminRoles}
+            permissions={[
+              PERMISSIONS.ROLES.VIEW_DETAIL,
+              PERMISSIONS.ROLES.MANAGE_PERMISSIONS,
+            ]}
+          >
             <PermissionManagePage />
-          </ProtectedAdmin>
+          </ProtectedAdminPermission>
         }
       />
 
@@ -432,6 +535,15 @@ const AppRoutes = () => {
         }
       />
 
+      <Route
+        path={ADMIN_ROUTES.PLACES_PENDING}
+        element={
+          <ProtectedAdmin roles={adminRoles}>
+            <PlacePendingPage />
+          </ProtectedAdmin>
+        }
+      />
+
       {/* Admin Subscription Management */}
       <Route
         path={ADMIN_ROUTES.SUBSCRIPTIONS}
@@ -449,8 +561,6 @@ const AppRoutes = () => {
           </ProtectedAdmin>
         }
       />
-
-      {/* Admin Booking Operations */}
 
       {/* Admin Analytics */}
       <Route
@@ -472,29 +582,38 @@ const AppRoutes = () => {
         }
       />
 
+      <Route
+        path={ADMIN_ROUTES.AI}
+        element={
+          <ProtectedAdmin roles={adminRoles}>
+            <AdminAiPage />
+          </ProtectedAdmin>
+        }
+      />
+
       {/* ===== Business Portal Routes ===== */}
       <Route
         path={BUSINESS_ROUTES.REGISTER}
         element={
-          <ProtectedBusiness skipBusinessGuard>
+          <ProtectedBusinessOwner skipBusinessGuard>
             <BusinessRegisterPage />
-          </ProtectedBusiness>
+          </ProtectedBusinessOwner>
         }
       />
       <Route
         path={BUSINESS_ROUTES.WELCOME}
         element={
-          <ProtectedBusiness skipBusinessGuard>
+          <ProtectedBusinessOwner skipBusinessGuard>
             <BusinessWelcomePage />
-          </ProtectedBusiness>
+          </ProtectedBusinessOwner>
         }
       />
       <Route
         path={BUSINESS_ROUTES.PROFILE}
         element={
-          <ProtectedBusiness allowWhenPendingOrRejected>
+          <ProtectedBusinessOwner allowWhenPendingOrRejected>
             <BusinessProfilePage />
-          </ProtectedBusiness>
+          </ProtectedBusinessOwner>
         }
       />
 
@@ -526,13 +645,20 @@ const AppRoutes = () => {
         { path: BUSINESS_ROUTES.SETTINGS, element: <BusinessSettingsPage /> },
         { path: BUSINESS_ROUTES.SUBSCRIPTION, element: <SubscriptionPage /> },
         { path: BUSINESS_ROUTES.SUBSCRIPTION_PLANS, element: <PricingPage /> },
-        { path: BUSINESS_ROUTES.SUBSCRIPTION_INVOICES, element: <InvoiceHistoryPage /> },
+        {
+          path: BUSINESS_ROUTES.SUBSCRIPTION_INVOICES,
+          element: <InvoiceHistoryPage />,
+        },
       ].map(({ path, element }) => (
         <Route
           key={path}
           path={path}
           element={
-            <ProtectedBusiness>{element}</ProtectedBusiness>
+            STAFF_OPERATION_ROUTES.has(path) ? (
+              <ProtectedStaffOperations>{element}</ProtectedStaffOperations>
+            ) : (
+              <ProtectedBusinessOwner>{element}</ProtectedBusinessOwner>
+            )
           }
         />
       ))}
@@ -541,9 +667,9 @@ const AppRoutes = () => {
       <Route
         path={BUSINESS_ROUTES.PLACES_NEW}
         element={
-          <ProtectedBusiness>
+          <ProtectedBusinessOwner>
             <PlaceWizardPage />
-          </ProtectedBusiness>
+          </ProtectedBusinessOwner>
         }
       />
       {/* Redirect /business/map to /business/places?tab=map */}
@@ -555,9 +681,9 @@ const AppRoutes = () => {
       <Route
         path={BUSINESS_ROUTES.PLACES_EDIT_PATTERN}
         element={
-          <ProtectedBusiness>
+          <ProtectedBusinessOwner>
             <PlaceWizardPage />
-          </ProtectedBusiness>
+          </ProtectedBusinessOwner>
         }
       />
 
@@ -579,6 +705,16 @@ const AppRoutes = () => {
             replace
           />
         }
+      />
+
+      {/* Pricing alias routes */}
+      <Route
+        path="/business/pricing"
+        element={<Navigate to={BUSINESS_ROUTES.SUBSCRIPTION_PLANS} replace />}
+      />
+      <Route
+        path="/pricing"
+        element={<Navigate to={BUSINESS_ROUTES.SUBSCRIPTION_PLANS} replace />}
       />
 
       {/* Alias routes */}

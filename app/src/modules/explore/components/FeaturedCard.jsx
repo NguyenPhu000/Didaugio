@@ -1,49 +1,53 @@
 import { memo, useCallback } from "react";
-import {
-  Platform,
-  Pressable,
-  Text,
-  View,
-  useWindowDimensions,
-} from "react-native";
-import { Image } from "expo-image";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
-import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
-} from "../../../constants/design-tokens";
-import { resolvePlaceImageUri, getOptimizedCloudinaryUrl } from "../../../lib/media-url";
+import Animated from "react-native-reanimated";
+import { BOOKING_APPLE_THEME as APPLE_THEME, TOKENS } from "../../../constants/design-tokens";
+import { resolvePlaceImageUri } from "../../../lib/media-url";
 import {
   getPlaceLocation,
   formatRatingLabel,
   formatPriceLine,
 } from "../utils/exploreHelpers";
+import {
+  ArrowCircle,
+  CREAM,
+  Eyebrow,
+  MetaChip,
+  POSTER_INSET,
+  POSTER_MEDIA_RADIUS,
+  POSTER_RADIUS,
+  PosterMedia,
+  PosterScrim,
+  STAR,
+  posterShadow,
+  usePressScale,
+} from "./cinematic";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const PAD = 24;
-const CARD_H = 380;
+const CARD_H = 424;
 
-const SPRING_CONFIG = TOKENS.spring.press;
+/** Nguồn duy nhất cho bề rộng hero — FeaturedSection dùng lại để snap chính xác. */
+export function getFeaturedCardWidth(screenWidth) {
+  return Math.min(322, screenWidth - PAD * 2 - 24);
+}
 
+/**
+ * Hero editorial. Bản cũ đặt một khối BlurView sáng ở đáy card, ăn ~35% chiều
+ * cao ảnh và cắt tấm hình thành hai nửa. Ở đây chữ nằm trực tiếp trên ảnh
+ * qua scrim, nên toàn bộ 424px là ảnh — đúng nghĩa cinematic.
+ */
 function FeaturedCardInner({ place, onPress, onSave, isSaved }) {
   const { t } = useTranslation();
   const { width: SCREEN_W } = useWindowDimensions();
-  const CARD_W = Math.min(280, SCREEN_W - PAD * 2 - 16);
-  const scale = useSharedValue(1);
+  const CARD_W = getFeaturedCardWidth(SCREEN_W);
+  const MEDIA_W = CARD_W - POSTER_INSET * 2;
+
   const rawImageUri = resolvePlaceImageUri(place);
-  const imageUri = rawImageUri?.includes("res.cloudinary.com")
-    ? getOptimizedCloudinaryUrl(rawImageUri, 600)
-    : rawImageUri;
   const location = getPlaceLocation(place);
   const rating = Number(place?.ratingAvg ?? place?.averageRating);
   const hasRating = Number.isFinite(rating) && rating > 0;
@@ -51,163 +55,155 @@ function FeaturedCardInner({ place, onPress, onSave, isSaved }) {
   const priceLine = formatPriceLine(place);
   const categoryName = place?.category?.name || t("explore.card.recommended");
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.97, SPRING_CONFIG);
-  }, [scale]);
-
-  const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, SPRING_CONFIG);
-  }, [scale]);
-
-  const handlePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onPress?.();
-  }, [onPress]);
+  const { onPressIn, onPressOut, cardStyle, mediaStyle } = usePressScale({
+    to: 0.975,
+    mediaTo: 1.04,
+  });
 
   const handleSave = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onSave?.(place);
   }, [onSave, place]);
 
   return (
     <AnimatedPressable
-      onPress={handlePress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
+      onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      accessibilityRole="button"
+      accessibilityLabel={place?.name}
+      accessibilityHint={t("explore.accessibility.openPlace")}
       style={[
-        animatedStyle,
+        cardStyle,
         {
           width: CARD_W,
           height: CARD_H,
+          padding: POSTER_INSET,
+          borderRadius: POSTER_RADIUS,
           borderCurve: "continuous",
-          ...Platform.select({
-            ios: TOKENS.shadow.md,
-            android: { elevation: 8 },
-          }),
+          backgroundColor: "#F7F3EB",
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: "rgba(11,11,12,0.06)",
+          ...posterShadow,
         },
       ]}
-      className="rounded-[28px] overflow-hidden relative"
     >
-      {imageUri ? (
-        <Image
-          source={{ uri: imageUri }}
-          contentFit="cover"
-          transition={280}
-          cachePolicy="memory-disk"
-          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
-        />
-      ) : (
-        <View
-          className="absolute inset-0 items-center justify-center"
-          style={{ backgroundColor: APPLE_THEME.surfaceMuted }}
-        >
-          <MaterialIconsRounded
-            name="travel-explore"
-            size={44}
-            color={APPLE_THEME.textMuted}
-          />
-        </View>
-      )}
-
-      <LinearGradient
-        colors={["rgba(0,0,0,0.35)", "transparent"]}
-        locations={[0, 1]}
-        style={{ position: "absolute", left: 0, right: 0, top: 0, height: "40%" }}
-        pointerEvents="none"
-      />
-      <LinearGradient
-        colors={["transparent", "rgba(0,0,0,0.72)"]}
-        locations={[0, 1]}
-        style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "70%" }}
-        pointerEvents="none"
-      />
-
-      <View className="absolute top-3.5 left-3.5 z-[3] h-7 rounded-full overflow-hidden border-[0.5px] border-white/30">
-        <BlurView
-          intensity={70}
-          tint="dark"
-          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
-        />
-        <View className="flex-1 flex-row items-center gap-1 px-2.5">
-          <MaterialIconsRounded name="bolt" size={12} color={TOKENS.color.warning} />
-          <Text
-            className="text-white text-[11px] font-semibold"
-            style={{ fontFamily: TOKENS.font.semibold }}
-          >
-            {t("explore.card.featuredBadge")}
-          </Text>
-        </View>
-      </View>
-
-      {hasRating ? (
-        <View className="absolute top-3.5 left-[94px] z-[3] h-7 rounded-full overflow-hidden border-[0.5px] border-white/30">
-          <BlurView
-            intensity={70}
-            tint="dark"
-            style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
-          />
-          <View className="flex-1 flex-row items-center gap-1 px-2.5">
-            <MaterialIconsRounded name="star" size={12} color={TOKENS.color.warning} />
-            <Text
-              className="text-white text-[11px] font-semibold"
-              style={{ fontFamily: TOKENS.font.semibold }}
-            >
-              {rating.toFixed(1)}
-            </Text>
-          </View>
-        </View>
-      ) : null}
-
-      <Pressable
-        onPress={handleSave}
-        hitSlop={8}
-        className="absolute top-3.5 right-3.5 z-[3] w-[34px] h-[34px] rounded-full items-center justify-center overflow-hidden border-[0.5px] border-white/35"
+      <View
+        style={{
+          flex: 1,
+          borderRadius: POSTER_MEDIA_RADIUS,
+          borderCurve: "continuous",
+          overflow: "hidden",
+          backgroundColor: CREAM,
+        }}
       >
-        <BlurView
-          intensity={60}
-          tint="dark"
-          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
-        />
-        <MaterialIconsRounded
-          name={isSaved ? "favorite" : "favorite-border"}
-          size={17}
-          color={isSaved ? APPLE_THEME.danger : APPLE_THEME.white}
-        />
-      </Pressable>
+        <Animated.View style={[StyleSheet.absoluteFillObject, mediaStyle]}>
+          <PosterMedia uri={rawImageUri} width={MEDIA_W} />
+        </Animated.View>
 
-      <View className="absolute left-2.5 right-2.5 bottom-2.5 z-[3] rounded-[20px] overflow-hidden border-[0.5px] border-white/60">
-        <BlurView intensity={85} tint="light" style={{ paddingHorizontal: 14, paddingVertical: 12 }}>
-          <View
-            className="self-start h-[22px] px-2.5 rounded-full justify-center mb-1.5"
-            style={{ backgroundColor: APPLE_THEME.primaryTint }}
-          >
-            <Text
-              className="text-[10px] font-semibold tracking-[0.3px]"
-              style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.semibold }}
-              numberOfLines={1}
-            >
-              {categoryName}
-            </Text>
-          </View>
+        {/* Grain texture overlay: tạo cảm giác film/emulsion, tránh ảnh trông
+            quá "kỹ thuật số". Rất nhẹ, không ảnh hưởng readability của scrim. */}
+        <View
+          pointerEvents="none"
+          style={{
+            ...StyleSheet.absoluteFillObject,
+            backgroundColor: "rgba(255,255,255,0.04)",
+            opacity: 0.6,
+          }}
+        />
+
+        <PosterScrim bottomHeight="62%" topHeight="26%" strength={0.82} />
+
+        {/* Hàng chip trên: flex-row nên không còn phụ thuộc toạ độ cứng
+            left-[94px] — badge dài do dịch thuật không đẩy lệch nữa. */}
+        <View
+          style={{
+            position: "absolute",
+            top: 12,
+            left: 12,
+            right: 58,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <MetaChip label={t("explore.card.featuredBadge")} />
+          {hasRating ? (
+            <MetaChip icon="star" iconColor={STAR} label={rating.toFixed(1)} />
+          ) : null}
+        </View>
+
+        {/* Save là hành động phụ nhưng vẫn cần nổi trên ảnh: blur ở đây an toàn
+            vì hero rail chỉ render vài card, không phải grid dài. */}
+        <Pressable
+          onPress={handleSave}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={t(
+            isSaved ? "explore.accessibility.unsavePlace" : "explore.accessibility.savePlace",
+            { name: place?.name },
+          )}
+          accessibilityHint={t("explore.accessibility.saveHint")}
+          accessibilityState={{ selected: isSaved }}
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: "rgba(255,255,255,0.34)",
+          }}
+        >
+          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <MaterialIconsRounded
+            name={isSaved ? "favorite" : "favorite-border"}
+            size={18}
+            color={isSaved ? APPLE_THEME.danger : "#FFFFFF"}
+          />
+        </Pressable>
+
+        <View style={{ position: "absolute", left: 18, right: 18, bottom: 18 }}>
+          <Eyebrow>{categoryName}</Eyebrow>
 
           <Text
-            className="text-base leading-[21px] tracking-[-0.4px] font-bold mb-0.5"
-            style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.heading }}
+            style={{
+              marginTop: 6,
+              color: "#FFFFFF",
+              fontSize: 25,
+              lineHeight: 30,
+              letterSpacing: -0.8,
+              fontFamily: TOKENS.font.heading,
+            }}
             numberOfLines={2}
           >
             {place?.name}
           </Text>
 
           {location ? (
-            <View className="flex-row items-center gap-0.5 mb-2">
-              <MaterialIconsRounded name="place" size={12} color={APPLE_THEME.textMuted} />
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                marginTop: 7,
+              }}
+            >
+              <MaterialIconsRounded
+                name="place"
+                size={13}
+                color="rgba(255,255,255,0.6)"
+              />
               <Text
-                className="text-[11px] font-medium flex-1"
-                style={{ color: APPLE_THEME.textMuted, fontFamily: TOKENS.font.medium }}
+                style={{
+                  flex: 1,
+                  color: "rgba(255,255,255,0.74)",
+                  fontSize: 12.5,
+                  fontFamily: TOKENS.font.medium,
+                }}
                 numberOfLines={1}
               >
                 {location}
@@ -215,41 +211,62 @@ function FeaturedCardInner({ place, onPress, onSave, isSaved }) {
             </View>
           ) : null}
 
-          <View className="flex-row justify-between items-center">
-            <Text
-              className="text-[10px] font-semibold tracking-[0.5px]"
-              style={{ color: APPLE_THEME.textMuted, fontFamily: TOKENS.font.semibold }}
-            >
-              {ratingCap}
-            </Text>
-            <View className="flex-row items-center gap-2">
+          {/* Chân card: hairline chia meta khỏi tiêu đề, giá bên trái,
+              nút tròn flush mép phải. */}
+          <View
+            style={{
+              marginTop: 14,
+              paddingTop: 13,
+              borderTopWidth: StyleSheet.hairlineWidth,
+              borderTopColor: "rgba(255,255,255,0.22)",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <View style={{ flex: 1, gap: 2 }}>
               {priceLine ? (
-                <View className="flex-row items-baseline gap-0.5">
+                <View style={{ flexDirection: "row", alignItems: "baseline", gap: 3 }}>
                   <Text
-                    className="text-[15px] font-bold"
-                    style={{ color: APPLE_THEME.text, fontFamily: TOKENS.font.heading }}
+                    style={{
+                      color: "#FFFFFF",
+                      fontSize: 18,
+                      letterSpacing: -0.4,
+                      fontFamily: TOKENS.font.heading,
+                    }}
                   >
                     {priceLine.main}
                   </Text>
                   {priceLine.suffix ? (
                     <Text
-                      className="text-[10px] font-medium"
-                      style={{ color: APPLE_THEME.textMuted, fontFamily: TOKENS.font.medium }}
+                      style={{
+                        color: "rgba(255,255,255,0.62)",
+                        fontSize: 12,
+                        fontFamily: TOKENS.font.medium,
+                      }}
                     >
                       {priceLine.suffix}
                     </Text>
                   ) : null}
                 </View>
               ) : null}
-              <View
-                className="w-[30px] h-[30px] rounded-full items-center justify-center"
-                style={{ backgroundColor: APPLE_THEME.text }}
+              <Text
+                style={{
+                  color: "rgba(255,255,255,0.58)",
+                  fontSize: 12,
+                  letterSpacing: 0.3,
+                  fontFamily: TOKENS.font.semibold,
+                }}
+                numberOfLines={1}
               >
-                <MaterialIconsRounded name="arrow-forward" size={14} color={APPLE_THEME.white} />
-              </View>
+                {ratingCap}
+              </Text>
             </View>
+
+            <ArrowCircle size={38} tone="light" />
           </View>
-        </BlurView>
+        </View>
       </View>
     </AnimatedPressable>
   );

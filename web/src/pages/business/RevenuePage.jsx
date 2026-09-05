@@ -1,14 +1,6 @@
 import { memo, useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  DollarSign,
-  TrendingUp,
-  CreditCard,
-  Download,
-  RefreshCw,
-  BarChart3,
-  Clock,
-} from "lucide-react";
+import { ArrowUpRight, Download } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { BOOKING_STATUS } from "@/constants/constants";
@@ -19,38 +11,26 @@ import {
   useRevenueByPlace,
   useTransactions,
 } from "@/hooks/queries/useRevenueQueries";
-import {
-  BusinessPageHeader,
-  BusinessStatCard,
-  BusinessStatCardSkeleton,
-  BusinessSectionCard,
-  BusinessSectionCardSkeleton,
-} from "@/components/business/ui";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import FinancialSubNav from "@/components/business/FinancialSubNav";
+import AetherBentoCard from "@/components/business/AetherBentoCard";
+import { formatMoney } from "@/utils/formatters";
+import { formatDateTime } from "@/components/business/dashboardWidgetHelpers";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group";
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
-} from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+} from "recharts";
 
 const formatCompactVND = (value) => {
   if (!value) return "0";
@@ -58,6 +38,46 @@ const formatCompactVND = (value) => {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
   return String(value);
+};
+
+const STATUS_CONFIG = {
+  [BOOKING_STATUS.COMPLETED]: {
+    label: "Hoàn tất",
+    dotClass: "bg-emerald-500",
+    textClass: "text-emerald-600 dark:text-emerald-400",
+  },
+  [BOOKING_STATUS.PENDING]: {
+    label: "Chờ xử lý",
+    dotClass: "bg-amber-500",
+    textClass: "text-amber-600 dark:text-amber-400",
+  },
+  [BOOKING_STATUS.CANCELLED]: {
+    label: "Đã hủy",
+    dotClass: "bg-rose-500",
+    textClass: "text-rose-600 dark:text-rose-400",
+  },
+  [BOOKING_STATUS.CONFIRMED]: {
+    label: "Đã xác nhận",
+    dotClass: "bg-blue-500",
+    textClass: "text-blue-600 dark:text-blue-400",
+  },
+};
+
+const CustomChartTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="rounded-xl border border-slate-200 dark:border-border/80 bg-slate-950 text-white p-3 shadow-xl text-xs space-y-1 min-w-[150px]">
+        <p className="font-bold text-slate-300 border-b border-white/10 pb-1">{label}</p>
+        {payload.map((item, idx) => (
+          <div key={idx} className="flex items-center justify-between gap-3">
+            <span className="text-slate-400">{item.name}:</span>
+            <span className="font-bold text-white">{formatMoney(item.value)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
 };
 
 const RevenuePage = memo(() => {
@@ -70,35 +90,6 @@ const RevenuePage = memo(() => {
     { value: "90d", label: t("business.revenue.days90") },
   ];
 
-  const CHART_CONFIG = {
-    grossRevenue: {
-      label: t("business.revenue.grossRevenueLabel"),
-      color: "hsl(var(--chart-1))",
-    },
-    netRevenue: {
-      label: t("business.revenue.netRevenueLabel"),
-      color: "hsl(var(--chart-2))",
-    },
-  };
-
-  const STATUS_BADGE_MAP = {
-    [BOOKING_STATUS.COMPLETED]: {
-      label: t("business.revenue.completed"),
-      className: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    },
-    [BOOKING_STATUS.PENDING]: {
-      label: t("business.revenue.pendingProcessing"),
-      className: "bg-amber-50 text-amber-700 border-amber-200",
-    },
-    [BOOKING_STATUS.CANCELLED]: {
-      label: t("business.revenue.cancelled"),
-      className: "bg-rose-50 text-rose-700 border-rose-200",
-    },
-    [BOOKING_STATUS.CONFIRMED]: {
-      label: t("business.revenue.confirmed"),
-      className: "bg-blue-50 text-700 border-blue-200",
-    },
-  };
   const [dateRange, setDateRange] = useState("30d");
   const [chartGroupBy, setChartGroupBy] = useState("day");
 
@@ -167,340 +158,286 @@ const RevenuePage = memo(() => {
     toast.success(t("business.revenue.toastExported"));
   }, [byPlace, t]);
 
-  const metricCards = useMemo(() => [
-    {
-      title: "GMV",
-      value: formatVND(overview.gmv),
-      icon: DollarSign,
-      iconColor: "blue",
-      trend: overview.gmvChange,
-      description: t("business.revenue.gmvDescription"),
-    },
-    {
-      title: t("business.revenue.netRevenue"),
-      value: formatVND(overview.netRevenue),
-      icon: TrendingUp,
-      iconColor: "emerald",
-      trend: overview.netRevenueChange,
-      description: t("business.revenue.netRevenueDescription"),
-    },
-    {
-      title: t("business.revenue.platformFees"),
-      value: formatVND(overview.platformFees),
-      icon: CreditCard,
-      iconColor: "amber",
-      trend: overview.platformFeesChange,
-      description: t("business.revenue.platformFeesDescription"),
-    },
-    {
-      title: t("business.revenue.refund"),
-      value: formatVND(overview.refundAmount),
-      icon: RefreshCw,
-      iconColor: "rose",
-      trend: overview.refundAmountChange,
-      description: t("business.revenue.refundDescription"),
-    },
-  ], [overview, t]);
-
   return (
-    <div className="space-y-4 p-4 md:space-y-6 md:p-6 lg:p-8">
-      {/* Header */}
-      <BusinessPageHeader
-        title={t("business.revenue.headerTitle")}
-        description={t("business.revenue.headerDesc")}
-        action={
-          <div className="flex items-center gap-2">
-            <ToggleGroup
-              type="single"
-              value={dateRange}
-              onValueChange={(v) => v && setDateRange(v)}
-              className="rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              {DATE_RANGE_OPTIONS.map((opt) => (
-                <ToggleGroupItem
-                  key={opt.value}
-                  value={opt.value}
-                  className="h-8 rounded-md px-3 text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-zinc-800"
-                >
-                  {opt.label}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportCsv}
-              className="h-8 gap-1.5"
-            >
-              <Download className="h-3.5 w-3.5" />
-              CSV
-            </Button>
-          </div>
-        }
-      />
+    <div className="min-h-screen bg-[#FAFAF8] dark:bg-background text-foreground p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto font-sans transition-colors duration-200">
+      {/* ── Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            {t("business.revenue.headerTitle")}
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-muted-foreground mt-0.5">
+            {t("business.revenue.headerDesc")}
+          </p>
+        </div>
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {overviewLoading
-          ? Array.from({ length: 4 }).map((_, i) => <BusinessStatCardSkeleton key={i} />)
-          : metricCards.map((card) => (
-              <BusinessStatCard
-                key={card.title}
-                title={card.title}
-                value={card.value}
-                icon={card.icon}
-                iconColor={card.iconColor}
-                trend={card.trend}
-                description={card.description}
-              />
+        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 flex-wrap sm:flex-nowrap">
+          <ToggleGroup
+            type="single"
+            value={dateRange}
+            onValueChange={(v) => v && setDateRange(v)}
+            className="flex-1 sm:flex-initial rounded-2xl border border-slate-200 dark:border-border/80 bg-white dark:bg-card p-1 shadow-sm overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+          >
+            {DATE_RANGE_OPTIONS.map((opt) => (
+              <ToggleGroupItem
+                key={opt.value}
+                value={opt.value}
+                className="h-8 rounded-xl px-3 text-xs font-bold whitespace-nowrap data-[state=active]:bg-slate-950 data-[state=active]:text-white dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground transition-all"
+              >
+                {opt.label}
+              </ToggleGroupItem>
             ))}
+          </ToggleGroup>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCsv}
+            className="h-10 px-4 rounded-2xl border-slate-200 dark:border-border/80 text-xs font-bold shadow-sm shrink-0"
+          >
+            <Download className="h-3.5 w-3.5 mr-1.5" />
+            CSV
+          </Button>
+        </div>
       </div>
 
-      {/* Revenue Chart */}
-      <BusinessSectionCard
-        title={t("business.revenue.chartTitle")}
-        titleIcon={BarChart3}
-        action={
+      <FinancialSubNav activeTab="revenue" />
+
+      {/* ── Top Bento Metric Cards (Signature Notched Corners) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <AetherBentoCard
+          title="Tổng Doanh Thu Gộp (GMV)"
+          subtitle={t("business.revenue.gmvDescription")}
+          value={overviewLoading ? "..." : formatMoney(overview.gmv)}
+          trendText={overview.gmvChange !== undefined && overview.gmvChange !== null ? (overview.gmvChange >= 0 ? `+${overview.gmvChange}% so kỳ trước` : `${overview.gmvChange}% so kỳ trước`) : null}
+          variant="peach"
+        />
+
+        <AetherBentoCard
+          title={t("business.revenue.netRevenue")}
+          subtitle={t("business.revenue.netRevenueDescription")}
+          value={overviewLoading ? "..." : formatMoney(overview.netRevenue)}
+          trendText={overview.netRevenueChange !== undefined && overview.netRevenueChange !== null ? (overview.netRevenueChange >= 0 ? `+${overview.netRevenueChange}% so kỳ trước` : `${overview.netRevenueChange}% so kỳ trước`) : null}
+          variant="blue"
+        />
+
+        <AetherBentoCard
+          title={t("business.revenue.platformFees")}
+          subtitle={t("business.revenue.platformFeesDescription")}
+          value={overviewLoading ? "..." : formatMoney(overview.platformFees)}
+          trendText={overview.platformFeesChange !== undefined && overview.platformFeesChange !== null ? (overview.platformFeesChange >= 0 ? `+${overview.platformFeesChange}%` : `${overview.platformFeesChange}%`) : null}
+          variant="gray"
+        />
+
+        <AetherBentoCard
+          title={t("business.revenue.refund")}
+          subtitle={t("business.revenue.refundDescription")}
+          value={overviewLoading ? "..." : formatMoney(overview.refundAmount)}
+          trendText={overview.refundAmountChange !== undefined && overview.refundAmountChange !== null ? (overview.refundAmountChange >= 0 ? `+${overview.refundAmountChange}%` : `${overview.refundAmountChange}%`) : null}
+          variant="rose"
+        />
+      </div>
+
+      {/* ── Main Area Chart: Diễn Biến Doanh Thu Theo Thời Gian ── */}
+      <div className="p-6 sm:p-7 rounded-[32px] bg-white dark:bg-card border border-slate-200/80 dark:border-border/80 shadow-sm space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">
+              {t("business.revenue.chartTitle")}
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-muted-foreground mt-0.5">
+              {t("business.revenue.chartSubtitle")}
+            </p>
+          </div>
+
           <ToggleGroup
             type="single"
             value={chartGroupBy}
             onValueChange={(v) => v && setChartGroupBy(v)}
-            className="rounded-md border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-800 dark:bg-zinc-900"
+            className="rounded-xl border border-slate-200/80 dark:border-border/80 bg-slate-50 dark:bg-muted p-0.5 self-start"
           >
             <ToggleGroupItem
               value="day"
-              className="h-7 rounded-sm px-2.5 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-zinc-800"
+              className="h-7 rounded-lg px-2.5 text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm dark:data-[state=active]:bg-card dark:data-[state=active]:text-white"
             >
               {t("business.revenue.groupByDay")}
             </ToggleGroupItem>
             <ToggleGroupItem
               value="week"
-              className="h-7 rounded-sm px-2.5 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-zinc-800"
+              className="h-7 rounded-lg px-2.5 text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm dark:data-[state=active]:bg-card dark:data-[state=active]:text-white"
             >
               {t("business.revenue.groupByWeek")}
             </ToggleGroupItem>
             <ToggleGroupItem
               value="month"
-              className="h-7 rounded-sm px-2.5 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-zinc-800"
+              className="h-7 rounded-lg px-2.5 text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm dark:data-[state=active]:bg-card dark:data-[state=active]:text-white"
             >
               {t("business.revenue.groupByMonth")}
             </ToggleGroupItem>
           </ToggleGroup>
-        }
-      >
+        </div>
+
         {timelineLoading ? (
-          <Skeleton className="h-[350px] w-full" />
+          <Skeleton className="h-72 w-full rounded-2xl" />
         ) : timeline.length === 0 ? (
-          <div className="flex h-[350px] items-center justify-center text-sm text-muted-foreground">
+          <div className="flex h-72 items-center justify-center text-xs text-muted-foreground">
             {t("business.revenue.noTimelineData")}
           </div>
         ) : (
-          <ChartContainer config={CHART_CONFIG} className="h-[350px] w-full">
-            <LineChart data={timeline} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-              <XAxis
-                dataKey="date"
-                tickLine={false}
-                axisLine={false}
-                tick={{ fontSize: 12 }}
-                className="text-muted-foreground"
-              />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={formatCompactVND}
-                tick={{ fontSize: 12 }}
-                className="text-muted-foreground"
-              />
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    formatter={(value, name) => [
-                      formatVND(value),
-                      CHART_CONFIG[name]?.label || name,
-                    ]}
-                  />
-                }
-              />
-              <ChartLegend content={<ChartLegendContent />} />
-              <Line
-                type="monotone"
-                dataKey="grossRevenue"
-                stroke="var(--color-grossRevenue)"
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="netRevenue"
-                stroke="var(--color-netRevenue)"
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
-            </LineChart>
-          </ChartContainer>
-        )}
-      </BusinessSectionCard>
-
-      {/* Revenue Breakdown by Place */}
-      <BusinessSectionCard title={t("business.revenue.revenueByPlace")} titleIcon={BarChart3}>
-        {byPlaceLoading ? (
-          <BusinessSectionCardSkeleton rows={5} />
-        ) : byPlace.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-8">
-            <BarChart3 className="h-8 w-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">{t("business.revenue.noDataByPlace")}</p>
+          <div className="h-72 w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={timeline} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="revGross" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366F1" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#6366F1" stopOpacity={0.0} />
+                  </linearGradient>
+                  <linearGradient id="revNet" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.6} />
+                <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#64748B" }} />
+                <YAxis tickLine={false} axisLine={false} tickFormatter={formatCompactVND} tick={{ fontSize: 11, fill: "#64748B" }} />
+                <RechartsTooltip content={<CustomChartTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="grossRevenue"
+                  name={t("business.revenue.grossRevenueLabel")}
+                  stroke="#6366F1"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#revGross)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="netRevenue"
+                  name={t("business.revenue.netRevenueLabel")}
+                  stroke="#10B981"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#revNet)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
-        ) : (
-          <>
-            {/* Desktop table */}
-            <div className="hidden md:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("business.revenue.csvPlace")}</TableHead>
-                    <TableHead className="text-right">{t("business.revenue.totalRevenue")}</TableHead>
-                    <TableHead className="text-right">{t("business.revenue.csvBookings")}</TableHead>
-                    <TableHead className="text-right">{t("business.revenue.csvAvgValue")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {byPlace.map((item) => (
-                    <TableRow key={item.placeId}>
-                      <TableCell className="font-medium">{item.placeName}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatVND(item.totalRevenue)}
-                      </TableCell>
-                      <TableCell className="text-right">{item.bookingCount}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatVND(item.avgOrderValue)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+        )}
+      </div>
 
-            {/* Mobile card view */}
-            <div className="md:hidden divide-y divide-border/50">
+      {/* ── Bottom Grid: Revenue by Place & Transactions Table ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Revenue by Place (1/3 width) */}
+        <div className="p-6 sm:p-7 rounded-[32px] bg-white dark:bg-card border border-slate-200/80 dark:border-border/80 shadow-sm space-y-4">
+          <div>
+            <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+              {t("business.revenue.byPlaceTitle")}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-muted-foreground mt-0.5">
+              {t("business.revenue.byPlaceSubtitle")}
+            </p>
+          </div>
+
+          {byPlaceLoading ? (
+            <div className="space-y-3 pt-2">
+              <Skeleton className="h-12 w-full rounded-xl" />
+              <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
+          ) : byPlace.length === 0 ? (
+            <div className="py-8 text-center text-xs text-muted-foreground">
+              {t("business.revenue.noPlaceData")}
+            </div>
+          ) : (
+            <div className="space-y-3 pt-1">
               {byPlace.map((item) => (
-                <div key={item.placeId} className="p-4 space-y-2">
-                  <p className="font-medium text-sm">{item.placeName}</p>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div>
-                      <p className="text-muted-foreground">{t("business.revenue.revenueLabel")}</p>
-                      <p className="font-mono font-semibold">{formatVND(item.totalRevenue)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">{t("business.revenue.bookingLabel")}</p>
-                      <p className="font-semibold">{item.bookingCount}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">{t("business.revenue.avgLabel")}</p>
-                      <p className="font-mono font-semibold">{formatVND(item.avgOrderValue)}</p>
-                    </div>
+                <div
+                  key={item.placeId || item.placeName}
+                  className="p-4 rounded-2xl bg-slate-50/80 dark:bg-muted/40 border border-slate-100 dark:border-border/60 space-y-1.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-slate-900 dark:text-white truncate max-w-[160px]">
+                      {item.placeName}
+                    </span>
+                    <span className="font-bold text-xs text-emerald-600 dark:text-emerald-400">
+                      {formatMoney(item.totalRevenue)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-500">
+                    <span>{item.bookingCount} lượt đặt</span>
+                    <span>Đơn TB: {formatMoney(item.avgOrderValue)}</span>
                   </div>
                 </div>
               ))}
             </div>
-          </>
-        )}
-      </BusinessSectionCard>
+          )}
+        </div>
 
-      {/* Recent Transactions */}
-      <BusinessSectionCard
-        title={t("business.revenue.recentTransactions")}
-        titleIcon={Clock}
-        action={
-          <Button variant="ghost" size="sm" className="h-8 text-xs" asChild>
-            <a href="/business/transactions">{t("business.revenue.viewAll")}</a>
-          </Button>
-        }
-      >
-        {txLoading ? (
-          <BusinessSectionCardSkeleton rows={5} />
-        ) : transactions.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-8">
-            <Clock className="h-8 w-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">{t("business.revenue.noTransactions")}</p>
+        {/* Transactions Table (2/3 width) */}
+        <div className="lg:col-span-2 p-6 sm:p-7 rounded-[32px] bg-white dark:bg-card border border-slate-200/80 dark:border-border/80 shadow-sm space-y-4">
+          <div>
+            <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+              {t("business.revenue.txTitle")}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-muted-foreground mt-0.5">
+              {t("business.revenue.txSubtitle")}
+            </p>
           </div>
-        ) : (
-          <>
-            {/* Desktop table */}
-            <div className="hidden md:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("business.schedule.date")}</TableHead>
-                    <TableHead>{t("business.revenue.csvPlace")}</TableHead>
-                    <TableHead className="text-right">{t("business.revenue.amount")}</TableHead>
-                    <TableHead className="text-right">{t("business.revenue.systemCommission")}</TableHead>
-                    <TableHead>{t("business.revenue.status")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+
+          <div className="overflow-x-auto">
+            {txLoading ? (
+              <div className="py-8 text-center text-xs text-muted-foreground">
+                {t("common.loading")}
+              </div>
+            ) : transactions.length === 0 ? (
+              <div className="py-8 text-center text-xs text-muted-foreground">
+                {t("business.revenue.noTransactions")}
+              </div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-slate-400 dark:text-muted-foreground text-left border-b border-slate-100 dark:border-border/60">
+                    <th className="pb-3 font-semibold">{t("business.revenue.txColId")}</th>
+                    <th className="pb-3 font-semibold">{t("business.revenue.txColPlace")}</th>
+                    <th className="pb-3 font-semibold">{t("business.revenue.txColDate")}</th>
+                    <th className="pb-3 font-semibold">{t("business.revenue.txColAmount")}</th>
+                    <th className="pb-3 font-semibold text-right">{t("business.revenue.txColStatus")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-border/40 font-medium">
                   {transactions.map((tx) => {
-                    const statusInfo = STATUS_BADGE_MAP[tx.status] || {
+                    const status = STATUS_CONFIG[tx.status] || {
                       label: tx.status,
-                      className: "bg-zinc-50 text-zinc-700 border-zinc-200",
+                      dotClass: "bg-slate-400",
+                      textClass: "text-slate-500",
                     };
+                    const dateValue = tx.createdAt || tx.completedAt || tx.date;
                     return (
-                      <TableRow key={tx.id}>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {new Date(tx.createdAt).toLocaleDateString("vi-VN")}
-                        </TableCell>
-                        <TableCell className="font-medium">{tx.placeName}</TableCell>
-                        <TableCell className="text-right font-mono">
-                          {formatVND(tx.amount)}
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-muted-foreground">
-                          {formatVND(tx.commission)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={statusInfo.className}>
-                            {statusInfo.label}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
+                      <tr key={tx.id} className="hover:bg-slate-50/80 dark:hover:bg-muted/40 transition-colors">
+                        <td className="py-3.5 font-mono text-slate-500">#{tx.id}</td>
+                        <td className="py-3.5 font-bold text-slate-900 dark:text-foreground">
+                          {tx.placeName || "Dịch vụ"}
+                        </td>
+                        <td className="py-3.5 text-slate-500 font-mono">
+                          {dateValue ? formatDateTime(dateValue) : "—"}
+                        </td>
+                        <td className="py-3.5 font-bold text-slate-800 dark:text-slate-200">
+                          {formatMoney(tx.amount)}
+                        </td>
+                        <td className="py-3.5 text-right">
+                          <span className={cn("inline-flex items-center gap-1.5 font-bold", status.textClass)}>
+                            <span className={cn("w-1.5 h-1.5 rounded-full", status.dotClass)} />
+                            {status.label}
+                          </span>
+                        </td>
+                      </tr>
                     );
                   })}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Mobile card view */}
-            <div className="md:hidden divide-y divide-border/50">
-              {transactions.map((tx) => {
-                const statusInfo = STATUS_BADGE_MAP[tx.status] || {
-                  label: tx.status,
-                  className: "bg-zinc-50 text-zinc-700 border-zinc-200",
-                };
-                return (
-                  <div key={tx.id} className="p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(tx.createdAt).toLocaleDateString("vi-VN")}
-                      </span>
-                      <Badge variant="outline" className={cn("text-[10px]", statusInfo.className)}>
-                        {statusInfo.label}
-                      </Badge>
-                    </div>
-                    <p className="text-sm font-medium">{tx.placeName}</p>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-mono font-semibold">{formatVND(tx.amount)}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {t("business.revenue.commissionLabel")}: {formatVND(tx.commission)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-      </BusinessSectionCard>
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 });

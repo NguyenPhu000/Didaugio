@@ -9,6 +9,34 @@ const hashValue = (value) => crypto.createHash("sha256").update(String(value)).d
 
 const generateOtpCode = () => String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
 
+export const recordFailedOtpAttempt = async (
+  verificationId,
+  now = new Date(),
+  client = prisma,
+) => {
+  const updated = await client.emailVerification.update({
+    where: { id: verificationId },
+    data: { otpAttempts: { increment: 1 } },
+    select: { otpAttempts: true },
+  });
+
+  if (updated.otpAttempts >= MAX_OTP_ATTEMPTS) {
+    await client.emailVerification.updateMany({
+      where: {
+        id: verificationId,
+        verifiedAt: null,
+        OR: [
+          { otpLockedUntil: null },
+          { otpLockedUntil: { lte: now } },
+        ],
+      },
+      data: {
+        otpLockedUntil: new Date(now.getTime() + OTP_TTL_MINUTES * 60 * 1000),
+      },
+    });
+  }
+};
+
 /**
  * Lấy danh sách email verifications (sắp xếp DESC - mới nhất lên đầu)
  */
@@ -187,7 +215,7 @@ export const verify = async (rawToken) => {
 /**
  * Verify email by 6-digit OTP while keeping the existing email link flow.
  */
-export const verifyOtp = async ({ email, otp }) => {
+export const verifyOtp = async ({ email, otp, upgradeToBusiness = false }) => {
   const normalizedEmail = String(email || "").trim().toLowerCase();
   const normalizedOtp = String(otp || "").replace(/\D/g, "");
   const now = new Date();
@@ -206,36 +234,27 @@ export const verifyOtp = async ({ email, otp }) => {
   });
 
   if (!verification || !verification.otpHash) {
-    const error = new Error("Ma OTP khong hop le hoac da het han");
+    const error = new Error("Mã OTP không hợp lệ hoặc đã hết hạn");
     error.statusCode = 400;
     throw error;
   }
 
   if (verification.otpLockedUntil && verification.otpLockedUntil > now) {
-    const error = new Error("Ban da nhap sai qua nhieu lan. Vui long gui lai ma OTP.");
+    const error = new Error("Bạn đã nhập sai quá nhiều lần. Vui lòng gửi lại mã OTP.");
     error.statusCode = 429;
     throw error;
   }
 
   if (verification.expiresAt < now || !verification.otpExpiresAt || verification.otpExpiresAt < now) {
-    const error = new Error("Ma OTP khong hop le hoac da het han");
+    const error = new Error("Mã OTP không hợp lệ hoặc đã hết hạn");
     error.statusCode = 400;
     throw error;
   }
 
   if (hashValue(normalizedOtp) !== verification.otpHash) {
-    const nextAttempts = verification.otpAttempts + 1;
-    await prisma.emailVerification.update({
-      where: { id: verification.id },
-      data: {
-        otpAttempts: nextAttempts,
-        ...(nextAttempts >= MAX_OTP_ATTEMPTS
-          ? { otpLockedUntil: new Date(now.getTime() + OTP_TTL_MINUTES * 60 * 1000) }
-          : {}),
-      },
-    });
+    await recordFailedOtpAttempt(verification.id, now);
 
-    const error = new Error("Ma OTP khong dung");
+    const error = new Error("Mã OTP không đúng");
     error.statusCode = 400;
     throw error;
   }
@@ -251,7 +270,10 @@ export const verifyOtp = async ({ email, otp }) => {
     }),
     prisma.user.update({
       where: { id: verification.userId },
-      data: { emailVerified: true },
+      data: {
+        emailVerified: true,
+        ...(upgradeToBusiness ? { roleId: 3 } : {}), // 3: ROLES.BUSINESS
+      },
     }),
   ]);
 

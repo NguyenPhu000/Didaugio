@@ -17,16 +17,20 @@ import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
 import {
   BOOKING_APPLE_THEME as APPLE_THEME,
 } from "../../../constants/design-tokens";
 import { useExplore, useCategories } from "../hooks/useExplore";
 import { useBoundaryData } from "../../map/hooks/useBoundaryData";
-import { resolvePlaceImageUri } from "../../../lib/media-url";
+import { resolvePlaceImageUri, PLACE_IMAGE_BLURHASH } from "../../../lib/media-url";
 import { getPlaceLocation, normalizeText } from "../utils/exploreHelpers";
 
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+const isNewArchitectureEnabled = global?.nativeFabricUIManager != null;
+if (
+  Platform.OS === "android" &&
+  !isNewArchitectureEnabled &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
@@ -84,6 +88,7 @@ const SearchResultItem = memo(function SearchResultItem({
   placeId,
   onPressPlace,
 }) {
+  const { t } = useTranslation();
   const imageUri = resolvePlaceImageUri(place);
   const location = getPlaceLocation(place);
   const rating = Number(place?.ratingAvg ?? place?.averageRating ?? 0);
@@ -94,12 +99,20 @@ const SearchResultItem = memo(function SearchResultItem({
   }, [onPressPlace, placeId]);
 
   return (
-    <Pressable onPress={handlePress} className="flex-row items-center gap-3.5 py-3 border-b border-[#F2F2F7]">
+    <Pressable
+      onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={place?.name}
+      accessibilityHint={t("explore.accessibility.openPlace")}
+      className="flex-row items-center gap-3.5 py-3 border-b border-[#F2F2F7]"
+    >
       <View className="w-14 h-14 rounded-[14px] overflow-hidden bg-[#F2F2F7] items-center justify-center relative">
         {imageUri ? (
           <Image
             source={{ uri: imageUri }}
             contentFit="cover"
+            placeholder={{ blurhash: PLACE_IMAGE_BLURHASH }}
+            placeholderContentFit="cover"
             cachePolicy="memory-disk"
             style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
           />
@@ -218,7 +231,6 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
   }, [data, debouncedText]);
 
   const animateFilterChange = useCallback((setter, value) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     LayoutAnimation.configureNext(LAYOUT_ANIM);
     setter(value);
   }, []);
@@ -291,7 +303,12 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
               autoCapitalize="none"
             />
             {text ? (
-              <Pressable onPress={() => setText("")} hitSlop={10}>
+              <Pressable
+                onPress={() => setText("")}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={t("explore.accessibility.clearSearch")}
+              >
                 <MaterialIconsRounded
                   name="close"
                   size={18}
@@ -300,7 +317,12 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
               </Pressable>
             ) : null}
           </View>
-          <Pressable onPress={handleClose} hitSlop={10}>
+          <Pressable
+            onPress={handleClose}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={t("explore.search.close")}
+          >
             <Text className="text-primary text-sm font-semibold">{t("explore.search.close")}</Text>
           </Pressable>
         </View>
@@ -312,7 +334,6 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
             </Text>
             <Pressable
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 LayoutAnimation.configureNext(LAYOUT_ANIM);
                 setText("");
                 setDebouncedText("");
@@ -322,6 +343,8 @@ export const SearchOverlay = memo(function SearchOverlayInner({ visible, onClose
                 setSelectedMinRating(null);
                 setSelectedSortBy("newest");
               }}
+              accessibilityRole="button"
+              accessibilityLabel={t("explore.search.resetFilters")}
               className="flex-row items-center gap-1 px-2.5 h-7 rounded-full bg-black/[0.04] border border-[#F2F2F7]"
             >
               <MaterialIconsRounded

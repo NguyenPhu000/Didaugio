@@ -1,3 +1,7 @@
+// MAP: SepayQrScreen
+// ├── UI: @/components/primitives/MaterialIconsRounded
+// └── API: @/modules/booking/hooks/usePayment
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,

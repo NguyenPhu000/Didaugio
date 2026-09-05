@@ -1,13 +1,9 @@
+import { Activity, Database, Cpu, HardDrive, Clock } from "lucide-react";
 import { useDashboardHealth } from "@/hooks/queries/useDashboardQuery";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import Activity from "lucide-react/dist/esm/icons/activity";
-import Database from "lucide-react/dist/esm/icons/database";
-import Cpu from "lucide-react/dist/esm/icons/cpu";
-import HardDrive from "lucide-react/dist/esm/icons/hard-drive";
-import Clock from "lucide-react/dist/esm/icons/clock";
 
 const STATUS_MAP = {
   healthy: { label: "Khỏe mạnh", color: "bg-green-50 text-green-700 border-green-200" },

@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { BlurView } from "expo-blur";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Platform, Pressable, StyleSheet, View } from "react-native";

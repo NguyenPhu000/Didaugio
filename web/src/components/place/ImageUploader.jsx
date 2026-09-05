@@ -1,4 +1,5 @@
 import { useState, useRef, memo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Upload,
   X,
@@ -24,9 +25,24 @@ import { compressImage } from "@/utils/imageUtils";
 
 const { MAX_IMAGES, MAX_FILE_SIZE } = IMAGE_UPLOAD_CONFIG;
 
+export const resolveMediaSource = (img) => {
+  if (!img) return "";
+  if (typeof img === "string") return img;
+  return (
+    img.imageData ||
+    img.secureUrl ||
+    img.thumbnailUrl ||
+    img.url ||
+    img.image_data ||
+    ""
+  );
+};
+
 const ImageUploader = memo(({ images = [], onChange, error }) => {
+  const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const fileInputRef = useRef(null);
 
   const handleFileSelect = useCallback(
@@ -35,7 +51,7 @@ const ImageUploader = memo(({ images = [], onChange, error }) => {
 
       // Check total images limit
       if (images.length + files.length > MAX_IMAGES) {
-        alert(`ERR: LIMIT EXCEEDED. MAX ${MAX_IMAGES}`);
+        setUploadError(t("imageUpload.maxImages", { count: MAX_IMAGES }));
         return;
       }
 
@@ -47,6 +63,7 @@ const ImageUploader = memo(({ images = [], onChange, error }) => {
       });
 
       setUploading(true);
+      setUploadError("");
       Promise.all(filePromises)
         .then((results) => {
           const newItems = results.map((item, index) => ({
@@ -56,12 +73,12 @@ const ImageUploader = memo(({ images = [], onChange, error }) => {
           onChange([...images, ...newItems]);
           setUploading(false);
         })
-        .catch((error) => {
-          alert(`UPLOAD ERROR: ${error}`);
+        .catch(() => {
+          setUploadError(t("imageUpload.failed"));
           setUploading(false);
         });
     },
-    [images, onChange],
+    [images, onChange, t],
   );
 
   const handleDrop = (e) => {
@@ -90,7 +107,7 @@ const ImageUploader = memo(({ images = [], onChange, error }) => {
       img.order = i;
     });
     // If removed image was cover, set first image as cover
-    if (images[index].isCover && newImages.length > 0) {
+    if (images[index]?.isCover && newImages.length > 0) {
       newImages[0].isCover = true;
     }
     onChange(newImages);
@@ -105,6 +122,7 @@ const ImageUploader = memo(({ images = [], onChange, error }) => {
   };
 
   const coverImage = images.find((img) => img.isCover) || images[0];
+  const coverSrc = resolveMediaSource(coverImage);
 
   return (
     <div className="space-y-6">
@@ -141,13 +159,16 @@ const ImageUploader = memo(({ images = [], onChange, error }) => {
       </div>
 
       {/* Main Viewport (Cover) */}
-      {coverImage ? (
+      {coverImage && coverSrc ? (
         <div className="rounded-sm border border-gray-200 bg-gray-50 p-1 relative group">
           <div className="aspect-[21/9] bg-gray-200 relative overflow-hidden rounded-sm">
             <img
-              src={coverImage.imageData}
+              src={coverSrc}
               alt="Cover Viewport"
               className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-500"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
             />
 
             {/* HUD Overlay */}
@@ -224,72 +245,82 @@ const ImageUploader = memo(({ images = [], onChange, error }) => {
         </div>
 
         {/* Image Grid Items */}
-        {images.map((image, index) => (
-          <div
-            key={index}
-            className={cn(
-              "aspect-square relative group bg-gray-100 rounded-sm overflow-hidden border transition-all cursor-pointer",
-              image.isCover
-                ? "border-emerald-500 ring-1 ring-emerald-500 ring-offset-2 ring-offset-white"
-                : "border-gray-200 hover:border-blue-500",
-            )}
-            onClick={() => setPrimaryImage(index)}
-          >
-            <img
-              src={image.imageData}
-              alt={`img-${index}`}
-              className="w-full h-full object-cover"
-            />
-
-            {/* Index Number */}
-            <div className="absolute font-mono top-0 left-0 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-br-sm backdrop-blur-sm">
-              {String(index + 1).padStart(2, "0")}
-            </div>
-
-            {/* Overlay Controls */}
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[1px]">
-              {image.isCover ? (
-                <span className="text-emerald-400 font-mono text-xs font-bold flex items-center gap-1 border border-emerald-400 px-2 py-1 rounded-sm bg-emerald-400/10">
-                  <CheckCircle2 className="w-3 h-3" /> ACTIVE
-                </span>
+        {images.map((image, index) => {
+          const imgSrc = resolveMediaSource(image);
+          return (
+            <div
+              key={index}
+              className={cn(
+                "aspect-square relative group bg-gray-100 rounded-sm overflow-hidden border transition-all cursor-pointer",
+                image.isCover
+                  ? "border-emerald-500 ring-1 ring-emerald-500 ring-offset-2 ring-offset-white"
+                  : "border-gray-200 hover:border-blue-500",
+              )}
+              onClick={() => setPrimaryImage(index)}
+            >
+              {imgSrc ? (
+                <img
+                  src={imgSrc}
+                  alt={`img-${index}`}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
               ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-300">
+                  <ImageIcon className="w-8 h-8 opacity-40" />
+                </div>
+              )}
+
+              {/* Index Number */}
+              <div className="absolute font-mono top-0 left-0 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-br-sm backdrop-blur-sm">
+                {String(index + 1).padStart(2, "0")}
+              </div>
+
+              {/* Overlay Controls */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[1px]">
+                {image.isCover ? (
+                  <span className="text-emerald-400 font-mono text-xs font-bold flex items-center gap-1 border border-emerald-400 px-2 py-1 rounded-sm bg-emerald-400/10">
+                    <CheckCircle2 className="w-3 h-3" /> ACTIVE
+                  </span>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 bg-white/10 hover:bg-emerald-500 hover:text-white text-white rounded-sm border border-white/20"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPrimaryImage(index);
+                    }}
+                    title="Set as Cover"
+                  >
+                    <Star className="w-4 h-4" />
+                  </Button>
+                )}
+
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 p-0 bg-white/10 hover:bg-emerald-500 hover:text-white text-white rounded-sm border border-white/20"
+                  className="h-8 w-8 p-0 bg-white/10 hover:bg-red-500 hover:text-white text-white rounded-sm border border-white/20"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setPrimaryImage(index);
+                    removeImage(index);
                   }}
-                  title="Set as Cover"
+                  title="Remove"
                 >
-                  <Star className="w-4 h-4" />
+                  <Trash2 className="w-4 h-4" />
                 </Button>
-              )}
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 bg-white/10 hover:bg-red-500 hover:text-white text-white rounded-sm border border-white/20"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeImage(index);
-                }}
-                title="Remove"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {error && (
-        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-sm text-red-600">
+      {(error || uploadError) && (
+        <div role="alert" className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-sm text-red-600">
           <AlertTriangle className="w-4 h-4" />
-          <span className="text-sm font-mono font-bold tracking-tight uppercase">
-            SYSTEM_ALERT :: {error}
-          </span>
+          <span className="text-sm font-medium">{uploadError || error}</span>
         </div>
       )}
 

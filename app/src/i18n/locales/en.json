@@ -3,6 +3,7 @@
     "save": "Save",
     "cancel": "Cancel",
     "close": "Close",
+    "offline": "No internet connection",
     "confirm": "Confirm",
     "delete": "Delete",
     "edit": "Edit",
@@ -33,6 +34,7 @@
     "optional": "Optional",
     "free": "Free",
     "appName": "iPoint Genie",
+    "appTagline": "Your smart travel companion",
     "offline": "You are offline — Showing saved data",
     "days": "days",
     "people": "people",
@@ -91,7 +93,11 @@
       "hasAccount": "Already have an account?",
       "loginNow": "Log in now",
       "success": "Registration successful!",
-      "failed": "Registration failed"
+      "failed": "Registration failed",
+      "strengthWeak": "Weak",
+      "strengthFair": "Fair",
+      "strengthGood": "Good",
+      "strengthStrong": "Strong"
     },
     "forgotPassword": {
       "title": "FORGOT PASSWORD",
@@ -117,6 +123,18 @@
     }
   },
   "onboarding": {
+    "welcomeTitle": "Welcome to iPoint Genie!",
+    "welcomeSubtitle": "Discover Can Tho your way with our smart AI assistant.",
+    "stepLabel": "Step {{current}}/{{total}}",
+    "features": {
+      "aiTitle": "Genie AI Assistant",
+      "aiDesc": "Smart planning and personalized place suggestions",
+      "mapTitle": "Visual Map",
+      "mapDesc": "Explore places with detailed map and directions",
+      "exploreTitle": "Diverse Exploration",
+      "exploreDesc": "Food, travel, entertainment, shopping and more"
+    },
+    "selectMultiple": "You can select multiple styles",
     "travelStyleTitle": "What kind of travel do you like? 🌴",
     "travelStyleSubtitle": "Select the styles you love (you can choose multiple)",
     "groupTitle": "Who do you travel with? 👥",
@@ -132,7 +150,8 @@
       "greeting": "What do you want to explore today?",
       "subtitle": "Pick a category, check out top spots and start your journey in Can Tho.",
       "searchPlaceholder": "Search places, food, activities...",
-      "location": "Can Tho"
+      "location": "Can Tho",
+      "searchHint": "Opens place search and filters"
     },
     "categories": {
       "all": "All"
@@ -170,6 +189,11 @@
       "noResults": "No results found",
       "noPlacesDesc": "Come back later or try a different category.",
       "noResultsDesc": "Try a different category or search by name."
+    },
+    "error": {
+      "title": "Could not load places",
+      "description": "Check your connection and try again.",
+      "retry": "Try again"
     },
     "search": {
       "placeholder": "Search places, restaurants, fun spots...",
@@ -219,7 +243,15 @@
       "viewAll": "View all",
       "featuredBadge": "FEATURED EVENT",
       "onlineCount": "{{count}} ONLINE",
-      "viewNow": "View now"
+      "viewNow": "View now",
+      "eyebrow": "COMMUNITY",
+      "live": "LIVE",
+      "subtitle": "Join, check in and go together",
+      "kicker": "Community event",
+      "defaultDescription": "Explore and meet the community",
+      "participantLabel": "joined",
+      "checkInLabel": "check-ins",
+      "legLabel": "legs"
     },
     "sampleTrip": {
       "adventure": "Adventure",
@@ -230,7 +262,15 @@
       "budget": "Budget",
       "luxury": "Luxury",
       "days": "{{count}} days",
-      "from": "From {{price}}"
+      "legs": "{{count}} stops",
+      "from": "From {{price}}",
+      "badge": "SAMPLE ITINERARY • {{location}}",
+      "defaultTitle": "Can Tho experience trip",
+      "defaultRoute": "Explore Can Tho at your own pace",
+      "sectionTitle": "Suggested trips",
+      "sectionBadge": "Hot",
+      "sectionSubtitle": "Explore Can Tho with a route that is ready to go",
+      "viewAll": "View all"
     },
     "headerBrand": "iPoint Genie",
     "headerGreeting": "Hello, {{name}}",
@@ -238,7 +278,34 @@
     "cmsFallbackTitle": "Discover Can Tho",
     "cmsFallbackDesc": "Discover hundreds of fascinating places in Can Tho",
     "heroBadge": "RECOMMENDED FOR YOU",
-    "heroExplore": "Explore"
+    "heroExplore": "Explore",
+    "announcement": {
+      "info": "UPDATE",
+      "warning": "NOTE",
+      "success": "UPDATE",
+      "error": "URGENT",
+      "details": "View details",
+      "collapse": "Collapse",
+      "dismiss": "Dismiss announcement",
+      "toggleHint": "Expands or collapses the announcement"
+    },
+    "accessibility": {
+      "clearCategory": "Clear category filter",
+      "openPlace": "Opens place details",
+      "savePlace": "Save {{name}}",
+      "unsavePlace": "Remove {{name}} from saved places",
+      "saveHint": "Saves this place for later",
+      "openEvent": "Opens event details",
+      "openTrip": "Opens trip details",
+      "openBanner": "Opens the featured recommendation",
+      "clearSearch": "Clear search"
+    },
+    "sheet": {
+      "place": "Place",
+      "allPlaces": "All places",
+      "placeCount": "{{count}} places",
+      "openPlace": "Open place"
+    }
   },
   "saved": {
     "title": "Favorites",
@@ -357,9 +424,17 @@
     "clearCacheConfirm": "Clear",
     "clearCacheSuccess": "Done!",
     "clearCacheSuccessMessage": "Cache has been cleared successfully.",
+    "clearCacheError": "Unable to clear cache. Please try again.",
     "legal": "Legal",
     "privacyPolicy": "Privacy policy",
     "termsOfService": "Terms of service",
+    "legalUnavailable": "This legal page is unavailable right now.",
+    "deleteAccount": "Delete account",
+    "deleteAccountSubtitle": "Permanently remove your account and personal data",
+    "deleteAccountTitle": "Delete your account?",
+    "deleteAccountMessage": "This permanently removes your personal profile, sessions, saved data, and trip data. Payment and booking records required by law remain anonymized.",
+    "deleteAccountConfirm": "Delete account",
+    "deleteAccountError": "Unable to delete your account. Please try again.",
     "appVersion": "App version",
     "logout": "Log out",
     "logoutConfirmTitle": "Log out?",
@@ -539,10 +614,13 @@
       "place": "Place",
       "service": "Service",
       "quantity": "Quantity",
+      "resource": "Resource",
+      "selectResource": "Select a resource",
       "usageDate": "Usage date",
       "selectTime": "Select time",
       "selected": "Selected",
-      "notSelected": "Not selected"
+      "notSelected": "Not selected",
+      "today": "Today"
     },
     "timeGroups": {
       "morning": "Morning",
@@ -570,7 +648,23 @@
       "contact": "Contact",
       "depositLabel": "Deposit: {{amount}}",
       "refundable": "Refundable {{percent}}%",
-      "nonRefundable": "Non-refundable"
+      "nonRefundable": "Non-refundable",
+      "finalTotal": "Final total"
+    },
+    "voucher": {
+      "title": "Discount voucher",
+      "placeholder": "Enter code (e.g. CANTHO2026)",
+      "apply": "APPLY",
+      "remove": "Remove voucher",
+      "validating": "Validating code...",
+      "invalid": "Code is invalid or cannot be applied",
+      "discountLabel": "You saved {{amount}}",
+      "discountApplied": "Voucher {{code}}",
+      "showList": "{{count}} available codes",
+      "hideList": "Hide list",
+      "upTo": "(up to {{amount}})",
+      "minOrder": "Min order {{amount}}",
+      "expires": "Exp: {{date}}"
     },
     "submitRequest": "Submit booking request",
     "payAtPlace": "Pay at venue",
@@ -584,6 +678,10 @@
       "note": "Special requests (optional)"
     },
     "timeSlotsCount": "{{count}} time slots available",
+    "resources": {
+      "required": "Select a resource before continuing.",
+      "noneAvailable": "No resources are available for this service."
+    },
     "slotUnavailableWarning": "This time slot has passed. Please select another.",
     "tripDescription": {
       "withService": "Booked service: {{service}}",
@@ -609,6 +707,10 @@
       "selectTrip": {
         "title": "Select a trip",
         "message": "Please select a trip to link this booking to."
+      },
+      "resourceRequired": {
+        "title": "Resource required",
+        "message": "Please select an available resource before booking."
       }
     },
     "errors": {
@@ -698,6 +800,8 @@
       "topRating": "Top rating",
       "new": "New",
       "about": "About",
+      "listenGuide": "Listen to the spoken guide",
+      "stopGuide": "Stop the spoken guide",
       "practicalInfo": "Practical information",
       "tagLabel": "Tag",
       "contactSection": "Contact",
@@ -706,6 +810,7 @@
       "emailLabel": "Email",
       "facebookLabel": "Facebook",
       "openingHoursLabel": "Opening hours",
+      "viewWeeklyHours": "View weekly opening hours",
       "reviewsSection": "Reviews",
       "seeAllReviews": "See all {{count}} reviews",
       "mapButton": "Map",
@@ -1232,6 +1337,7 @@
     "createTripAccessibility": "Create new trip",
     "upcoming": "Upcoming",
     "newTrip": "New trip",
+    "completedStamp": "COMPLETED",
     "destinations": "{{count}} destinations",
     "createFirst": "Create your first trip",
     "startExploring": "Start your journey exploring the world",
@@ -1410,6 +1516,12 @@
     "details": "Details",
     "createFromSelection": "Create itinerary from selection",
     "creatingTrip": "Creating trip...",
+    "tripCreatedSuccess": "Itinerary created successfully!",
+    "viewCreatedTrip": "View created trip",
+    "creatingTripProgress": "Creating Can Tho itinerary...",
+    "stepAggregatePlaces": "Gathering selected places",
+    "stepOptimizeRoute": "Optimizing route & travel distance",
+    "stepFinalizeTrip": "Saving trip to your account",
     "suggestingPlaces": "Suggesting places...",
     "processing": "Processing...",
     "inputPlaceholder": "Describe the plan you want...",
@@ -1481,7 +1593,8 @@
     "estimatedCost": "Cost ~{{cost}} VND",
     "selectingCountShort": "Selecting: {{count}} destinations.",
     "previewMessage": "Genie has prepared a {{totalDays}}-day itinerary with {{suggestedCount}} suggested places.",
-    "previewInstruction": "Select places below and press **Confirm & create trip**."
+    "previewInstruction": "Select places below and press **Confirm & create trip**.",
+    "newTopic": "New topic"
   },
   "chatPanel": {
     "confirmDelete": "Delete chat history?",
@@ -1581,7 +1694,8 @@
     "googleMissingConfig": "Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in app/.env.",
     "googleMissingOwner": "Missing EXPO_PUBLIC_EXPO_OWNER or EXPO_PUBLIC_EXPO_SLUG in app/.env.",
     "googleNotReady": "Google OAuth not ready. Please try again in a few seconds.",
-    "apiPointingToExpo": "Login API is pointing to Expo/Metro instead of backend. Check EXPO_PUBLIC_API_URL and app/server port."
+    "apiPointingToExpo": "Login API is pointing to Expo/Metro instead of backend. Check EXPO_PUBLIC_API_URL and app/server port.",
+    "accountInactive": "Account not yet activated. Please sign in with Google to activate it."
   },
   "tripHelpers": {
     "all": "All",
@@ -1704,7 +1818,25 @@
     "resume": "Resume",
     "previewTitle": "Review your route",
     "previewSummary": "{{count}} places • {{segments}} route legs",
+    "previewSummaryFull": "{{count}} destinations · {{segments}} legs · {{distance}} · {{duration}}",
+    "previewMinutes": "{{minutes}} min",
+    "previewHoursMinutes": "{{hours}} hr {{minutes}} min",
+    "previewApproximateMinutes": "about {{minutes}} min",
+    "previewApproximateHoursMinutes": "about {{hours}} hr {{minutes}} min",
     "previewFallback": "Some route legs are estimated. Check the path before starting.",
+    "previewFallbackCount": "{{count}} route legs use estimated paths. Check them before starting.",
+    "previewReviewHint": "Review the stop order before starting guidance.",
+    "previewStartPoint": "Starting point",
+    "previewStartHere": "Start from here",
+    "previewStartButton": "Start",
+    "previewDayTab": "Day {{day}}",
+    "previewToday": "Today",
+    "previewExpired": "Expired",
+    "previewExpiredMessage": "Journey for {{date}} has expired",
+    "previewExpiredCta": "Expired",
+    "previewAvailableFrom": "Available from {{date}}",
+    "previewEstimatedSegment": "Estimated route • {{distance}}",
+    "previewDistancePending": "Calculating distance",
     "previewNoStops": "This trip has no valid places to navigate.",
     "startGuidance": "Start guidance",
     "pauseJourney": "Pause",
@@ -1714,7 +1846,14 @@
     "map": "Map",
     "satellite": "Satellite",
     "complete": "Complete",
-    "paused": "Paused"
+    "paused": "Paused",
+    "locationPermissionTitle": "Location access required",
+    "locationPermissionMessage": "Please grant location permission in Settings so the app can provide real-time navigation.",
+    "locationPermissionCardTitle": "Turn on location for navigation",
+    "locationPermissionCardMessage": "iPoint Genie needs your location to keep the map updated and guide you in real time.",
+    "locationPermissionCancel": "Cancel",
+    "locationPermissionLater": "Not now",
+    "locationPermissionOpenSettings": "Open Settings"
   },
   "travelMode": {
     "motorbike": "Motorbike",

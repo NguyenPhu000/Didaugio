@@ -6,6 +6,17 @@ import api from "@/constants/api";
  */
 
 const BASE_URL = "/tags";
+const GROUPS_URL = "/tag-groups";
+
+export const getAllTagGroups = async () => {
+  const response = await api.get(GROUPS_URL);
+  return response.data;
+};
+
+export const createTagGroup = async (data) => {
+  const response = await api.post(GROUPS_URL, data);
+  return response.data;
+};
 
 // Get all tags
 export const getAllTags = async (params = {}) => {
@@ -70,6 +81,8 @@ export const recalculateUsageCount = async (id) => {
 };
 
 export default {
+  getAllTagGroups,
+  createTagGroup,
   getAllTags,
   getPopularTags,
   getSuggestedTagsByCategory,

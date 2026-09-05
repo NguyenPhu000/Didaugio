@@ -1,5 +1,28 @@
 import prisma from "../../config/prismaClient.js";
 
+const sessionSelect = {
+  id: true,
+  userId: true,
+  deviceId: true,
+  deviceName: true,
+  ipAddress: true,
+  isActive: true,
+  createdAt: true,
+  lastUsedAt: true,
+  expiresAt: true,
+  user: {
+    select: {
+      id: true,
+      email: true,
+      profile: {
+        select: {
+          fullName: true,
+        },
+      },
+    },
+  },
+};
+
 /**
  * Lấy danh sách login history (sắp xếp DESC - mới nhất lên đầu)
  */
@@ -16,19 +39,7 @@ export const getAll = async (query) => {
   const [sessions, total] = await Promise.all([
     prisma.userSession.findMany({
       where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            profile: {
-              select: {
-                fullName: true,
-              },
-            },
-          },
-        },
-      },
+      select: sessionSelect,
       orderBy: {
         lastUsedAt: "desc", // Mới nhất lên đầu
       },
@@ -67,19 +78,7 @@ export const getAll = async (query) => {
 export const getById = async (id) => {
   const session = await prisma.userSession.findUnique({
     where: { id },
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          profile: {
-            select: {
-              fullName: true,
-            },
-          },
-        },
-      },
-    },
+    select: sessionSelect,
   });
 
   if (!session) {
@@ -117,6 +116,7 @@ export const revoke = async (sessionId) => {
   return await prisma.userSession.update({
     where: { id: sessionId },
     data: { isActive: false },
+    select: { id: true, isActive: true },
   });
 };
 

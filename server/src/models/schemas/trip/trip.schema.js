@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { itineraryPreviewSchema } from "./itineraryPreview.schema.js";
+
+export { itineraryPreviewSchema } from "./itineraryPreview.schema.js";
 
 const dateYmdRegex = /^\d{4}-\d{2}-\d{2}$/;
 const timeHmRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -38,6 +41,7 @@ export const createTripSchema = z.object({
   status: z.enum(["planned"]).optional(),
   thumbnail: z.string().optional().nullable(),
   placeIds: z.array(z.coerce.number().int().positive()).optional(),
+  clientRequestId: z.string().min(8).max(100).optional(),
 });
 
 export const updateTripSchema = z.object({
@@ -60,6 +64,7 @@ export const updateTripSchema = z.object({
     .enum(["planned", "upcoming", "in-progress", "completed", "cancelled"])
     .optional(),
   thumbnail: z.string().optional().nullable(),
+  isPublic: z.boolean().optional(),
 });
 
 // ─── Destination schemas ────────────────────────────────────────────────────
@@ -171,16 +176,40 @@ export const reorderTripStopsSchema = z.object({
     }),
 });
 
+export const itineraryDraftSchema = itineraryPreviewSchema;
+
+const budgetSchema = z.union([
+  z
+    .number()
+    .finite()
+    .min(0)
+    .max(1_000_000_000)
+    .transform((value) => String(Math.round(value))),
+  z.string().trim().min(1).max(50),
+]);
+
+const selectedPlaceIdsSchema = z
+  .array(z.coerce.number().int().positive())
+  .max(120)
+  .superRefine((ids, ctx) => {
+    if (new Set(ids).size !== ids.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Danh sach dia diem khong duoc trung lap",
+      });
+    }
+  });
+
 export const generateTripSchema = z.object({
   totalDays: z.coerce.number().int().min(1).max(30).default(1),
   travelStyle: z.string().max(50).optional(),
   groupSize: z.coerce.number().int().min(1).max(50).default(1),
-  budget: z.string().max(50).optional(),
+  budget: budgetSchema.optional(),
   categoryId: z.coerce.number().int().positive().optional(),
   notes: z.string().max(500).optional(),
   previewOnly: z.boolean().optional(),
-  selectedPlaceIds: z.array(z.coerce.number().int().positive()).optional(),
-  itineraryDraft: z.any().optional(),
+  selectedPlaceIds: selectedPlaceIdsSchema.optional(),
+  itineraryDraft: itineraryDraftSchema.optional(),
 });
 
 // ─── TripShare schemas ──────────────────────────────────────────────────────

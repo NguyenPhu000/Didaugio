@@ -20,11 +20,49 @@ import {
   isValidSignatureData,
 } from "./eSignature.service.js";
 import logger from "../../config/logger.js";
+import { resolveSensitiveStorageDir } from "../document/sensitiveStoragePath.service.js";
 
-const STORAGE_DIR = path.resolve(
-  process.cwd(),
-  process.env.SENSITIVE_STORAGE_DIR || "storage/sensitive",
-);
+const STORAGE_DIR = resolveSensitiveStorageDir();
+
+export const assertContractIntegrity = (expectedChecksum, actualChecksum) => {
+  if (expectedChecksum && expectedChecksum === actualChecksum) return;
+
+  const error = new Error("Hop dong da ky bi loi hoac bi thay doi");
+  error.statusCode = 500;
+  error.errorCode = "CONTRACT_INTEGRITY_FAILED";
+  throw error;
+};
+
+export const toContractStorageError = (cause) => {
+  const error = new Error("Khong the doc hop dong da ky tu kho luu tru bao mat");
+  error.statusCode = 500;
+  error.errorCode = "CONTRACT_STORAGE_UNAVAILABLE";
+  error.cause = cause;
+  return error;
+};
+
+export const buildContractTempFilename = (filename) =>
+  `.${filename}.${crypto.randomUUID()}.tmp`;
+
+export const finalizeContractWrite = async ({
+  tempPath,
+  finalPath,
+  publishRecord,
+  renameFile = fs.rename,
+  removeFile = fs.unlink,
+}) => {
+  let published = false;
+  try {
+    await renameFile(tempPath, finalPath);
+    published = true;
+    return await publishRecord();
+  } catch (error) {
+    await removeFile(published ? finalPath : tempPath).catch((removeError) => {
+      if (removeError?.code !== "ENOENT") throw removeError;
+    });
+    throw error;
+  }
+};
 
 /**
  * Đảm bảo thư mục storage tồn tại
@@ -42,6 +80,28 @@ function generateContractFilename(businessId) {
   const random = crypto.randomBytes(16).toString("hex");
   return `${businessId}_contract_${random}.enc`;
 }
+
+const getContractPath = (filename) => {
+  if (
+    typeof filename !== "string" ||
+    path.basename(filename) !== filename ||
+    !filename.endsWith(".enc")
+  ) {
+    throw toContractStorageError(new Error("Invalid encrypted contract filename"));
+  }
+  return path.join(STORAGE_DIR, filename);
+};
+
+const removeReplacedContract = async (filename) => {
+  if (!filename) return;
+  try {
+    await fs.unlink(getContractPath(filename));
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      logger.error(`Could not remove superseded contract file: ${error.message}`);
+    }
+  }
+};
 
 /**
  * Tạo hợp đồng PDF khi admin approve business
@@ -69,20 +129,44 @@ export const createContract = async (businessData) => {
 
   // 3. Ghi encrypted file ra disk
   const filename = generateContractFilename(businessData.businessId);
-  const filePath = path.join(STORAGE_DIR, filename);
-  await fs.writeFile(filePath, encrypted);
+  const filePath = getContractPath(filename);
+  const tempPath = path.join(STORAGE_DIR, buildContractTempFilename(filename));
+  const current = await prisma.business.findUnique({
+    where: { id: businessData.businessId },
+    select: { contractPdfPath: true, contractSigned: true },
+  });
+  if (!current) {
+    const error = new Error("Business not found while creating contract");
+    error.statusCode = 404;
+    throw error;
+  }
+  if (current.contractSigned) {
+    const error = new Error("A signed contract cannot be replaced");
+    error.statusCode = 409;
+    error.errorCode = "CONTRACT_ALREADY_SIGNED";
+    throw error;
+  }
+  await fs.writeFile(tempPath, encrypted, { flag: "wx" });
 
   // 4. Lưu metadata vào Business record
-  await prisma.business.update({
-    where: { id: businessData.businessId },
-    data: {
-      contractPdfPath: filename,
-      contractPdfIv: iv,
-      contractPdfAuthTag: authTag,
-      contractPdfChecksum: checksum,
-      contractVersion: CURRENT_CONTRACT_VERSION,
-    },
+  await finalizeContractWrite({
+    tempPath,
+    finalPath: filePath,
+    publishRecord: () =>
+      prisma.business.update({
+        where: { id: businessData.businessId },
+        data: {
+          contractPdfPath: filename,
+          contractPdfIv: iv,
+          contractPdfAuthTag: authTag,
+          contractPdfChecksum: checksum,
+          contractVersion: CURRENT_CONTRACT_VERSION,
+        },
+      }),
   });
+  if (current?.contractPdfPath && current.contractPdfPath !== filename) {
+    await removeReplacedContract(current.contractPdfPath);
+  }
 
   logger.info(
     `Contract PDF created: business=${businessData.businessId}, checksum=${checksum.substring(0, 16)}...`,
@@ -132,9 +216,8 @@ export const signContract = async (businessId, signatureBase64, signerMetadata =
   }
 
   // 1. Đọc và decrypt PDF gốc
-  const encryptedBuffer = await fs.readFile(
-    path.join(STORAGE_DIR, business.contractPdfPath),
-  );
+  await ensureStorageDir();
+  const encryptedBuffer = await fs.readFile(getContractPath(business.contractPdfPath));
   const originalPdf = decryptFile(
     encryptedBuffer,
     business.contractPdfIv,
@@ -149,10 +232,10 @@ export const signContract = async (businessId, signatureBase64, signerMetadata =
   const { encrypted, iv, authTag } = encryptFile(signedPdf);
 
   // 4. Ghi đè file cũ
-  await fs.writeFile(
-    path.join(STORAGE_DIR, business.contractPdfPath),
-    encrypted,
-  );
+  const filename = generateContractFilename(businessId);
+  const filePath = getContractPath(filename);
+  const tempPath = path.join(STORAGE_DIR, buildContractTempFilename(filename));
+  await fs.writeFile(tempPath, encrypted, { flag: "wx" });
 
   // 5. Tạo signature hash (không lưu full base64)
   const signatureHash = crypto
@@ -165,23 +248,37 @@ export const signContract = async (businessId, signatureBase64, signerMetadata =
     ? new Date(signerMetadata.signedAt)
     : new Date();
 
-  const updated = await prisma.business.update({
-    where: { id: businessId },
-    data: {
-      contractSigned: true,
-      contractSignedAt: signedAt,
-      contractVersion: CURRENT_CONTRACT_VERSION,
-      contractPdfIv: iv,
-      contractPdfAuthTag: authTag,
-      contractPdfChecksum: checksum,
-      signerMetadata: {
-        signatureHash,
-        signedAt: signedAt.toISOString(),
-        ip: signerMetadata.ip || null,
-        userAgent: signerMetadata.userAgent || null,
-      },
-    },
+  const updated = await finalizeContractWrite({
+    tempPath,
+    finalPath: filePath,
+    publishRecord: () =>
+      prisma.business.update({
+        where: { id: businessId },
+        data: {
+          contractSigned: true,
+          contractSignedAt: signedAt,
+          contractVersion: CURRENT_CONTRACT_VERSION,
+          contractPdfPath: filename,
+          contractPdfIv: iv,
+          contractPdfAuthTag: authTag,
+          contractPdfChecksum: checksum,
+          signerMetadata: {
+            signatureHash,
+            signedAt: signedAt.toISOString(),
+            ip: signerMetadata.ip || null,
+            userAgent: signerMetadata.userAgent || null,
+            timezone: signerMetadata.timezone || null,
+            fullName: signerMetadata.fullName || null,
+            idCardIssuedDate: signerMetadata.idCardIssuedDate || null,
+            idCardIssuedPlace: signerMetadata.idCardIssuedPlace || null,
+            address: signerMetadata.address || null,
+            phone: signerMetadata.phone || null,
+            email: signerMetadata.email || null,
+          },
+        },
+      }),
   });
+  await removeReplacedContract(business.contractPdfPath);
 
   logger.info(`Contract signed: business=${businessId}, hash=${signatureHash.substring(0, 16)}...`);
 
@@ -252,9 +349,7 @@ export const signContractWithHash = async (businessId, signatureBase64, req) => 
 
   // 3. Đọc và decrypt PDF gốc
   await ensureStorageDir();
-  const encryptedBuffer = await fs.readFile(
-    path.join(STORAGE_DIR, business.contractPdfPath),
-  );
+  const encryptedBuffer = await fs.readFile(getContractPath(business.contractPdfPath));
   const originalPdf = decryptFile(
     encryptedBuffer,
     business.contractPdfIv,
@@ -269,31 +364,38 @@ export const signContractWithHash = async (businessId, signatureBase64, req) => 
   const { encrypted, iv, authTag } = encryptFile(signedPdf);
 
   // 6. Ghi đè file cũ
-  await fs.writeFile(
-    path.join(STORAGE_DIR, business.contractPdfPath),
-    encrypted,
-  );
+  const filename = generateContractFilename(businessId);
+  const filePath = getContractPath(filename);
+  const tempPath = path.join(STORAGE_DIR, buildContractTempFilename(filename));
+  await fs.writeFile(tempPath, encrypted, { flag: "wx" });
 
   // 7. Update Business record — KHÔNG lưu base64, chỉ lưu hash + metadata
   const signedAt = new Date(signerMeta.signedAt);
 
-  await prisma.business.update({
-    where: { id: businessId },
-    data: {
-      contractSigned: true,
-      contractSignedAt: signedAt,
-      contractVersion: CURRENT_CONTRACT_VERSION,
-      contractPdfIv: iv,
-      contractPdfAuthTag: authTag,
-      contractPdfChecksum: checksum,
-      signerMetadata: {
-        hash: signatureHash,
-        ip: signerMeta.ip,
-        userAgent: signerMeta.userAgent,
-        timezone: signerMeta.timezone,
-      },
-    },
+  await finalizeContractWrite({
+    tempPath,
+    finalPath: filePath,
+    publishRecord: () =>
+      prisma.business.update({
+        where: { id: businessId },
+        data: {
+          contractSigned: true,
+          contractSignedAt: signedAt,
+          contractVersion: CURRENT_CONTRACT_VERSION,
+          contractPdfPath: filename,
+          contractPdfIv: iv,
+          contractPdfAuthTag: authTag,
+          contractPdfChecksum: checksum,
+          signerMetadata: {
+            hash: signatureHash,
+            ip: signerMeta.ip,
+            userAgent: signerMeta.userAgent,
+            timezone: signerMeta.timezone,
+          },
+        },
+      }),
   });
+  await removeReplacedContract(business.contractPdfPath);
 
   logger.info(
     `Contract signed with HMAC hash: business=${businessId}, hash=${signatureHash.substring(0, 16)}...`,
@@ -330,35 +432,34 @@ export const downloadContract = async (businessId) => {
     throw err;
   }
 
-  // Đọc và decrypt
-  const encryptedBuffer = await fs.readFile(
-    path.join(STORAGE_DIR, business.contractPdfPath),
-  );
-  const buffer = decryptFile(
-    encryptedBuffer,
-    business.contractPdfIv,
-    business.contractPdfAuthTag,
-  );
-
-  // Integrity check
-  const currentChecksum = computeChecksum(buffer);
-  if (currentChecksum !== business.contractPdfChecksum) {
-    logger.error(
-      `Contract PDF integrity check failed: business=${businessId}`,
+  try {
+    // Đọc và decrypt
+    const encryptedBuffer = await fs.readFile(
+      getContractPath(business.contractPdfPath),
     );
-    const err = new Error("Tài liệu hợp đồng bị lỗi hoặc bị thay đổi");
-    err.statusCode = 500;
-    throw err;
+    const buffer = decryptFile(
+      encryptedBuffer,
+      business.contractPdfIv,
+      business.contractPdfAuthTag,
+    );
+
+    // Integrity check
+    const currentChecksum = computeChecksum(buffer);
+    assertContractIntegrity(business.contractPdfChecksum, currentChecksum);
+
+    const safeName = (business.businessName || "contract")
+      .replace(/[^a-zA-Z0-9\u00C0-\u024F]/g, "_")
+      .substring(0, 50);
+
+    return {
+      buffer,
+      filename: `hop_dong_${safeName}.pdf`,
+    };
+  } catch (readErr) {
+    if (readErr?.errorCode === "CONTRACT_INTEGRITY_FAILED") throw readErr;
+    logger.error(`Contract storage read failed: business=${businessId}, err=${readErr.message}`);
+    throw toContractStorageError(readErr);
   }
-
-  const safeName = (business.businessName || "contract")
-    .replace(/[^a-zA-Z0-9\u00C0-\u024F]/g, "_")
-    .substring(0, 50);
-
-  return {
-    buffer,
-    filename: `hop_dong_${safeName}.pdf`,
-  };
 };
 
 /**

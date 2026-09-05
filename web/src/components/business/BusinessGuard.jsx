@@ -5,7 +5,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { useBusinessProfile } from "@/hooks/queries/useBusinessQueries";
 import { BUSINESS_STATUS } from "@/constants/businessConstants";
 import { BUSINESS_ROUTES } from "@/constants/routes";
-import { Hourglass } from "lucide-react";
+import { Hourglass, XCircle, PauseCircle, AlertTriangle } from "lucide-react";
 
 const BusinessPendingView = () => {
   const { t } = useTranslation();
@@ -30,7 +30,7 @@ const BusinessRejectedView = ({ reason }) => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full p-8 text-center space-y-4">
         <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-          <span className="text-3xl">✗</span>
+          <XCircle className="w-8 h-8 text-red-600" />
         </div>
         <h1 className="text-2xl font-bold">{t("business.guard.rejected")}</h1>
         <p className="text-gray-600">
@@ -53,9 +53,7 @@ const BusinessSuspendedView = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full p-8 text-center space-y-4">
         <div className="w-16 h-16 mx-auto bg-slate-200 rounded-full flex items-center justify-center">
-          <span className="text-3xl" aria-hidden="true">
-            ⏸
-          </span>
+          <PauseCircle className="w-8 h-8 text-slate-600" />
         </div>
         <h1 className="text-2xl font-bold">{t("business.guard.suspended")}</h1>
         <p className="text-gray-600">
@@ -78,9 +76,7 @@ const BusinessTerminatedView = ({ reason }) => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full p-8 text-center space-y-4">
         <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-          <span className="text-3xl" aria-hidden="true">
-            ✕
-          </span>
+          <XCircle className="w-8 h-8 text-red-600" />
         </div>
         <h1 className="text-2xl font-bold">{t("business.guard.terminated")}</h1>
         <p className="text-gray-600">
@@ -104,9 +100,7 @@ const BusinessSuspiciousView = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full p-8 text-center space-y-4">
         <div className="w-16 h-16 mx-auto bg-amber-100 rounded-full flex items-center justify-center">
-          <span className="text-3xl" aria-hidden="true">
-            ⚠
-          </span>
+          <AlertTriangle className="w-8 h-8 text-amber-600" />
         </div>
         <h1 className="text-2xl font-bold">{t("business.guard.locked")}</h1>
         <p className="text-gray-600">

@@ -6,7 +6,7 @@ export const getSettings = async (req, res, next) => {
     res.json({
       success: true,
       data,
-      message: "Đã tải cài đặt hệ thống.",
+      message: "Đã tải cấu hình hệ thống.",
     });
   } catch (error) {
     next(error);
@@ -26,7 +26,34 @@ export const updateSettings = async (req, res, next) => {
     res.json({
       success: true,
       data,
-      message: "Đã lưu cài đặt hệ thống.",
+      message: "Đã lưu cài đặt hệ thống thành công.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSystemLogs = async (req, res, next) => {
+  try {
+    const limit = Number(req.query.limit) || 50;
+    const data = await systemSettingsService.getSystemLogs(limit);
+    res.json({
+      success: true,
+      data,
+      message: "Đã tải nhật ký hệ thống.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSystemHealth = async (req, res, next) => {
+  try {
+    const data = await systemSettingsService.getSystemHealth();
+    res.json({
+      success: true,
+      data,
+      message: "Đã kiểm tra sức khỏe hệ thống.",
     });
   } catch (error) {
     next(error);

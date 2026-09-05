@@ -3,7 +3,7 @@ import * as categoryController from "../../controllers/category/category.control
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { requirePermission } from "../../middlewares/permissionMiddleware.js";
 import { auditLog } from "../../middlewares/auditLogMiddleware.js";
-import { blockGuestFromAdmin } from "../../middlewares/blockGuestFromAdmin.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 import {
   validateBody,
   validateParams,
@@ -55,7 +55,7 @@ router.get(
 router.post(
   "/",
   authenticate,
-  blockGuestFromAdmin,
+  requireBackOfficeRole,
   requirePermission("categories.create"),
   validateBody(createCategorySchema),
   auditLog({
@@ -70,7 +70,7 @@ router.post(
 router.put(
   "/:id",
   authenticate,
-  blockGuestFromAdmin,
+  requireBackOfficeRole,
   requirePermission("categories.edit"),
   validateParams(categoryIdParamSchema),
   validateBody(updateCategorySchema),
@@ -86,7 +86,7 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
-  blockGuestFromAdmin,
+  requireBackOfficeRole,
   requirePermission("categories.delete"),
   validateParams(categoryIdParamSchema),
   auditLog({
@@ -100,7 +100,7 @@ router.delete(
 router.post(
   "/:id/tags",
   authenticate,
-  blockGuestFromAdmin,
+  requireBackOfficeRole,
   requirePermission("categories.manage_tags"),
   validateParams(categoryIdParamSchema),
   validateBody(assignCategoryTagsSchema),

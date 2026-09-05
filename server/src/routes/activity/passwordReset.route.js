@@ -2,6 +2,7 @@ import express from "express";
 import * as passwordResetController from "../../controllers/activity/passwordReset.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
 
 const router = express.Router();
 
@@ -21,6 +22,7 @@ const router = express.Router();
 router.get(
   "/",
   authenticate,
+  requireBackOfficeRole,
   hasPermission("password_reset.view"),
   passwordResetController.getAll,
 );

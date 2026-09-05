@@ -158,15 +158,20 @@ const PlacePopup = ({ place, onClose }) => {
   const { selectPlace } = useMapContext();
   const price = PRICE_LABELS[place.priceRange];
   const rating = Number(place.averageRating ?? place.ratingAvg ?? 0);
-  const imgSrc = place.thumbnail || place.images?.[0]?.secureUrl || place.images?.[0]?.thumbnailUrl || place.images?.[0]?.imageData || place.images?.[0]?.url;
+  const imgSrc =
+    place.thumbnail ||
+    place.images?.[0]?.secureUrl ||
+    place.images?.[0]?.thumbnailUrl ||
+    place.images?.[0]?.imageData ||
+    place.images?.[0]?.url;
 
   return (
     <div
-      className="font-sans w-[300px] overflow-hidden rounded-xl bg-white"
+      className="font-sans w-[310px] overflow-hidden rounded-2xl bg-white shadow-[0_12px_40px_rgba(0,0,0,0.15)] border border-black/[0.05]"
       style={{ margin: -10 }}
     >
       <div
-        className="relative h-[148px] overflow-hidden"
+        className="relative h-[155px] overflow-hidden"
         style={{ backgroundColor: bg }}
       >
         {imgSrc ? (
@@ -176,48 +181,49 @@ const PlacePopup = ({ place, onClose }) => {
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-[#F4F2EC]">
             <MapPin className="h-12 w-12 opacity-20" style={{ color }} />
-            <span className="text-xs font-medium opacity-30" style={{ color }}>
+            <span className="text-xs font-medium opacity-40 text-slate-500">
               {t("map.markers.noImage")}
             </span>
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         <span
-          className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold text-white uppercase tracking-wide shadow-sm"
+          className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white uppercase tracking-wide shadow-sm"
           style={{ backgroundColor: color }}
         >
           {place.category?.name || categoryLabel}
         </span>
         {place.isFeatured && (
-          <span className="absolute top-2.5 right-9 flex items-center gap-1 bg-amber-400 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm">
-            <Star className="h-2.5 w-2.5 fill-white" /> {t("map.markers.featured")}
+          <span className="absolute top-3 right-11 flex items-center gap-1 bg-[#F3E600] text-slate-950 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-xs">
+            <Star className="h-2.5 w-2.5 fill-slate-950" /> {t("map.markers.featured")}
           </span>
         )}
         <button
+          type="button"
           onClick={onClose}
-          className="absolute top-2 right-2 w-7 h-7 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow transition-colors"
+          className="absolute top-2.5 right-2.5 w-7 h-7 bg-white/90 hover:bg-white text-slate-800 rounded-full flex items-center justify-center shadow-xs transition-colors"
         >
-          <X className="h-3.5 w-3.5 text-gray-600" />
+          <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
       <div className="p-4">
-        <h3 className="font-black text-[15px] text-gray-900 line-clamp-2 leading-tight mb-1">
+        <h3 className="font-extrabold text-[15px] text-slate-950 line-clamp-2 leading-tight mb-1">
           {place.name}
         </h3>
         {place.address && (
-          <p className="flex items-start gap-1.5 text-[12px] text-gray-500 mb-3 line-clamp-1">
-            <Navigation className="h-3.5 w-3.5 mt-0.5 shrink-0 text-gray-400" />
+          <p className="flex items-start gap-1.5 text-[12px] text-slate-400 mb-3 line-clamp-1 font-medium">
+            <Navigation className="h-3.5 w-3.5 mt-0.5 shrink-0 text-slate-300" />
             {place.address}
           </p>
         )}
 
         <div className="flex items-center justify-between mb-3">
           <Stars value={rating} />
-          <div className="flex items-center gap-1 text-[11px] text-gray-400 font-medium">
-            <Eye className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-1 text-[11px] font-mono text-slate-400 font-bold tabular-nums">
+            <Eye className="h-3.5 w-3.5 text-slate-300" />
             {(place.viewCount || 0).toLocaleString()}
           </div>
         </div>
@@ -236,25 +242,25 @@ const PlacePopup = ({ place, onClose }) => {
             </span>
           )}
           {place.isVerified && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border border-sky-200 text-sky-600 bg-sky-50">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border border-sky-200 text-sky-700 bg-sky-50">
               {t("map.markers.verified")}
             </span>
           )}
           {place.district?.name && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium border border-gray-200 text-gray-500 bg-gray-50">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium border border-black/[0.04] text-slate-500 bg-[#F8F7F3]">
               {place.district.name}
             </span>
           )}
         </div>
 
         {(place.phone || place.website) && (
-          <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
+          <div className="flex items-center gap-3 pt-3 border-t border-black/[0.03]">
             {place.phone && (
               <a
                 href={`tel:${place.phone}`}
-                className="flex items-center gap-1.5 text-[11px] text-gray-500 hover:text-gray-900 transition-colors font-medium"
+                className="flex items-center gap-1.5 text-[11px] text-slate-600 hover:text-slate-950 transition-colors font-medium"
               >
-                <Phone className="h-3.5 w-3.5" />
+                <Phone className="h-3.5 w-3.5 text-slate-400" />
                 {place.phone}
               </a>
             )}
@@ -263,7 +269,7 @@ const PlacePopup = ({ place, onClose }) => {
                 href={place.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-[11px] text-blue-500 hover:text-blue-700 transition-colors font-medium ml-auto"
+                className="flex items-center gap-1.5 text-[11px] text-blue-600 hover:text-blue-800 transition-colors font-semibold ml-auto"
               >
                 <Globe className="h-3.5 w-3.5" />
                 {t("map.markers.website")}
@@ -274,11 +280,12 @@ const PlacePopup = ({ place, onClose }) => {
 
         {selectPlace && (
           <button
+            type="button"
             onClick={() => {
               onClose();
               selectPlace(place);
             }}
-            className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-gray-900 hover:bg-gray-700 text-white text-[12px] font-bold transition-colors"
+            className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-full bg-slate-950 hover:bg-black text-white text-xs font-bold transition-all shadow-2xs"
           >
             <ExternalLink className="h-3.5 w-3.5" />
             {t("map.markers.viewDetails")}

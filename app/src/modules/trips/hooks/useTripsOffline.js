@@ -1,12 +1,25 @@
+import { logger } from "../../../lib/logger";
 import { useEffect, useRef, useState } from "react";
 import safeAsyncStorage from "../../../utils/safeAsyncStorage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import NetInfo from "@react-native-community/netinfo";
-import { getMyTripsApi, createTripApi, deleteTripApi, getTripDetailApi } from "../api/tripsApi";
+import {
+  getMyTripsApi,
+  createTripApi,
+  deleteTripApi,
+  getTripDetailApi,
+  updateTripApi,
+} from "../api/tripsApi";
 import { QUERY_KEYS } from "../../../constants/query-keys";
 import { TRIP_OFFLINE_GC_MS } from "../../../constants/trip-offline-cache";
+import { OFFLINE_STORAGE_KEYS } from "../../../constants/storage";
+import { createRandomId } from "../../../utils/createRandomId";
+import {
+  dedupOfflineActions,
+  flushOfflineTripActions,
+} from "../utils/offlineSync";
 
-const TRIPS_CACHE_KEY = "@trips_cache";
+const TRIPS_CACHE_KEY = OFFLINE_STORAGE_KEYS.TRIPS_CACHE;
 const CACHE_VERSION = "v5";
 const CACHE_EXPIRY_MS = TRIP_OFFLINE_GC_MS;
 
@@ -36,11 +49,11 @@ export const persistTripsToStorage = async (trips) => {
         );
         return;
       } catch (retryError) {
-        console.warn("[TripsOffline] Storage full, retry after cleanup also failed:", retryError);
+        logger.warn("[TripsOffline] Storage full, retry after cleanup also failed:", retryError);
         return;
       }
     }
-    console.warn("[TripsOffline] Failed to persist trips:", error);
+    logger.warn("[TripsOffline] Failed to persist trips:", error);
   }
 };
 
@@ -63,7 +76,7 @@ export const loadTripsFromStorage = async () => {
 
     return cacheData;
   } catch (error) {
-    console.warn("[TripsOffline] Failed to load trips from storage:", error);
+    logger.warn("[TripsOffline] Failed to load trips from storage:", error);
     return null;
   }
 };
@@ -72,7 +85,7 @@ export const clearTripsCache = async () => {
   try {
     await safeAsyncStorage.removeItem(getCacheKey(TRIPS_CACHE_KEY));
   } catch (error) {
-    console.warn("[TripsOffline] Failed to clear trips cache:", error);
+    logger.warn("[TripsOffline] Failed to clear trips cache:", error);
   }
 };
 
@@ -154,7 +167,7 @@ export function useTripsCached(enabled = true) {
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     refetchOnMount: false,
-    refetchOnReconnect: true,
+    refetchOnReconnect: false,
     placeholderData: (previousData) => previousData,
   });
 
@@ -217,7 +230,7 @@ export function useTripDetailCached(tripId, enabled = true) {
             }),
           );
         } catch (storageError) {
-          console.warn("[TripsOffline] Failed to cache trip detail:", storageError);
+          logger.warn("[TripsOffline] Failed to cache trip detail:", storageError);
         }
       }
 
@@ -239,33 +252,37 @@ export function useCreateTripCached() {
 
   return {
     mutateAsync: async (tripData) => {
-      const pendingActionsKey = "@pending_trip_actions";
+      const pendingActionsKey = OFFLINE_STORAGE_KEYS.PENDING_TRIP_ACTIONS;
+      const clientRequestId = tripData.clientRequestId || createRandomId("trip-create");
+      const idempotentTripData = { ...tripData, clientRequestId };
 
       const queuePending = async (type, data) => {
         try {
           const raw = await safeAsyncStorage.getItem(pendingActionsKey);
           const actions = raw ? JSON.parse(raw) : [];
-          const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+          const tempId = createRandomId("temp");
           actions.push({ type, data, tempId, timestamp: Date.now() });
           await safeAsyncStorage.setItem(pendingActionsKey, JSON.stringify(actions));
           return tempId;
         } catch (storageError) {
-          console.warn("[TripsOffline] Failed to queue pending create action:", storageError);
-          return `temp_${Date.now()}`;
+          logger.warn("[TripsOffline] Failed to queue pending create action:", storageError);
+          return createRandomId("temp");
         }
       };
 
       if (!isConnected) {
-        const tempId = await queuePending("CREATE_TRIP", tripData);
+        const tempId = await queuePending("CREATE_TRIP", idempotentTripData);
         return { success: true, pending: true, tempId };
       }
 
       try {
-        const response = await createTripApi(tripData);
+        const response = await createTripApi(idempotentTripData);
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
         return response;
       } catch (error) {
-        await queuePending("CREATE_TRIP", tripData);
+        const isNetworkError = !(error?.status || error?.response?.status)
+          && (error?.message === "Network Error" || error?.code === "ERR_NETWORK" || !error?.response);
+        if (isNetworkError) await queuePending("CREATE_TRIP", idempotentTripData);
         throw error;
       }
     },
@@ -281,7 +298,7 @@ export function useDeleteTripCached() {
 
   return {
     mutateAsync: async (tripId) => {
-      const pendingActionsKey = "@pending_trip_actions";
+      const pendingActionsKey = OFFLINE_STORAGE_KEYS.PENDING_TRIP_ACTIONS;
 
       const queuePending = async (type, id) => {
         try {
@@ -290,7 +307,7 @@ export function useDeleteTripCached() {
           actions.push({ type, data: { id }, tempId: String(id), timestamp: Date.now() });
           await safeAsyncStorage.setItem(pendingActionsKey, JSON.stringify(actions));
         } catch (storageError) {
-          console.warn("[TripsOffline] Failed to queue pending delete action:", storageError);
+          logger.warn("[TripsOffline] Failed to queue pending delete action:", storageError);
         }
       };
 
@@ -310,36 +327,14 @@ export function useDeleteTripCached() {
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
         return response;
       } catch (error) {
-        await queuePending("DELETE_TRIP", tripId);
+        const isNetworkError = !(error?.status || error?.response?.status)
+          && (error?.message === "Network Error" || error?.code === "ERR_NETWORK" || !error?.response);
+        if (isNetworkError) await queuePending("DELETE_TRIP", tripId);
         throw error;
       }
     },
     isOffline: !isConnected,
   };
-}
-
-/**
- * Loại bỏ các cặp CREATE+DELETE triệt tiêu nhau và các action trung gian.
- * Kịch bản: User tạo trip offline → thêm destination → xóa trip offline.
- * Nếu chỉ gửi CREATE+DELETE sẽ lãng phí, còn action ADD_DESTINATION sẽ lỗi 404.
- */
-function dedupOfflineActions(actions) {
-  // Bước 1: Tìm tempId bị triệt tiêu (CREATE bị DELETE cancel)
-  const cancelledTempIds = new Set();
-  actions.forEach((action, i) => {
-    if (action.type === "DELETE_TRIP") {
-      const createIdx = actions.findIndex(
-        (c) => c.type === "CREATE_TRIP" && c.tempId && c.tempId === action.tempId,
-      );
-      if (createIdx !== -1 && createIdx < i) {
-        cancelledTempIds.add(action.tempId);
-      }
-    }
-  });
-
-  // Bước 2: Lọc bỏ tất cả action liên quan đến tempId bị triệt tiêu
-  if (cancelledTempIds.size === 0) return actions;
-  return actions.filter((action) => !cancelledTempIds.has(action.tempId));
 }
 
 export function useOfflineSync() {
@@ -353,45 +348,36 @@ export function useOfflineSync() {
     const flushQueue = async () => {
       isSyncingRef.current = true;
       try {
-        const pendingActionsKey = "@pending_trip_actions";
+        const pendingActionsKey = OFFLINE_STORAGE_KEYS.PENDING_TRIP_ACTIONS;
         const raw = await safeAsyncStorage.getItem(pendingActionsKey);
-        if (!raw) {
-          isSyncingRef.current = false;
-          return;
-        }
+        if (!raw) return;
 
         let actions = JSON.parse(raw);
-        if (actions.length === 0) {
-          isSyncingRef.current = false;
-          return;
-        }
+        if (actions.length === 0) return;
 
         // Triệt tiêu cặp CREATE+DELETE và action trung gian
         actions = dedupOfflineActions(actions);
 
         if (actions.length === 0) {
           await safeAsyncStorage.removeItem(pendingActionsKey);
-          isSyncingRef.current = false;
           return;
         }
 
-        const remainingActions = [];
+        const idMapRaw = await safeAsyncStorage.getItem(OFFLINE_STORAGE_KEYS.TRIP_ID_MAP);
+        const idMap = idMapRaw ? JSON.parse(idMapRaw) : {};
 
-        for (const action of actions) {
-          try {
-            if (action.type === "CREATE_TRIP") {
-              await createTripApi(action.data);
-            } else if (action.type === "DELETE_TRIP") {
-              const idToDelete = action.data?.id || action.data;
-              await deleteTripApi(idToDelete);
-            }
-          } catch (err) {
-            const isNetworkError = !err.response || err.message === "Network Error" || err.code === "ERR_NETWORK";
-            if (isNetworkError) {
-              remainingActions.push(action);
-            }
-          }
-        }
+        const { remainingActions, idMap: nextIdMap } =
+          await flushOfflineTripActions(actions, {
+            idMap,
+            createTrip: createTripApi,
+            updateTrip: updateTripApi,
+            deleteTrip: deleteTripApi,
+          });
+
+        await safeAsyncStorage.setItem(
+          OFFLINE_STORAGE_KEYS.TRIP_ID_MAP,
+          JSON.stringify(nextIdMap),
+        );
 
         if (remainingActions.length > 0) {
           await safeAsyncStorage.setItem(pendingActionsKey, JSON.stringify(remainingActions));
@@ -401,7 +387,7 @@ export function useOfflineSync() {
 
         await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
       } catch (error) {
-        console.warn("[OfflineSync] Sync error:", error);
+        logger.warn("[OfflineSync] Sync error:", error);
       } finally {
         isSyncingRef.current = false;
       }

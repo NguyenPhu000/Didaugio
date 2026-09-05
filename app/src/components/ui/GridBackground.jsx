@@ -11,6 +11,13 @@ export const GridBackground = ({
   showTopFade = true,
   showBottomFade = true,
   backgroundImage,
+  /**
+   * Màu dùng để tint ảnh background khi có `backgroundImage`.
+   * Nên là tone tối (vd: "#0B0B0F") để giữ text contrast cao.
+   */
+  tintColor = "#0B0B0F",
+  /** Độ đậm của tint ở top/bottom fade (0-1) */
+  tintOpacity = 0.55,
   children,
 }) => {
   const { width, height } = useWindowDimensions();
@@ -24,12 +31,15 @@ export const GridBackground = ({
     [cellSize, height],
   );
 
-  const fadeColor = useMemo(() => {
-    if (backgroundImage) {
-      return "rgba(2, 6, 23, 0.45)"; // Màu xanh đen bán trong suốt nhẹ để lộ ảnh bầu trời
-    }
-    return backgroundColor;
-  }, [backgroundImage, backgroundColor]);
+  // Khi có backgroundImage: tint bằng hex → rgba để fade mượt về tintColor.
+  const tintRgba = useMemo(() => {
+    if (!backgroundImage) return backgroundColor;
+    const hex = tintColor.replace("#", "");
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${tintOpacity})`;
+  }, [backgroundImage, tintColor, tintOpacity, backgroundColor]);
 
   return (
     <View style={[styles.container, { backgroundColor }]}>
@@ -69,15 +79,15 @@ export const GridBackground = ({
         ))}
         {showTopFade ? (
           <LinearGradient
-            colors={[fadeColor, "rgba(2, 6, 23, 0)"]}
-            style={[styles.topFade, { height: backgroundImage ? height * 0.18 : height * 0.35 }]}
+            colors={[tintRgba, "rgba(11, 11, 15, 0)"]}
+            style={[styles.topFade, { height: backgroundImage ? height * 0.25 : height * 0.35 }]}
           />
         ) : null}
         {showVignette ? <View style={styles.vignette} /> : null}
         {showBottomFade ? (
           <LinearGradient
-            colors={["rgba(2, 6, 23, 0)", fadeColor]}
-            style={[styles.bottomFade, backgroundImage ? { height: "45%" } : { height: "75%" }]}
+            colors={["rgba(11, 11, 15, 0)", tintRgba]}
+            style={[styles.bottomFade, backgroundImage ? { height: "55%" } : { height: "75%" }]}
           />
         ) : null}
       </View>
@@ -116,6 +126,6 @@ const styles = StyleSheet.create({
   },
   vignette: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.22)",
+    backgroundColor: "rgba(0,0,0,0.45)",
   },
 });

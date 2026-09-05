@@ -10,8 +10,9 @@ import {
   Text,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import Constants from "expo-constants";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import Constants, { ExecutionEnvironment } from "expo-constants";
+import { createRandomId } from "../utils/createRandomId";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import apiClient from "../api/client";
@@ -20,8 +21,7 @@ import { QUERY_KEYS } from "../constants/query-keys";
 import { useAuthStore } from "../stores/authStore";
 
 const isExpoGo =
-  Constants?.executionEnvironment === "storeClient" ||
-  Constants?.appOwnership === "expo";
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 let Notifications = null;
 if (!isExpoGo) {
@@ -45,6 +45,17 @@ if (Notifications) {
 
 const BANNER_DURATION_MS = 4800;
 const MAX_BANNER_QUEUE = 3;
+
+const appendUniqueBanner = (queue, notification) => {
+  const seenIds = new Set();
+  return [...queue, notification]
+    .filter((item) => {
+      if (seenIds.has(item.id)) return false;
+      seenIds.add(item.id);
+      return true;
+    })
+    .slice(-MAX_BANNER_QUEUE);
+};
 
 function getProjectId() {
   return (
@@ -118,7 +129,7 @@ function normalizeIncomingNotification(raw) {
     raw?.request?.identifier ||
     data?.notificationId ||
     data?.id ||
-    `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    createRandomId("notification");
 
   return {
     id: String(id),
@@ -285,14 +296,7 @@ export function NotificationProvider({ children }) {
       ...seenBannerIdsRef.current,
     ].slice(0, 20);
 
-    setBannerQueue((prev) =>
-      [...prev, notification]
-        .filter(
-          (item, index, items) =>
-            items.findIndex((candidate) => candidate.id === item.id) === index,
-        )
-        .slice(-MAX_BANNER_QUEUE),
-    );
+    setBannerQueue((prev) => appendUniqueBanner(prev, notification));
   }, []);
 
   const dismissBanner = useCallback(() => {
@@ -324,13 +328,15 @@ export function NotificationProvider({ children }) {
   useEffect(() => {
     if (!Notifications) return;
 
+    let coldStartTimeoutId = null;
+
     const handleColdStart = async () => {
       try {
         const response = await Notifications.getLastNotificationResponseAsync();
         const data = response?.notification?.request?.content?.data;
         const route = resolveNotificationRoute(data);
         if (route) {
-          setTimeout(() => router.push(route), 500);
+          coldStartTimeoutId = setTimeout(() => router.push(route), 500);
         }
       } catch {
         // Non-critical: route will still work for warm responses.
@@ -347,21 +353,12 @@ export function NotificationProvider({ children }) {
       });
 
     return () => {
+      if (coldStartTimeoutId) clearTimeout(coldStartTimeoutId);
       responseSubscription.remove();
     };
   }, [router]);
 
   useEffect(() => {
-    const handleSocketNotification = (notification) => {
-      invalidateNotificationQueries();
-      enqueueBanner(notification);
-    };
-
-    const handleAnnouncement = (announcement) => {
-      invalidateNotificationQueries();
-      enqueueBanner(announcement);
-    };
-
     let pushCleanup = () => {};
     if (Notifications) {
       const receivedSubscription = Notifications.addNotificationReceivedListener(
@@ -373,25 +370,8 @@ export function NotificationProvider({ children }) {
       pushCleanup = () => receivedSubscription.remove();
     }
 
-    let socketCleanup = () => {};
-    try {
-      const { getSocket } = require("../utils/socket");
-      const socket = getSocket();
-      if (socket) {
-        socket.on("notification", handleSocketNotification);
-        socket.on("announcement", handleAnnouncement);
-        socketCleanup = () => {
-          socket.off("notification", handleSocketNotification);
-          socket.off("announcement", handleAnnouncement);
-        };
-      }
-    } catch {
-      // Socket is optional for screens that mount before realtime is ready.
-    }
-
     return () => {
       pushCleanup();
-      socketCleanup();
     };
   }, [enqueueBanner, invalidateNotificationQueries]);
 

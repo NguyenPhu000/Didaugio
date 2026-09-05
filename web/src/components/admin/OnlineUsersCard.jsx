@@ -1,3 +1,4 @@
+import { Users, Wifi } from "lucide-react";
 import { useMemo } from "react";
 import { useDashboardOnlineUsers } from "@/hooks/queries/useDashboardQuery";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,8 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import Users from "lucide-react/dist/esm/icons/users";
-import Wifi from "lucide-react/dist/esm/icons/wifi";
 
 const ROLE_COLORS = {
   super_admin: "bg-red-100 text-red-700",

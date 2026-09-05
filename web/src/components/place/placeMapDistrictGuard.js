@@ -1,4 +1,6 @@
-import { bbox, booleanPointInPolygon, point } from "@turf/turf";
+import bbox from "@turf/bbox";
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import { point } from "@turf/helpers";
 
 const toNumber = (value) => {
   const number = Number(value);

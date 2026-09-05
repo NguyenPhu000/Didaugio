@@ -77,7 +77,7 @@ export function QuickSuggestions({ suggestions, onSelect }) {
           style={({ pressed }) => [s.suggestionCard, pressed && s.suggestionPressed]}
         >
           <Text style={s.suggestionText}>{item.text}</Text>
-          <CornerDownLeft size={14} color="rgba(255, 255, 255, 0.35)" />
+          <CornerDownLeft size={14} color="#94A3B8" />
         </Pressable>
       ))}
     </View>
@@ -96,7 +96,7 @@ const s = StyleSheet.create({
     marginLeft: 4,
   },
   aiLabel: {
-    color: "rgba(255, 255, 255, 0.45)",
+    color: "#64748B",
     fontSize: 10,
     letterSpacing: 0.8,
     textTransform: "uppercase",
@@ -110,13 +110,13 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 20,
-    backgroundColor: "rgba(28, 28, 30, 0.76)",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderColor: "#E2E8F0",
     borderTopLeftRadius: 4,
   },
   typingText: {
-    color: "rgba(255, 255, 255, 0.7)",
+    color: "#1F2937",
     fontSize: 13,
     fontFamily: TOKENS.font.medium,
   },
@@ -143,16 +143,16 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 13,
     borderRadius: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    backgroundColor: "#F1F5F9",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderColor: "#E2E8F0",
   },
   suggestionPressed: {
-    backgroundColor: "rgba(255, 255, 255, 0.12)",
+    backgroundColor: "#E2E8F0",
   },
   suggestionText: {
     fontSize: 13.5,
-    color: "#FFFFFF",
+    color: "#0F172A",
     fontFamily: TOKENS.font.medium,
     flex: 1,
   },

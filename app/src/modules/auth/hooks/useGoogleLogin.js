@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import Constants from "expo-constants";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import * as Linking from "expo-linking";
 import * as Google from "expo-auth-session/providers/google";
 import { makeRedirectUri } from "expo-auth-session";
 import i18n from "@/i18n";
+import { logger } from "../../../lib/logger";
 import { useAuthStore } from "../../../stores/authStore";
 import { loginGoogleApi } from "../api/authApi";
 import { normalizeAuthSessionResponse } from "../utils/normalizeAuthSession";
@@ -17,12 +18,13 @@ let statusCodes = {
   IN_PROGRESS: "IN_PROGRESS",
   PLAY_SERVICES_NOT_AVAILABLE: "PLAY_SERVICES_NOT_AVAILABLE",
 };
+let isGoogleSigninConfigured = false;
 
 try {
   const GoogleModule = require("@react-native-google-signin/google-signin");
   GoogleSignin = GoogleModule.GoogleSignin;
   statusCodes = { ...statusCodes, ...GoogleModule.statusCodes };
-} catch (_e) {
+} catch {
   // Bỏ qua lỗi trên môi trường Expo Go hoặc môi trường thiếu liên kết native
 }
 WebBrowser.maybeCompleteAuthSession();
@@ -35,7 +37,7 @@ const CALLBACK_TIMEOUT_MS = 30000;
 
 const debugLog = (label, payload) => {
   if (!AUTH_DEBUG) return;
-  console.log(`[GoogleAuth] ${label}`, payload);
+  logger.debug(`[GoogleAuth] ${label}`, payload);
 };
 
 const parseIdTokenFromUrl = (url) => {
@@ -66,8 +68,7 @@ export function useGoogleLogin() {
   const timeoutRef = useRef(null);
 
   const isExpoGo =
-    Constants.executionEnvironment === "storeClient" ||
-    Constants.appOwnership === "expo";
+    Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
   const googleConfig = useMemo(() => {
     const owner =
@@ -126,6 +127,7 @@ export function useGoogleLogin() {
     clearCallbackTimeout();
     timeoutRef.current = setTimeout(() => {
       if (callbackHandledRef.current || finishingRef.current) return;
+      callbackHandledRef.current = true;
       setIsLoading(false);
       setError(i18n.t("authValidation.googleNoResponse"));
     }, CALLBACK_TIMEOUT_MS);
@@ -137,9 +139,11 @@ export function useGoogleLogin() {
     if (isExpoGo || !googleConfig.webClientId) return;
 
     if (!GoogleSignin) {
-      console.warn("GoogleSignin native module is not available. Skipping configuration.");
+      logger.warn("GoogleSignin native module is not available. Skipping configuration.");
       return;
     }
+
+    if (isGoogleSigninConfigured) return;
 
     GoogleSignin.configure({
       webClientId: googleConfig.webClientId,
@@ -148,6 +152,7 @@ export function useGoogleLogin() {
       forceCodeForRefreshToken: false,
       profileImageSize: 120,
     });
+    isGoogleSigninConfigured = true;
   }, [googleConfig.iosClientId, googleConfig.webClientId, isExpoGo]);
 
   const finalizeGoogleSession = useCallback(
@@ -216,7 +221,7 @@ export function useGoogleLogin() {
 
   useEffect(() => {
     const completeGoogleLogin = async () => {
-      if (!response) return;
+      if (!response || callbackHandledRef.current) return;
 
       debugLog("response", {
         type: response.type,

@@ -1,6 +1,7 @@
 import express from "express";
 import multer from "multer";
 import { authenticate } from "../../middlewares/authMiddleware.js";
+import { aiUserLimiter } from "../../middlewares/rateLimitMiddleware.js";
 import {
   handlePlaceSummaryStream,
   handleChat,
@@ -10,30 +11,55 @@ import {
   handleGroqChat,
   handleHybridPlan,
 } from "../../controllers/ai/index.js";
-import { validateBody } from "../../middlewares/validateSchema.js";
-import { aiNavigateSchema } from "../../models/index.js";
+import { validateAiBody } from "../../middlewares/validateSchema.js";
+import {
+  aiChatSchema,
+  aiHybridPlanSchema,
+  aiNavigateSchema,
+  aiPlaceSummarySchema,
+  aiSpeechSchema,
+  aiTranscriptionFieldsSchema,
+} from "../../models/index.js";
 
 const router = express.Router();
 const voiceUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 },
+  limits: { fileSize: 5 * 1024 * 1024 },
 });
 
-router.post("/place-summary", authenticate, handlePlaceSummaryStream);
-router.post("/chat", authenticate, handleChat);
-router.post("/groq-chat", authenticate, handleGroqChat);
+router.use(authenticate);
+router.use(aiUserLimiter);
+
+router.post(
+  "/place-summary",
+  validateAiBody(aiPlaceSummarySchema),
+  handlePlaceSummaryStream,
+);
+router.post("/chat", validateAiBody(aiChatSchema), handleChat);
+router.post(
+  "/groq-chat",
+  validateAiBody(aiChatSchema),
+  handleGroqChat,
+);
 router.post(
   "/voice/transcribe",
-  authenticate,
   voiceUpload.single("audio"),
+  validateAiBody(aiTranscriptionFieldsSchema),
   handleVoiceTranscribe,
 );
-router.post("/voice/speech", authenticate, handleVoiceSpeech);
-router.post("/hybrid-plan", authenticate, handleHybridPlan);
+router.post(
+  "/voice/speech",
+  validateAiBody(aiSpeechSchema),
+  handleVoiceSpeech,
+);
+router.post(
+  "/hybrid-plan",
+  validateAiBody(aiHybridPlanSchema),
+  handleHybridPlan,
+);
 router.post(
   "/navigate",
-  authenticate,
-  validateBody(aiNavigateSchema),
+  validateAiBody(aiNavigateSchema),
   handleNavigate,
 );
 

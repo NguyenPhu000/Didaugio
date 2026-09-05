@@ -1,4 +1,4 @@
-import { createIconSet } from "@expo/vector-icons";
+import createIconSet from "@expo/vector-icons/build/createIconSet";
 import glyphMap from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/MaterialIcons.json";
 
 /**

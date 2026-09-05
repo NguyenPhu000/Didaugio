@@ -1,8 +1,7 @@
-import Constants from "expo-constants";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 
 const isExpoGo =
-  Constants?.executionEnvironment === "storeClient" ||
-  Constants?.appOwnership === "expo";
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 let Notifications = null;
 if (!isExpoGo) {

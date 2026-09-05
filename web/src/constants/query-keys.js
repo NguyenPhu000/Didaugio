@@ -52,6 +52,7 @@ export const queryKeys = {
   tags: {
     all: () => ["tags"],
     list: () => ["tags", "list"],
+    groups: () => ["tags", "groups"],
     popular: () => ["tags", "popular"],
     detail: (id) => ["tags", "detail", id],
   },
@@ -86,6 +87,8 @@ export const queryKeys = {
     detail: (id) => ["vouchers", "detail", id],
     stats: () => ["vouchers", "stats"],
     analytics: (id) => ["vouchers", "analytics", id],
+    applicable: (params) => ["vouchers", "applicable", params],
+    validate: (code, serviceId) => ["vouchers", "validate", code, serviceId],
   },
 
   staff: {
@@ -182,6 +185,8 @@ export const queryKeys = {
   analytics: {
     all: () => ["analytics"],
     overview: (params) => ["analytics", "overview", params],
+    adminPlaceHeatmap: (params) => ["analytics", "place-heatmap", "admin", params],
+    businessPlaceHeatmap: (params) => ["analytics", "place-heatmap", "business", params],
   },
 
   settings: {
@@ -207,7 +212,7 @@ export const queryKeys = {
     all: () => ["subscriptions"],
     current: () => ["subscriptions", "current"],
     plans: () => ["subscriptions", "plans"],
-    proration: (targetPlanId) => ["subscriptions", "proration", targetPlanId],
+    proration: (targetPlanId, billingCycle) => ["subscriptions", "proration", targetPlanId, billingCycle],
     invoices: (params) => ["subscriptions", "invoices", params],
     adminList: (params) => ["subscriptions", "admin", "list", params],
     adminStats: () => ["subscriptions", "admin", "stats"],

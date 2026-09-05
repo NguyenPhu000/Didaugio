@@ -1,6 +1,5 @@
 import {
   ROLE_HIERARCHY,
-  ROLES,
   canAssignRoleId,
   canManageRoleId,
   isSuperAdminRole,
@@ -8,102 +7,118 @@ import {
 import prisma from "../config/prismaClient.js";
 import { ERROR_CODES } from "../config/messages.js";
 
+const sendError = (res, status, message, errorCode) =>
+  res.status(status).json({ success: false, data: null, message, errorCode });
+
+const getTargetUserId = (req) =>
+  req.params.id || req.params.userId || req.body?.userId;
+
+const getTargetUser = (targetUserId, select) =>
+  prisma.user.findUnique({
+    where: { id: Number(targetUserId) },
+    select,
+  });
+
+const denyRoleAssignment = (res) =>
+  sendError(
+    res,
+    403,
+    "Bạn không có quyền gán vai trò này",
+    ERROR_CODES.FORBIDDEN,
+  );
+
+const validateNewRole = (currentUserRoleId, roleId, res) => {
+  if (!canAssignRoleId(currentUserRoleId, Number(roleId))) {
+    denyRoleAssignment(res);
+    return false;
+  }
+  return true;
+};
+
+const handleSuperAdmin = async (req, res, next, targetUserId) => {
+  if (!targetUserId) return next();
+
+  const targetUser = await getTargetUser(targetUserId, {
+    id: true,
+    roleId: true,
+  });
+
+  if (targetUser && isSuperAdminRole(targetUser.roleId) && targetUser.id !== req.user.id) {
+    return sendError(
+      res,
+      403,
+      "Không thể chỉnh sửa thông tin của Super Admin khác",
+      ERROR_CODES.FORBIDDEN,
+    );
+  }
+
+  return next();
+};
+
 export const checkRoleHierarchy = async (req, res, next) => {
   try {
     const currentUserRoleId = req.user.roleId;
-
-    const targetUserId = req.params.id || req.params.userId || req.body.userId;
+    const targetUserId = getTargetUserId(req);
+    const requestedRoleId = req.body?.roleId;
 
     if (isSuperAdminRole(currentUserRoleId)) {
-      if (targetUserId) {
-        const targetUser = await prisma.user.findUnique({
-          where: { id: Number(targetUserId) },
-          select: { id: true, roleId: true },
-        });
-        if (targetUser && isSuperAdminRole(targetUser.roleId) && targetUser.id !== req.user.id) {
-          return res.status(403).json({
-            success: false,
-            data: null,
-            message: "Không thể chỉnh sửa thông tin của Super Admin khác",
-            errorCode: ERROR_CODES.FORBIDDEN,
-          });
-        }
-      }
+      return handleSuperAdmin(req, res, next, targetUserId);
+    }
+
+    if (!targetUserId && requestedRoleId) {
+      if (!validateNewRole(currentUserRoleId, requestedRoleId, res)) return;
       return next();
     }
 
-
-
-    if (!targetUserId && req.body.roleId) {
-      const targetRoleId = Number(req.body.roleId);
-      if (!canAssignRoleId(currentUserRoleId, targetRoleId)) {
-        return res.status(403).json({
-          success: false,
-          data: null,
-          message: "Bạn không có quyền gán vai trò này",
-          errorCode: ERROR_CODES.FORBIDDEN,
-        });
-      }
-
-      return next();
-    }
-
-    const targetUser = await prisma.user.findUnique({
-      where: { id: Number(targetUserId) },
-      select: { id: true, roleId: true, email: true },
+    const targetUser = await getTargetUser(targetUserId, {
+      id: true,
+      roleId: true,
+      email: true,
     });
 
     if (!targetUser) {
-      return res.status(404).json({
-        success: false,
-        data: null,
-        message: "Không tìm thấy người dùng",
-        errorCode: ERROR_CODES.NOT_FOUND,
-      });
+      return sendError(
+        res,
+        404,
+        "Không tìm thấy người dùng",
+        ERROR_CODES.NOT_FOUND,
+      );
     }
 
-    if (targetUser.id === req.user.id && req.body.roleId) {
-      return res.status(403).json({
-        success: false,
-        data: null,
-        message: "Không thể thay đổi vai trò của chính mình",
-        errorCode: ERROR_CODES.FORBIDDEN,
-      });
+    if (targetUser.id === req.user.id && requestedRoleId) {
+      return sendError(
+        res,
+        403,
+        "Không thể thay đổi vai trò của chính mình",
+        ERROR_CODES.FORBIDDEN,
+      );
     }
 
-    const targetRoleId = targetUser.roleId;
-
-    if (!canManageRoleId(currentUserRoleId, targetRoleId)) {
-      return res.status(403).json({
-        success: false,
-        data: null,
-        message: `Bạn không có quyền quản lý ${ROLE_HIERARCHY[targetRoleId].name}`,
-        errorCode: ERROR_CODES.FORBIDDEN,
-      });
+    if (!canManageRoleId(currentUserRoleId, targetUser.roleId)) {
+      return sendError(
+        res,
+        403,
+        `Bạn không có quyền quản lý ${ROLE_HIERARCHY[targetUser.roleId].name}`,
+        ERROR_CODES.FORBIDDEN,
+      );
     }
 
-    if (req.body.roleId) {
-      const newRoleId = Number(req.body.roleId);
-
-      if (!canAssignRoleId(currentUserRoleId, newRoleId)) {
-        return res.status(403).json({
-          success: false,
-          data: null,
-          message: "Bạn không có quyền gán vai trò này",
-          errorCode: ERROR_CODES.FORBIDDEN,
-        });
-      }
+    if (
+      requestedRoleId &&
+      !validateNewRole(currentUserRoleId, requestedRoleId, res)
+    ) {
+      return;
     }
 
     req.targetUser = targetUser;
-    next();
+    return next();
   } catch (error) {
     console.error("Error in checkRoleHierarchy:", error);
-    return res.status(500).json({
-      success: false,
-      data: null,
-      message: "Lỗi khi kiểm tra phân quyền",
-      errorCode: ERROR_CODES.SERVER_ERROR,
-    });
+    return sendError(
+      res,
+      500,
+      "Lỗi khi kiểm tra phân quyền",
+      ERROR_CODES.SERVER_ERROR,
+    );
   }
 };

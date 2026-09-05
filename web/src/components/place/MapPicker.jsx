@@ -227,9 +227,9 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error, districtId 
   // Show geolocation error
   useEffect(() => {
     if (geoError) {
-      alert(t("location.locationError", { message: geoError }));
+      setSelectionError(t("location.locationError", { message: geoError }));
     }
-  }, [geoError]);
+  }, [geoError, t]);
 
   const onMarkerDragStart = useCallback(() => setIsDragging(true), []);
   const onMarkerDrag = useCallback((event) => {
@@ -269,7 +269,7 @@ const MapPickerInner = memo(({ latitude, longitude, onChange, error, districtId 
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert(t("location.notSupported"));
+      setSelectionError(t("location.notSupported"));
       return;
     }
     geoLocate();

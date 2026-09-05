@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 /**
  * Tính khoảng cách thực tế (Haversine) giữa 2 tọa độ GPS.
  * Trả về khoảng cách tính bằng mét.
@@ -17,6 +18,62 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
+function initializeCentroids(places, safeK) {
+  const centroids = [];
+  const selectedIndices = new Set();
+  const firstIndex = crypto.randomInt(0, places.length);
+  centroids.push({ lat: Number(places[firstIndex].latitude), lng: Number(places[firstIndex].longitude) });
+  selectedIndices.add(firstIndex);
+  for (let i = 1; i < safeK; i += 1) {
+    let maxDist = -1;
+    let nextIndex = 0;
+    for (let j = 0; j < places.length; j += 1) {
+      if (selectedIndices.has(j)) continue;
+      const minDist = Math.min(...centroids.map((centroid) => getDistance(Number(places[j].latitude), Number(places[j].longitude), centroid.lat, centroid.lng)));
+      if (minDist > maxDist) { maxDist = minDist; nextIndex = j; }
+    }
+    centroids.push({ lat: Number(places[nextIndex].latitude), lng: Number(places[nextIndex].longitude) });
+    selectedIndices.add(nextIndex);
+  }
+  return centroids;
+}
+
+function assignPlacesToClusters(places, centroids, safeK) {
+  const clusters = Array.from({ length: safeK }, () => []);
+  for (const place of places) {
+    let minDist = Number.MAX_VALUE;
+    let closestClusterIndex = 0;
+    for (let i = 0; i < safeK; i += 1) {
+      const dist = getDistance(Number(place.latitude), Number(place.longitude), centroids[i].lat, centroids[i].lng);
+      if (dist < minDist) { minDist = dist; closestClusterIndex = i; }
+    }
+    clusters[closestClusterIndex].push(place);
+  }
+  return clusters;
+}
+
+function repairEmptyClusters(clusters, safeK) {
+  for (let i = 0; i < safeK; i += 1) {
+    if (clusters[i].length > 0) continue;
+    const maxIdx = clusters.reduce((best, cluster, index) => cluster.length > clusters[best].length ? index : best, 0);
+    if (clusters[maxIdx].length > 1) clusters[i].push(clusters[maxIdx].pop());
+  }
+  return clusters;
+}
+
+function recalculateCentroids(clusters, centroids, safeK) {
+  let centroidShift = 0;
+  const nextCentroids = clusters.map((clusterPlaces, index) => {
+    if (clusterPlaces.length === 0) return centroids[index];
+    const meanCentroid = clusterPlaces.reduce((sum, place) => ({ lat: sum.lat + Number(place.latitude), lng: sum.lng + Number(place.longitude) }), { lat: 0, lng: 0 });
+    meanCentroid.lat /= clusterPlaces.length;
+    meanCentroid.lng /= clusterPlaces.length;
+    centroidShift += getDistance(meanCentroid.lat, meanCentroid.lng, centroids[index].lat, centroids[index].lng);
+    return meanCentroid;
+  });
+  return { nextCentroids, centroidShift };
+}
+
 /**
  * Thuật toán K-Means Clustering để phân cụm địa lý các địa điểm thành K cụm (tương ứng K ngày)
  * @param {Array} places Danh sách các địa điểm từ database
@@ -27,125 +84,18 @@ export function kMeansClustering(places, k) {
   if (!Array.isArray(places) || places.length === 0) return [];
   const safeK = Math.max(1, Math.min(k, places.length));
 
-  // Khởi tạo centroids bằng cách chọn các địa điểm ngẫu nhiên cách xa nhau
-  let centroids = [];
-  const selectedIndices = new Set();
-  
-  // Chọn centroid đầu tiên ngẫu nhiên
-  const firstIndex = Math.floor(Math.random() * places.length);
-  centroids.push({
-    lat: Number(places[firstIndex].latitude),
-    lng: Number(places[firstIndex].longitude),
-  });
-  selectedIndices.add(firstIndex);
-
-  // Chọn các centroid tiếp theo sao cho xa các centroid đã chọn nhất (K-Means++ initialization style)
-  for (let i = 1; i < safeK; i++) {
-    let maxDist = -1;
-    let nextIndex = 0;
-    for (let j = 0; j < places.length; j++) {
-      if (selectedIndices.has(j)) continue;
-      const lat = Number(places[j].latitude);
-      const lng = Number(places[j].longitude);
-      
-      // Tìm khoảng cách ngắn nhất từ điểm này đến bất kỳ centroid nào đã chọn
-      let minDistToCentroids = Number.MAX_VALUE;
-      for (const centroid of centroids) {
-        const dist = getDistance(lat, lng, centroid.lat, centroid.lng);
-        if (dist < minDistToCentroids) {
-          minDistToCentroids = dist;
-        }
-      }
-
-      if (minDistToCentroids > maxDist) {
-        maxDist = minDistToCentroids;
-        nextIndex = j;
-      }
-    }
-    centroids.push({
-      lat: Number(places[nextIndex].latitude),
-      lng: Number(places[nextIndex].longitude),
-    });
-    selectedIndices.add(nextIndex);
-  }
+  let centroids = initializeCentroids(places, safeK);
 
   let clusters = Array.from({ length: safeK }, () => []);
   let iterations = 15;
   let converged = false;
 
-  for (let iter = 0; iter < iterations && !converged; iter++) {
-    // 1. Gán các địa điểm vào cụm có centroid gần nhất
-    const nextClusters = Array.from({ length: safeK }, () => []);
-    for (const place of places) {
-      const lat = Number(place.latitude);
-      const lng = Number(place.longitude);
-
-      let minDist = Number.MAX_VALUE;
-      let closestClusterIndex = 0;
-
-      for (let i = 0; i < safeK; i++) {
-        const dist = getDistance(lat, lng, centroids[i].lat, centroids[i].lng);
-        if (dist < minDist) {
-          minDist = dist;
-          closestClusterIndex = i;
-        }
-      }
-      nextClusters[closestClusterIndex].push(place);
-    }
-
-    // Xử lý cụm rỗng nếu có (gán điểm xa nhất của cụm đông nhất vào cụm rỗng)
-    for (let i = 0; i < safeK; i++) {
-      if (nextClusters[i].length === 0) {
-        // Tìm cụm có nhiều phần tử nhất
-        let maxLen = 0;
-        let maxIdx = 0;
-        for (let c = 0; c < safeK; c++) {
-          if (nextClusters[c].length > maxLen) {
-            maxLen = nextClusters[c].length;
-            maxIdx = c;
-          }
-        }
-        if (maxLen > 1) {
-          // Lấy 1 điểm ra gán cho cụm rỗng
-          const popped = nextClusters[maxIdx].pop();
-          nextClusters[i].push(popped);
-        }
-      }
-    }
-
-    // 2. Tính toán lại Centroids mới
-    let nextCentroids = [];
-    let centroidShift = 0;
-
-    for (let i = 0; i < safeK; i++) {
-      const clusterPlaces = nextClusters[i];
-      if (clusterPlaces.length === 0) {
-        nextCentroids.push(centroids[i]);
-        continue;
-      }
-
-      let sumLat = 0;
-      let sumLng = 0;
-      for (const place of clusterPlaces) {
-        sumLat += Number(place.latitude);
-        sumLng += Number(place.longitude);
-      }
-
-      const meanCentroid = {
-        lat: sumLat / clusterPlaces.length,
-        lng: sumLng / clusterPlaces.length,
-      };
-      
-      centroidShift += getDistance(meanCentroid.lat, meanCentroid.lng, centroids[i].lat, centroids[i].lng);
-      nextCentroids.push(meanCentroid);
-    }
-
+  for (let iter = 0; iter < iterations && !converged; iter += 1) {
+    const nextClusters = repairEmptyClusters(assignPlacesToClusters(places, centroids, safeK), safeK);
+    const { nextCentroids, centroidShift } = recalculateCentroids(nextClusters, centroids, safeK);
     centroids = nextCentroids;
     clusters = nextClusters;
-
-    if (centroidShift < 10) {
-      converged = true;
-    }
+    converged = centroidShift < 10;
   }
 
   return clusters;

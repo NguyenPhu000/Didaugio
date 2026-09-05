@@ -1,3 +1,7 @@
+// MAP: VerifyOtpScreen
+// ├── UI: @/modules/auth/components/OtpInput, @/components/ui/GridBackground
+// └── API: @/modules/auth/api/authApi
+
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -10,7 +14,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Feather } from "@expo/vector-icons";
+import Feather from "@expo/vector-icons/Feather";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GridBackground } from "../../src/components/ui/GridBackground";

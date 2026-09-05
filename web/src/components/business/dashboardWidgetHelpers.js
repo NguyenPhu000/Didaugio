@@ -1,9 +1,7 @@
 import { cn } from "@/lib/utils";
+import { formatMoney } from "@/utils/formatters";
 
-export const formatVND = (price) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-    price || 0,
-  );
+// (alias formatVND = formatMoney đã được xoá sau khi migrate hết các file sang formatMoney)
 
 export const formatDate = (date) =>
   date

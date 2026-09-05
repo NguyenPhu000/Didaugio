@@ -1,4 +1,5 @@
 import {
+  Fragment,
   forwardRef,
   memo,
   useCallback,
@@ -11,20 +12,24 @@ import {
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import ClusteredMapView from "react-native-map-clustering";
 import { Marker, PROVIDER_DEFAULT, UrlTile } from "react-native-maps";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import {
   CATEGORY_MARKER_STYLES,
   DEFAULT_MAP_STYLE,
   MAP_CONFIGS,
 } from "../config/mapConfig";
-import { resolvePlaceImageUri } from "../../../lib/media-url";
+import { resolveMediaUrl } from "../../../lib/media-url";
 import { getCategoryIconName } from "../../../constants/categoryIcons";
-import { getMarkerDensity, MARKER_DENSITY, regionToZoom } from "../utils/mapZoom";
+import {
+  getMarkerDensity,
+  getMarkerPresentation,
+  MARKER_DENSITY,
+  regionToZoom,
+} from "../utils/mapZoom";
 
 const CLEAN_NATIVE_MAP_STYLE = [
   { featureType: "poi", stylers: [{ visibility: "off" }] },
   { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "transit.station.bus", stylers: [{ visibility: "on" }] },
   {
     featureType: "road",
     elementType: "labels.text",
@@ -47,128 +52,48 @@ const FLY_DURATION = 800;
 const ZOOM_DURATION = 300;
 const TILE_ERROR_RESET_DELAY_MS = 0;
 
-const CLUSTER_COLORS = {
-  low: {
-    halo: "rgba(56, 189, 248, 0.22)",
-    shell: "rgba(255,255,255,0.95)",
-    core: "#38BDF8",
-    accent: "#E0F2FE",
-    text: "#0F172A",
-  },
-  medium: {
-    halo: "rgba(59, 130, 246, 0.24)",
-    shell: "rgba(255,255,255,0.96)",
-    core: "#3B82F6",
-    accent: "#DBEAFE",
-    text: "#0F172A",
-  },
-  high: {
-    halo: "rgba(14, 116, 144, 0.26)",
-    shell: "rgba(255,255,255,0.97)",
-    core: "#0F766E",
-    accent: "#CCFBF1",
-    text: "#06202A",
-  },
-};
-
 const zoomToDelta = (zoom) => (zoom >= 15 ? 0.01 : zoom >= 13 ? 0.03 : 0.08);
 
 const normalizeCoord = (value) =>
   typeof value === "string" ? parseFloat(value) : value;
 
-const getClusterVisual = (pointCount) => {
-  if (pointCount >= 50) {
-    return { size: 64, ringSize: 52, coreSize: 40, colors: CLUSTER_COLORS.high };
-  }
+const SystemPlaceLabel = memo(({ place, isActive }) => {
+  const [shouldTrackLabel, setShouldTrackLabel] = useState(true);
 
-  if (pointCount >= 20) {
-    return {
-      size: 58,
-      ringSize: 46,
-      coreSize: 35,
-      colors: CLUSTER_COLORS.medium,
-    };
-  }
+  useEffect(() => {
+    setShouldTrackLabel(true);
+    const timerId = setTimeout(() => setShouldTrackLabel(false), 300);
+    return () => clearTimeout(timerId);
+  }, [place?.name]);
 
-  return { size: 52, ringSize: 40, coreSize: 30, colors: CLUSTER_COLORS.low };
-};
-
-const ClusterMarker = memo(function ClusterMarker({ cluster, onPress }) {
-  const {
-    id,
-    geometry: { coordinates },
-    properties,
-  } = cluster;
-  const pointCount = properties?.point_count || 0;
-  const pointLabel =
-    properties?.point_count_abbreviated ||
-    (pointCount > 99 ? "99+" : String(pointCount));
-  const { size, ringSize, coreSize, colors } = getClusterVisual(pointCount);
+  if (!place?.name) return null;
 
   return (
     <Marker
-      key={`cluster-${id}`}
-      coordinate={{ latitude: coordinates[1], longitude: coordinates[0] }}
-      onPress={onPress}
-      anchor={{ x: 0.5, y: 0.5 }}
-      tracksViewChanges={false}
+      coordinate={{ latitude: place.latitude, longitude: place.longitude }}
+      anchor={{ x: 0.5, y: 1 }}
+      tappable={false}
+      tracksViewChanges={shouldTrackLabel}
+      zIndex={isActive ? 4 : 1}
     >
-      <View
-        className="items-center justify-center"
-        style={[
-          styles.clusterHalo,
-          {
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-            backgroundColor: colors.halo,
-          },
-        ]}
-      >
-        <View
-          className="items-center justify-center border border-white/90"
-          style={[
-            styles.clusterRing,
-            {
-              width: ringSize,
-              height: ringSize,
-              borderRadius: ringSize / 2,
-              backgroundColor: colors.shell,
-            },
-          ]}
+      <View style={[styles.markerLabel, styles.systemMarkerLabel]} pointerEvents="none">
+        <Text
+          style={styles.markerLabelText}
+          numberOfLines={1}
+          ellipsizeMode="tail"
         >
-          <View
-            className="items-center justify-center overflow-hidden"
-            style={{
-              width: coreSize,
-              height: coreSize,
-              borderRadius: coreSize / 2,
-              backgroundColor: colors.core,
-            }}
-          >
-            <View
-              className="absolute left-px top-px h-[38%] w-[62%] -rotate-[18deg] rounded-full opacity-90"
-              style={{ backgroundColor: colors.accent }}
-            />
-          </View>
-        </View>
-
-        <View className="absolute items-center justify-center">
-          <Text
-            className="text-[14px] font-bold tracking-[-0.2px]"
-            style={{ color: colors.text }}
-          >
-            {pointLabel}
-          </Text>
-        </View>
+          {place.name}
+        </Text>
       </View>
     </Marker>
   );
 });
 
+SystemPlaceLabel.displayName = "SystemPlaceLabel";
+
 const PlaceMarker = memo(
   ({ place, isActive, density, onSelectPlace, onLongPressPlace }) => {
-    const [shouldTrackDetail, setShouldTrackDetail] = useState(true);
+    const [shouldTrackDetail, setShouldTrackDetail] = useState(false);
     const handlePress = useCallback(() => {
       onSelectPlace?.(place);
     }, [onSelectPlace, place]);
@@ -183,25 +108,38 @@ const PlaceMarker = memo(
       : place?.isFeatured
         ? "#F59E0B"
         : place?.category?.color || categoryStyle?.color || "#ef4444";
-    const markerBackground =
-      categoryStyle?.bg || "#FFFFFF";
+    const markerBackground = categoryStyle?.bg || "#FFFFFF";
     const markerIcon = getCategoryIconName(place?.category);
     const coordinate = {
       latitude: place.latitude,
       longitude: place.longitude,
     };
-    const isDetail = density === MARKER_DENSITY.DETAIL;
-    const markerSize = isDetail ? 44 : 32;
-    const markerImage = place.markerImageUri
-      ? { uri: place.markerImageUri }
-      : undefined;
-    const showNativeImage = isDetail && Boolean(markerImage);
+    const { imageUri, density: resolvedDensity } = getMarkerPresentation(
+      density,
+      place?.markerImageUri,
+    );
+    const isDetail = resolvedDensity === MARKER_DENSITY.DETAIL;
+    const usesMarkerImage = resolvedDensity !== MARKER_DENSITY.CATEGORY;
+    const markerSize = isDetail ? 44 : 30;
+    const markerImage = imageUri ? { uri: imageUri } : undefined;
+    const showNativeImage = usesMarkerImage && Boolean(markerImage);
 
+    // Bật trackViewChanges rất ngắn khi:
+    //  - Marker vừa trở thành active (hiệu ứng glow).
+    //  - Marker vừa được nâng cấp sang DETAIL (cần render ảnh).
+    //  - Ảnh vừa load xong hoặc lỗi.
+    // Mặc định tắt để marker không bị raster lại mỗi frame -> giảm giật.
     useEffect(() => {
-      setShouldTrackDetail(true);
-      const timerId = setTimeout(() => setShouldTrackDetail(false), 260);
-      return () => clearTimeout(timerId);
-    }, [density, place.markerImageUri]);
+      if (isActive || usesMarkerImage) {
+        setShouldTrackDetail(true);
+        const timerId = setTimeout(
+          () => setShouldTrackDetail(false),
+          imageUri ? 800 : 200,
+        );
+        return () => clearTimeout(timerId);
+      }
+      return undefined;
+    }, [density, imageUri, isActive, usesMarkerImage]);
 
     return (
       <Marker
@@ -211,74 +149,43 @@ const PlaceMarker = memo(
         anchor={showNativeImage ? { x: 0.5, y: 1 } : { x: 0.5, y: 0.5 }}
         image={showNativeImage ? markerImage : undefined}
         pinColor={markerColor}
-        // The native image remains the stable image transport. Keep tracking
-        // briefly when its label is mounted so Android snapshots both layers.
         tracksViewChanges={!showNativeImage || shouldTrackDetail}
+        zIndex={isActive ? 2 : 0}
       >
-        {showNativeImage ? (
-          place?.name ? (
+        {!showNativeImage ? (
+          <View style={styles.markerContainer} pointerEvents="none">
             <View
-              className="rounded-full bg-white px-3 py-1.5"
-              pointerEvents="none"
-              style={[styles.markerLabel, styles.nativeMarkerLabel]}
-            >
-              <Text
-                className="max-w-[154px] text-[11px] font-semibold tracking-[0.1px] text-slate-950"
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {place.name}
-              </Text>
-            </View>
-          ) : null
-        ) : (
-          <View className="flex-row items-center" pointerEvents="none">
-            <View
-              className="items-center justify-center overflow-hidden border-2 border-white"
-              style={{
-                width: markerSize,
-                height: markerSize,
-                borderRadius: isDetail ? 12 : markerSize / 2,
-                backgroundColor: isDetail ? "#FFFFFF" : markerBackground,
-                shadowColor: markerColor,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: isActive ? 0.32 : 0.2,
-                shadowRadius: isActive ? 10 : 7,
-                elevation: isActive ? 7 : 4,
-              }}
+              style={[
+                styles.markerFrame,
+                {
+                  width: markerSize,
+                  height: markerSize,
+                  borderRadius: markerSize / 2,
+                  backgroundColor: markerBackground,
+                  shadowColor: markerColor,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: isActive ? 0.32 : 0.18,
+                  shadowRadius: isActive ? 10 : 6,
+                  elevation: isActive ? 7 : 3,
+                },
+              ]}
             >
               <MaterialCommunityIcons
                 name={markerIcon}
-                size={isDetail ? 20 : 17}
+                size={16}
                 color={markerColor}
               />
               {isActive ? (
                 <View
-                  className="absolute inset-0 border-2"
-                  style={{
-                    borderColor: "#0F766E",
-                    borderRadius: isDetail ? 10 : markerSize / 2,
-                  }}
+                  style={[
+                    styles.activeMarkerBorder,
+                    { borderColor: "#0F766E", borderRadius: markerSize / 2 },
+                  ]}
                 />
               ) : null}
             </View>
-
-            {isDetail && place?.name ? (
-              <View
-                className="ml-2 max-w-[154px] rounded-full bg-white px-3 py-1.5"
-                style={styles.markerLabel}
-              >
-                <Text
-                  className="text-[11px] font-semibold tracking-[0.1px] text-slate-950"
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {place.name}
-                </Text>
-              </View>
-            ) : null}
           </View>
-        )}
+        ) : null}
       </Marker>
     );
   },
@@ -307,6 +214,7 @@ const MapView = memo(
         onPressMap,
         onLongPressMap,
         onZoomChange,
+        onRegionChangeComplete,
         style,
         tileUrls,
         mapType = "standard",
@@ -314,7 +222,6 @@ const MapView = memo(
         mapPadding,
         courseUpEnabled = false,
         showsUserLocation = false,
-        showsUserHeadingIndicator = false,
         showsMyLocationButton = false,
         children,
       },
@@ -383,7 +290,10 @@ const MapView = memo(
             ...place,
             latitude,
             longitude,
-            markerImageUri: place?.markerUrl || resolvePlaceImageUri(place),
+            // Native Marker.image is reliable with the pre-generated marker asset.
+            // Do not fall back to an arbitrary cover thumbnail here: it can be a
+            // transformed/data URL that Android maps silently drops.
+            markerImageUri: resolveMediaUrl(place?.markerUrl),
           });
         }
 
@@ -396,13 +306,6 @@ const MapView = memo(
         : undefined;
       const mapStyle = style ? [styles.map, style] : styles.map;
 
-      const renderCluster = useCallback(
-        (cluster, onPress) => (
-          <ClusterMarker cluster={cluster} onPress={onPress} />
-        ),
-        [],
-      );
-
       const handleRegionChangeComplete = useCallback(
         (region) => {
           regionRef.current = region;
@@ -414,8 +317,9 @@ const MapView = memo(
           );
 
           onZoomChange?.(Math.round(zoomValue));
+          onRegionChangeComplete?.(region);
         },
-        [onZoomChange, viewportWidth],
+        [onRegionChangeComplete, onZoomChange, viewportWidth],
       );
 
       const handleTileError = useCallback(() => {
@@ -451,20 +355,10 @@ const MapView = memo(
           style={mapStyle}
           provider={PROVIDER_DEFAULT}
           initialRegion={INITIAL_REGION}
-          clusteringEnabled={preparedPlaces.length > 1}
-          minPoints={2}
-          radius={60}
-          extent={256}
-          nodeSize={32}
-          maxZoom={12}
-          spiralEnabled
-          spiderLineColor="rgba(148,163,184,0.65)"
-          animationEnabled
-          renderCluster={renderCluster}
+          clusteringEnabled={false}
           mapType={shouldUseTiles ? "none" : mapType}
           customMapStyle={customMapStyle}
           showsUserLocation={showsUserLocation}
-          showsUserHeadingIndicator={showsUserHeadingIndicator}
           showsMyLocationButton={showsMyLocationButton}
           userLocationUpdateInterval={3000}
           userLocationFastestInterval={2000}
@@ -475,6 +369,7 @@ const MapView = memo(
           showsBuildings={false}
           showsTraffic={false}
           showsIndoors={false}
+          showsIndoorLevelPicker={false}
           minZoomLevel={MAP_CONFIGS.CONSTRAINTS.minZoomLevel}
           maxZoomLevel={MAP_CONFIGS.CONSTRAINTS.maxZoomLevel}
           onPress={onPressMap}
@@ -497,16 +392,26 @@ const MapView = memo(
               ))
             : null}
 
-          {preparedPlaces.map((place) => (
-            <PlaceMarker
-              key={place.id}
-              place={place}
-              isActive={place.id === selectedPlaceId}
-              density={markerDensity}
-              onSelectPlace={onSelectPlace}
-              onLongPressPlace={onLongPressPlace}
-            />
-          ))}
+          {preparedPlaces.map((place) => {
+            const { showLabel } = getMarkerPresentation(
+              markerDensity,
+              place.markerImageUri,
+            );
+            const isActive = place.id === selectedPlaceId;
+
+            return (
+              <Fragment key={place.id}>
+                <PlaceMarker
+                  place={place}
+                  isActive={isActive}
+                  density={markerDensity}
+                  onSelectPlace={onSelectPlace}
+                  onLongPressPlace={onLongPressPlace}
+                />
+                {showLabel ? <SystemPlaceLabel place={place} isActive={isActive} /> : null}
+              </Fragment>
+            );
+          })}
 
           {children}
         </ClusteredMapView>
@@ -521,31 +426,51 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  clusterHalo: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 10,
+  markerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  clusterRing: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.14,
-    shadowRadius: 6,
-    elevation: 6,
+  markerFrame: {
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  markerImage: {
+    width: "100%",
+    height: "100%",
+  },
+  activeMarkerBorder: {
+    position: "absolute",
+    inset: 0,
+    borderWidth: 2,
   },
   markerLabel: {
+    maxWidth: 140,
+    minWidth: 56,
+    borderRadius: 999,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: "rgba(15,23,42,0.08)",
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.14,
     shadowRadius: 6,
-    elevation: 4,
+    elevation: 3,
   },
-  nativeMarkerLabel: {
-    position: "absolute",
-    left: 30,
-    top: -38,
+  markerLabelText: {
+    color: "#020617",
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.1,
+    textAlign: "center",
+  },
+  systemMarkerLabel: {
+    transform: [{ translateY: -52 }],
   },
 });
 

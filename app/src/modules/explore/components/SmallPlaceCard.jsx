@@ -1,83 +1,119 @@
 import { memo } from "react";
-import { Pressable, Text, View } from "react-native";
-import { Image } from "expo-image";
-import { BlurView } from "expo-blur";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { BOOKING_APPLE_THEME as APPLE_THEME } from "../../../constants/design-tokens";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
+import Animated from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
+import { TOKENS } from "../../../constants/design-tokens";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
+import { getPlaceLocation } from "../utils/exploreHelpers";
 import {
-  getPlaceLocation,
-  formatRatingLabel,
-} from "../utils/exploreHelpers";
+  CREAM,
+  Eyebrow,
+  MetaChip,
+  POSTER_INSET,
+  POSTER_MEDIA_RADIUS,
+  POSTER_RADIUS,
+  PosterMedia,
+  PosterScrim,
+  STAR,
+  posterShadow,
+  usePressScale,
+} from "./cinematic";
 
-const CARD_W = 156;
-const CARD_H = 224;
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+/** Cùng khuôn với card rail ở Explore để hai màn hình đọc như một hệ. */
+const CARD_W = 212;
+const CARD_H = 282;
+const MEDIA_W = CARD_W - POSTER_INSET * 2;
 
 function SmallPlaceCardInner({ place, onPress }) {
+  const { t } = useTranslation();
   const imageUri = resolvePlaceImageUri(place);
   const location = getPlaceLocation(place);
   const rating = Number(place?.ratingAvg ?? place?.averageRating);
   const hasRating = Number.isFinite(rating) && rating > 0;
-  const ratingCap = formatRatingLabel(place);
+  const categoryName = place?.category?.name;
+
+  const { onPressIn, onPressOut, cardStyle, mediaStyle } = usePressScale();
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
-      style={{ width: CARD_W }}
-      className="rounded-[20px] bg-white shadow-md elevation-2 active:opacity-85 active:scale-[0.97]"
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      accessibilityRole="button"
+      accessibilityLabel={place?.name}
+      accessibilityHint={t("explore.accessibility.openPlace")}
+      style={[
+        cardStyle,
+        {
+          width: CARD_W,
+          height: CARD_H,
+          padding: POSTER_INSET,
+          borderRadius: POSTER_RADIUS,
+          borderCurve: "continuous",
+          backgroundColor: "#F7F3EB",
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: "rgba(11,11,12,0.06)",
+          ...posterShadow,
+        },
+      ]}
     >
-      <View className="w-full h-[156px] rounded-t-[20px] rounded-b-[6px] overflow-hidden bg-[#F9FAFB] border border-black/[0.02] relative">
-        {imageUri ? (
-          <Image
-            source={{ uri: imageUri }}
-            contentFit="cover"
-            transition={300}
-            cachePolicy="memory-disk"
-            style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, width: "100%", height: "100%" }}
-          />
-        ) : (
-          <View className="absolute inset-0 bg-[#F3F4F6] items-center justify-center">
-            <MaterialCommunityIcons
-              name="image-outline"
-              size={32}
-              color="#D1D5DB"
-            />
-          </View>
-        )}
-        
-        {/* Rating badge absolutely positioned */}
+      <View
+        style={{
+          flex: 1,
+          borderRadius: POSTER_MEDIA_RADIUS,
+          borderCurve: "continuous",
+          overflow: "hidden",
+          backgroundColor: CREAM,
+        }}
+      >
+        <Animated.View style={[StyleSheet.absoluteFillObject, mediaStyle]}>
+          <PosterMedia uri={imageUri} width={MEDIA_W} />
+        </Animated.View>
+
+        <PosterScrim bottomHeight="62%" topHeight="30%" strength={0.78} />
+
         {hasRating ? (
-          <View className="absolute top-2.5 right-2.5 rounded-full overflow-hidden border border-white/20">
-            <BlurView intensity={80} tint="dark" style={{ position: 'absolute', top: 0, left: 0, bottom: 0, right: 0 }} />
-            <View className="flex-row items-center px-2 py-1.25 gap-1">
-              <MaterialCommunityIcons name="star" size={12} color="#FBBF24" />
-              <Text className="text-white text-[11px] font-semibold">{rating.toFixed(1)}</Text>
-            </View>
+          <View style={{ position: "absolute", top: 10, right: 10 }}>
+            <MetaChip icon="star" iconColor={STAR} label={rating.toFixed(1)} compact />
           </View>
         ) : null}
-      </View>
 
-      <View className="pt-3 px-1 pb-3 gap-0.75">
-        <Text className="text-ink text-base font-semibold leading-5 tracking-[-0.3px]" numberOfLines={1}>
-          {place?.name}
-        </Text>
-        
-        <View className="flex-row items-center gap-1">
-          <MaterialCommunityIcons
-            name="map-marker"
-            size={12}
-            color={APPLE_THEME.textMuted}
-          />
-          <Text className="text-ink-muted text-xs font-medium flex-1" numberOfLines={1}>
-            {location}
+        <View style={{ position: "absolute", left: 13, right: 13, bottom: 13, gap: 3 }}>
+          {categoryName ? <Eyebrow>{categoryName}</Eyebrow> : null}
+
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontSize: 16.5,
+              lineHeight: 21,
+              letterSpacing: -0.4,
+              fontFamily: TOKENS.font.heading,
+            }}
+            numberOfLines={2}
+          >
+            {place?.name}
           </Text>
-        </View>
 
-        <Text className="text-ink-muted text-[11px] font-medium mt-0.5 tracking-[-0.1px]" numberOfLines={1}>
-          {ratingCap}
-        </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 1 }}>
+            <MaterialIconsRounded name="place" size={12} color="rgba(255,255,255,0.62)" />
+            <Text
+              style={{
+                flex: 1,
+                color: "rgba(255,255,255,0.72)",
+                fontSize: 11.5,
+                fontFamily: TOKENS.font.medium,
+              }}
+              numberOfLines={1}
+            >
+              {location}
+            </Text>
+          </View>
+        </View>
       </View>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 

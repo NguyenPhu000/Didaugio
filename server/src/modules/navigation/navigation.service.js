@@ -64,12 +64,15 @@ class NavigationDomainService {
     };
   }
 
-  async recommendRoute(payload = {}) {
+  async recommendRoute(payload = {}, actor = {}) {
     if (Array.isArray(payload?.waypoints) && payload.waypoints.length > 0) {
-      return this.orchestrateRoute(payload);
+      return this.orchestrateRoute(payload, actor);
     }
 
-    const result = await aiNavigationService.getNavigationAdvice(payload);
+    const result = await aiNavigationService.getNavigationAdvice(
+      payload,
+      actor,
+    );
 
     logger.info(
       `[${NAVIGATION_DOMAIN_NAME}] recommendation source=${result?.source || "unknown"} routeId=${result?.recommendation?.routeId || "n/a"}`,
@@ -78,7 +81,7 @@ class NavigationDomainService {
     return result;
   }
 
-  async orchestrateRoute(payload = {}) {
+  async orchestrateRoute(payload = {}, actor = {}) {
     const {
       origin,
       destination,
@@ -94,7 +97,7 @@ class NavigationDomainService {
           destination,
           waypoints,
           context,
-        })
+        }, actor)
       : {
           source: "flag_disabled",
           orderedWaypointIndexes: waypoints.map((_, index) => index),

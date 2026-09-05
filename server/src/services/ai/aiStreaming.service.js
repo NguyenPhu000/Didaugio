@@ -1,4 +1,9 @@
-import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
+import { createGroqClient } from "./groq.service.js";
+import {
+  logAiProviderEvent,
+  normalizeProviderMessages,
+  toAiServiceError,
+} from "./aiProviderPolicy.js";
 
 const SSE_HEADERS = {
   "Content-Type": "text/event-stream",
@@ -7,8 +12,17 @@ const SSE_HEADERS = {
   "X-Accel-Buffering": "no",
 };
 
-function writeSSE(res, data) {
-  res.write(`data: ${data}\n\n`);
+export function encodeSseData(data) {
+  const lines = String(data ?? "").split(/\r\n|\r|\n/);
+  return `${lines.map((line) => `data: ${line}`).join("\n")}\n\n`;
+}
+
+export function encodeSseEvent(event, data) {
+  return `event: ${event}\n${encodeSseData(JSON.stringify(data))}`;
+}
+
+export function buildSseErrorPayload(error) {
+  return `[ERROR] ${toAiServiceError(error).code}`;
 }
 
 /**
@@ -16,31 +30,49 @@ function writeSSE(res, data) {
  * @param {string} prompt
  * @param {import('express').Response} res
  */
-export async function streamPlaceSummary(prompt, res) {
+export async function streamPlaceSummary(
+  prompt,
+  res,
+  providerOptions = {},
+) {
   Object.entries(SSE_HEADERS).forEach(([key, value]) =>
     res.setHeader(key, value),
   );
 
+  const startedAt = Date.now();
+  let outputText = "";
   try {
-    const client = createGroqClient();
+    const client = createGroqClient(providerOptions);
     const stream = await client.chat.completions.create({
-      model: GROQ_MODEL,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.6,
-      max_tokens: 1500,
+      model: providerOptions.model,
+      messages: normalizeProviderMessages([{ role: "user", content: prompt }]),
+      temperature: providerOptions.temperature,
+      top_p: providerOptions.topP,
+      max_tokens: providerOptions.maxTokens,
       stream: true,
-    });
+    }, { timeout: providerOptions.timeoutMs });
 
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content || "";
-      if (text) writeSSE(res, text);
+      if (text) {
+        outputText += text;
+      }
     }
-    writeSSE(res, "[DONE]");
+    logAiProviderEvent({
+      feature: "place-summary-stream",
+      model: providerOptions.model,
+      startedAt,
+    });
+    return { outputText };
   } catch (err) {
-    const message = err?.message || "Lỗi khi streaming AI";
-    writeSSE(res, `[ERROR] ${message.split("\n")[0]}`);
-  } finally {
-    res.end();
+    const aiError = toAiServiceError(err);
+    logAiProviderEvent({
+      feature: "place-summary-stream",
+      model: providerOptions.model,
+      startedAt,
+      code: aiError.code,
+    });
+    throw aiError;
   }
 }
 
@@ -50,36 +82,52 @@ export async function streamPlaceSummary(prompt, res) {
  * @param {string} system  - System instruction for Genie persona
  * @param {import('express').Response} res
  */
-export async function streamChat(messages, system, res) {
+export async function streamChat(
+  messages,
+  system,
+  res,
+  providerOptions = {},
+) {
   Object.entries(SSE_HEADERS).forEach(([key, value]) =>
     res.setHeader(key, value),
   );
 
+  const startedAt = Date.now();
+  let outputText = "";
   try {
-    const client = createGroqClient();
+    const client = createGroqClient(providerOptions);
     const stream = await client.chat.completions.create({
-      model: GROQ_MODEL,
+      model: providerOptions.model,
       messages: [
         { role: "system", content: system },
-        ...messages.map((m) => ({
-          role: m.role === "assistant" ? "assistant" : "user",
-          content: m.content,
-        })),
+        ...normalizeProviderMessages(messages),
       ],
-      temperature: 0.6,
-      max_tokens: 1500,
+      temperature: providerOptions.temperature,
+      top_p: providerOptions.topP,
+      max_tokens: providerOptions.maxTokens,
       stream: true,
-    });
+    }, { timeout: providerOptions.timeoutMs });
 
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content || "";
-      if (text) writeSSE(res, text);
+      if (text) {
+        outputText += text;
+      }
     }
-    writeSSE(res, "[DONE]");
+    logAiProviderEvent({
+      feature: "chat-stream",
+      model: providerOptions.model,
+      startedAt,
+    });
+    return { outputText };
   } catch (err) {
-    const message = err?.message || "Lỗi khi streaming AI";
-    writeSSE(res, `[ERROR] ${message.split("\n")[0]}`);
-  } finally {
-    res.end();
+    const aiError = toAiServiceError(err);
+    logAiProviderEvent({
+      feature: "chat-stream",
+      model: providerOptions.model,
+      startedAt,
+      code: aiError.code,
+    });
+    throw aiError;
   }
 }

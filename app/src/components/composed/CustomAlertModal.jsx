@@ -1,5 +1,6 @@
 import { memo, useMemo, useEffect } from "react";
 import { Modal, Pressable, Text, View, ActivityIndicator } from "react-native";
+import { useTranslation } from "react-i18next";
 import { BlurView } from "expo-blur";
 import Animated, { 
   useSharedValue, 
@@ -8,22 +9,29 @@ import Animated, {
   withTiming 
 } from "react-native-reanimated";
 import { TOKENS } from "../../constants/design-tokens";
+import { cn } from "../../lib/cn";
 
 // Sử dụng bộ Icon Lucide siêu sang trọng chuẩn thiết kế hiện đại
 import { CheckCircle2, AlertTriangle, XCircle, Info, HelpCircle } from "lucide-react-native";
 
 const ALERT_CONFIGS = {
-  success: { Icon: CheckCircle2, color: "#10B981" }, // Xanh Emerald thanh lịch
-  error: { Icon: XCircle, color: "#EF4444" },       // Đỏ mượt dịu mắt
-  warning: { Icon: AlertTriangle, color: "#F59E0B" }, // Vàng hổ phách
-  confirm: { Icon: HelpCircle, color: "#1E293B" },   // Đen Slate sâu thẳm
-  info: { Icon: Info, color: "#6366F1" },            // Tím Indigo
+  success: { Icon: CheckCircle2, color: TOKENS.color.semantic.success },
+  error: { Icon: XCircle, color: TOKENS.color.semantic.danger },
+  warning: { Icon: AlertTriangle, color: TOKENS.color.semantic.warning },
+  confirm: { Icon: HelpCircle, color: TOKENS.color.semantic.slate[800] },
+  info: { Icon: Info, color: TOKENS.color.semantic.info },
 };
 
-const BUTTON_CONFIGS = {
-  destructive: { btn: "bg-red-500 active:bg-red-600 shadow-md shadow-red-500/10", text: "text-white" },
-  cancel: { btn: "bg-gray-100 active:bg-gray-200", text: "text-slate-700" },
-  default: { btn: "bg-slate-900 active:bg-slate-800 shadow-md shadow-slate-950/10", text: "text-white" },
+const BUTTON_CLASS_NAMES = {
+  destructive: "bg-danger border-danger",
+  cancel: "bg-slate-100 border-slate-200",
+  default: "bg-slate-950 border-slate-950",
+};
+
+const BUTTON_TEXT_CLASS_NAMES = {
+  destructive: "text-white",
+  cancel: "text-slate-800",
+  default: "text-white",
 };
 
 const CustomAlertModal = memo(function CustomAlertModal({
@@ -35,20 +43,19 @@ const CustomAlertModal = memo(function CustomAlertModal({
   onConfirm,
   onCancel,
   confirmText,
-  cancelText = "Hủy",
+  cancelText,
   isDestructive = false,
-  isLoading = false, // Thêm trạng thái loading như hình mẫu
+  isLoading = false,
 }) {
+  const { t } = useTranslation();
   const config = ALERT_CONFIGS[type] || ALERT_CONFIGS.info;
   const TargetIcon = config.Icon;
 
-  // Khởi tạo các giá trị mượt mà cho hiệu ứng Spring nẩy nhẹ của Apple
   const scale = useSharedValue(0.9);
   const opacity = useSharedValue(0);
 
   useEffect(() => {
     if (visible) {
-      // Cấu hình vi dịch chuyển đàn hồi (Spring) cao cấp giống iOS Native
       scale.value = withSpring(1, {
         damping: 15,
         stiffness: 120,
@@ -71,93 +78,118 @@ const CustomAlertModal = memo(function CustomAlertModal({
     if (Array.isArray(buttons) && buttons.length > 0) return buttons;
     
     const list = [];
-    if (typeof onCancel === "function" && !isLoading) {
-      list.push({ text: cancelText, onPress: onCancel, style: "cancel" });
+    if (typeof onCancel === "function") {
+      list.push({
+        text: cancelText || t("common.cancel"),
+        onPress: onCancel,
+        style: "cancel",
+      });
     }
     list.push({
-      text: confirmText || (typeof onCancel === "function" ? "Xác nhận" : "Đóng"),
+      text:
+        confirmText ||
+        (typeof onCancel === "function" ? t("common.confirm") : t("common.close")),
       onPress: onConfirm,
       style: isDestructive ? "destructive" : "default",
     });
     return list;
-  }, [buttons, onConfirm, onCancel, confirmText, cancelText, isDestructive, isLoading]);
+  }, [buttons, onConfirm, onCancel, confirmText, cancelText, isDestructive, t]);
 
   const isVertical = resolvedButtons.length > 2;
 
   const handleDismiss = () => {
-    if (isLoading) return; // Đang chạy luồng ngầm không cho tự tắt tự do
+    if (isLoading) return;
     const cancelBtn = resolvedButtons.find(b => b.style === "cancel");
-    (cancelBtn || resolvedButtons[0])?.onPress?.();
+    if (cancelBtn) {
+      cancelBtn.onPress?.();
+      return;
+    }
+    if (type !== "confirm") resolvedButtons[0]?.onPress?.();
   };
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={handleDismiss}>
-      <View className="flex-1 items-center justify-center px-6">
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onRequestClose={handleDismiss}
+    >
+      <View
+        className="flex-1 items-center justify-center px-6"
+        accessible={false}
+        accessibilityViewIsModal
+        accessibilityRole="alert"
+        accessibilityLabel={[title, message].filter(Boolean).join(". ")}
+      >
         
-        {/* Lớp nền mờ sương mỏng ban ngày (Subtle Daylight Apple Blur) */}
         <BlurView intensity={12} tint="dark" className="absolute inset-0" />
-        <Pressable className="absolute inset-0 bg-black/[0.04]" onPress={handleDismiss} />
+        <Pressable
+          className="absolute inset-0 bg-black/[0.04]"
+          onPress={handleDismiss}
+          accessible={false}
+          accessibilityElementsHidden
+        />
 
-        {/* Airy Floating Card — Rộng rãi max-w-[310px] chuẩn hình mẫu */}
         <Animated.View 
-          style={[
-            animatedStyle,
-            {
-              shadowColor: "#000",
-              shadowOpacity: 0.06,
-              shadowRadius: 24,
-              shadowOffset: { width: 0, height: 16 },
-              elevation: 4,
-            }
-          ]}
-          className="w-full max-w-[310px] bg-white rounded-[28px] p-6 items-center border border-gray-100/50"
+          style={animatedStyle}
+          className="w-full max-w-[340px] items-center rounded-[28px] border border-slate-100 bg-white p-6 shadow-xl"
         >
-          
-          {/* Naked Icon Box — Tối giản hoàn toàn, không ô màu nền */}
           <View className="mb-4 mt-2">
             {isLoading ? (
-              <ActivityIndicator size="large" color="#007AFF" />
+              <ActivityIndicator size="large" color={TOKENS.color.accent[500]} />
             ) : (
               <TargetIcon size={48} color={config.color} strokeWidth={1.75} />
             )}
           </View>
 
-          {/* Typography Content — Căn chỉnh tỷ lệ thông thoáng */}
-          <View className="items-center mb-6 w-full px-2">
+          <View className="mb-6 w-full items-center px-2">
             <Text 
-              style={{ fontFamily: TOKENS.font.semibold }}
-              className="text-[18px] text-slate-900 text-center tracking-tight leading-6"
+              accessibilityRole="header"
+              className="text-center font-semibold text-[18px] leading-6 tracking-tight text-slate-900"
             >
-              {isLoading ? "Đang xử lý mạng ngầm..." : title}
+              {isLoading ? t("common.loading") : title}
             </Text>
             {message && (
               <Text 
-                style={{ fontFamily: TOKENS.font.body }}
-                className="text-[13.5px] text-slate-400 text-center mt-2.5 leading-5 tracking-wide"
+                className="mt-2.5 text-center font-sans text-[13.5px] leading-5 tracking-wide text-slate-500"
               >
                 {message}
               </Text>
             )}
           </View>
 
-          {/* Phím bấm dạng phẳng bo mềm Squircle Công thái học */}
-          <View className={`w-full gap-2.5 ${isVertical ? "flex-col items-stretch" : "flex-row items-center"}`}>
+          <View
+            className={cn(
+              "w-full gap-2.5",
+              isVertical ? "flex-col items-stretch" : "flex-row items-center",
+            )}
+          >
             {resolvedButtons.map((btn, index) => {
-              const btnStyle = BUTTON_CONFIGS[btn.style] || BUTTON_CONFIGS.default;
+              const buttonClassName = BUTTON_CLASS_NAMES[btn.style] || BUTTON_CLASS_NAMES.default;
+              const textClassName = BUTTON_TEXT_CLASS_NAMES[btn.style] || BUTTON_TEXT_CLASS_NAMES.default;
               
               return (
                 <Pressable
-                  key={index}
+                  key={`${btn.text || "alert-action"}-${index}`}
                   onPress={isLoading ? null : btn.onPress}
-                  className={`h-11 rounded-xl items-center justify-center transition-all active:scale-[0.97] active:opacity-95 ${
-                    btnStyle.btn
-                  } ${isVertical ? "w-full" : "flex-1"}`}
+                  disabled={isLoading}
+                  accessibilityRole="button"
+                  accessibilityLabel={btn.text}
+                  accessibilityState={{ disabled: isLoading }}
+                  className={cn(
+                    "h-12 items-center justify-center rounded-xl border px-4 shadow-sm active:opacity-80",
+                    isVertical ? "w-full" : "flex-1",
+                    buttonClassName,
+                    isLoading && "opacity-50",
+                  )}
                 >
                   <Text 
-                    style={{ fontFamily: TOKENS.font.semibold }}
-                    className={`text-[14px] tracking-tight ${btnStyle.text}`}
+                    className={cn(
+                      "font-semibold text-[14px] tracking-tight",
+                      textClassName,
+                    )}
                   >
-                    {isLoading && btn.style !== "cancel" ? "Vui lòng đợi..." : btn.text}
+                    {isLoading && btn.style !== "cancel" ? t("common.loading") : btn.text}
                   </Text>
                 </Pressable>
               );

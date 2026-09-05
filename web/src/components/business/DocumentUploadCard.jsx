@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -69,13 +69,29 @@ const formatBytes = (bytes) => {
 };
 
 // Component lấy file nhị phân từ API bảo mật và hiển thị an toàn
-const SecureFilePreview = ({ documentId, mimeType, alt, className }) => {
+const SecureFilePreview = ({ documentId, fileUrl, mimeType, alt, className }) => {
   const [url, setUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!documentId) return;
+    if (fileUrl && (fileUrl.startsWith("http") || fileUrl.startsWith("data:"))) {
+      setUrl(fileUrl);
+      setLoading(false);
+      return;
+    }
+
+    if (!documentId || typeof documentId === "string") {
+      if (fileUrl) {
+        setUrl(fileUrl);
+        setLoading(false);
+      } else {
+        setError(true);
+        setLoading(false);
+      }
+      return;
+    }
+
     let active = true;
     setLoading(true);
     setError(false);
@@ -96,11 +112,11 @@ const SecureFilePreview = ({ documentId, mimeType, alt, className }) => {
 
     return () => {
       active = false;
-      if (url) {
+      if (url && url.startsWith("blob:")) {
         URL.revokeObjectURL(url);
       }
     };
-  }, [documentId, mimeType]);
+  }, [documentId, fileUrl, mimeType]);
 
   if (loading) {
     return (
@@ -118,7 +134,7 @@ const SecureFilePreview = ({ documentId, mimeType, alt, className }) => {
     );
   }
 
-  const isPdf = mimeType === "application/pdf" || mimeType?.includes("pdf");
+  const isPdf = mimeType === "application/pdf" || mimeType?.includes("pdf") || (typeof url === "string" && url.toLowerCase().includes(".pdf"));
 
   if (isPdf) {
     return (
@@ -127,7 +143,22 @@ const SecureFilePreview = ({ documentId, mimeType, alt, className }) => {
   }
 
   return (
-    <img src={url} alt={alt} className={cn("object-cover w-full h-full rounded-lg", className)} />
+    <img
+      src={url}
+      alt={alt}
+      referrerPolicy="no-referrer"
+      className={cn("object-contain w-full h-full rounded-lg bg-black/5 dark:bg-white/5", className)}
+      onError={(e) => {
+        if (e.target.dataset.retried) {
+          setError(true);
+          return;
+        }
+        e.target.dataset.retried = "true";
+        e.target.referrerPolicy = "no-referrer";
+        // Force reload without query params or cors restriction
+        e.target.src = url;
+      }}
+    />
   );
 };
 
@@ -408,7 +439,7 @@ const DocumentTypeSection = memo(
 
 DocumentTypeSection.displayName = "DocumentTypeSection";
 
-const DocumentUploadCard = memo(({ businessId }) => {
+const DocumentUploadCard = memo(({ businessId, business }) => {
   const { t } = useTranslation();
   const [status, setStatus] = useState({
     id_card_front: [],
@@ -434,10 +465,22 @@ const DocumentUploadCard = memo(({ businessId }) => {
     try {
       const data = await getDocumentStatus(businessId);
       const statusData = data?.data || data;
+      const bInfo = business?.businessInfo || business || {};
+      
+      const frontUrl = bInfo.idCardFront || business?.idCardFront;
+      const backUrl = bInfo.idCardBack || business?.idCardBack;
+      const licenseUrl = bInfo.businessLicense || business?.businessLicense;
+
       setStatus({
-        id_card_front: statusData?.id_card_front || [],
-        id_card_back: statusData?.id_card_back || [],
-        business_license: statusData?.business_license || [],
+        id_card_front: statusData?.id_card_front?.length > 0 
+          ? statusData.id_card_front 
+          : (frontUrl ? [{ id: "profile_front", originalName: "CCCD mặt trước", fileUrl: frontUrl, mimeType: "image/jpeg" }] : []),
+        id_card_back: statusData?.id_card_back?.length > 0 
+          ? statusData.id_card_back 
+          : (backUrl ? [{ id: "profile_back", originalName: "CCCD mặt sau", fileUrl: backUrl, mimeType: "image/jpeg" }] : []),
+        business_license: statusData?.business_license?.length > 0 
+          ? statusData.business_license 
+          : (licenseUrl ? [{ id: "profile_license", originalName: "Giấy phép kinh doanh", fileUrl: licenseUrl, mimeType: "image/jpeg" }] : []),
         certificate: statusData?.certificate || [],
       });
     } catch {
@@ -445,7 +488,7 @@ const DocumentUploadCard = memo(({ businessId }) => {
     } finally {
       setLoadingStatus(false);
     }
-  }, [businessId]);
+  }, [businessId, business]);
 
   useEffect(() => {
     fetchStatus();
@@ -529,6 +572,7 @@ const DocumentUploadCard = memo(({ businessId }) => {
             {previewDoc && (
               <SecureFilePreview
                 documentId={previewDoc.id}
+                fileUrl={previewDoc.fileUrl}
                 mimeType={previewDoc.mimeType}
                 alt={previewDoc.originalName}
                 className="w-full h-full"

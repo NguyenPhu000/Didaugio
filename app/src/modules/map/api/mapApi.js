@@ -1,17 +1,23 @@
 import { ENDPOINTS } from "../../../api/endpoints";
-import { PLACE_STATUS } from "../../../constants/preferences";
 import { getPublicWithFallback } from "../../../api/publicClient";
+import { isValidMapViewport } from "../utils/mapViewportValidation";
 
-export const getHomeApi = (params) =>
-  getPublicWithFallback(ENDPOINTS.places.home, { params });
+export const getHomeApi = (params, config = {}) =>
+  getPublicWithFallback(ENDPOINTS.places.home, { ...config, params });
 
-export const getMapPlacesApi = ({ limit = 500, sortBy = "newest" } = {}) =>
-  getPublicWithFallback(ENDPOINTS.places.list, {
-    params: { status: PLACE_STATUS.APPROVED, limit, sortBy },
+export const getMapPlacesApi = (viewport, signal) => {
+  if (!isValidMapViewport(viewport)) {
+    return Promise.resolve([]);
+  }
+
+  return getPublicWithFallback(ENDPOINTS.places.v2Map, {
+    params: { ...viewport, limit: 200 },
+    signal,
   });
+};
 
-export const getDistrictsGeoJSON = () =>
-  getPublicWithFallback(ENDPOINTS.boundaries.districts);
+export const getDistrictsGeoJSON = (config = {}) =>
+  getPublicWithFallback(ENDPOINTS.boundaries.districts, config);
 
-export const getWardsGeoJSON = () =>
-  getPublicWithFallback(ENDPOINTS.boundaries.wards);
+export const getWardsGeoJSON = (config = {}) =>
+  getPublicWithFallback(ENDPOINTS.boundaries.wards, config);

@@ -1,6 +1,15 @@
 import prisma from "../../config/prismaClient.js";
 import { findPlacesNearby } from "../../utils/spatialQuery.js";
 import { generateHybridPlan } from "../../services/ai/hybridPlanner.service.js";
+import { generateHybridFallback } from "../../services/ai/hybridPlannerFallback.js";
+import {
+  canUseHybridFallback,
+  toAiServiceError,
+} from "../../services/ai/aiProviderPolicy.js";
+import {
+  resolveGroqProviderOptions,
+} from "../../services/ai/groq.service.js";
+import { executeAiRequest } from "../../services/ai/runtime/aiRuntimeExecution.js";
 
 /**
  * POST /api/ai/hybrid-plan
@@ -8,10 +17,10 @@ import { generateHybridPlan } from "../../services/ai/hybridPlanner.service.js";
  */
 export const handleHybridPlan = async (req, res) => {
   try {
-    const { coords, currentCoords } = req.body;
-    const gpsCoords = currentCoords || coords;
+    const { currentCoords, userPrompt } = req.body;
+    const gpsCoords = currentCoords;
 
-    if (!gpsCoords || !gpsCoords.latitude || !gpsCoords.longitude) {
+    if (!gpsCoords) {
       return res.status(400).json({
         success: false,
         data: null,
@@ -33,7 +42,7 @@ export const handleHybridPlan = async (req, res) => {
     }
 
     // 1. Lấy sở thích du lịch (travelPreferences) của user từ DB
-    const userId = req.user?.id;
+    const userId = req.user?.userId || req.user?.id;
     let travelPreferences = null;
     if (userId) {
       const profile = await prisma.userProfile.findUnique({
@@ -57,24 +66,59 @@ export const handleHybridPlan = async (req, res) => {
     }
 
     // 3. Gọi service AI sắp xếp lịch trình và tính toán chi phí
-    const planResult = await generateHybridPlan(
-      { latitude: lat, longitude: lng },
-      travelPreferences,
-      nearbyPlaces
-    );
+    let planResult;
+    let requestLogId = null;
+    try {
+      const execution = await executeAiRequest({
+        feature: "planner",
+        user: { userId },
+        inputText: userPrompt || "Tạo lịch trình gần vị trí hiện tại",
+        context: {
+          travelPreferences,
+          budget: travelPreferences?.budget,
+          places: nearbyPlaces,
+        },
+        operation: async ({ configData, context: allowedContext }) => {
+          const providerOptions = await resolveGroqProviderOptions(
+            configData,
+            "planner",
+          );
+          const plan = await generateHybridPlan(
+            { latitude: lat, longitude: lng },
+            travelPreferences,
+            nearbyPlaces,
+            userPrompt,
+            providerOptions,
+            allowedContext,
+          );
+          return {
+            outputText: JSON.stringify(plan),
+            plan,
+            usage: plan.usage,
+          };
+        },
+      });
+      planResult = execution.result.plan;
+      requestLogId = execution.requestLogId ?? null;
+    } catch (error) {
+      if (!canUseHybridFallback(error)) throw error;
+      planResult = generateHybridFallback(nearbyPlaces);
+    }
 
     return res.status(200).json({
       success: true,
-      data: planResult,
+      data: {
+        ...planResult,
+        ...(requestLogId ? { requestLogId } : {}),
+      },
       message: "Tạo lịch trình thành công",
     });
   } catch (error) {
-    const isQuotaError =
-      error?.status === 429 || /quota|rate.?limit|too many requests/i.test(error?.message || "");
-    const isUnavailable =
-      error?.status === 503 || /service unavailable|overloaded/i.test(error?.message || "");
+    const aiError = toAiServiceError(error);
+    const isQuotaError = aiError.code === "QUOTA_EXCEEDED";
+    const isUnavailable = aiError.code === "AI_UNAVAILABLE";
 
-    console.error("[HybridPlanError]", error?.status || "", (error?.message || "").split("\n")[0]);
+    console.info("[AI]", { feature: "hybrid-plan-controller", code: aiError.code });
 
     if (isQuotaError) {
       return res.status(429).json({
@@ -94,11 +138,11 @@ export const handleHybridPlan = async (req, res) => {
       });
     }
 
-    return res.status(error.statusCode || 500).json({
+    return res.status(aiError.statusCode || 502).json({
       success: false,
       data: null,
-      message: error.message || "Lỗi hệ thống khi tạo lịch trình du lịch.",
-      errorCode: error.code || "INTERNAL_ERROR",
+      message: "Không thể tạo lịch trình AI vào lúc này.",
+      errorCode: aiError.code,
     });
   }
 };

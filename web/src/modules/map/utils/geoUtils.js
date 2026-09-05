@@ -1,10 +1,12 @@
-import * as turf from "@turf/turf";
+import { polygon, featureCollection } from "@turf/helpers";
+import union from "@turf/union";
+import difference from "@turf/difference";
 
 /** Module-level cache keyed by feature count + first feature id to detect data changes */
 let _maskCache = { key: null, result: null };
 
 const makeCacheKey = (features) =>
-  `${features.length  }:${  features[0]?.properties?.id ?? ""}`;
+  `${features.length}:${features[0]?.properties?.id ?? ""}`;
 
 /**
  * Generate a "fog" mask polygon that covers the entire world
@@ -32,7 +34,7 @@ export const generateCanThoMask = (districtsGeoJSON) => {
 
   let result = null;
   try {
-    const worldPolygon = turf.polygon([
+    const worldPolygon = polygon([
       [
         [-180, -90],
         [180, -90],
@@ -49,8 +51,8 @@ export const generateCanThoMask = (districtsGeoJSON) => {
         canThoPolygon = feature;
       } else {
         try {
-          canThoPolygon = turf.union(
-            turf.featureCollection([canThoPolygon, feature]),
+          canThoPolygon = union(
+            featureCollection([canThoPolygon, feature]),
           );
         } catch (e) {
           console.warn("[geoUtils] Union failed for a district:", e);
@@ -59,8 +61,8 @@ export const generateCanThoMask = (districtsGeoJSON) => {
     }
 
     if (canThoPolygon) {
-      result = turf.difference(
-        turf.featureCollection([worldPolygon, canThoPolygon]),
+      result = difference(
+        featureCollection([worldPolygon, canThoPolygon]),
       );
     }
   } catch (e) {

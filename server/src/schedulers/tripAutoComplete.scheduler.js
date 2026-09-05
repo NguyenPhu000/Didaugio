@@ -18,10 +18,10 @@ async function completeExpiredTrips() {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
-  const result = await prisma.trip.updateMany({
+  const result = await prisma.tripPlan.updateMany({
     where: {
-      status: { in: ["upcoming", "in-progress", "planned"] },
-      endDate: { not: null, lt: now },
+      status: { in: ["planned", "active", "paused"] },
+      endDate: { lt: now },
     },
     data: { status: "completed" },
   });

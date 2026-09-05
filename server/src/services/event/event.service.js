@@ -1,8 +1,11 @@
 import prisma from "../../config/prismaClient.js";
 import ServiceError from "../../utils/serviceError.js";
 import { ERROR_CODES } from "../../config/messages.js";
-import { deleteImage } from "../../utils/cloudinaryService.js";
 import { uploadPlaceImage } from "../media/media.service.js";
+import {
+  enqueueCloudinaryAssetCleanup,
+  enqueueCloudinaryAssetRollback,
+} from "../media/cloudinaryCleanupJob.service.js";
 
 const EVENT_TRIP_PLACE_SELECT = {
   id: true,
@@ -19,251 +22,149 @@ const EVENT_TRIP_PLACE_SELECT = {
   },
 };
 
+const stopAsDestination = (stop) => ({
+  ...stop,
+  order: stop.sequence,
+  startTime: stop.arrivalTime,
+  endTime: stop.departureTime,
+  distanceToNext: stop.routeDistanceM == null ? null : Number(stop.routeDistanceM) / 1000,
+});
+
+const normalizeEventTrip = (event) => {
+  if (event?.trip?.stops) {
+    event.trip.destinations = event.trip.stops.map(stopAsDestination);
+  }
+  return event;
+};
+
 // Helper chuyển đổi trang/limit
 const toInt = (value, fallback = null) => {
   const number = parseInt(value, 10);
   return Number.isNaN(number) ? fallback : number;
 };
 
-// 1. Tạo sự kiện (chỉ dành cho Admin/Superadmin/Staff)
+const isInlineImage = (value) =>
+  typeof value === "string" && value.startsWith("data:image/");
+
+const stageEventImage = async (image, folder) => {
+  if (!isInlineImage(image)) return { url: image || null, publicId: null };
+  const uploaded = await uploadPlaceImage(image, folder);
+  return { url: uploaded.secureUrl, publicId: uploaded.publicId };
+};
+
 export const createEvent = async (userId, data) => {
-  const {
-    title,
-    description,
-    thumbnail,
-    thumbnailPublicId,
-    startDate,
-    endDate,
-    location,
-    maxParticipants,
-    isFeaturedBanner,
-    tripId,
-    broadcastNotice,
-    status,
-  } = data;
-
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  if (start > end) {
-    throw new ServiceError(
-      ERROR_CODES.VALIDATION_ERROR,
-      "Ngày bắt đầu không được lớn hơn ngày kết thúc",
-      400
-    );
+  const startDate = new Date(data.startDate);
+  const endDate = new Date(data.endDate);
+  if (startDate > endDate) {
+    throw new ServiceError("Start date cannot be after end date", 400, ERROR_CODES.VALIDATION_ERROR);
+  }
+  if (data.tripId) {
+    const trip = await prisma.tripPlan.findUnique({ where: { id: data.tripId }, select: { id: true } });
+    if (!trip) throw new ServiceError("Trip does not exist", 404, ERROR_CODES.NOT_FOUND);
   }
 
-  // Nếu có tripId, kiểm tra sự tồn tại của Trip
-  if (tripId) {
-    const existingTrip = await prisma.trip.findUnique({
-      where: { id: tripId },
+  const staged = await stageEventImage(data.thumbnail, "didaugio/events");
+  try {
+    return await prisma.event.create({
+      data: {
+        title: data.title,
+        description: data.description,
+        thumbnail: staged.url,
+        thumbnailPublicId: staged.publicId,
+        startDate,
+        endDate,
+        location: data.location || "Cần Thơ",
+        maxParticipants: data.maxParticipants,
+        isFeaturedBanner: data.isFeaturedBanner || false,
+        tripId: data.tripId,
+        broadcastNotice: data.broadcastNotice || null,
+        status: data.status || "active",
+        createdBy: userId,
+      },
     });
-    if (!existingTrip) {
-      throw new ServiceError(
-        ERROR_CODES.NOT_FOUND,
-        "Lịch trình chuyến đi mẫu không tồn tại",
-        404
-      );
-    }
+  } catch (error) {
+    await enqueueCloudinaryAssetRollback(prisma, {
+      aggregate: "Event",
+      aggregateId: 0,
+      publicIds: [staged.publicId],
+    });
+    throw error;
   }
-
-  // Tự động upload thumbnail nếu gửi base64 từ client
-  let finalThumbnail = thumbnail;
-  let finalThumbnailPublicId = thumbnailPublicId;
-
-  if (thumbnail && thumbnail.startsWith("data:image/")) {
-    try {
-      const uploadResult = await uploadPlaceImage(thumbnail, "didaugio/events");
-      finalThumbnail = uploadResult.secureUrl;
-      finalThumbnailPublicId = uploadResult.publicId;
-    } catch (err) {
-      console.error("Lỗi upload thumbnail lên Cloudinary:", err);
-      throw new ServiceError(
-        ERROR_CODES.SERVER_ERROR,
-        "Lỗi upload ảnh lên Cloudinary",
-        500
-      );
-    }
-  }
-
-  const event = await prisma.event.create({
-    data: {
-      title,
-      description,
-      thumbnail: finalThumbnail,
-      thumbnailPublicId: finalThumbnailPublicId,
-      startDate: start,
-      endDate: end,
-      location: location || "Cần Thơ",
-      maxParticipants,
-      isFeaturedBanner: isFeaturedBanner || false,
-      tripId,
-      broadcastNotice: broadcastNotice || null,
-      status: status || "active",
-      createdBy: userId,
-    },
-  });
-
-  return event;
 };
 
-// 2. Cập nhật sự kiện
+async function buildEventUpdateData(existingEvent, data) {
+  const updateData = Object.fromEntries(["title", "description", "location", "maxParticipants", "isFeaturedBanner", "status"].filter((field) => data[field] !== undefined).map((field) => [field, data[field]]));
+  if (data.broadcastNotice !== undefined) updateData.broadcastNotice = data.broadcastNotice || null;
+  if (data.startDate !== undefined || data.endDate !== undefined) {
+    const startDate = new Date(data.startDate || existingEvent.startDate);
+    const endDate = new Date(data.endDate || existingEvent.endDate);
+    if (startDate > endDate) throw new ServiceError("Start date cannot be after end date", 400, ERROR_CODES.VALIDATION_ERROR);
+    if (data.startDate !== undefined) updateData.startDate = startDate;
+    if (data.endDate !== undefined) updateData.endDate = endDate;
+  }
+  if (data.tripId !== undefined) {
+    if (data.tripId) {
+      const trip = await prisma.tripPlan.findUnique({ where: { id: data.tripId }, select: { id: true } });
+      if (!trip) throw new ServiceError("Trip does not exist", 404, ERROR_CODES.NOT_FOUND);
+    }
+    updateData.tripId = data.tripId;
+  }
+  return updateData;
+}
+
 export const updateEvent = async (eventId, data) => {
-  const existingEvent = await prisma.event.findUnique({
-    where: { id: eventId },
-  });
+  const existingEvent = await prisma.event.findUnique({ where: { id: eventId } });
+  if (!existingEvent) throw new ServiceError("Event does not exist", 404, ERROR_CODES.NOT_FOUND);
 
-  if (!existingEvent) {
-    throw new ServiceError(
-      ERROR_CODES.NOT_FOUND,
-      "Không tìm thấy sự kiện",
-      404
-    );
+  const updateData = await buildEventUpdateData(existingEvent, data);
+
+  let staged = null;
+  if (data.thumbnail !== undefined && data.thumbnail !== existingEvent.thumbnail) {
+    staged = await stageEventImage(data.thumbnail, "didaugio/events");
+    updateData.thumbnail = staged.url;
+    updateData.thumbnailPublicId = staged.publicId;
   }
 
-  const {
-    title,
-    description,
-    thumbnail,
-    thumbnailPublicId,
-    startDate,
-    endDate,
-    location,
-    maxParticipants,
-    isFeaturedBanner,
-    status,
-    tripId,
-    broadcastNotice,
-  } = data;
-
-  const updateData = {};
-  if (title !== undefined) updateData.title = title;
-  if (description !== undefined) updateData.description = description;
-  if (location !== undefined) updateData.location = location;
-  if (maxParticipants !== undefined) updateData.maxParticipants = maxParticipants;
-  if (isFeaturedBanner !== undefined) updateData.isFeaturedBanner = isFeaturedBanner;
-  if (status !== undefined) updateData.status = status;
-  if (broadcastNotice !== undefined) updateData.broadcastNotice = broadcastNotice || null;
-
-  if (thumbnail !== undefined) {
-    let finalThumbnail = thumbnail;
-    let finalThumbnailPublicId = thumbnailPublicId;
-
-    if (thumbnail && thumbnail.startsWith("data:image/")) {
-      try {
-        const uploadResult = await uploadPlaceImage(thumbnail, "didaugio/events");
-        finalThumbnail = uploadResult.secureUrl;
-        finalThumbnailPublicId = uploadResult.publicId;
-      } catch (err) {
-        console.error("Lỗi upload thumbnail lên Cloudinary:", err);
-        throw new ServiceError(
-          ERROR_CODES.SERVER_ERROR,
-          "Lỗi upload ảnh lên Cloudinary",
-          500
-        );
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const updated = await tx.event.update({ where: { id: eventId }, data: updateData });
+      if (existingEvent.thumbnailPublicId && existingEvent.thumbnailPublicId !== updated.thumbnailPublicId) {
+        await enqueueCloudinaryAssetCleanup(tx, {
+          aggregate: "Event",
+          aggregateId: eventId,
+          publicIds: [existingEvent.thumbnailPublicId],
+        });
       }
-    }
-
-    // Nếu cập nhật thumbnail mới, hãy dọn dẹp thumbnail cũ trên Cloudinary
-    if (existingEvent.thumbnailPublicId && existingEvent.thumbnailPublicId !== finalThumbnailPublicId) {
-      try {
-        await deleteImage(existingEvent.thumbnailPublicId);
-      } catch (err) {
-        console.error("Lỗi xóa thumbnail cũ khi update event:", err);
-      }
-    }
-    updateData.thumbnail = finalThumbnail;
-    updateData.thumbnailPublicId = finalThumbnailPublicId;
+      return updated;
+    });
+  } catch (error) {
+    await enqueueCloudinaryAssetRollback(prisma, {
+      aggregate: "Event",
+      aggregateId: eventId,
+      publicIds: [staged?.publicId],
+    });
+    throw error;
   }
-
-  if (startDate !== undefined || endDate !== undefined) {
-    const start = new Date(startDate || existingEvent.startDate);
-    const end = new Date(endDate || existingEvent.endDate);
-    if (start > end) {
-      throw new ServiceError(
-        ERROR_CODES.VALIDATION_ERROR,
-        "Ngày bắt đầu không được lớn hơn ngày kết thúc",
-        400
-      );
-    }
-    if (startDate !== undefined) updateData.startDate = start;
-    if (endDate !== undefined) updateData.endDate = end;
-  }
-
-  if (tripId !== undefined) {
-    if (tripId) {
-      const existingTrip = await prisma.trip.findUnique({
-        where: { id: tripId },
-      });
-      if (!existingTrip) {
-        throw new ServiceError(
-          ERROR_CODES.NOT_FOUND,
-          "Lịch trình chuyến đi mẫu không tồn tại",
-          404
-        );
-      }
-    }
-    updateData.tripId = tripId;
-  }
-
-  const updatedEvent = await prisma.event.update({
-    where: { id: eventId },
-    data: updateData,
-  });
-
-  return updatedEvent;
 };
 
-// 3. Xóa sự kiện (dọn dẹp ảnh mồ côi trên Cloudinary)
 export const deleteEvent = async (eventId) => {
   const event = await prisma.event.findUnique({
     where: { id: eventId },
-    include: {
-      moments: {
-        select: { imagePublicId: true },
-      },
-    },
+    include: { moments: { select: { imagePublicId: true } } },
   });
+  if (!event) throw new ServiceError("Event does not exist", 404, ERROR_CODES.NOT_FOUND);
 
-  if (!event) {
-    throw new ServiceError(
-      ERROR_CODES.NOT_FOUND,
-      "Không tìm thấy sự kiện",
-      404
-    );
-  }
-
-  // Dọn dẹp ảnh mồ côi trên Cloudinary
-  const publicIdsToDelete = [];
-  if (event.thumbnailPublicId) {
-    publicIdsToDelete.push(event.thumbnailPublicId);
-  }
-  if (event.moments && event.moments.length > 0) {
-    event.moments.forEach((moment) => {
-      if (moment.imagePublicId) {
-        publicIdsToDelete.push(moment.imagePublicId);
-      }
+  await prisma.$transaction(async (tx) => {
+    await tx.event.delete({ where: { id: eventId } });
+    await enqueueCloudinaryAssetCleanup(tx, {
+      aggregate: "Event",
+      aggregateId: eventId,
+      publicIds: [event.thumbnailPublicId, ...event.moments.map((moment) => moment.imagePublicId)],
     });
-  }
-
-  // Gọi Cloudinary xóa song song
-  if (publicIdsToDelete.length > 0) {
-    try {
-      await Promise.all(publicIdsToDelete.map((id) => deleteImage(id)));
-    } catch (err) {
-      console.error("Lỗi dọn dẹp ảnh trên Cloudinary khi xóa event:", err);
-    }
-  }
-
-  // Xóa trong database (Cascade delete tự động xóa EventParticipant, EventMoment, ActiveSession)
-  await prisma.event.delete({
-    where: { id: eventId },
   });
-
   return { success: true };
 };
 
-// 4. Lấy danh sách sự kiện
 export const getEvents = async (filters = {}) => {
   const {
     status,
@@ -322,13 +223,13 @@ export const getEvents = async (filters = {}) => {
           select: {
             id: true,
             totalDays: true,
-            destinations: {
-              orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+            stops: {
+              orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
               select: {
                 id: true,
                 placeId: true,
                 dayNumber: true,
-                order: true,
+                sequence: true,
                 place: {
                   select: {
                     id: true,
@@ -361,7 +262,7 @@ export const getEvents = async (filters = {}) => {
   ]);
 
   return {
-    data: events,
+    data: events.map(normalizeEventTrip),
     pagination: {
       page: pageNum,
       limit: limitNum,
@@ -378,8 +279,8 @@ const getEventByIdLegacy = async (eventId, userId = null) => {
     include: {
       trip: {
         include: {
-          destinations: {
-            orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+          stops: {
+            orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
             include: {
               place: {
                 select: {
@@ -420,6 +321,7 @@ const getEventByIdLegacy = async (eventId, userId = null) => {
   }
 
   // 1. Thống kê active companion counts trên từng chặng (chỉ đếm updatedAt trong 5 phút trở lại)
+  normalizeEventTrip(event);
   const activeThreshold = new Date(Date.now() - 5 * 60 * 1000);
   const activeSessions = await prisma.activeSession.findMany({
     where: {
@@ -504,8 +406,8 @@ export const getEventById = async (eventId, userId = null) => {
     include: {
       trip: {
         include: {
-          destinations: {
-            orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+          stops: {
+            orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
             include: {
               place: {
                 select: {
@@ -545,6 +447,7 @@ export const getEventById = async (eventId, userId = null) => {
     );
   }
 
+  normalizeEventTrip(event);
   const activeThreshold = new Date(Date.now() - 5 * 60 * 1000);
   const activeSessions = await prisma.activeSession.findMany({
     where: {
@@ -670,11 +573,11 @@ export const joinEvent = async (eventId, userId) => {
     // 2. Clone Trip mẫu
     let clonedTrip = null;
     if (event.tripId) {
-      const tripSample = await tx.trip.findUnique({
+      const tripSample = await tx.tripPlan.findUnique({
         where: { id: event.tripId },
         include: {
-          destinations: {
-            orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+          stops: {
+            orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
             include: { place: { select: EVENT_TRIP_PLACE_SELECT } },
           },
         },
@@ -682,10 +585,7 @@ export const joinEvent = async (eventId, userId) => {
 
       if (tripSample) {
         const tripPlanSample = await tx.tripPlan.findFirst({
-          where: {
-            userId: tripSample.userId,
-            metadata: { path: ["legacyTripId"], equals: event.tripId },
-          },
+          where: { id: event.tripId },
           include: {
             stops: {
               orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
@@ -695,12 +595,12 @@ export const joinEvent = async (eventId, userId) => {
         });
 
         // Tạo Trip mới cho User
-        clonedTrip = await tx.trip.create({
+        clonedTrip = await tx.tripPlan.create({
           data: {
             userId: userId,
             title: `[Sự kiện] ${tripSample.title}`,
             description: tripSample.description || `Lịch trình được sao chép từ sự kiện "${event.title}"`,
-            thumbnail: resolveTripCloneThumbnail({
+            coverImage: resolveTripCloneThumbnail({
               event,
               tripSample,
               tripPlan: tripPlanSample,
@@ -708,42 +608,56 @@ export const joinEvent = async (eventId, userId) => {
             startDate: tripSample.startDate,
             endDate: tripSample.endDate,
             totalDays: tripSample.totalDays,
-            totalDistance: tripSample.totalDistance,
+            totalDistanceM: tripSample.totalDistanceM,
             estimatedCost: tripSample.estimatedCost,
-            travelStyle: tripSample.travelStyle,
-            groupSize: 1,
-            isAiGenerated: false,
+            source: "manual",
+            /* Legacy status removed by TripPlan cutover.
             status: "upcoming", // Trạng thái mặc định cho trip tham gia sự kiện
-            isPublic: false,
+            */
+            metadata: { ...(tripSample.metadata || {}), isPublic: false, clonedFromEventId: event.id },
+            status: "planned",
           },
         });
 
         // Tạo các TripDestination tương ứng
         const cloneRows = buildTripDestinationCloneRows({
           tripId: clonedTrip.id,
-          destinations: tripSample.destinations,
+          destinations: [],
           stops: tripPlanSample?.stops,
         });
 
         if (cloneRows.length > 0) {
-          await tx.tripDestination.createMany({
-            data: cloneRows,
+          await tx.tripStop.createMany({
+            data: cloneRows.map((row) => ({
+              tripId: clonedTrip.id,
+              placeId: row.placeId,
+              dayNumber: row.dayNumber,
+              sequence: row.order,
+              arrivalTime: row.startTime,
+              departureTime: row.endTime,
+              durationMinutes: row.durationMinutes,
+              note: row.note,
+              transportToNext: row.transportToNext,
+              routeDistanceM: row.distanceToNext == null ? null : Math.round(Number(row.distanceToNext) * 1000),
+              estimatedCost: row.estimatedCost,
+              fulfillmentStatus: "pending",
+            })),
           });
         }
 
         // Tăng cloneCount của Trip gốc
-        await tx.trip.update({
+        await tx.tripPlan.update({
           where: { id: event.tripId },
           data: {
-            cloneCount: { increment: 1 },
+            metadata: { ...(tripSample.metadata || {}), cloneCount: Number(tripSample.metadata?.cloneCount || 0) + 1 },
           },
         });
 
-        clonedTrip = await tx.trip.findUnique({
+        clonedTrip = await tx.tripPlan.findUnique({
           where: { id: clonedTrip.id },
           include: {
-            destinations: {
-              orderBy: [{ dayNumber: "asc" }, { order: "asc" }],
+            stops: {
+              orderBy: [{ dayNumber: "asc" }, { sequence: "asc" }],
               include: { place: { select: EVENT_TRIP_PLACE_SELECT } },
             },
           },
@@ -758,7 +672,9 @@ export const joinEvent = async (eventId, userId) => {
 
   return {
     message: "Tham gia sự kiện thành công",
-    clonedTrip: result.clonedTrip,
+    clonedTrip: result.clonedTrip
+      ? { ...result.clonedTrip, destinations: (result.clonedTrip.stops || []).map(stopAsDestination) }
+      : null,
   };
 };
 
@@ -788,7 +704,7 @@ export const pingEvent = async (eventId, placeId, userId, location = {}) => {
     select: {
       trip: {
         select: {
-          destinations: {
+          stops: {
             select: {
               placeId: true,
               place: { select: { latitude: true, longitude: true } },
@@ -800,7 +716,7 @@ export const pingEvent = async (eventId, placeId, userId, location = {}) => {
   });
 
   validateEventCheckInTarget({
-    destinations: event?.trip?.destinations || [],
+    destinations: (event?.trip?.stops || []).map(stopAsDestination),
     placeId,
     latitude: location.latitude,
     longitude: location.longitude,
@@ -830,7 +746,15 @@ export const pingEvent = async (eventId, placeId, userId, location = {}) => {
 
 // 8. Tải ảnh khoảnh khắc 1:1 check-in (Viễn cảnh 1)
 export const createMoment = async (eventId, userId, data) => {
-  const { placeId, imageUrl, imagePublicId, latitude, longitude } = data;
+  const { placeId, imageUrl, latitude, longitude } = data;
+
+  if (!isInlineImage(imageUrl)) {
+    throw new ServiceError(
+      "Anh khoanh khac phai duoc tai len qua server",
+      400,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
 
   // Kiểm tra tham gia sự kiện
   const participant = await prisma.eventParticipant.findUnique({
@@ -856,7 +780,7 @@ export const createMoment = async (eventId, userId, data) => {
     select: {
       trip: {
         select: {
-          destinations: {
+          stops: {
             select: {
               placeId: true,
               place: { select: { latitude: true, longitude: true } },
@@ -868,20 +792,22 @@ export const createMoment = async (eventId, userId, data) => {
   });
 
   validateEventCheckInTarget({
-    destinations: event?.trip?.destinations || [],
+    destinations: (event?.trip?.stops || []).map(stopAsDestination),
     placeId,
     latitude,
     longitude,
   });
 
   let finalImageUrl = imageUrl;
-  let finalImagePublicId = imagePublicId;
+  let finalImagePublicId = null;
+  let uploadedMomentPublicId = null;
 
   if (imageUrl && imageUrl.startsWith("data:image/")) {
     try {
       const uploadResult = await uploadPlaceImage(imageUrl, "didaugio/event_moments");
       finalImageUrl = uploadResult.secureUrl;
       finalImagePublicId = uploadResult.publicId;
+      uploadedMomentPublicId = uploadResult.publicId;
     } catch (err) {
       console.error("Lỗi upload moment lên Cloudinary:", err);
       throw new ServiceError(
@@ -903,19 +829,10 @@ export const createMoment = async (eventId, userId, data) => {
     },
   });
 
-  if (existingMoment) {
-    // Nếu đã đăng, xóa ảnh cũ trên Cloudinary trước khi ghi đè
-    if (existingMoment.imagePublicId && existingMoment.imagePublicId !== finalImagePublicId) {
-      try {
-        await deleteImage(existingMoment.imagePublicId);
-      } catch (err) {
-        console.error("Lỗi xóa moment cũ trên Cloudinary:", err);
-      }
-    }
-  }
-
-  // Bắt đầu transaction để tạo moment và tăng tiến trình check-in cộng đồng (Viễn cảnh 2)
-  const moment = await prisma.$transaction(async (tx) => {
+  const previousMomentPublicId = existingMoment?.imagePublicId || null;
+  let moment;
+  try {
+    moment = await prisma.$transaction(async (tx) => {
     // 1. Kiểm tra moment đã tồn tại chưa
     const existingMoment = await tx.eventMoment.findUnique({
       where: {
@@ -961,8 +878,24 @@ export const createMoment = async (eventId, userId, data) => {
       });
     }
 
+    if (previousMomentPublicId && previousMomentPublicId !== finalImagePublicId) {
+      await enqueueCloudinaryAssetCleanup(tx, {
+        aggregate: "EventMoment",
+        aggregateId: newMoment.id,
+        publicIds: [previousMomentPublicId],
+      });
+    }
+
     return newMoment;
-  });
+    });
+  } catch (error) {
+    await enqueueCloudinaryAssetRollback(prisma, {
+      aggregate: "EventMoment",
+      aggregateId: eventId,
+      publicIds: [uploadedMomentPublicId],
+    });
+    throw error;
+  }
 
   return moment;
 };
@@ -1031,17 +964,13 @@ export const deleteMoment = async (momentId, userId, isAdmin = false) => {
   }
 
   // Xóa ảnh vật lý trên Cloudinary
-  if (moment.imagePublicId) {
-    try {
-      await deleteImage(moment.imagePublicId);
-    } catch (err) {
-      console.error("Lỗi xóa moment trên Cloudinary:", err);
-    }
-  }
-
-  // Xóa trong database
-  await prisma.eventMoment.delete({
-    where: { id: momentId },
+  await prisma.$transaction(async (tx) => {
+    await tx.eventMoment.delete({ where: { id: momentId } });
+    await enqueueCloudinaryAssetCleanup(tx, {
+      aggregate: "EventMoment",
+      aggregateId: momentId,
+      publicIds: [moment.imagePublicId],
+    });
   });
 
   return { success: true };

@@ -8,6 +8,8 @@ import { requirePermission } from "../../middlewares/permissionMiddleware.js";
 import { reviewCreateLimiter } from "../../middlewares/rateLimitMiddleware.js";
 import { auditLog } from "../../middlewares/auditLogMiddleware.js";
 import { checkPlaceOwnership } from "../../middlewares/placeMiddleware.js";
+import { requireBackOfficeRole } from "../../middlewares/blockGuestFromAdmin.js";
+import { requireActiveSubscription } from "../../middlewares/subscriptionFeatureLock.js";
 import {
   validateBody,
   validateQuery,
@@ -93,6 +95,7 @@ router.post(
   "/",
   authenticate,
   requirePermission("places.create"),
+  requireActiveSubscription,
   validateBody(createPlaceSchema),
   auditLog({
     action: "CREATE",
@@ -154,6 +157,7 @@ router.post(
 router.put(
   "/:id/approve",
   authenticate,
+  requireBackOfficeRole,
   requirePermission("places.approve"),
   validateParams(placeIdParamSchema),
   auditLog({
@@ -167,6 +171,7 @@ router.put(
 router.put(
   "/:id/reject",
   authenticate,
+  requireBackOfficeRole,
   requirePermission("places.reject"),
   validateParams(placeIdParamSchema),
   validateBody(rejectPlaceSchema),
@@ -197,6 +202,7 @@ router.put(
 router.put(
   "/:id/feature",
   authenticate,
+  requireBackOfficeRole,
   requirePermission("places.feature"),
   validateParams(placeIdParamSchema),
   validateBody(toggleFeaturedSchema),

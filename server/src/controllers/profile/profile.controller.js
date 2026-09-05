@@ -103,6 +103,15 @@ export const updateTravelPreferences = async (req, res, next) => {
   }
 };
 
+export const deleteMyAccount = async (req, res, next) => {
+  try {
+    const data = await profileService.deleteMyAccount(getUserId(req));
+    res.json({ success: true, data, message: "Tài khoản đã được xóa" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getUserId = (req) => req.user?.userId || req.user?.id || null;
 
 const parseId = (raw) => {
@@ -408,6 +417,7 @@ export default {
   updateAvatar,
   updateNotificationSettings,
   updateTravelPreferences,
+  deleteMyAccount,
   getProfileSummary,
   getSavedPlaces,
   savePlace,

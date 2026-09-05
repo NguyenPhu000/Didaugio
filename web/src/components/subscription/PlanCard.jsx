@@ -1,26 +1,21 @@
-import { Check, Crown, Zap } from "lucide-react";
+import { Check, Crown, Zap, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/Card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { formatVND } from "@/components/business/dashboardWidgetHelpers";
+import { formatMoney } from "@/utils/formatters";
 
 const PLAN_ICONS = {
   basic: Zap,
-  plus: Crown,
+  plus: Sparkles,
   pro: Crown,
-};
-
-const PLAN_ACCENT = {
-  basic: "border-zinc-200",
-  plus: "border-blue-300 ring-2 ring-blue-100",
-  pro: "border-violet-300 ring-2 ring-violet-100",
 };
 
 export default function PlanCard({
   plan,
   isCurrent,
+  canChangeBillingCycle = false,
   isPopular,
   billingCycle = "monthly",
   onSelect,
@@ -28,78 +23,99 @@ export default function PlanCard({
   const { t } = useTranslation();
   const Icon = PLAN_ICONS[plan.slug] || Zap;
   const price = billingCycle === "yearly" ? plan.priceYearly : plan.priceMonthly;
-  const accent = PLAN_ACCENT[plan.slug] || PLAN_ACCENT.basic;
+  const isAvailableForCycle = billingCycle !== "yearly" || Number.isFinite(plan.priceYearly);
 
   return (
     <Card
       className={cn(
-        "relative flex flex-col transition-shadow hover:shadow-lg",
-        isCurrent && "ring-2 ring-primary",
-        isPopular && !isCurrent && accent,
+        "relative flex flex-col rounded-3xl border transition-all duration-300 backdrop-blur-xl",
+        isPopular
+          ? "border-primary/60 bg-card/95 shadow-xl shadow-primary/5 hover:border-primary hover:-translate-y-1"
+          : "border-border/80 bg-card/75 hover:border-border hover:bg-card/90 hover:-translate-y-1 hover:shadow-lg",
+        isCurrent && "ring-2 ring-primary border-primary",
       )}
     >
-      {isPopular && !isCurrent && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <Badge className="bg-blue-600 text-white">
+      {isPopular && (
+        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+          <Badge className="bg-primary text-primary-foreground font-extrabold uppercase text-[10px] tracking-wider px-3 py-1 shadow-md border border-primary-foreground/20">
             {t("subscription.plans.popular")}
           </Badge>
         </div>
       )}
 
-      <CardHeader className="items-center space-y-3 pb-0">
+      <CardHeader className="items-center space-y-3 pb-2 pt-6">
         <div
           className={cn(
-            "rounded-full p-3",
-            plan.slug === "pro"
-              ? "bg-violet-100 text-violet-600"
-              : plan.slug === "plus"
-                ? "bg-blue-100 text-blue-600"
-                : "bg-zinc-100 text-zinc-600",
+            "rounded-2xl p-3.5 transition-transform group-hover:scale-110",
+            isPopular
+              ? "bg-primary/15 text-primary border border-primary/30"
+              : "bg-muted text-muted-foreground border border-border/50",
           )}
         >
           <Icon className="h-6 w-6" />
         </div>
-        <h3 className="text-xl font-bold">{plan.name}</h3>
+        <h3 className="text-xl font-extrabold tracking-tight text-foreground">{plan.name}</h3>
       </CardHeader>
 
-      <CardContent className="flex-1 space-y-5 pt-4">
-        <div className="text-center">
-          <span className="text-3xl font-bold tracking-tight">
-            {formatVND(price)}
-          </span>
-          <span className="text-sm text-muted-foreground">
+      <CardContent className="flex-1 space-y-6 pt-2">
+        <div className="text-center space-y-1">
+          <div className="flex items-baseline justify-center gap-1">
+            <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground font-mono">
+              {formatMoney(price)}
+            </span>
+          </div>
+          <span className="text-xs font-medium text-muted-foreground block">
             /{billingCycle === "yearly" ? t("subscription.plans.yearly") : t("subscription.plans.monthly")}
           </span>
         </div>
 
         {plan.description && (
-          <p className="text-center text-sm text-muted-foreground">
+          <p className="text-center text-xs text-muted-foreground leading-relaxed px-2">
             {plan.description}
           </p>
         )}
 
-        <ul className="space-y-2.5">
+        <div className="h-px bg-border/60 w-full" />
+
+        <ul className="space-y-3 px-1">
           {(plan.features || []).map((feature, index) => (
-            <li key={index} className="flex items-start gap-2 text-sm">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+            <li key={index} className="flex items-start gap-2.5 text-xs text-foreground/90 leading-snug">
+              <div className="p-0.5 rounded-full bg-emerald-500/15 text-emerald-500 shrink-0 mt-0.5">
+                <Check className="h-3.5 w-3.5" />
+              </div>
               <span>{feature}</span>
             </li>
           ))}
         </ul>
       </CardContent>
 
-      <CardFooter className="pt-2">
-        {isCurrent ? (
-          <Button variant="outline" className="w-full" disabled>
+      <CardFooter className="pt-2 pb-6 px-6">
+        {isCurrent && !canChangeBillingCycle ? (
+          <Button variant="outline" className="w-full rounded-2xl h-11 font-bold border-border/80" disabled>
             {t("subscription.plans.current")}
+          </Button>
+        ) : isCurrent && canChangeBillingCycle ? (
+          <Button
+            className="w-full rounded-2xl h-11 font-bold transition-transform active:scale-[0.98]"
+            variant={isPopular ? "default" : "outline"}
+            onClick={() => onSelect?.(plan)}
+            disabled={!isAvailableForCycle}
+          >
+            {isAvailableForCycle
+              ? t("subscription.plans.changeCycle")
+              : t("subscription.plans.unavailable")}
           </Button>
         ) : (
           <Button
-            className="w-full"
+            className={cn(
+              "w-full rounded-2xl h-11 font-bold transition-transform active:scale-[0.98]",
+              isPopular ? "shadow-md shadow-primary/20" : "",
+            )}
             variant={isPopular ? "default" : "outline"}
             onClick={() => onSelect?.(plan)}
+            disabled={!isAvailableForCycle}
           >
-            {t("subscription.plans.select")}
+            {isAvailableForCycle ? t("subscription.plans.select") : t("subscription.plans.unavailable")}
           </Button>
         )}
       </CardFooter>

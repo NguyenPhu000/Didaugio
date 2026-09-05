@@ -1,5 +1,14 @@
-import { createGroqClient, GROQ_MODEL } from "./groq.service.js";
+import { renderConfiguredPrompt } from "../../lib/promptBuilder.js";
+import { createGroqClient } from "./groq.service.js";
 import { parseAiJsonObject } from "./aiJsonParser.js";
+import {
+  createAiInvalidOutputError,
+  validateHybridPlanOutput,
+} from "./aiOutputGuard.js";
+import {
+  logAiProviderEvent,
+  toAiServiceError,
+} from "./aiProviderPolicy.js";
 
 function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
   const R = 6371; // Earth's radius in km
@@ -15,6 +24,36 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+const formatPrice = (value) => {
+  if (!value || value <= 0) return null;
+  if (value >= 1_000_000) {
+    const millions = value / 1_000_000;
+    return millions % 1 === 0 ? `${millions} triệu` : `${millions.toFixed(1)} triệu`;
+  }
+  return `${Math.round(value / 1000)}k`;
+};
+
+const buildPlacesContext = (providerContext) => {
+  const promptPlaces = Array.isArray(providerContext.places) ? providerContext.places : [];
+  return promptPlaces.map((place) => ({
+    id: place.id,
+    name: place.name,
+    category: place.categoryName || "Địa điểm",
+    rating: place.ratingAvg,
+    priceFrom: place.priceFrom || 0,
+    priceTo: place.priceTo || 0,
+    priceReadable: place.priceFrom && place.priceTo
+      ? `${formatPrice(place.priceFrom)} - ${formatPrice(place.priceTo)}`
+      : "Chưa cập nhật",
+  }));
+};
+
+export function buildHybridPlanUserPrompt(basePrompt, userRequest = "") {
+  return userRequest
+    ? `${basePrompt}\nUser request: ${userRequest}`
+    : basePrompt;
+}
+
 /**
  * Gọi AI sắp xếp thứ tự và lập kế hoạch ngân sách dựa trên danh sách địa điểm thật từ DB
  * @param {Object} coords Tọa độ hiện tại của user
@@ -22,37 +61,31 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
  * @param {Array} places Danh sách các địa điểm gần nhất lấy từ DB
  * @returns {Promise<Object>} Lịch trình và dự toán chi phí sạch
  */
-export async function generateHybridPlan(coords, preferences, places) {
+export async function generateHybridPlan(
+  coords,
+  preferences,
+  places,
+  userRequest = "",
+  providerOptions = {},
+  providerContext = {},
+) {
   if (!Array.isArray(places) || places.length === 0) {
     throw new Error("Danh sách địa điểm đầu vào trống.");
   }
 
-  const client = createGroqClient();
-
-  // Helper format giá readable
-  const fmtPrice = (v) => {
-    if (!v || v <= 0) return null;
-    if (v >= 1_000_000) {
-      const m = v / 1_000_000;
-      return m % 1 === 0 ? `${m} triệu` : `${m.toFixed(1)} triệu`;
-    }
-    return `${Math.round(v / 1000)}k`;
-  };
-
   // Rút gọn địa điểm để tiết kiệm token và định hướng AI
-  const placesContext = places.map((p) => ({
-    id: p.id,
-    name: p.name,
-    category: p.categoryName || "Địa điểm",
-    rating: p.ratingAvg,
-    priceFrom: p.priceFrom || 0,
-    priceTo: p.priceTo || 0,
-    priceReadable: p.priceFrom && p.priceTo
-      ? `${fmtPrice(p.priceFrom)} - ${fmtPrice(p.priceTo)}`
-      : "Chưa cập nhật",
-  }));
+  const placesContext = buildPlacesContext(providerContext);
+  const requestedPlaceCount = placesContext.length;
+  const selectionInstruction = requestedPlaceCount > 0
+    ? `Use the place count requested by the user. If the user asks to plan with the provided or previous places, include all ${requestedPlaceCount} DB places in the timeline. Do not default to 3-4 places when more places were requested.`
+    : "Choose a practical number of places that matches the user request.";
 
-  const systemPrompt = `Bạn là "Genie" — trợ lý du lịch của ứng dụng "iPoint Genie".
+  const systemPrompt = `${renderConfiguredPrompt(
+    providerOptions.configuredPrompt,
+    providerContext,
+  )}
+
+Bạn là "Genie" — trợ lý du lịch của ứng dụng "iPoint Genie".
 Nhiệm vụ: sắp xếp lịch trình du lịch trong ngày thông minh, tối ưu tuyến đường, và ước lượng chi phí dựa trên danh sách địa điểm có thật từ cơ sở dữ liệu.
 
 QUY TẮC BẮT BUỘC:
@@ -90,40 +123,62 @@ SCHEMA JSON:
   ]
 }`;
 
-  const budgetHint = preferences?.budget
-    ? `\nNgân sách của người dùng: ${preferences.budget} — ưu tiên địa điểm trong khoảng giá này.`
+  const allowedPreferences = providerContext.travelPreferences;
+  const allowedBudget = providerContext.budget;
+  const budgetHint = allowedBudget
+    ? `\nNgân sách của người dùng: ${allowedBudget} — ưu tiên địa điểm trong khoảng giá này.`
     : "";
 
-  const userPrompt = `Tọa độ hiện tại: ${coords ? `${coords.latitude}, ${coords.longitude}` : "Chưa có"}
-Sở thích du lịch: ${preferences ? JSON.stringify(preferences) : "Chưa có"}${budgetHint}
+  const userPrompt = `Khu vực hiện tại: ${providerContext.currentCity || "Chưa có"}
+Sở thích du lịch: ${allowedPreferences ? JSON.stringify(allowedPreferences) : "Chưa có"}${budgetHint}
 Danh sách địa điểm từ DB (có priceReadable để tham khảo nhanh):
 ${JSON.stringify(placesContext)}
 
-Hãy chọn 3-4 địa điểm phù hợp nhất, sắp xếp tuyến đường tối ưu, và trả về JSON chuẩn.`;
+${selectionInstruction}
+Sắp xếp tuyến đường tối ưu, và trả về JSON chuẩn.`;
 
-  const completion = await client.chat.completions.create({
-    model: GROQ_MODEL,
+  const fullUserPrompt = buildHybridPlanUserPrompt(userPrompt, userRequest);
+
+  const startedAt = Date.now();
+  let completion;
+  try {
+    const client = createGroqClient(providerOptions);
+    completion = await client.chat.completions.create({
+    model: providerOptions.model,
     messages: [
       { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
+      { role: "user", content: fullUserPrompt },
     ],
-    temperature: 0.2, // Nhiệt độ thấp để đảm bảo output định dạng JSON chính xác
-    max_tokens: 2000,
+    temperature: Math.min(providerOptions.temperature, 0.3),
+    top_p: providerOptions.topP,
+    max_tokens: providerOptions.maxTokens,
+    }, { timeout: providerOptions.timeoutMs });
+  } catch (error) {
+    const aiError = toAiServiceError(error);
+    logAiProviderEvent({
+      feature: "hybrid-plan",
+      model: providerOptions.model,
+      startedAt,
+      code: aiError.code,
+    });
+    throw aiError;
+  }
+
+  logAiProviderEvent({
+    feature: "hybrid-plan",
+    model: providerOptions.model,
+    startedAt,
+    completion,
   });
 
   const rawText = completion.choices[0]?.message?.content || "";
 
   let planData;
   try {
-    planData = parseAiJsonObject(rawText);
+    planData = validateHybridPlanOutput(parseAiJsonObject(rawText), places);
   } catch (err) {
-    console.error("[Groq JSON Parsing Failed] Raw Text:", rawText);
-    throw new Error("Không thể parse dữ liệu lịch trình từ AI.");
-  }
-
-  // Validate cấu trúc cơ bản
-  if (!planData.tripSummary || !Array.isArray(planData.timeline)) {
-    throw new Error("Dữ liệu lịch trình từ AI sai cấu trúc yêu cầu.");
+    if (err?.code === "AI_INVALID_OUTPUT") throw err;
+    throw createAiInvalidOutputError();
   }
 
   // 2. Tính toán khoảng cách địa lý (Haversine) và thời gian di chuyển thực tế tại Server
@@ -133,11 +188,11 @@ Hãy chọn 3-4 địa điểm phù hợp nhất, sắp xếp tuyến đường 
     const nextItem = timeline[i + 1];
 
     // Lấy thông tin tọa độ địa điểm hiện tại từ danh sách DB ban đầu
-    const currentPlace = places.find((p) => p.id === currentItem.placeId);
+    const currentPlace = places.find((p) => Number(p.id) === currentItem.placeId);
     currentItem.place = currentPlace || null;
 
     if (nextItem) {
-      const nextPlace = places.find((p) => p.id === nextItem.placeId);
+      const nextPlace = places.find((p) => Number(p.id) === nextItem.placeId);
       if (currentPlace && nextPlace && currentPlace.latitude && currentPlace.longitude && nextPlace.latitude && nextPlace.longitude) {
         const dist = calculateHaversineDistance(
           parseFloat(currentPlace.latitude),
@@ -161,8 +216,13 @@ Hãy chọn 3-4 địa điểm phù hợp nhất, sắp xếp tuyến đường 
     }
   }
 
-  return {
+  const result = {
     tripSummary: planData.tripSummary,
     timeline: timeline,
   };
+  Object.defineProperty(result, "usage", {
+    value: completion.usage,
+    enumerable: false,
+  });
+  return result;
 }

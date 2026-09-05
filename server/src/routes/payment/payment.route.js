@@ -2,6 +2,8 @@ import express from "express";
 import * as controller from "../../controllers/payment/payment.controller.js";
 import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
+import { validateBody } from "../../middlewares/validateSchema.js";
+import { initiateSePayRefundSchema, recoverPendingRefundSchema, refundPaymentSchema } from "../../models/schemas/payment/payment.schema.js";
 
 const router = express.Router();
 
@@ -15,11 +17,7 @@ router.get("/vnpay-return", controller.vnpayReturn);
 
 router.get("/momo-return", controller.momoReturn);
 
-router.post("/sepay-ipn", controller.sepayIpn);
-
 router.get("/sepay-return", controller.sepayReturn);
-
-router.get("/sepay-checkout-form/:paymentId", controller.sepayCheckoutForm);
 
 router.post("/sepay-webhook", controller.sepayBankWebhook);
 
@@ -45,12 +43,29 @@ router.get(
 
 router.get("/admin", hasPermission("payments.refund"), controller.getAdminPayments);
 
+router.get("/by-booking/:bookingId", controller.getByBooking);
+
 router.get("/:id", controller.getById);
 
 router.post(
   "/:id/refund",
   hasPermission("payments.refund"),
+  validateBody(refundPaymentSchema),
   controller.refund,
+);
+
+router.post(
+  "/:id/refund/sepay",
+  hasPermission("payments.refund"),
+  validateBody(initiateSePayRefundSchema),
+  controller.initiateSePayRefund,
+);
+
+router.post(
+  "/refunds/recover",
+  hasPermission("payments.refund"),
+  validateBody(recoverPendingRefundSchema),
+  controller.recoverPendingManualRefund,
 );
 
 router.post(

@@ -72,6 +72,8 @@ export const registerSchema = z
       .min(2, "Họ tên phải có ít nhất 2 ký tự")
       .max(100, "Họ tên quá dài")
       .optional(),
+
+    roleId: z.coerce.number().int().positive().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Mật khẩu xác nhận không khớp",
@@ -159,27 +161,32 @@ export const resendVerificationPublicSchema = z.object({
 
 export const verifyEmailOtpSchema = z.object({
   email: z
-    .string({ required_error: "Email khong duoc de trong" })
-    .min(1, "Email khong duoc de trong")
-    .email("Email khong hop le")
+    .string({ required_error: "Email không được để trống" })
+    .min(1, "Email không được để trống")
+    .email("Email không hợp lệ")
     .toLowerCase()
     .trim(),
   otp: z
-    .string({ required_error: "Ma OTP khong duoc de trong" })
-    .regex(/^\d{6}$/, "Ma OTP phai gom 6 chu so"),
+    .string({ required_error: "Mã OTP không được để trống" })
+    .regex(/^\d{6}$/, "Mã OTP phải gồm 6 chữ số"),
+  context: z.enum(["business", "web_business"]).optional(),
 });
 
 export const loginGoogleSchema = z.object({
   idToken: z
     .string({ required_error: "idToken không được để trống" })
     .min(1, "idToken không được để trống"),
-  context: z.enum(["web_business"]).optional(),
+  context: z.enum(["web_business", "business"]).optional(),
 });
 
 export const logoutSchema = z.object({
   refreshToken: z
     .string({ required_error: "Refresh token không được để trống" })
     .min(1, "Refresh token không được để trống"),
+});
+
+export const browserLogoutSchema = z.object({
+  refreshToken: z.string().min(1, "Refresh token không hợp lệ").optional(),
 });
 
 export const revokeSessionParamSchema = z.object({
@@ -228,6 +235,7 @@ export default {
   resendVerificationPublicSchema,
   loginGoogleSchema,
   logoutSchema,
+  browserLogoutSchema,
   revokeSessionParamSchema,
   updateProfileSchema,
 };

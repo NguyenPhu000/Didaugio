@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
-    "ignoreDeprecations": "5.0",
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
     }
-  }
+  },
+  "exclude": ["node_modules"]
 }

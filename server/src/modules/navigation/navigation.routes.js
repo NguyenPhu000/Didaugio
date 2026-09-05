@@ -1,6 +1,8 @@
 import express from "express";
 import { authenticate } from "../../middlewares/authMiddleware.js";
+import { aiUserLimiter } from "../../middlewares/rateLimitMiddleware.js";
 import {
+  validateAiBody,
   validateBody,
   validateParams,
   validateQuery,
@@ -26,7 +28,8 @@ router.use(authenticate);
 
 router.post(
   "/navigate",
-  validateBody(navigationAdviceSchema),
+  aiUserLimiter,
+  validateAiBody(navigationAdviceSchema),
   handleNavigationRecommendation,
 );
 router.post(

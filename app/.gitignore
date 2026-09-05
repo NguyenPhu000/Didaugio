@@ -1,3 +1,32 @@
-__tests__
 .env
+.env*.local
+node_modules/
+.expo/
+dist/
+web-build/
 app/node_modules/react-native-css-interop/.cache/*.js
+
+# Test directories & files
+test/
+tests/
+__tests__/
+*.test.js
+*.test.jsx
+*.test.ts
+*.test.tsx
+*.spec.js
+*.spec.jsx
+*.spec.ts
+*.spec.tsx
+coverage/
+
+# Keep focused security regression tests under version control.
+!test/
+test/*
+!test/modules/
+test/modules/*
+!test/modules/booking/
+test/modules/booking/*
+!test/modules/booking/utils/
+test/modules/booking/utils/*
+!test/modules/booking/utils/paymentResult.test.js

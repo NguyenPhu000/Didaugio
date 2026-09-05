@@ -1,3 +1,7 @@
+// MAP: ExploreDistrictDetailScreen
+// ├── UI: @/modules/explore/components/{ExploreListScaffold, ExplorePlaceList}
+// └── API: @/modules/explore/hooks/useExplore
+
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocalSearchParams } from "expo-router";

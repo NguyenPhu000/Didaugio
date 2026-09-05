@@ -1,25 +1,38 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState } from "react-native";
 import * as Location from "expo-location";
 import { useSharedValue } from "react-native-reanimated";
 import { distanceMeters } from "../utils/distance";
 import { normalizeHeadingDelta } from "../utils/routeEngine";
+import { shouldPublishHeadingState } from "./mapLocationTrackerUtils";
 
 const LAST_KNOWN_MAX_AGE_MS = 5 * 60 * 1000;
 const WATCH_STATE_PUBLISH_INTERVAL_MS = 3500;
 const WATCH_STATE_PUBLISH_DISTANCE_M = 18;
 const HEADING_FREEZE_SPEED_KMH = 3;
 
+const mergeLocationHeading = (location, heading, headingAccuracy) => {
+  if (!location) return location;
+  if (location.heading === heading && location.headingAccuracy === headingAccuracy) {
+    return location;
+  }
+  return { ...location, heading, headingAccuracy };
+};
+
 export function useMapLocationTracker({
   watchEnabled = false,
+  watchHeadingEnabled = watchEnabled,
   timeInterval = 5000,
   distanceInterval = 12,
   onLocationUpdate,
 } = {}) {
   const [currentLocation, setCurrentLocation] = useState(null);
   const [heading, setHeading] = useState(null);
+  const [hasForegroundPermission, setHasForegroundPermission] = useState(false);
   const currentLocationSharedValue = useSharedValue(null);
   const currentLocationRef = useRef(null);
   const lastPublishedAtRef = useRef(0);
+  const lastHeadingPublishedAtRef = useRef(null);
   const headingRef = useRef(null);
   const headingAccuracyRef = useRef(null);
 
@@ -87,7 +100,7 @@ export function useMapLocationTracker({
 
   // Compass heading watcher — updates heading continuously
   useEffect(() => {
-    if (!watchEnabled) return undefined;
+    if (!watchHeadingEnabled) return undefined;
 
     let subscriber = null;
     let active = true;
@@ -96,6 +109,7 @@ export function useMapLocationTracker({
       try {
         const { status } = await Location.getForegroundPermissionsAsync();
         if (!active || status !== "granted") return;
+        setHasForegroundPermission(true);
 
         const sub = await Location.watchHeadingAsync((headingData) => {
           if (!active) return;
@@ -116,25 +130,22 @@ export function useMapLocationTracker({
 
           headingRef.current = raw;
           headingAccuracyRef.current = rawAcc;
-          setHeading(raw);
+
           if (currentLocationRef.current) {
-            const updated = { 
-              ...currentLocationRef.current, 
-              heading: raw, 
-              headingAccuracy: rawAcc 
-            };
+            const updated = mergeLocationHeading(currentLocationRef.current, raw, rawAcc);
             currentLocationRef.current = updated;
             currentLocationSharedValue.value = updated;
           }
-          setCurrentLocation((prevLoc) => {
-            if (!prevLoc) return prevLoc;
-            if (prevLoc.heading === raw && prevLoc.headingAccuracy === rawAcc) return prevLoc;
-            return { 
-              ...prevLoc, 
-              heading: raw, 
-              headingAccuracy: rawAcc 
-            };
-          });
+
+          // Throttle React state dispatch to avoid high-frequency re-renders on the JS thread
+          const now = Date.now();
+          if (shouldPublishHeadingState(lastHeadingPublishedAtRef.current, now)) {
+            lastHeadingPublishedAtRef.current = now;
+            setHeading(raw);
+            if (currentLocationRef.current) {
+              setCurrentLocation(currentLocationRef.current);
+            }
+          }
         });
 
         if (!active) {
@@ -153,7 +164,7 @@ export function useMapLocationTracker({
       active = false;
       subscriber?.remove?.();
     };
-  }, [currentLocationSharedValue, watchEnabled]);
+  }, [currentLocationSharedValue, watchHeadingEnabled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -162,6 +173,7 @@ export function useMapLocationTracker({
       try {
         const { status } = await Location.getForegroundPermissionsAsync();
         if (status !== "granted") return;
+        setHasForegroundPermission(true);
 
         const lastKnown = await Location.getLastKnownPositionAsync({
           maxAge: LAST_KNOWN_MAX_AGE_MS,
@@ -209,6 +221,7 @@ export function useMapLocationTracker({
           permission = await Location.requestForegroundPermissionsAsync();
         }
         if (!active || permission.status !== "granted") return;
+        setHasForegroundPermission(true);
 
         const sub = await Location.watchPositionAsync(
           {
@@ -248,6 +261,7 @@ export function useMapLocationTracker({
   const locateNow = useCallback(async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
+      setHasForegroundPermission(status === "granted");
       if (status !== "granted") return null;
 
       // Return last known instantly
@@ -306,9 +320,27 @@ export function useMapLocationTracker({
     }
   }, [publishLocation]);
 
+  useEffect(() => {
+    if (!watchEnabled) return undefined;
+
+    let active = true;
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (!active || nextState !== "active") return;
+
+      // Foreground watchers can pause while the OS suspends the app; refresh immediately on resume.
+      locateNow();
+    });
+
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [locateNow, watchEnabled]);
+
   return {
     currentLocation,
     heading,
+    hasForegroundPermission,
     currentLocationRef,
     currentLocationSharedValue,
     setCurrentLocation,

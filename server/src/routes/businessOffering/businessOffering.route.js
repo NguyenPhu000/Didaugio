@@ -8,6 +8,7 @@ import { authenticate } from "../../middlewares/authMiddleware.js";
 import { hasPermission } from "../../middlewares/permissionMiddleware.js";
 import { checkBusinessOwnership } from "../../middlewares/businessOwnership.js";
 import { requireActiveBusiness } from "../../middlewares/requireActiveBusiness.js";
+import { requireActiveSubscription } from "../../middlewares/subscriptionFeatureLock.js";
 import {
   validateBody,
   validateQuery,
@@ -33,10 +34,11 @@ const serviceAccessPermission = [
 // Read and create operations: only require approved business (draft allowed before contract)
 router.get("/", hasPermission(serviceAccessPermission), validateQuery(getBusinessServicesQuerySchema), controller.getAll);
 router.get("/:id", hasPermission(serviceAccessPermission), checkBusinessOwnership("service"), controller.getById);
-router.post("/", requireActiveBusiness(), hasPermission("business.manage_services"), validateBody(createServiceSchema), auditLog({ action: "CREATE", tableName: "business_services", getRecordId: (req, body) => body?.data?.id, getNewData: (req) => ({ name: req.body.name, price: req.body.price }) }), controller.create);
+router.post("/", requireActiveBusiness(), requireActiveSubscription, hasPermission("business.manage_services"), validateBody(createServiceSchema), auditLog({ action: "CREATE", tableName: "business_services", getRecordId: (req, body) => body?.data?.id, getNewData: (req) => ({ name: req.body.name, price: req.body.price }) }), controller.create);
 
 // Operational routes: require contract signed
 router.use(requireActiveBusiness({ requireContractSigned: true }));
+router.use(requireActiveSubscription);
 
 // checkBusinessOwnership + manage_services: đồng bộ RBAC với POST tạo dịch vụ
 router.put(

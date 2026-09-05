@@ -1,11 +1,18 @@
 import prisma from "../../config/prismaClient.js";
-import { GROQ_MODEL } from "../ai/groq.service.js";
+import { resolveGroqProviderOptions } from "../ai/groq.service.js";
+import { executeAiRequest } from "../ai/runtime/aiRuntimeExecution.js";
+import { canUseHybridFallback } from "../ai/aiProviderPolicy.js";
 import {
   generateFallbackItinerary,
   generateItinerary,
 } from "../ai/itinerary.service.js";
 import routingService from "../routing/routing.service.js";
 import { normalizeItinerary } from "../../utils/itineraryFormatter.js";
+import ServiceError from "../../utils/serviceError.js";
+import {
+  ITINERARY_MONEY_MAX,
+  itineraryPreviewSchema,
+} from "../../models/schemas/trip/itineraryPreview.schema.js";
 
 const MAX_TRIP_SUGGESTED_PLACES = 12;
 const isRoutingEnabled =
@@ -14,6 +21,19 @@ const isRoutingEnabled =
 const approvedPlaceWhere = {
   deletedAt: null,
   status: "approved",
+};
+
+export const canUseTripItineraryFallback = (error) =>
+  canUseHybridFallback(error);
+
+const createInvalidConfirmationError = () => {
+  const error = new ServiceError(
+    "Lịch trình xác nhận chứa địa điểm không hợp lệ",
+    400,
+    "AI_INVALID_REQUEST",
+  );
+  error.code = "AI_INVALID_REQUEST";
+  return error;
 };
 
 const toInt = (value, fallback = null) => {
@@ -27,9 +47,27 @@ const toKm2 = (meters) => {
   return Number((value / 1000).toFixed(2));
 };
 
-const buildSuggestedPlaces = (days, placeById) => {
+const normalizeConfirmedMoney = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) return null;
+  return Math.min(Math.round(number), ITINERARY_MONEY_MAX);
+};
+
+const buildSuggestedPlaces = (days, placeById, selectedPlaceIds = []) => {
   const orderedIds = [];
   const seen = new Set();
+
+  // Ưu tiên đưa các địa điểm người dùng đã chọn vào danh sách trước
+  if (Array.isArray(selectedPlaceIds) && selectedPlaceIds.length > 0) {
+    for (const id of selectedPlaceIds) {
+      const pId = toInt(id);
+      if (pId && !seen.has(pId) && placeById.has(pId)) {
+        seen.add(pId);
+        orderedIds.push(pId);
+      }
+    }
+  }
 
   for (const day of days) {
     const safeDestinations = Array.isArray(day?.destinations)
@@ -57,7 +95,118 @@ const buildSuggestedPlaces = (days, placeById) => {
   return orderedIds.map((id) => placeById.get(id)).filter(Boolean);
 };
 
-const buildTripDestinations = ({
+export const assertAuthoritativeItineraryPlaces = (
+  itinerary,
+  allowedPlaceIds,
+) => {
+  const safeAllowedIds =
+    allowedPlaceIds instanceof Set ? allowedPlaceIds : new Set();
+
+  for (const day of itinerary?.days || []) {
+    for (const destination of day?.destinations || []) {
+      const placeId = toInt(destination?.placeId);
+      if (!placeId || !safeAllowedIds.has(placeId)) {
+        throw createInvalidConfirmationError();
+      }
+    }
+  }
+
+  return itinerary;
+};
+
+export const filterItineraryToSelectedPlaces = (
+  itinerary,
+  selectedPlaceIdSet,
+) => {
+  if (!(selectedPlaceIdSet instanceof Set) || selectedPlaceIdSet.size === 0) {
+    return itinerary;
+  }
+
+  const existingDays = itinerary?.days || [];
+  if (existingDays.length === 0) return itinerary;
+
+  const draftPlaceIds = new Set(
+    existingDays.flatMap((day) =>
+      (day?.destinations || [])
+        .map((destination) => toInt(destination?.placeId))
+        .filter(Boolean),
+    ),
+  );
+
+  // Tìm những địa điểm được người dùng yêu cầu chọn mà chưa xuất hiện trong draft đại điểm AI tạo
+  for (const selectedPlaceId of selectedPlaceIdSet) {
+    if (!draftPlaceIds.has(selectedPlaceId)) {
+      throw createInvalidConfirmationError();
+    }
+  }
+
+  let estimatedCost = 0;
+  const days = existingDays.map((day, dayIndex) => {
+    const destinations = (day?.destinations || [])
+      .filter((destination) =>
+        selectedPlaceIdSet.has(toInt(destination?.placeId)),
+      )
+      .map((destination) => {
+        const normalizedCost = normalizeConfirmedMoney(
+          destination?.estimatedCost,
+        );
+        if (normalizedCost === null) {
+          return { ...destination, estimatedCost: null };
+        }
+
+        const boundedCost = Math.min(
+          normalizedCost,
+          Math.max(ITINERARY_MONEY_MAX - estimatedCost, 0),
+        );
+        estimatedCost += boundedCost;
+        return { ...destination, estimatedCost: boundedCost };
+      });
+
+    return {
+      ...day,
+      destinations,
+    };
+  });
+
+  return {
+    ...itinerary,
+    estimatedCost,
+    days: days.filter((day) => day.destinations.length > 0),
+  };
+};
+
+export const validateConfirmedItinerary = (
+  itinerary,
+  allowedPlaceIds,
+  selectedPlaceIdSet,
+) => {
+  const result = itineraryPreviewSchema.safeParse(itinerary);
+  if (!result.success) throw createInvalidConfirmationError();
+
+  assertAuthoritativeItineraryPlaces(result.data, allowedPlaceIds);
+
+  if (selectedPlaceIdSet instanceof Set && selectedPlaceIdSet.size > 0) {
+    const retainedPlaceIds = new Set();
+    for (const day of result.data.days) {
+      for (const destination of day.destinations) {
+        if (!selectedPlaceIdSet.has(destination.placeId)) {
+          throw createInvalidConfirmationError();
+        }
+        retainedPlaceIds.add(destination.placeId);
+      }
+    }
+
+    for (const selectedPlaceId of selectedPlaceIdSet) {
+      if (!retainedPlaceIds.has(selectedPlaceId)) {
+        throw createInvalidConfirmationError();
+      }
+    }
+  }
+
+  return result.data;
+};
+
+export const buildTripDestinations = ({
   tripId,
   days,
   allowedPlaceIds,
@@ -89,9 +238,7 @@ const buildTripDestinations = ({
         }
       }
 
-      if (selectedPlaceIdSet?.size && !selectedPlaceIdSet.has(placeId)) {
-        if (usedPlaceIds.has(placeId)) continue;
-      }
+      if (selectedPlaceIdSet?.size && !selectedPlaceIdSet.has(placeId)) continue;
 
       usedPlaceIds.add(placeId);
       destinations.push({
@@ -144,6 +291,7 @@ const enrichItineraryWithRouting = async ({
       }
       return true;
     });
+    day.destinations = dayDestinations;
 
     for (let i = 0; i < dayDestinations.length; i += 1) {
       dayDestinations[i].distanceToNext = null;
@@ -230,6 +378,22 @@ const buildFallbackDestinationsFromSelection = ({
   });
 };
 
+const normalizeDestinationSequences = (destinations = []) => {
+  const nextSequenceByDay = new Map();
+
+  return (Array.isArray(destinations) ? destinations : []).map((dest) => {
+    const dayNumber = Math.max(toInt(dest?.dayNumber, 1), 1);
+    const nextSequence = (nextSequenceByDay.get(dayNumber) ?? 0) + 1;
+    nextSequenceByDay.set(dayNumber, nextSequence);
+
+    return {
+      ...dest,
+      dayNumber,
+      order: nextSequence,
+    };
+  });
+};
+
 export const generateAndSaveTrip = async (userId, preferences = {}) => {
   const {
     totalDays = 1,
@@ -244,7 +408,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
   const where = { ...approvedPlaceWhere };
   if (categoryId) where.categoryId = toInt(categoryId);
 
-  const places = await prisma.place.findMany({
+  let places = await prisma.place.findMany({
     where,
     orderBy: [{ ratingAvg: "desc" }, { viewCount: "desc" }],
     take: 50,
@@ -280,63 +444,127 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
     throw error;
   }
 
+  // Matching place names mentioned in preferences.notes
+  const lowerNotes = String(preferences.notes || "").toLowerCase();
+  const matchedNotesPlaceIds = [];
+  if (lowerNotes.length > 0) {
+    for (const place of places) {
+      const pName = place.name.toLowerCase();
+      if (lowerNotes.includes(pName) || (pName.length > 4 && lowerNotes.includes(pName))) {
+        matchedNotesPlaceIds.push(place.id);
+      }
+    }
+  }
+
+  const initialSelectedIds = Array.isArray(selectedPlaceIds)
+    ? selectedPlaceIds.map((id) => toInt(id)).filter(Boolean)
+    : [];
+
+  const combinedSelectedIds = [...new Set([...initialSelectedIds, ...matchedNotesPlaceIds])];
+
+  // If any selected IDs are missing from top 50, fetch them explicitly from DB
+  const existingPlaceIds = new Set(places.map((p) => p.id));
+  const missingSelectedIds = combinedSelectedIds.filter((id) => !existingPlaceIds.has(id));
+
+  if (missingSelectedIds.length > 0) {
+    const extraPlaces = await prisma.place.findMany({
+      where: {
+        ...approvedPlaceWhere,
+        id: { in: missingSelectedIds },
+      },
+      include: {
+        category: { select: { id: true, name: true, slug: true } },
+        district: { select: { id: true, name: true, code: true } },
+        ward: { select: { id: true, name: true, wardType: true } },
+        openingHours: {
+          orderBy: [{ dayOfWeek: "asc" }],
+          select: {
+            dayOfWeek: true,
+            openTime: true,
+            closeTime: true,
+            isClosed: true,
+          },
+        },
+        _count: { select: { reviews: true } },
+        images: {
+          take: 1,
+          orderBy: [{ isCover: "desc" }],
+          select: { imageData: true, secureUrl: true, thumbnailUrl: true },
+        },
+      },
+    });
+    places = [...extraPlaces, ...places];
+  }
+
   const placeById = new Map(places.map((place) => [place.id, place]));
   const placeIdSet = new Set(placeById.keys());
+  const normalizedSelectedPlaceIds = combinedSelectedIds.filter((id) => placeIdSet.has(id));
+
+  if (normalizedSelectedPlaceIds.some((id) => !placeIdSet.has(id))) {
+    throw createInvalidConfirmationError();
+  }
+
   let rawItinerary =
     itineraryDraft && typeof itineraryDraft === "object"
       ? itineraryDraft
       : null;
+  let requestLogId = null;
+  let usedFallback = false;
 
   if (!rawItinerary) {
     const startTime = Date.now();
     let aiResult;
-    let isSuccessful = true;
-    let errorMessage = null;
 
     try {
-      aiResult = await generateItinerary(preferences, places);
+      const execution = await executeAiRequest({
+        feature: "planner",
+        user: { userId },
+        inputText:
+          preferences.notes ||
+          `Tạo lịch trình ${totalDays} ngày cho ${groupSize} người`,
+        context: {
+          travelPreferences: travelStyle
+            ? { travelStyles: [travelStyle] }
+            : null,
+          budget: preferences.budget,
+          partySize: Math.max(toInt(groupSize, 1), 1),
+          tripDuration: Math.max(toInt(totalDays, 1), 1),
+          places,
+        },
+        operation: async ({ configData, context: allowedContext }) => {
+          const providerOptions = await resolveGroqProviderOptions(
+            configData,
+            "planner",
+          );
+          const result = await Promise.resolve(generateItinerary(
+            { ...preferences, selectedPlaceIds: normalizedSelectedPlaceIds },
+            places,
+            providerOptions,
+            allowedContext,
+          ));
+          return {
+            outputText:
+              result.raw || JSON.stringify(result.parsed),
+            itineraryResult: result,
+          };
+        },
+      });
+      aiResult = execution.result.itineraryResult;
+      requestLogId = execution.requestLogId ?? null;
     } catch (err) {
-      const errorCode = err?.errorCode || err?.code || "AI_ERROR";
-      const allowFallback =
-        errorCode === "QUOTA_EXCEEDED" || errorCode === "AI_UNAVAILABLE";
+      const allowFallback = canUseTripItineraryFallback(err);
 
       if (allowFallback) {
+        usedFallback = true;
         aiResult = {
           parsed: generateFallbackItinerary(preferences, places),
           raw: null,
           tokensUsed: null,
           responseTimeMs: Date.now() - startTime,
         };
-        isSuccessful = false;
-        errorMessage = `${errorCode}: ${err?.message}`;
       } else {
-        isSuccessful = false;
-        errorMessage = err?.message;
         throw err;
       }
-    } finally {
-      await prisma.aiPromptHistory
-        .create({
-          data: {
-            userId,
-            promptType: "trip_itinerary",
-            promptText: JSON.stringify(preferences),
-            contextData: {
-              placesCount: places.length,
-              travelStyle,
-              totalDays,
-              previewOnly: !!previewOnly,
-            },
-            responseText: aiResult?.raw ?? null,
-            responseParsed: aiResult?.parsed ?? null,
-            modelUsed: aiResult?.raw ? GROQ_MODEL : "fallback-local",
-            tokensUsed: aiResult?.tokensUsed ?? null,
-            responseTimeMs: Date.now() - startTime,
-            isSuccessful,
-            errorMessage,
-          },
-        })
-        .catch(() => {});
     }
 
     rawItinerary = aiResult?.parsed ?? null;
@@ -344,19 +572,20 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
 
   let itinerary = normalizeItinerary(rawItinerary, totalDays);
   if (itinerary.days.length === 0) {
+    usedFallback = true;
     itinerary = normalizeItinerary(
       generateFallbackItinerary(preferences, places),
       totalDays,
     );
   }
+  assertAuthoritativeItineraryPlaces(itinerary, placeIdSet);
 
-  const suggestedPlaces = buildSuggestedPlaces(itinerary.days, placeById);
+  const suggestedPlaces = buildSuggestedPlaces(
+    itinerary.days,
+    placeById,
+    normalizedSelectedPlaceIds,
+  );
   const suggestedPlaceIds = suggestedPlaces.map((place) => place.id);
-  const normalizedSelectedPlaceIds = Array.isArray(selectedPlaceIds)
-    ? selectedPlaceIds
-        .map((id) => toInt(id))
-        .filter((id) => id && placeIdSet.has(id))
-    : [];
 
   const effectiveSelectedPlaceIds =
     normalizedSelectedPlaceIds.length > 0
@@ -366,6 +595,10 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
     effectiveSelectedPlaceIds.length > 0
       ? new Set(effectiveSelectedPlaceIds)
       : null;
+
+  if (!previewOnly && selectedPlaceIdSet?.size) {
+    itinerary = filterItineraryToSelectedPlaces(itinerary, selectedPlaceIdSet);
+  }
 
   const { itinerary: enrichedItinerary, tripRoutingSummary } = isRoutingEnabled
     ? await enrichItineraryWithRouting({
@@ -391,8 +624,16 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
       suggestedPlaces,
       selectedPlaceIds: effectiveSelectedPlaceIds,
       tripRoutingSummary,
+      isFallback: usedFallback,
+      ...(requestLogId ? { requestLogId } : {}),
     };
   }
+
+  itinerary = validateConfirmedItinerary(
+    itinerary,
+    placeIdSet,
+    selectedPlaceIdSet,
+  );
 
   const trip = await prisma.$transaction(async (tx) => {
     const created = await tx.tripPlan.create({
@@ -406,7 +647,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
         totalDistanceM: tripRoutingSummary?.totalDistance ? Math.round(tripRoutingSummary.totalDistance) : null,
         estimatedCost: itinerary.estimatedCost ?? null,
         status: "planned",
-        source: "ai_generated",
+        source: usedFallback ? "ai_fallback" : "ai_generated",
         metadata: {
           travelStyle: travelStyle ?? null,
           groupSize: Math.max(toInt(groupSize, 1), 1),
@@ -430,6 +671,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
         totalDays: itinerary.totalDays,
       });
     }
+    allDestinations = normalizeDestinationSequences(allDestinations);
 
     if (allDestinations.length > 0) {
       const stopsData = allDestinations.map((dest) => ({
@@ -496,6 +738,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
   return {
     ...trip,
     tripRoutingSummary,
+    ...(requestLogId ? { requestLogId } : {}),
   };
 };
 
