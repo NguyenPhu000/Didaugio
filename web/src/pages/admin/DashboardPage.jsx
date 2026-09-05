@@ -1,11 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { useDashboardStats } from "@/hooks/queries/useDashboardQuery";
 import { useCategories } from "@/hooks/queries/useCategoryQueries";
 import { usePlaces } from "@/hooks/queries/usePlaceQueries";
-import { useNavigate } from "react-router-dom";
-import Search from "lucide-react/dist/esm/icons/search";
-import { ADMIN_ROUTES } from "@/constants/routes";
 import { useTranslation } from "react-i18next";
 
 // Admin components
@@ -17,7 +14,11 @@ import ServerHealthCard from "@/components/admin/ServerHealthCard";
 import RecentErrorsCard from "@/components/admin/RecentErrorsCard";
 
 // Legacy sub-components
-import { DashboardDataStatus, DashboardCategories } from "@/components/admin/dashboard";
+import {
+  DashboardDataStatus,
+  DashboardCategories,
+  DashboardSearch,
+} from "@/components/admin/dashboard";
 
 /**
  * DASHBOARD PAGE
@@ -26,13 +27,9 @@ import { DashboardDataStatus, DashboardCategories } from "@/components/admin/das
 const DashboardPage = () => {
   const { user } = useAuthStore();
   const { t } = useTranslation();
-  const navigate = useNavigate();
-
   const { data: statsRes, isLoading: statsLoading } = useDashboardStats();
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { data: placesRes, isLoading: placesLoading } = usePlaces({ limit: 50 });
-
-  const [searchQuery, setSearchQuery] = useState("");
 
   const loading = statsLoading || categoriesLoading || placesLoading;
 
@@ -57,19 +54,6 @@ const DashboardPage = () => {
   const userCount = statsPayload?.users?.total || 0;
   const places = placesRes?.data || placesRes || [];
 
-  const handleSearch = useCallback(
-    (e) => {
-      if (e.key === "Enter" || e.type === "click") {
-        if (searchQuery.trim()) {
-          navigate(
-            `${ADMIN_ROUTES.PLACES}?search=${encodeURIComponent(searchQuery)}`
-          );
-        }
-      }
-    },
-    [navigate, searchQuery]
-  );
-
   if (loading) {
     return (
       <div className="space-y-6 max-w-[1560px] mx-auto py-6">
@@ -84,8 +68,8 @@ const DashboardPage = () => {
   return (
     <div className="space-y-7 max-w-[1560px] mx-auto text-slate-900 antialiased">
       {/* Editorial Header */}
-      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-black/[0.04]">
-        <div className="space-y-1">
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5 sm:gap-4 pb-4 border-b border-black/[0.04]">
+        <div className="space-y-1 min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
             Tổng quan Hệ thống
           </p>
@@ -97,20 +81,7 @@ const DashboardPage = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              aria-label={t("dashboard.searchPlaceholder")}
-              placeholder={t("dashboard.searchPlaceholder")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleSearch}
-              className="w-full h-10 pl-10 pr-4 bg-white rounded-full text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300 shadow-sm border border-slate-200 placeholder:text-slate-400 transition-all"
-            />
-          </div>
-        </div>
+        <DashboardSearch places={places} />
       </header>
 
       {/* Stats Cards Strip */}

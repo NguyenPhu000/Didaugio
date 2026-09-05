@@ -1,47 +1,35 @@
 import React, { memo } from "react";
-import { Sparkles, TrendingUp, ShieldCheck, Zap } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 export const DashboardAiInsights = memo(({ conversionRate, pendingToday }) => {
   return (
-    <div className="p-1.5 rounded-[36px] bg-slate-100 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/[0.06] shadow-sm">
-      <div className="p-6 sm:p-7 rounded-[30px] bg-white dark:bg-slate-900/90 border border-slate-200/40 dark:border-white/[0.04] space-y-4">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-border/60">
-          <h3 className="font-black text-base text-slate-900 dark:text-white tracking-tight">
-            Phân Tích AI & Đề Xuất
-          </h3>
-          <span className="flex items-center gap-1 text-[11px] font-extrabold text-indigo-600 dark:text-indigo-400">
-            <Sparkles className="w-3.5 h-3.5" /> Trợ lý iPoint
-          </span>
+    <div className="rounded-3xl bg-white dark:bg-slate-900 border border-black/[0.06] dark:border-white/[0.06] p-6 sm:p-7 shadow-[0_1px_3px_rgba(0,0,0,0.02),0_12px_32px_rgba(0,0,0,0.02)] space-y-4">
+      <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/[0.04]">
+        <h3 className="font-bold text-base text-slate-900 dark:text-white tracking-tight">
+          Phân Tích & Đề Xuất
+        </h3>
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300">
+          <Sparkles className="w-3 h-3 text-amber-500" /> Trợ lý Genie
+        </span>
+      </div>
+
+      <div className="space-y-3">
+        <div className="p-4 rounded-2xl bg-[#F9F9FB] dark:bg-slate-800/40 border border-black/[0.02] dark:border-white/[0.04] space-y-1">
+          <p className="text-xs font-bold text-slate-900 dark:text-white">
+            Tối ưu hóa khung giờ đón khách
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
+            Tỷ lệ duyệt đạt <strong className="text-slate-900 dark:text-white font-semibold">{conversionRate}%</strong>. Đẩy mạnh các khung giờ sáng sớm để tăng năng suất khai thác địa điểm.
+          </p>
         </div>
 
-        <div className="space-y-3">
-          <div className="p-3.5 rounded-[22px] bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 flex items-start gap-3">
-            <div className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
-              <TrendingUp className="w-3.5 h-3.5" />
-            </div>
-            <div className="space-y-0.5">
-              <p className="text-xs font-bold text-slate-900 dark:text-white">
-                Tối ưu hóa khung giờ tiếp đón
-              </p>
-              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                Tỷ lệ xác nhận đạt <strong>{conversionRate}%</strong>. Đẩy mạnh các khung giờ sáng sớm để tăng năng suất.
-              </p>
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-[22px] bg-amber-50/60 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 flex items-start gap-3">
-            <div className="w-7 h-7 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
-              <Zap className="w-3.5 h-3.5" />
-            </div>
-            <div className="space-y-0.5">
-              <p className="text-xs font-bold text-slate-900 dark:text-white">
-                Hàng đợi trực tiếp
-              </p>
-              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                Có <strong>{pendingToday} yêu cầu</strong> cần duyệt trong ngày. Xử lý dưới 15 phút để tăng điểm CSAT.
-              </p>
-            </div>
-          </div>
+        <div className="p-4 rounded-2xl bg-[#F9F9FB] dark:bg-slate-800/40 border border-black/[0.02] dark:border-white/[0.04] space-y-1">
+          <p className="text-xs font-bold text-slate-900 dark:text-white">
+            Nhịp độ xử lý hàng đợi
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
+            Hiện có <strong className="text-slate-900 dark:text-white font-semibold">{pendingToday} đơn</strong> cần duyệt trong ngày. Xác nhận nhanh dưới 15 phút để tăng tỷ lệ hài lòng của du khách.
+          </p>
         </div>
       </div>
     </div>

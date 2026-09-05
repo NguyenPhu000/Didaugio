@@ -1,46 +1,31 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Building2, CalendarClock, Bell, Lock, Menu, X, Save, Loader2, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BUSINESS_TOKENS } from "@/components/business/tokens/businessTokens";
-import { BusinessPageHeader } from "@/components/business/ui/BusinessPageHeader";
 import SettingsSaveBar from "@/components/settings/SettingsSaveBar";
 import {
   useSettingsSaveState,
   useBeforeUnloadWarning,
 } from "@/components/settings/useSettingsSaveState";
 import { businessSettingsApi } from "@/apis/businessSettingsApi";
-import BusinessGeneralTab from "@/components/business/settings/BusinessGeneralTab";
 import BookingRulesTab from "@/components/business/settings/BookingRulesTab";
-import BusinessNotificationsTab from "@/components/business/settings/BusinessNotificationsTab";
 import BlockedDatesTab from "@/components/business/settings/BlockedDatesTab";
+import BusinessNotificationsTab from "@/components/business/settings/BusinessNotificationsTab";
+
+const TABS = [
+  { id: "bookingRules", label: "Quy tắc nhận đặt chỗ" },
+  { id: "blockedDates", label: "Ngày ngưng phục vụ" },
+  { id: "notifications", label: "Thông báo vận hành" },
+];
 
 const DEFAULT_SETTINGS = {
-  general: {
-    displayName: "",
-    description: "",
-    logoUrl: "",
-    contactPhone: "",
-    contactEmail: "",
-    address: "",
-    operatingHours: {
-      monday: { open: "08:00", close: "22:00", closed: false },
-      tuesday: { open: "08:00", close: "22:00", closed: false },
-      wednesday: { open: "08:00", close: "22:00", closed: false },
-      thursday: { open: "08:00", close: "22:00", closed: false },
-      friday: { open: "08:00", close: "22:00", closed: false },
-      saturday: { open: "08:00", close: "22:00", closed: false },
-      sunday: { open: "08:00", close: "22:00", closed: false },
-    },
-  },
   bookingRules: {
     autoApprove: false,
-    cancellationWindowHours: 24,
+    allowOverbooking: false,
     maxAdvanceDays: 30,
     minLeadMinutes: 0,
+    cancellationWindowHours: 24,
     noShowPolicy: "charge_50",
-    allowOverbooking: false,
   },
   notifications: {
     newBookingEmail: true,
@@ -56,7 +41,6 @@ const DEFAULT_SETTINGS = {
 const mergeRemote = (prev, data) => {
   if (!data || typeof data !== "object") return prev;
   return {
-    general: { ...prev.general, ...(data.general || {}) },
     bookingRules: { ...prev.bookingRules, ...(data.bookingRules || {}) },
     notifications: { ...prev.notifications, ...(data.notifications || {}) },
   };
@@ -69,18 +53,8 @@ const safeNum = (v, fallback = 0) => {
 
 const BusinessSettingsPage = () => {
   const { t } = useTranslation();
-
-  const TABS = [
-    { id: "general", label: t("business.settings.tabs.general"), icon: Building2 },
-    { id: "bookingRules", label: t("business.settings.tabs.bookingRules"), icon: CalendarClock },
-    { id: "notifications", label: t("business.settings.tabs.notifications"), icon: Bell },
-    { id: "blockedDates", label: t("business.settings.tabs.blockedDates"), icon: Lock },
-  ];
-
-  const [activeTab, setActiveTab] = useState("general");
-  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("bookingRules");
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const { isDirty, markSaved, getBaseline } = useSettingsSaveState(settings);
@@ -89,7 +63,6 @@ const BusinessSettingsPage = () => {
   useEffect(() => {
     let disposed = false;
     const load = async () => {
-      setLoading(true);
       try {
         const response = await businessSettingsApi.getSettings();
         const data = response?.data || {};
@@ -99,16 +72,14 @@ const BusinessSettingsPage = () => {
           markSaved(merged);
         }
       } catch (err) {
-        if (!disposed) toast.error(err.message || t("business.settingsPage.loadFailed"));
-      } finally {
-        if (!disposed) setLoading(false);
+        if (!disposed) toast.error(err.message || "Không thể tải cấu hình doanh nghiệp.");
       }
     };
     load();
     return () => {
       disposed = true;
     };
-  }, [t, markSaved]);
+  }, [markSaved]);
 
   const updateSection = useCallback((section, key, value) => {
     setSettings((prev) => ({
@@ -120,10 +91,6 @@ const BusinessSettingsPage = () => {
   const persist = useCallback(
     async (currentSettings) => {
       const payload = {
-        general: {
-          ...currentSettings.general,
-          logoUrl: currentSettings.general.logoUrl || "",
-        },
         bookingRules: {
           ...currentSettings.bookingRules,
           maxAdvanceDays: safeNum(currentSettings.bookingRules.maxAdvanceDays, 30),
@@ -147,39 +114,20 @@ const BusinessSettingsPage = () => {
     try {
       const merged = await persist(settings);
       markSaved(merged);
-      toast.success(t("business.settingsPage.updateSuccess"));
+      toast.success("Đã lưu cài đặt doanh nghiệp thành công.");
     } catch (err) {
-      toast.error(err.message || t("business.settingsPage.updateFailed"));
+      toast.error(err.message || "Không thể lưu cài đặt. Vui lòng thử lại.");
     } finally {
       setIsSaving(false);
     }
-  }, [persist, settings, markSaved, t]);
+  }, [persist, settings, markSaved]);
 
   const handleUndo = useCallback(() => {
     setSettings(getBaseline());
   }, [getBaseline]);
 
-  const handleTabClick = useCallback((tabId) => {
-    setActiveTab(tabId);
-    setMobileSidebarOpen(false);
-  }, []);
-
-  const saveLabels = {
-    save: t("business.settings.actions.save"),
-    saving: t("business.settings.actions.saving"),
-    undo: t("business.settings.actions.undo"),
-    unsaved: t("business.settings.actions.unsaved"),
-  };
-
   const tabContent = useMemo(() => {
     switch (activeTab) {
-      case "general":
-        return (
-          <BusinessGeneralTab
-            value={settings.general}
-            onChange={(key, value) => updateSection("general", key, value)}
-          />
-        );
       case "bookingRules":
         return (
           <BookingRulesTab
@@ -187,6 +135,8 @@ const BusinessSettingsPage = () => {
             onChange={(key, value) => updateSection("bookingRules", key, value)}
           />
         );
+      case "blockedDates":
+        return <BlockedDatesTab />;
       case "notifications":
         return (
           <BusinessNotificationsTab
@@ -194,104 +144,66 @@ const BusinessSettingsPage = () => {
             onChange={(key, value) => updateSection("notifications", key, value)}
           />
         );
-      case "blockedDates":
-        return <BlockedDatesTab />;
       default:
         return null;
     }
   }, [activeTab, settings, updateSection]);
 
   return (
-    <div className={cn("space-y-4 md:space-y-6 p-4 md:p-6 lg:p-8", isDirty && "pb-24")}>
-      <BusinessPageHeader
-        title={t("business.settingsPage.title")}
-        description={t("business.settingsPage.subtitle", {
-          defaultValue: t("business.settingsPage.title"),
-        })}
-        badge={isDirty ? saveLabels.unsaved : undefined}
-        badgeClassName={isDirty ? BUSINESS_TOKENS.badgeWarning : undefined}
-        secondaryActions={
-          isDirty ? (
-            <button
-              type="button"
-              onClick={handleUndo}
-              disabled={isSaving}
-              className={cn(BUSINESS_TOKENS.buttonSecondary, "inline-flex items-center gap-2 disabled:opacity-50")}
-            >
-              <Undo2 className="h-4 w-4" />
-              {saveLabels.undo}
-            </button>
-          ) : null
-        }
-        action={
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!isDirty || isSaving}
-            className={cn(BUSINESS_TOKENS.buttonPrimary, "inline-flex items-center gap-2 disabled:opacity-50")}
-          >
-            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {isSaving ? saveLabels.saving : saveLabels.save}
-          </button>
-        }
-      />
-
-      {/* Mobile tab toggle */}
-      <div className="flex items-center justify-between lg:hidden">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          {t("business.settings.editing")}{" "}
-          <strong className="text-zinc-900 dark:text-zinc-100">
-            {TABS.find((tab) => tab.id === activeTab)?.label}
-          </strong>
+    <div className={cn("space-y-6 text-slate-900 antialiased max-w-[1560px] mx-auto p-4 sm:p-6 lg:p-8", isDirty && "pb-24")}>
+      {/* Header chuẩn Apple Minimalist */}
+      <header className="space-y-1 pb-2">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+          Cài đặt doanh nghiệp
+        </h1>
+        <p className="text-xs sm:text-sm text-slate-500 font-normal">
+          Quản lý quy tắc nhận đặt chỗ, lịch ngưng phục vụ và kênh thông báo vận hành của quán
         </p>
-        <button
-          type="button"
-          onClick={() => setMobileSidebarOpen((v) => !v)}
-          className={cn(BUSINESS_TOKENS.buttonSecondary, "h-9 w-9 p-0 inline-flex items-center justify-center")}
-          aria-label={t("business.settingsPage.toggleMenu", { defaultValue: "Menu" })}
-        >
-          {mobileSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
-      </div>
+      </header>
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
-        {/* Sidebar */}
-        <div className={cn("lg:w-56 lg:shrink-0", mobileSidebarOpen ? "block" : "hidden lg:block")}>
-          <div className="space-y-1 lg:sticky lg:top-6">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabClick(tab.id)}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "flex min-h-[44px] w-full items-center gap-3 whitespace-nowrap rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors",
-                    active
-                      ? "bg-zinc-950 text-white dark:bg-zinc-800"
-                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
-                  )}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{tab.label}</span>
-                </button>
-              );
-            })}
+      {/* Main Layout */}
+      <div className="flex flex-col md:flex-row gap-6 items-start">
+        {/* Apple macOS style Sidebar Tabs */}
+        <div className="w-full md:w-64 shrink-0">
+          <div className="flex flex-row md:flex-col overflow-x-auto pb-2 md:pb-0 gap-1.5 sticky top-6 custom-scrollbar bg-[#F2F2F7]/80 p-1.5 rounded-3xl border border-black/[0.02]">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                aria-current={activeTab === tab.id ? "page" : undefined}
+                className={cn(
+                  "flex items-center whitespace-nowrap rounded-2xl px-4 py-3 text-left text-xs sm:text-sm font-medium transition-all shrink-0 w-auto md:w-full cursor-pointer",
+                  activeTab === tab.id
+                    ? "bg-white text-slate-950 shadow-[0_1px_3px_rgba(0,0,0,0.06)] font-semibold"
+                    : "text-slate-500 hover:text-slate-900 hover:bg-white/40"
+                )}
+              >
+                <span className="truncate">{tab.label}</span>
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Content */}
-        <div className="min-w-0 flex-1">{tabContent}</div>
+        {/* Content Area with unified floor height min-h-[580px] */}
+        <div className="flex-1 min-w-0 w-full">
+          <div className="rounded-3xl border border-black/[0.04] bg-white p-6 sm:p-8 shadow-[0_1px_3px_rgba(0,0,0,0.02)] min-h-[580px] flex flex-col justify-between">
+            {tabContent}
+          </div>
+        </div>
       </div>
 
       <SettingsSaveBar
-        variant="business"
         isDirty={isDirty}
         isSaving={isSaving}
         onSave={handleSave}
         onUndo={handleUndo}
-        labels={saveLabels}
+        labels={{
+          save: t("settings.save", { defaultValue: "Lưu thay đổi" }),
+          saving: t("settings.saving", { defaultValue: "Đang lưu..." }),
+          undo: t("settings.undo", { defaultValue: "Hoàn tác" }),
+          unsaved: t("settings.unsaved", { defaultValue: "Có thay đổi chưa lưu" }),
+        }}
       />
     </div>
   );

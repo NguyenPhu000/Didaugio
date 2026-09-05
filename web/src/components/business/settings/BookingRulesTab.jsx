@@ -1,4 +1,3 @@
-import { useTranslation } from "react-i18next";
 import { Label } from "@/components/ui";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -8,125 +7,185 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BusinessSectionCard } from "@/components/business/ui/BusinessSectionCard";
-import { BUSINESS_TOKENS } from "@/components/business/tokens/businessTokens";
+import SettingsSection from "@/components/settings/SettingsSection";
 
-const BookingRulesTab = ({ value, onChange }) => {
-  const { t } = useTranslation();
+const NO_SHOW_OPTIONS = [
+  { value: "none", label: "Không tính phí phạt" },
+  { value: "charge_25", label: "Khấu trừ 25% giá trị đặt chỗ" },
+  { value: "charge_50", label: "Khấu trừ 50% giá trị đặt chỗ (Tiêu chuẩn)" },
+  { value: "charge_100", label: "Khấu trừ 100% (Không hoàn tiền)" },
+];
 
-  const noShowOptions = [
-    { value: "none", label: t("business.settings.bookingRules.penaltyNone") },
-    { value: "charge_25", label: t("business.settings.bookingRules.penalty25") },
-    { value: "charge_50", label: t("business.settings.bookingRules.penalty50") },
-    { value: "charge_100", label: t("business.settings.bookingRules.penalty100") },
-    { value: "ban_user", label: t("business.settings.bookingRules.penaltyBan") },
-  ];
+const MAX_ADVANCE_OPTIONS = [
+  { value: "7", label: "7 ngày tới" },
+  { value: "14", label: "14 ngày tới" },
+  { value: "30", label: "30 ngày tới (Khuyến nghị)" },
+  { value: "60", label: "60 ngày tới" },
+  { value: "90", label: "90 ngày (Theo quý)" },
+  { value: "180", label: "180 ngày (Nửa năm)" },
+];
 
-  const toggleRow = (key, title, desc) => {
-    const on = !!value[key];
-    return (
-      <div className="flex flex-col gap-2 rounded-lg border border-zinc-200/80 px-3 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800">
-        <div>
-          <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{title}</p>
-          <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{desc}</p>
-        </div>
-        <Switch checked={on} onCheckedChange={(checked) => onChange(key, checked)} />
-      </div>
-    );
-  };
+const MIN_LEAD_OPTIONS = [
+  { value: "0", label: "Nhận khách tức thời (0 phút)" },
+  { value: "15", label: "Trước ít nhất 15 phút" },
+  { value: "30", label: "Trước ít nhất 30 phút" },
+  { value: "60", label: "Trước ít nhất 1 giờ (Khuyến nghị)" },
+  { value: "120", label: "Trước ít nhất 2 giờ" },
+  { value: "240", label: "Trước ít nhất 4 giờ" },
+];
 
-  const numberField = (key, label, fallback, options) => {
-    const current = String(value[key] ?? fallback);
-    const values = options.map(String);
-    const selectOptions = values.includes(current) ? values : [current, ...values];
+const CANCELLATION_OPTIONS = [
+  { value: "0", label: "Cho phép hủy sát giờ phục vụ" },
+  { value: "4", label: "Trước ít nhất 4 giờ" },
+  { value: "12", label: "Trước ít nhất 12 giờ" },
+  { value: "24", label: "Trước ít nhất 24 giờ (1 ngày - Tiêu chuẩn)" },
+  { value: "48", label: "Trước ít nhất 48 giờ (2 ngày)" },
+  { value: "72", label: "Trước ít nhất 72 giờ (3 ngày)" },
+];
 
-    return (
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{label}</Label>
-        <Select
-          value={current}
-          onValueChange={(next) => onChange(key, Number(next))}
-        >
-          <SelectTrigger className={BUSINESS_TOKENS.inputBusiness}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {selectOptions.map((option) => (
-              <SelectItem key={option} value={option} className="text-sm">
-                {option}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    );
-  };
-
-  return (
-    <div className="space-y-6">
-      <BusinessSectionCard
-        title={t("business.settings.bookingRules.autoProcessing")}
-        description={t("business.settings.bookingRules.autoProcessingDesc")}
+const BookingRulesTab = ({ value = {}, onChange }) => (
+  <div className="flex flex-col justify-between h-full space-y-8">
+    <div className="space-y-8">
+      <SettingsSection
+        title="Cơ chế xử lý đơn đặt chỗ tự động"
+        description="Kiểm soát luồng tiếp nhận và duyệt đơn từ du khách khi thanh toán thành công."
       >
-        <div className="space-y-2">
-          {toggleRow(
-            "autoApprove",
-            t("business.settings.bookingRules.autoApprove"),
-            t("business.settings.bookingRules.autoApproveDesc")
-          )}
-          {toggleRow(
-            "allowOverbooking",
-            t("business.settings.bookingRules.allowOverbooking"),
-            t("business.settings.bookingRules.allowOverbookingDesc")
-          )}
-        </div>
-      </BusinessSectionCard>
-
-      <BusinessSectionCard
-        title={t("business.settings.bookingRules.timeLimits")}
-        description={t("business.settings.bookingRules.timeLimitsDesc")}
-      >
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {numberField("maxAdvanceDays", t("business.settings.bookingRules.maxAdvanceDays"), 30, [1, 7, 14, 30, 60, 90, 180, 365])}
-            {numberField("minLeadMinutes", t("business.settings.bookingRules.minLeadMinutes"), 0, [0, 15, 30, 60, 120, 240, 1440])}
+        <div className="grid grid-cols-1 gap-3">
+          <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#F9F9FB] hover:bg-[#F2F2F7]/80 p-4 border border-black/[0.02] transition-colors">
+            <div className="space-y-0.5 pr-4">
+              <p className="text-sm font-semibold text-slate-900">
+                Tự động xác nhận đơn đặt chỗ (Auto-approve)
+              </p>
+              <p className="text-xs leading-relaxed text-slate-500 font-normal">
+                Tự động xác nhận giữ chỗ ngay khi du khách hoàn tất chuyển khoản VietQR SePay mà không cần duyệt thủ công.
+              </p>
+            </div>
+            <Switch
+              checked={!!value.autoApprove}
+              onCheckedChange={(checked) => onChange("autoApprove", checked)}
+            />
           </div>
-          <div className="space-y-1.5">
-            {numberField("cancellationWindowHours", t("business.settings.bookingRules.freeCancellationWindow"), 24, [0, 1, 2, 4, 12, 24, 48, 72])}
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              {t("business.settings.bookingRules.freeCancellationDesc")}
-            </p>
+
+          <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#F9F9FB] hover:bg-[#F2F2F7]/80 p-4 border border-black/[0.02] transition-colors">
+            <div className="space-y-0.5 pr-4">
+              <p className="text-sm font-semibold text-slate-900">
+                Cho phép đặt vượt công suất (Overbooking)
+              </p>
+              <p className="text-xs leading-relaxed text-slate-500 font-normal">
+                Tiếp nhận thêm lượt đặt chỗ khi quán đã đạt số lượng khách tối đa trong khung giờ cao điểm.
+              </p>
+            </div>
+            <Switch
+              checked={!!value.allowOverbooking}
+              onCheckedChange={(checked) => onChange("allowOverbooking", checked)}
+            />
           </div>
         </div>
-      </BusinessSectionCard>
+      </SettingsSection>
 
-      <BusinessSectionCard
-        title={t("business.settings.bookingRules.noShowPolicy")}
-        description={t("business.settings.bookingRules.noShowPolicyDesc")}
+      <SettingsSection
+        title="Khung thời gian tiếp nhận & Hủy đặt chỗ"
+        description="Quy định thời gian du khách được phép đặt trước và chính sách hoàn tiền khi hủy hẹn."
       >
-        <div className="space-y-1.5">
-          <Label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            {t("business.settings.bookingRules.noShowPenalty")}
-          </Label>
-          <Select
-            value={value.noShowPolicy || "none"}
-            onValueChange={(v) => onChange("noShowPolicy", v)}
-          >
-            <SelectTrigger className="h-9 rounded-lg border-zinc-200 text-sm focus:ring-zinc-950">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {noShowOptions.map((o) => (
-                <SelectItem key={o.value} value={o.value} className="text-sm">
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl bg-[#F9F9FB] p-4 border border-black/[0.02] space-y-1.5">
+            <Label className="text-xs font-semibold text-slate-700">
+              Thời gian du khách được đặt trước tối đa
+            </Label>
+            <Select
+              value={String(value.maxAdvanceDays ?? 30)}
+              onValueChange={(next) => onChange("maxAdvanceDays", Number(next))}
+            >
+              <SelectTrigger className="h-10 w-full rounded-xl border border-slate-200 bg-white text-sm text-slate-800 focus:ring-2 focus:ring-slate-900/5 focus:border-slate-400 hover:border-slate-300 transition-all">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border border-slate-200 shadow-lg">
+                {MAX_ADVANCE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-sm">
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-slate-400">Giới hạn thời gian mở lịch trên ứng dụng.</p>
+          </div>
+
+          <div className="rounded-2xl bg-[#F9F9FB] p-4 border border-black/[0.02] space-y-1.5">
+            <Label className="text-xs font-semibold text-slate-700">
+              Thời gian thông báo trước tối thiểu
+            </Label>
+            <Select
+              value={String(value.minLeadMinutes ?? 0)}
+              onValueChange={(next) => onChange("minLeadMinutes", Number(next))}
+            >
+              <SelectTrigger className="h-10 w-full rounded-xl border border-slate-200 bg-white text-sm text-slate-800 focus:ring-2 focus:ring-slate-900/5 focus:border-slate-400 hover:border-slate-300 transition-all">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border border-slate-200 shadow-lg">
+                {MIN_LEAD_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-sm">
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-slate-400">Thời gian quán cần chuẩn bị trước khi đón khách.</p>
+          </div>
         </div>
-      </BusinessSectionCard>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl bg-[#F9F9FB] p-4 border border-black/[0.02] space-y-1.5">
+            <Label className="text-xs font-semibold text-slate-700">
+              Thời hạn hủy đặt chỗ miễn phí
+            </Label>
+            <Select
+              value={String(value.cancellationWindowHours ?? 24)}
+              onValueChange={(next) => onChange("cancellationWindowHours", Number(next))}
+            >
+              <SelectTrigger className="h-10 w-full rounded-xl border border-slate-200 bg-white text-sm text-slate-800 focus:ring-2 focus:ring-slate-900/5 focus:border-slate-400 hover:border-slate-300 transition-all">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border border-slate-200 shadow-lg">
+                {CANCELLATION_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-sm">
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-slate-400">Khách hủy trước mốc này sẽ được hoàn 100% tiền cọc.</p>
+          </div>
+
+          <div className="rounded-2xl bg-[#F9F9FB] p-4 border border-black/[0.02] space-y-1.5">
+            <Label className="text-xs font-semibold text-slate-700">
+              Chính sách khi khách không đến (No-show)
+            </Label>
+            <Select
+              value={value.noShowPolicy || "charge_50"}
+              onValueChange={(v) => onChange("noShowPolicy", v)}
+            >
+              <SelectTrigger className="h-10 w-full rounded-xl border border-slate-200 bg-white text-sm text-slate-800 focus:ring-2 focus:ring-slate-900/5 focus:border-slate-400 hover:border-slate-300 transition-all">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border border-slate-200 shadow-lg">
+                {NO_SHOW_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-sm">
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-slate-400">Quy định xử lý khoản tiền thanh toán khi khách bỏ hẹn.</p>
+          </div>
+        </div>
+      </SettingsSection>
     </div>
-  );
-};
+
+    <div className="pt-4 flex items-center justify-between text-xs text-slate-400">
+      <span>Được áp dụng tự động cho toàn bộ dịch vụ và điểm bán của doanh nghiệp</span>
+      <span>Chính sách tiếp nhận khách du lịch</span>
+    </div>
+  </div>
+);
 
 export default BookingRulesTab;

@@ -1,104 +1,98 @@
-import { useTranslation } from "react-i18next";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
-import { BusinessSectionCard } from "@/components/business/ui/BusinessSectionCard";
+import SettingsSection from "@/components/settings/SettingsSection";
 
-const BusinessNotificationsTab = ({ value, onChange }) => {
-  const { t } = useTranslation();
+const NOTIFICATION_SECTIONS = [
+  {
+    key: "booking",
+    title: "Thông báo Đơn đặt chỗ & Hủy hẹn",
+    description: "Cập nhật kịp thời tình trạng phục vụ du khách trên hệ thống.",
+    items: [
+      {
+        key: "newBookingEmail",
+        label: "Email khi có đơn đặt chỗ mới",
+        description: "Gửi chi tiết thông tin khách, ngày giờ và dịch vụ đến hòm thư đối tác.",
+      },
+      {
+        key: "newBookingPush",
+        label: "Thông báo đẩy khi có đơn đặt chỗ mới",
+        description: "Bật popup thông báo tức thời trên trình duyệt khi có khách đặt thành công.",
+      },
+      {
+        key: "cancellationEmail",
+        label: "Email khi du khách hủy đặt chỗ",
+        description: "Nhận thông báo giải phóng chỗ và lý do hủy lịch của khách.",
+      },
+      {
+        key: "cancellationPush",
+        label: "Thông báo đẩy khi du khách hủy đặt chỗ",
+        description: "Bật cảnh báo nhanh để nhân viên kịp thời cập nhật bàn / phòng trống.",
+      },
+    ],
+  },
+  {
+    key: "reviewAndFinance",
+    title: "Thông báo Đánh giá & Rút tiền quyết toán",
+    description: "Theo dõi phản hồi chất lượng dịch vụ và biến động số dư ví.",
+    items: [
+      {
+        key: "newReviewEmail",
+        label: "Email khi có đánh giá mới từ khách",
+        description: "Nhắc nhở phản hồi đánh giá để nâng cao uy tín cho quán.",
+      },
+      {
+        key: "newReviewPush",
+        label: "Thông báo đẩy khi nhận đánh giá mới",
+        description: "Hiển thị thông báo ngay khi du khách chấm sao và gửi nhận xét.",
+      },
+      {
+        key: "payoutEmail",
+        label: "Email xác nhận rút tiền thành công",
+        description: "Nhận thông báo khi lệnh quyết toán doanh thu được chuyển về ngân hàng.",
+      },
+    ],
+  },
+];
 
-  const notificationGroups = [
-    {
-      section: t("business.settings.notifications.bookingSection"),
-      items: [
-        {
-          key: "newBookingEmail",
-          label: t("business.settings.notifications.newBookingEmail"),
-          description: t("business.settings.notifications.newBookingEmailDescription"),
-        },
-        {
-          key: "newBookingPush",
-          label: t("business.settings.notifications.newBookingPush"),
-          description: t("business.settings.notifications.newBookingPushDescription"),
-        },
-        {
-          key: "cancellationEmail",
-          label: t("business.settings.notifications.cancellationEmail"),
-          description: t("business.settings.notifications.cancellationEmailDescription"),
-        },
-        {
-          key: "cancellationPush",
-          label: t("business.settings.notifications.cancellationPush"),
-          description: t("business.settings.notifications.cancellationPushDescription"),
-        },
-      ],
-    },
-    {
-      section: t("business.settings.notifications.reviewSection"),
-      items: [
-        {
-          key: "newReviewEmail",
-          label: t("business.settings.notifications.newReviewEmail"),
-          description: t("business.settings.notifications.newReviewEmailDescription"),
-        },
-        {
-          key: "newReviewPush",
-          label: t("business.settings.notifications.newReviewPush"),
-          description: t("business.settings.notifications.newReviewPushDescription"),
-        },
-        {
-          key: "payoutEmail",
-          label: t("business.settings.notifications.payoutEmail"),
-          description: t("business.settings.notifications.payoutEmailDescription"),
-        },
-      ],
-    },
-  ];
-
-  return (
-    <BusinessSectionCard
-      title={t("business.settings.notifications.title")}
-      description={t("business.settings.notifications.description")}
-    >
-      <div className="space-y-6">
-        {notificationGroups.map((group) => (
-          <div key={group.section} className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-              {group.section}
-            </p>
-            <div className="space-y-2">
-              {group.items.map((item) => {
-                const on = !!value[item.key];
-                return (
-                  <div
-                    key={item.key}
-                    className={cn(
-                      "flex items-center justify-between gap-3 rounded-lg border px-3 py-3 transition-colors",
-                      on
-                        ? "border-emerald-200/70 bg-emerald-50/50 dark:border-emerald-900/50 dark:bg-emerald-950/20"
-                        : "border-zinc-200/80 dark:border-zinc-800"
-                    )}
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                        {item.label}
-                      </p>
-                      <p className="mt-0.5 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-                        {item.description}
-                      </p>
-                    </div>
-                    <Switch
-                      checked={on}
-                      onCheckedChange={(checked) => onChange(item.key, checked)}
-                    />
+const BusinessNotificationsTab = ({ value = {}, onChange }) => (
+  <div className="flex flex-col justify-between h-full space-y-8">
+    <div className="space-y-8">
+      {NOTIFICATION_SECTIONS.map((sec) => (
+        <SettingsSection
+          key={sec.key}
+          title={sec.title}
+          description={sec.description}
+        >
+          <div className="grid grid-cols-1 gap-3">
+            {sec.items.map((item) => {
+              const isEnabled = value[item.key] !== false;
+              return (
+                <div
+                  key={item.key}
+                  className="flex items-center justify-between gap-4 rounded-2xl bg-[#F9F9FB] hover:bg-[#F2F2F7]/80 p-4 border border-black/[0.02] transition-colors"
+                >
+                  <div className="space-y-0.5 pr-4">
+                    <p className="text-sm font-semibold text-slate-900">{item.label}</p>
+                    <p className="text-xs leading-relaxed text-slate-500 font-normal">
+                      {item.description}
+                    </p>
                   </div>
-                );
-              })}
-            </div>
+                  <Switch
+                    checked={isEnabled}
+                    onCheckedChange={(checked) => onChange(item.key, checked)}
+                  />
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
-    </BusinessSectionCard>
-  );
-};
+        </SettingsSection>
+      ))}
+    </div>
+
+    <div className="pt-4 flex items-center justify-between text-xs text-slate-400">
+      <span>Được tối ưu để tránh làm phiền ngoài giờ phục vụ</span>
+      <span>Kênh thông báo vận hành doanh nghiệp</span>
+    </div>
+  </div>
+);
 
 export default BusinessNotificationsTab;

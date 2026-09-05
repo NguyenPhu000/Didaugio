@@ -1,18 +1,6 @@
 import React, { memo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Mail,
-  ShieldCheck,
-  Building2,
-  Camera,
-  Loader2,
-  CheckCircle2,
-  Calendar,
-  Sparkles,
-  User,
-  ShieldAlert,
-  Fingerprint,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ROLE_NAMES, ROLES } from "@/constants/constants";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
@@ -20,7 +8,7 @@ import { profileService } from "@/apis/profileService";
 import { useAuthStore } from "@/stores/authStore";
 import { getInitials } from "./profileConstants";
 
-// Helper nén ảnh Avatar nhẹ gọn < 150KB
+// Nén ảnh Avatar nhẹ gọn < 150KB
 const compressAvatar = (file) => {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) {
@@ -36,7 +24,7 @@ const compressAvatar = (file) => {
         const startX = (img.width - size) / 2;
         const startY = (img.height - size) / 2;
 
-        const targetSize = Math.min(size, 480);
+        const targetSize = Math.min(size, 400);
         const canvas = document.createElement("canvas");
         canvas.width = targetSize;
         canvas.height = targetSize;
@@ -53,7 +41,7 @@ const compressAvatar = (file) => {
           targetSize,
           targetSize
         );
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
         resolve(dataUrl);
       };
       img.onerror = () => reject(new Error("Không thể xử lý hình ảnh"));
@@ -76,20 +64,11 @@ export const ProfileAvatarCard = memo(({ profile, onAvatarUpdated }) => {
   const roleId = profile?.roleId ?? authUser?.roleId;
   const isSuperAdmin = roleId === ROLES.SUPER_ADMIN;
   const isAdmin = roleId === ROLES.ADMIN || isSuperAdmin;
-  const isBusiness = roleId === ROLES.BUSINESS;
-
-  // Tính % hoàn thiện hồ sơ
-  const calculateCompletion = () => {
-    let score = 20;
-    if (profile?.profile?.avatar || previewAvatar) score += 20;
-    if (profile?.profile?.fullName) score += 20;
-    if (profile?.profile?.phone) score += 15;
-    if (profile?.profile?.address) score += 15;
-    if (profile?.profile?.bio) score += 10;
-    return Math.min(score, 100);
-  };
-
-  const completionPercent = calculateCompletion();
+  const roleName = isSuperAdmin
+    ? "Quản trị viên Cấp cao"
+    : isAdmin
+    ? "Quản trị viên"
+    : ROLE_NAMES[roleId] || "Thành viên";
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -107,10 +86,9 @@ export const ProfileAvatarCard = memo(({ profile, onAvatarUpdated }) => {
 
       const response = await profileService.updateAvatar(compressedDataUrl);
       if (response.success) {
-        toast.success("Cập nhật ảnh đại diện thành công!");
+        toast.success("Cập nhật ảnh đại diện thành công");
         const updatedAvatarUrl = response.data?.avatar || compressedDataUrl;
 
-        // Cập nhật Auth Store
         if (authUser) {
           setUser({
             ...authUser,
@@ -138,146 +116,80 @@ export const ProfileAvatarCard = memo(({ profile, onAvatarUpdated }) => {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-[28px] border border-black/[0.06] bg-white shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
-      {/* Editorial Dark Banner */}
-      <div className="relative h-32 sm:h-40 w-full bg-slate-950 overflow-hidden flex items-center justify-between px-6 sm:px-8">
-        {/* Subtle grid pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:24px_24px]" />
-        
-        {/* Top Right System Label */}
-        <div className="absolute top-4 right-6 flex items-center gap-2 z-10">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white font-mono text-[11px] font-semibold tracking-wide">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            NODE-ACTIVE · CAN THO GIS
-          </span>
-        </div>
-      </div>
+    <div className="bg-white rounded-3xl p-6 sm:p-8 border border-black/[0.04] shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-all">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
+          {/* Avatar tròn tối giản phong cách Apple */}
+          <div className="relative group shrink-0">
+            <div className="h-24 w-24 sm:h-28 sm:w-28 rounded-full overflow-hidden bg-[#F5F5F7] border border-black/[0.06] flex items-center justify-center">
+              {currentAvatar ? (
+                <img
+                  src={currentAvatar}
+                  alt={profile?.profile?.fullName || "Avatar"}
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+              ) : (
+                <span className="text-2xl sm:text-3xl font-semibold text-[#1D1D1F] tracking-tight">
+                  {getInitials(profile?.profile?.fullName, profile?.email)}
+                </span>
+              )}
 
-      {/* Main Profile Info Section */}
-      <div className="px-6 sm:px-8 pb-6 pt-0">
-        <div className="relative -mt-14 sm:-mt-16 flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-black/[0.05]">
-          {/* Avatar and Primary Identity */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5 text-center sm:text-left">
-            {/* Avatar with Camera Trigger */}
-            <div className="relative group shrink-0">
-              <div className="h-28 w-28 sm:h-32 sm:w-32 rounded-[24px] ring-4 ring-white shadow-xl overflow-hidden bg-slate-900 flex items-center justify-center border border-black/[0.08]">
-                {currentAvatar ? (
-                  <img
-                    src={currentAvatar}
-                    alt={profile?.profile?.fullName || "Avatar"}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-slate-950 text-amber-300 text-3xl sm:text-4xl font-extrabold font-mono">
-                    {getInitials(profile?.profile?.fullName, profile?.email)}
-                  </div>
-                )}
+              {/* Upload Spinner */}
+              {isUploading && (
+                <div className="absolute inset-0 bg-white/80 backdrop-blur-xs flex items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-[#1D1D1F]" />
+                </div>
+              )}
+            </div>
 
-                {/* Upload Spinner Overlay */}
-                {isUploading && (
-                  <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-1.5 text-white backdrop-blur-xs">
-                    <Loader2 className="h-6 w-6 animate-spin text-amber-300" />
-                    <span className="text-[10px] font-bold tracking-wider uppercase">
-                      Đang tải...
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Camera Trigger Button */}
+            {/* Change Photo Overlay Button */}
+            {!isUploading && (
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
+                className="absolute inset-0 rounded-full bg-black/40 text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-xs cursor-pointer"
                 title="Thay đổi ảnh đại diện"
-                className="absolute -bottom-1 -right-1 p-2.5 rounded-2xl bg-slate-950 text-white hover:bg-black border-2 border-white shadow-lg transition-all hover:scale-110 active:scale-95 cursor-pointer disabled:opacity-50"
               >
-                <Camera className="h-3.5 w-3.5 text-amber-300" />
+                Đổi ảnh
               </button>
+            )}
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-            </div>
-
-            {/* User Meta Data */}
-            <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
-                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-950">
-                  {profile?.profile?.fullName || profile?.email?.split("@")[0]}
-                </h2>
-                {isSuperAdmin ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-black bg-amber-50 text-amber-900 border border-amber-300">
-                    <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-                    SUPER ADMIN
-                  </span>
-                ) : isAdmin ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-black bg-slate-900 text-white border border-slate-950">
-                    <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
-                    ADMINISTRATOR
-                  </span>
-                ) : isBusiness ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-black bg-emerald-50 text-emerald-900 border border-emerald-300">
-                    <Building2 className="w-3.5 h-3.5 text-emerald-600" />
-                    DOANH NGHIỆP
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
-                    <User className="w-3.5 h-3.5" />
-                    {ROLE_NAMES[roleId] || "USER"}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs font-medium text-slate-500">
-                <span className="flex items-center gap-1.5 font-mono text-slate-700">
-                  <Mail className="h-3.5 w-3.5 text-slate-400" />
-                  {profile?.email}
-                </span>
-                <span className="inline-flex items-center gap-1 font-semibold text-emerald-700">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                  Email đã xác thực
-                </span>
-                {profile?.createdAt && (
-                  <span className="flex items-center gap-1.5 text-slate-400 font-mono text-[11px]">
-                    <Calendar className="h-3.5 w-3.5" />
-                    Khởi tạo: {new Date(profile.createdAt).toLocaleDateString("vi-VN")}
-                  </span>
-                )}
-              </div>
-            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
           </div>
 
-          {/* Quick Metrics Bar (Editorial Style) */}
-          <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-end gap-3 pt-2 md:pt-0">
-            <div className="flex items-center gap-2">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
-              <span className="text-xs font-bold text-slate-900 font-mono">
-                BẢO VỆ 2 LỚP: HOẠT ĐỘNG
+          {/* User Details */}
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+              <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-[#1D1D1F]">
+                {profile?.profile?.fullName || profile?.email?.split("@")[0]}
+              </h2>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F5F5F7] text-[#1D1D1F]">
+                {roleName}
               </span>
             </div>
 
-            <div className="text-right">
-              <div className="flex items-center gap-2.5">
-                <span className="text-[11px] font-semibold text-slate-500">
-                  Hoàn thiện hồ sơ:
-                </span>
-                <div className="w-24 sm:w-32 h-2 rounded-full bg-slate-100 overflow-hidden border border-black/[0.06]">
-                  <div
-                    className="h-full bg-slate-950 rounded-full transition-all duration-500"
-                    style={{ width: `${completionPercent}%` }}
-                  />
-                </div>
-                <span className="text-xs font-extrabold text-slate-950 font-mono tabular-nums">
-                  {completionPercent}%
-                </span>
-              </div>
-            </div>
+            <p className="text-sm text-[#86868B] font-normal">
+              {profile?.email}
+            </p>
+
+            {profile?.createdAt && (
+              <p className="text-xs text-[#86868B] pt-0.5">
+                Thành viên từ ngày {new Date(profile.createdAt).toLocaleDateString("vi-VN")}
+              </p>
+            )}
           </div>
+        </div>
+
+        {/* Status Badge */}
+        <div className="flex items-center gap-2 text-xs text-[#86868B] font-medium shrink-0">
+          <span className="w-2 h-2 rounded-full bg-[#34C759]" />
+          <span>Tài khoản đang hoạt động</span>
         </div>
       </div>
     </div>

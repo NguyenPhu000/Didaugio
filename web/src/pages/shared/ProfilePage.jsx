@@ -1,5 +1,5 @@
 // MAP: ProfilePage
-// ├── UI: @/components/profile/{ProfileAvatarCard, ProfileBasicInfoForm, ProfileSecurityTab, ProfileNotificationsTab, ProfileRolesTab}
+// ├── UI: @/components/profile/{ProfileAvatarCard, ProfileBasicInfoForm, ProfileSecurityTab, ProfileNotificationsTab}
 // └── API: @/apis/profileService
 
 import { useState, useEffect } from "react";
@@ -8,29 +8,23 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import {
-  User,
-  Shield,
-  Bell,
-  ShieldCheck,
-} from "lucide-react";
-import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
+  Skeleton,
 } from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
 import { profileService } from "@/apis/profileService";
 import { ChangePasswordModal } from "@/components/user/ChangePasswordModal";
 import { profileSchema } from "@/schemas/user";
 
-// Extracted Sub-Components
+// Sub-Components
 import { DEFAULT_NOTIFICATIONS } from "@/components/profile/profileConstants";
 import ProfileAvatarCard from "@/components/profile/ProfileAvatarCard";
 import ProfileBasicInfoForm from "@/components/profile/ProfileBasicInfoForm";
 import ProfileSecurityTab from "@/components/profile/ProfileSecurityTab";
 import ProfileNotificationsTab from "@/components/profile/ProfileNotificationsTab";
-import ProfileRolesTab from "@/components/profile/ProfileRolesTab";
 
 const ProfilePage = () => {
   const { t } = useTranslation();
@@ -83,7 +77,7 @@ const ProfilePage = () => {
           }
         }
       } catch {
-        toast.error(t("profile.errors.loadFailed"));
+        toast.error(t("profile.errors.loadFailed", "Không thể tải thông tin hồ sơ"));
       } finally {
         setIsFetching(false);
       }
@@ -116,11 +110,11 @@ const ProfilePage = () => {
             profile: response.data.profile,
           });
         }
-        toast.success(t("profile.success.updated"));
+        toast.success(t("profile.success.updated", "Cập nhật hồ sơ thành công"));
         reset(data);
       }
     } catch (error) {
-      toast.error(error.message || t("profile.errors.updateFailed"));
+      toast.error(error.message || t("profile.errors.updateFailed", "Cập nhật thông tin thất bại"));
     } finally {
       setIsLoading(false);
     }
@@ -147,9 +141,9 @@ const ProfilePage = () => {
     setNotifSaving(true);
     try {
       await profileService.updateNotificationSettings(updated);
-      toast.success(t("profile.notificationSettings.saved"));
+      toast.success(t("profile.notificationSettings.saved", "Đã lưu cài đặt thông báo"));
     } catch (err) {
-      toast.error(err.message || t("profile.notificationSettings.saveFailed"));
+      toast.error(err.message || t("profile.notificationSettings.saveFailed", "Lỗi khi lưu cài đặt"));
       setNotifSettings(previous);
     } finally {
       setNotifSaving(false);
@@ -158,73 +152,63 @@ const ProfilePage = () => {
 
   if (isFetching) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[500px] gap-3">
-        <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
-        <span className="text-xs font-semibold text-slate-500 tracking-wide font-mono">
-          {t("profile.loading")}
-        </span>
+      <div className="space-y-6 max-w-[1080px] mx-auto pb-16 pt-2">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-48 rounded-xl" />
+          <Skeleton className="h-4 w-80 rounded-lg" />
+        </div>
+        <Skeleton className="h-40 w-full rounded-3xl" />
+        <Skeleton className="h-10 w-96 rounded-2xl" />
+        <Skeleton className="h-[540px] w-full rounded-3xl" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 text-slate-900 antialiased max-w-[1360px] mx-auto pb-12">
-      {/* Editorial Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-black/[0.04]">
-        <div className="space-y-1">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">
-            HỒ SƠ ĐỊNH DANH & PHÂN QUYỀN
-          </p>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950">
-            Hồ sơ Quản trị viên
-          </h1>
-          <p className="text-xs text-slate-500 font-medium">
-            Quản lý thông tin định danh, tùy chọn bảo mật và phân quyền tài khoản trên toàn hệ thống
-          </p>
-        </div>
+    <div className="space-y-6 text-[#1D1D1F] antialiased max-w-[1080px] mx-auto pb-16 pt-2">
+      {/* Editorial Apple-style Header (Clean whitespace, no harsh borders) */}
+      <header className="space-y-1">
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#1D1D1F]">
+          Hồ sơ tài khoản
+        </h1>
+        <p className="text-xs sm:text-sm text-[#86868B] font-normal">
+          Quản lý thông tin định danh, tùy chọn bảo mật và thông báo hệ thống
+        </p>
       </header>
 
-      {/* Main Avatar & Profile Banner */}
+      {/* Profile Overview Card */}
       <ProfileAvatarCard
         profile={profile}
         onAvatarUpdated={handleAvatarUpdated}
       />
 
-      {/* Tabs Navigation */}
+      {/* Apple-style Segmented Control Navigation */}
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="bg-[#FAF9F5] p-1 rounded-2xl h-auto flex flex-wrap sm:flex-nowrap border border-black/[0.06] gap-1 shadow-2xs">
-          <TabsTrigger
-            value="profile"
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm font-bold text-xs px-5 h-10 cursor-pointer transition-all text-slate-600"
-          >
-            <User className="h-3.5 w-3.5" />
-            <span>{t("profile.tabs.info")}</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="security"
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm font-bold text-xs px-5 h-10 cursor-pointer transition-all text-slate-600"
-          >
-            <Shield className="h-3.5 w-3.5" />
-            <span>{t("profile.tabs.security")}</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="notifications"
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm font-bold text-xs px-5 h-10 cursor-pointer transition-all text-slate-600"
-          >
-            <Bell className="h-3.5 w-3.5" />
-            <span>{t("profile.tabs.notifications")}</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="roles"
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-sm font-bold text-xs px-5 h-10 cursor-pointer transition-all text-slate-600"
-          >
-            <ShieldCheck className="h-3.5 w-3.5" />
-            <span>Vai trò & Phân quyền</span>
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto no-scrollbar py-0.5">
+          <TabsList className="bg-[#EBEBF0]/70 p-1 rounded-2xl inline-flex w-auto border-none h-auto gap-1">
+            <TabsTrigger
+              value="profile"
+              className="rounded-xl py-2 px-4 text-xs font-medium text-[#1D1D1F] transition-all data-[state=active]:bg-white data-[state=active]:shadow-xs data-[state=active]:font-semibold cursor-pointer border-none"
+            >
+              Thông tin cá nhân
+            </TabsTrigger>
+            <TabsTrigger
+              value="security"
+              className="rounded-xl py-2 px-4 text-xs font-medium text-[#1D1D1F] transition-all data-[state=active]:bg-white data-[state=active]:shadow-xs data-[state=active]:font-semibold cursor-pointer border-none"
+            >
+              Đăng nhập & Bảo mật
+            </TabsTrigger>
+            <TabsTrigger
+              value="notifications"
+              className="rounded-xl py-2 px-4 text-xs font-medium text-[#1D1D1F] transition-all data-[state=active]:bg-white data-[state=active]:shadow-xs data-[state=active]:font-semibold cursor-pointer border-none"
+            >
+              Thông báo
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        {/* Profile Tab Content */}
-        <TabsContent value="profile" className="space-y-6 focus:outline-none">
+        {/* Tab 1: Profile Info */}
+        <TabsContent value="profile" className="space-y-6 focus-visible:outline-none">
           <ProfileBasicInfoForm
             profile={profile}
             register={register}
@@ -237,25 +221,20 @@ const ProfilePage = () => {
           />
         </TabsContent>
 
-        {/* Security Tab Content */}
-        <TabsContent value="security" className="space-y-6 focus:outline-none">
+        {/* Tab 2: Security & Sessions */}
+        <TabsContent value="security" className="space-y-6 focus-visible:outline-none">
           <ProfileSecurityTab
             setChangePasswordOpen={setChangePasswordOpen}
           />
         </TabsContent>
 
-        {/* Notifications Tab Content */}
-        <TabsContent value="notifications" className="space-y-6 focus:outline-none">
+        {/* Tab 3: Notifications */}
+        <TabsContent value="notifications" className="space-y-6 focus-visible:outline-none">
           <ProfileNotificationsTab
             notifSaving={notifSaving}
             notifSettings={notifSettings}
             handleNotifToggle={handleNotifToggle}
           />
-        </TabsContent>
-
-        {/* Roles & Permissions Tab Content */}
-        <TabsContent value="roles" className="space-y-6 focus:outline-none">
-          <ProfileRolesTab profile={profile} />
         </TabsContent>
       </Tabs>
 

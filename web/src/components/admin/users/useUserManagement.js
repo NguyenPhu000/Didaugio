@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast as sonnerToast } from "sonner";
 import { userService } from "@/apis/userService";
@@ -9,6 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Square, CheckSquare, MinusSquare } from "lucide-react";
 
 export const useUserManagement = (currentUser) => {
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get("search") || "";
+
   const { toast } = useToast();
   const { t } = useTranslation();
 
@@ -16,12 +20,23 @@ export const useUserManagement = (currentUser) => {
   const [loading, setLoading] = useState(false);
 
   const [filters, setFilters] = useState({
-    search: "",
+    search: urlSearch,
     roleId: "all",
     status: "all",
     limit: 10,
     page: 1,
   });
+
+  // Sync search filter when URL param changes
+  useEffect(() => {
+    const currentUrlSearch = searchParams.get("search") || "";
+    setFilters((prev) => {
+      if (prev.search !== currentUrlSearch) {
+        return { ...prev, search: currentUrlSearch, page: 1 };
+      }
+      return prev;
+    });
+  }, [searchParams]);
   const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
   const [selectedIds, setSelectedIds] = useState(new Set());
 

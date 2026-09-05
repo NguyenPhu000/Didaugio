@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -42,74 +41,67 @@ const FeatureFlagToggle = ({
     <>
       <div
         className={cn(
-          "flex items-center justify-between gap-4 rounded-xl border px-4 py-3 transition-colors",
-          enabled ? "border-emerald-200 bg-emerald-50/70" : "border-zinc-200 bg-white"
+          "flex items-center justify-between gap-4 rounded-2xl p-4 transition-all duration-200",
+          enabled
+            ? "bg-[#F7F9F7] border border-emerald-100/80"
+            : "bg-[#F9F9FB] border border-black/[0.02] hover:bg-[#F2F2F7]/80"
         )}
       >
-        <div className="flex-1 space-y-0.5 pr-4">
+        <div className="flex-1 space-y-1 pr-4">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-zinc-900">
+            <span className="text-sm font-semibold text-slate-900">
               {name}
             </span>
             {critical && (
-              <Badge
-                variant="outline"
-                className="rounded-full border-red-300 px-2 py-0.5 text-xs uppercase"
-              >
-                CRITICAL
-              </Badge>
+              <span className="rounded-full bg-red-50 text-red-600 px-2 py-0.5 text-[11px] font-semibold tracking-wide">
+                QUAN TRỌNG
+              </span>
             )}
             {percentageRollout != null && enabled && (
-              <Badge
-                variant="outline"
-                className="rounded-full border-blue-300 px-2 py-0.5 text-xs"
-              >
+              <span className="rounded-full bg-slate-100 text-slate-600 px-2 py-0.5 text-[11px] font-medium">
                 {percentageRollout}%
-              </Badge>
+              </span>
             )}
           </div>
           {description && (
-            <p className="text-xs text-muted-foreground">{description}</p>
+            <p className="text-xs text-slate-500 font-normal leading-relaxed">{description}</p>
           )}
         </div>
         {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
         ) : (
           <Switch
             checked={enabled}
             onCheckedChange={handleToggle}
-            className={cn(
-              critical && !enabled && "border-red-200"
-            )}
           />
         )}
       </div>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="rounded-2xl border-black sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-semibold">
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-              XÁC NHẬN TẮT TÍNH NĂNG
+        <DialogContent className="rounded-3xl border border-black/[0.04] bg-white p-6 sm:max-w-[420px] shadow-2xl">
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Xác nhận tắt tính năng
             </DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Bạn có chắc chắn muốn tắt <strong className="uppercase">{name}</strong>?
-            {critical && " Đây là tính năng quan trọng, việc tắt có thể ảnh hưởng đến toàn bộ hệ thống."}
+          <p className="text-xs leading-relaxed text-slate-600">
+            Bạn có chắc chắn muốn tắt <strong className="text-slate-900">{name}</strong>?
+            {critical && " Đây là tính năng cốt lõi của hệ thống, việc tắt có thể làm gián đoạn trải nghiệm của người dùng và đối tác."}
           </p>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0 mt-4">
             <Button
               variant="outline"
               onClick={() => setConfirmOpen(false)}
-              className="rounded-xl border-black/30 text-sm"
+              className="rounded-full border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-medium px-4 h-9"
             >
-              HỦY
+              Hủy bỏ
             </Button>
             <Button
               onClick={handleConfirm}
-              className="rounded-xl border-2 border-red-600 bg-red-600 text-sm font-semibold uppercase text-white hover:bg-red-700"
+              className="rounded-full bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 h-9 shadow-sm"
             >
-              TẮT TÍNH NĂNG
+              Xác nhận tắt
             </Button>
           </DialogFooter>
         </DialogContent>

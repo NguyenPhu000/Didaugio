@@ -1,118 +1,127 @@
 import React, { memo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Check, X as XIcon, Clock } from "lucide-react";
+import { ArrowRight, Check, X as XIcon, QrCode } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { formatMoney } from "@/utils/formatters";
 
 export const DashboardPendingQueue = memo(
-  ({ pendingQueue, queueLoading, approveMutation, rejectMutation }) => {
+  ({ pendingQueue = [], queueLoading, approveMutation, rejectMutation }) => {
     const navigate = useNavigate();
+    const count = pendingQueue.length;
 
     return (
-      <div className="p-1.5 rounded-[36px] bg-slate-100 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/[0.06] shadow-sm">
-        <div className="p-6 sm:p-7 rounded-[30px] bg-white dark:bg-slate-900/90 border border-slate-200/40 dark:border-white/[0.04] space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
-                <Clock className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-black text-base text-slate-900 dark:text-white tracking-tight">
-                  Hàng Đợi Chờ Duyệt Tức Thì
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-muted-foreground mt-0.5">
-                  Xác nhận hoặc từ chối nhanh chóng trong 1 thao tác
-                </p>
-              </div>
+      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-black/[0.06] dark:border-white/[0.06] p-6 sm:p-7 shadow-[0_1px_3px_rgba(0,0,0,0.02),0_12px_32px_rgba(0,0,0,0.02)] space-y-6">
+        {/* Header bar: Không dùng icon trang trí thừa, dùng typography sắc sảo & action pill */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5">
+              <h3 className="font-bold text-base text-slate-900 dark:text-white tracking-tight">
+                Hàng Đợi Chờ Duyệt Tức Thì
+              </h3>
+              {count > 0 && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40">
+                  {count} đơn
+                </span>
+              )}
             </div>
-
-            <button
-              type="button"
-              onClick={() => navigate(BUSINESS_ROUTES.BOOKING_PROCESS)}
-              className="flex items-center gap-1.5 text-xs font-extrabold text-indigo-600 dark:text-indigo-400 hover:underline self-start sm:self-auto"
-            >
-              Mở chế độ quẹt mã QR & xử lý nhanh <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
+              Xác nhận hoặc từ chối nhanh chóng trong 1 thao tác
+            </p>
           </div>
 
-          {/* Queue Grid Cards */}
-          {queueLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-32 rounded-[24px]" />
-              ))}
-            </div>
-          ) : pendingQueue.length === 0 ? (
-            <div className="p-8 rounded-[24px] bg-slate-50 dark:bg-muted/30 border border-dashed border-slate-200 dark:border-border text-center space-y-1.5">
-              <span className="text-sm font-extrabold text-slate-900 dark:text-white block">
-                Không có đơn nào đang chờ duyệt
-              </span>
-              <p className="text-xs text-slate-500">
-                Tuyệt vời! Tất cả các yêu cầu đặt chỗ đều đã được xử lý hoàn tất.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {pendingQueue.map((item) => {
-                const customerName =
-                  item.customerName ||
-                  item.user?.name ||
-                  item.user?.fullName ||
-                  `Khách #${item.id}`;
-                const serviceName =
-                  item.service?.name || item.serviceName || "Dịch vụ tham quan";
-                const price = item.finalPrice ?? item.totalPrice ?? 0;
-                const isProcessing =
-                  approveMutation.isPending || rejectMutation.isPending;
+          <button
+            type="button"
+            onClick={() => navigate(BUSINESS_ROUTES.BOOKING_PROCESS)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-slate-950 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 text-xs font-semibold shadow-sm hover:shadow transition-all active:scale-95 shrink-0 cursor-pointer self-start sm:self-auto"
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span>Mở chế độ quẹt mã QR & xử lý nhanh</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
 
-                return (
-                  <div
-                    key={item.id}
-                    className="p-4 rounded-[26px] bg-slate-50/70 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/[0.04] flex flex-col justify-between space-y-3 hover:border-slate-300 dark:hover:border-white/10 transition-all duration-200"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-[11px] font-black text-slate-400">
-                          #{item.id}
-                        </span>
-                        <span className="font-mono text-xs font-black text-emerald-600 dark:text-emerald-400">
-                          {formatMoney(price)}
-                        </span>
-                      </div>
-                      <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
+        {/* Queue Grid Cards */}
+        {queueLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-36 rounded-2xl" />
+            ))}
+          </div>
+        ) : count === 0 ? (
+          <div className="py-12 px-6 rounded-2xl bg-[#F9F9FB] dark:bg-slate-800/40 border border-black/[0.02] dark:border-white/[0.04] text-center space-y-1">
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+              Không có đơn nào đang chờ duyệt
+            </p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 font-normal">
+              Tất cả các yêu cầu đặt chỗ của du khách đều đã được xử lý hoàn tất.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {pendingQueue.map((item) => {
+              const customerName =
+                item.customerName ||
+                item.user?.name ||
+                item.user?.fullName ||
+                `Khách #${item.id}`;
+              const serviceName =
+                item.service?.name || item.serviceName || "Dịch vụ tham quan";
+              const price = item.finalPrice ?? item.totalPrice ?? 0;
+              const isProcessing =
+                approveMutation.isPending || rejectMutation.isPending;
+
+              return (
+                <div
+                  key={item.id}
+                  className="p-4 rounded-2xl bg-[#F9F9FB] dark:bg-slate-800/40 hover:bg-[#F4F4F7] dark:hover:bg-slate-800/70 border border-black/[0.03] dark:border-white/[0.04] hover:border-black/[0.08] dark:hover:border-white/10 transition-all duration-200 flex flex-col justify-between space-y-4 shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                        #{item.id}
+                      </span>
+                      <span className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">
+                        {formatMoney(price)}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold text-xs text-slate-900 dark:text-white truncate">
                         {serviceName}
                       </h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                        Khách: <strong className="text-slate-800 dark:text-slate-200">{customerName}</strong>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                        Khách: <span className="font-medium text-slate-800 dark:text-slate-200">{customerName}</span>
                       </p>
                     </div>
-
-                    {/* Action 1-Click Buttons */}
-                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/50 dark:border-white/[0.04]">
-                      <button
-                        type="button"
-                        disabled={isProcessing}
-                        onClick={() => approveMutation.mutate(item.id)}
-                        className="h-8 rounded-full bg-slate-950 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-950 text-[11px] font-bold flex items-center justify-center gap-1 transition-all disabled:opacity-50"
-                      >
-                        <Check className="w-3.5 h-3.5" /> Duyệt
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isProcessing}
-                        onClick={() => rejectMutation.mutate(item.id)}
-                        className="h-8 rounded-full bg-slate-200/70 hover:bg-rose-100 hover:text-rose-700 text-slate-700 dark:bg-white/10 dark:text-slate-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all disabled:opacity-50"
-                      >
-                        <XIcon className="w-3.5 h-3.5" /> Từ chối
-                      </button>
-                    </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+
+                  {/* Action 1-Click Buttons */}
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/50 dark:border-white/[0.06]">
+                    <button
+                      type="button"
+                      disabled={isProcessing}
+                      onClick={() => approveMutation.mutate(item.id)}
+                      className="h-8 rounded-full bg-slate-900 hover:bg-emerald-600 text-white dark:bg-white dark:text-slate-950 dark:hover:bg-emerald-500 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer shadow-xs"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Duyệt</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isProcessing}
+                      onClick={() => rejectMutation.mutate(item.id)}
+                      className="h-8 rounded-full bg-slate-200/70 hover:bg-red-50 hover:text-red-600 text-slate-700 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-400 text-xs font-medium flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
+                    >
+                      <XIcon className="w-3.5 h-3.5" />
+                      <span>Từ chối</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   }

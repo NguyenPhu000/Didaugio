@@ -19,8 +19,7 @@ export const DashboardTrafficHub = memo(
     placeHeatmap,
   }) => {
     return (
-      <div className="p-1.5 rounded-[36px] bg-slate-100 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/[0.06] shadow-sm">
-        <div className="p-6 sm:p-7 rounded-[30px] bg-white dark:bg-slate-900/90 border border-slate-200/40 dark:border-white/[0.04] space-y-6">
+      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-black/[0.06] dark:border-white/[0.06] p-6 sm:p-7 shadow-[0_1px_3px_rgba(0,0,0,0.02),0_12px_32px_rgba(0,0,0,0.02)] space-y-6">
           {/* Header & Period Filter */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-100 dark:border-white/[0.04]">
             <div>
@@ -231,7 +230,6 @@ export const DashboardTrafficHub = memo(
               <PlaceHeatmap {...placeHeatmap} />
             </div>
           </div>
-        </div>
       </div>
     );
   }

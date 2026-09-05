@@ -3,6 +3,7 @@
 // └── API: @/hooks/queries/useBusinessAdminQueries
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Store } from "lucide-react";
 import {
@@ -25,6 +26,9 @@ import BusinessMasterList from "@/components/admin/businesses/BusinessMasterList
 import BusinessDetailInspector from "@/components/admin/businesses/BusinessDetailInspector";
 
 const BusinessListPage = ({ initialStatus = "all" }) => {
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get("search") || "";
+
   const STATUS_TABS = [
     { value: "all", label: "Tất cả" },
     { value: "pending", label: "Chờ thẩm định" },
@@ -34,10 +38,20 @@ const BusinessListPage = ({ initialStatus = "all" }) => {
     { value: "terminated", label: "Chấm dứt" },
   ];
 
-  const [searchInput, setSearchInput] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchInput, setSearchInput] = useState(urlSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(urlSearch);
   const [status, setStatus] = useState(initialStatus);
   const [page, setPage] = useState(1);
+
+  // Sync search input when URL search param changes
+  useEffect(() => {
+    const currentUrlSearch = searchParams.get("search") || "";
+    if (currentUrlSearch !== searchInput) {
+      setSearchInput(currentUrlSearch);
+      setDebouncedSearch(currentUrlSearch);
+      setPage(1);
+    }
+  }, [searchParams]);
   const [selectedBusinessId, setSelectedBusinessId] = useState(null);
   const [reviewBusinessId, setReviewBusinessId] = useState(null);
   const [detailBusinessId, setDetailBusinessId] = useState(null);

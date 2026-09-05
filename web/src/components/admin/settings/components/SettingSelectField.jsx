@@ -38,6 +38,8 @@ export default function SettingSelectField({
           className="block text-xs font-semibold text-zinc-600"
         >
           {label}
+        >
+          {label}
         </label>
       ) : null}
       <Select
@@ -46,11 +48,11 @@ export default function SettingSelectField({
       >
         <SelectTrigger
           id={id}
-          className="h-10 w-full rounded-xl border-black/30 bg-white text-sm normal-case focus:ring-0"
+          className="h-10 w-full rounded-xl border border-slate-200 bg-white text-sm text-slate-800 focus:ring-2 focus:ring-slate-900/5 focus:border-slate-400 hover:border-slate-300 transition-all"
         >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
-        <SelectContent className="max-h-[min(320px,50vh)] rounded-xl border-black/30">
+        <SelectContent className="max-h-[min(320px,50vh)] rounded-xl border border-slate-200 shadow-lg">
           {mergedOptions.map((o) => (
             <SelectItem
               key={o.value}
