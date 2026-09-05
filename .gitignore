@@ -57,10 +57,18 @@ understand-anything-plugin/
 .scannerwork/
 .sonarlint/
 .superpowers/
+.worktrees/
 benchmarks/
 scratch/
 plans/
 specs/
+
+# Python cache & temporary artifacts
+__pycache__/
+*.pyc
+_cdm_preview.png
+bibliography_entries.json
+elements.js
 
 # Build & Native generated
 .expo/
