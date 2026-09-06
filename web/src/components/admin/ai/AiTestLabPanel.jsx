@@ -300,7 +300,7 @@ export default function AiTestLabPanel({
           {unavailableMessage && (
             <p
               role="alert"
-              className="border-l-4 border-primary bg-primary/10 px-3 py-2 text-sm"
+              className="border border-primary/30 bg-primary/10 px-3 py-2 text-sm rounded-sm"
             >
               {unavailableMessage}
             </p>
@@ -309,7 +309,7 @@ export default function AiTestLabPanel({
           {errorText && (
             <p
               role="alert"
-              className="border-l-4 border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              className="border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive rounded-sm"
             >
               <span className="block font-mono text-[10px] font-bold uppercase tracking-wide">
                 Safety: {safetyError}

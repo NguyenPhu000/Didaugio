@@ -204,7 +204,7 @@ export const BentoReviewCard = memo(
                         type="button"
                         onClick={() => onDeleteReply(review.id, reply.id)}
                         disabled={isActionLoading}
-                        className="p-1.5 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-950/40 text-slate-500 hover:text-rose-600 transition-colors"
+                        className="p-1.5 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                         title="Xóa phản hồi"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

@@ -100,7 +100,7 @@ export function MutationNotice({
     return (
       <div
         role="alert"
-        className="mb-4 flex flex-col gap-3 border-l-4 border-primary bg-primary/10 p-4 sm:flex-row sm:items-center sm:justify-between"
+        className="mb-4 flex flex-col gap-3 border border-primary/30 bg-primary/10 p-4 sm:flex-row sm:items-center sm:justify-between rounded-sm"
       >
         <div>
           <p className="font-mono text-xs font-bold uppercase tracking-wide">
@@ -129,7 +129,7 @@ export function MutationNotice({
   return (
     <p
       role="alert"
-      className="mb-4 border-l-4 border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive"
+      className="mb-4 border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive rounded-sm"
     >
       {error.message ?? "Không thể hoàn tất thao tác AI."}
     </p>

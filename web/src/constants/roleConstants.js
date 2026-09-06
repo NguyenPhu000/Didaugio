@@ -21,9 +21,9 @@ export const ROLE_COLORS = {
 
 export const ROLE_GRADIENTS = {
   [ROLES.SUPER_ADMIN]: "from-red-500 to-pink-600",
-  [ROLES.ADMIN]: "from-purple-500 to-indigo-600",
+  [ROLES.ADMIN]: "from-blue-600 to-sky-700",
   [ROLES.BUSINESS]: "from-teal-500 to-cyan-600",
-  [ROLES.STAFF]: "from-blue-500 to-indigo-600",
+  [ROLES.STAFF]: "from-blue-500 to-cyan-600",
   [ROLES.USER]: "from-green-500 to-emerald-600",
   [ROLES.GUEST]: "from-gray-400 to-gray-600",
 };

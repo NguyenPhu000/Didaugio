@@ -157,20 +157,7 @@
   background-color: #475569;
 }
 
-/* Material Icons Round styling */
-.material-icons-round {
-  font-family: "Material Icons Round", sans-serif;
-  font-weight: normal;
-  font-style: normal;
-  font-size: 24px;
-  display: inline-block;
-  line-height: 1;
-  text-transform: none;
-  letter-spacing: normal;
-  word-wrap: normal;
-  white-space: nowrap;
-  direction: ltr;
-}
+
 
 /* ============================================
    MapLibre GL Custom Styles - iPoint Genie
@@ -512,13 +499,6 @@
     background-position: 10px 10px;
   }
 
-  /* Line Grid Pattern */
-  .bg-grid-lines {
-    background-image:
-      linear-gradient(hsl(var(--border-subtle)) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(var(--border-subtle)) 1px, transparent 1px);
-    background-size: 40px 40px;
-  }
 
   /* Technical Border with corner accents */
   .border-technical {
@@ -709,5 +689,16 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Preserve essential loading feedback and state cross-fades */
+  .animate-spin {
+    animation-duration: 1.5s !important;
+    animation-iteration-count: infinite !important;
+  }
+
+  [data-state="open"],
+  [data-state="closed"] {
+    transition-duration: 150ms !important;
   }
 }

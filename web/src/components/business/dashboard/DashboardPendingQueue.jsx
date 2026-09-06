@@ -102,7 +102,7 @@ export const DashboardPendingQueue = memo(
                       type="button"
                       disabled={isProcessing}
                       onClick={() => approveMutation.mutate(item.id)}
-                      className="h-8 rounded-full bg-slate-900 hover:bg-emerald-600 text-white dark:bg-white dark:text-slate-950 dark:hover:bg-emerald-500 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer shadow-xs"
+                      className="h-8 rounded-full bg-slate-900 hover:bg-emerald-600 text-white dark:bg-zinc-800 dark:hover:bg-emerald-600 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer shadow-xs"
                     >
                       <Check className="w-3.5 h-3.5" />
                       <span>Duyệt</span>
@@ -111,7 +111,7 @@ export const DashboardPendingQueue = memo(
                       type="button"
                       disabled={isProcessing}
                       onClick={() => rejectMutation.mutate(item.id)}
-                      className="h-8 rounded-full bg-slate-200/70 hover:bg-red-50 hover:text-red-600 text-slate-700 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-red-950/40 dark:hover:text-red-400 text-xs font-medium flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
+                      className="h-8 rounded-full bg-muted/80 hover:bg-destructive/15 text-muted-foreground hover:text-destructive text-xs font-medium flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
                     >
                       <XIcon className="w-3.5 h-3.5" />
                       <span>Từ chối</span>

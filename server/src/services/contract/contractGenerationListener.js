@@ -36,6 +36,7 @@ export function initContractGenerationListener() {
           idCardNumber: true,
           commissionRate: true,
           contractSigned: true,
+          contractSignedAt: true,
           signerMetadata: true,
           approvedAt: true,
           status: true,
@@ -50,11 +51,6 @@ export function initContractGenerationListener() {
 
       if (!rawBusiness) {
         logger.error(`${LOG_PREFIX} Không tìm thấy doanh nghiệp ${id} trong DB`);
-        return;
-      }
-
-      if (rawBusiness.contractSigned) {
-        logger.info(`${LOG_PREFIX} Bỏ qua hợp đồng đã ký của business ${id}`);
         return;
       }
 
@@ -90,8 +86,11 @@ export function initContractGenerationListener() {
         phone: rawBusiness.owner?.profile?.phone || "",
         email: rawBusiness.owner?.email || "",
         signatureImage: meta.signatureData || null,
-        approvedAt: rawBusiness.approvedAt || null,
-        status: rawBusiness.status || null,
+        contractSigned: Boolean(rawBusiness.contractSigned),
+        contractSignedAt: rawBusiness.contractSignedAt || meta.signedAt || null,
+        signerIp: meta.ip || null,
+        approvedAt: rawBusiness.approvedAt || new Date(),
+        status: "approved",
       });
 
       logger.info(

@@ -711,7 +711,7 @@ const ContractSignModal = ({
                 </Button>
               </div>
 
-              <div id="contract-preview-content" className="rounded-2xl border-t-4 border-t-blue-600 border border-border/70 bg-white px-6 py-6 text-slate-800 dark:text-slate-900 max-h-[50vh] overflow-y-auto shadow-inner">
+              <div id="contract-preview-content" className="rounded-2xl border border-border/80 bg-white px-6 py-6 text-slate-800 dark:text-slate-900 max-h-[50vh] overflow-y-auto shadow-sm">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between border-b pb-4">
                   <div className="space-y-1">
                     <p className="text-base font-black uppercase text-blue-600 tracking-tight">

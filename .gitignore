@@ -98,6 +98,8 @@ data/
 /docs/
 /server/docs/
 *.md
+!PRODUCT.md
+!DESIGN.md
 !.github/
 !.github/workflows/
 !.github/workflows/quality.yml
@@ -128,3 +130,5 @@ playwright-report/
 test-results/
 blob-report/
 playwright/.cache/
+DESIGN.md
+PRODUCT.md

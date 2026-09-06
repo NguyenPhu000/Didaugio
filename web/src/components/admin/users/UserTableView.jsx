@@ -25,90 +25,107 @@ export const UserTableView = memo(
 
     return (
       <div className="bg-white rounded-3xl border border-black/[0.04] shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden">
-        {loading ? (
-          <div className="py-24 text-center space-y-3">
-            <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mx-auto" />
-            <span className="text-xs font-semibold text-slate-500">
-              {t("common.loading")}
-            </span>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-[#FAF9F5] text-slate-500 font-semibold border-b border-black/[0.04]">
-                  <th className="p-4 w-[40px]">
-                    <button
-                      type="button"
-                      onClick={handleSelectAll}
-                      className="flex items-center justify-center text-slate-700 cursor-pointer"
-                      aria-label="Chọn tất cả"
-                    >
-                      <SelectAllIcon className="h-4 w-4" />
-                    </button>
-                  </th>
-                  <th className="p-4 w-[60px] hidden sm:table-cell">
-                    {t("users.table.serial", "STT")}
-                  </th>
-                  <th className="p-4">{t("users.table.basicInfo")}</th>
-                  <th className="p-4 hidden md:table-cell">
-                    {t("users.table.contact")}
-                  </th>
-                  <th className="p-4 whitespace-nowrap">
-                    {t("users.table.role")}
-                  </th>
-                  <th className="p-4 whitespace-nowrap">
-                    {t("users.table.connection", "Kết nối")}
-                  </th>
-                  <th className="p-4 whitespace-nowrap">
-                    {t("users.table.account", "Tài khoản")}
-                  </th>
-                  <th className="p-4 text-right">
-                    {t("users.table.actions")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-black/[0.03]">
-                {users.map((user, index) => (
-                  <UserRow
-                    key={user.id}
-                    user={user}
-                    serial={getTableSerialNumber(
-                      pagination.total || users.length,
-                      index,
-                      filters.page,
-                      filters.limit
-                    )}
-                    selected={selectedIds.has(user.id)}
-                    onSelect={handleSelectOne}
-                    onDetail={handleDetail}
-                    onEdit={handleEdit}
-                    onChangePassword={handleChangePassword}
-                    onToggleStatus={handleToggleStatus}
-                    onDelete={handleDelete}
-                    t={t}
-                  />
-                ))}
-                {users.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="p-20 text-center">
-                      <UserX className="h-12 w-12 mx-auto mb-3 text-slate-300 stroke-[1.5]" />
-                      <div className="font-bold text-slate-800">
-                        {t("users.table.noDataTitle", t("common.noData"))}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="bg-[#FAF9F5] text-slate-500 font-semibold border-b border-black/[0.04]">
+                <th className="p-4 w-[40px]">
+                  <button
+                    type="button"
+                    onClick={handleSelectAll}
+                    disabled={loading}
+                    className="flex items-center justify-center text-slate-700 cursor-pointer disabled:opacity-40"
+                    aria-label="Chọn tất cả"
+                  >
+                    <SelectAllIcon className="h-4 w-4" />
+                  </button>
+                </th>
+                <th className="p-4 w-[60px] hidden sm:table-cell">
+                  {t("users.table.serial", "STT")}
+                </th>
+                <th className="p-4">{t("users.table.basicInfo")}</th>
+                <th className="p-4 hidden md:table-cell">
+                  {t("users.table.contact")}
+                </th>
+                <th className="p-4 whitespace-nowrap">
+                  {t("users.table.role")}
+                </th>
+                <th className="p-4 whitespace-nowrap">
+                  {t("users.table.connection", "Kết nối")}
+                </th>
+                <th className="p-4 whitespace-nowrap">
+                  {t("users.table.account", "Tài khoản")}
+                </th>
+                <th className="p-4 text-right">
+                  {t("users.table.actions")}
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-black/[0.03]">
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="p-4"><div className="h-4 w-4 bg-slate-200 rounded" /></td>
+                    <td className="p-4 hidden sm:table-cell"><div className="h-4 w-6 bg-slate-200 rounded" /></td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 bg-slate-200 rounded-full shrink-0" />
+                        <div className="space-y-1.5 flex-1">
+                          <div className="h-3.5 w-28 bg-slate-200 rounded" />
+                          <div className="h-2.5 w-16 bg-slate-200 rounded" />
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-500 mt-1">
-                        {t(
-                          "users.table.noDataDesc",
-                          "Không tìm thấy tài khoản nào khớp với bộ lọc."
-                        )}
-                      </p>
                     </td>
+                    <td className="p-4 hidden md:table-cell"><div className="h-3.5 w-32 bg-slate-200 rounded" /></td>
+                    <td className="p-4"><div className="h-6 w-20 bg-slate-200 rounded-full" /></td>
+                    <td className="p-4"><div className="h-4 w-12 bg-slate-200 rounded" /></td>
+                    <td className="p-4"><div className="h-6 w-16 bg-slate-200 rounded-full" /></td>
+                    <td className="p-4 text-right"><div className="h-8 w-8 bg-slate-200 rounded-full ml-auto" /></td>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+                ))
+              ) : (
+                <>
+                  {users.map((user, index) => (
+                    <UserRow
+                      key={user.id}
+                      user={user}
+                      serial={getTableSerialNumber(
+                        pagination.total || users.length,
+                        index,
+                        filters.page,
+                        filters.limit
+                      )}
+                      selected={selectedIds.has(user.id)}
+                      onSelect={handleSelectOne}
+                      onDetail={handleDetail}
+                      onEdit={handleEdit}
+                      onChangePassword={handleChangePassword}
+                      onToggleStatus={handleToggleStatus}
+                      onDelete={handleDelete}
+                      t={t}
+                    />
+                  ))}
+                  {users.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="p-20 text-center">
+                        <UserX className="h-12 w-12 mx-auto mb-3 text-slate-300 stroke-[1.5]" />
+                        <div className="font-bold text-slate-800">
+                          {t("users.table.noDataTitle", t("common.noData"))}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {t(
+                            "users.table.noDataDesc",
+                            "Không tìm thấy tài khoản nào khớp với bộ lọc."
+                          )}
+                        </p>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Pagination */}
         {pagination && pagination.totalPages > 1 && (

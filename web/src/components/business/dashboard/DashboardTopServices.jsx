@@ -69,7 +69,7 @@ export const DashboardTopServices = memo(({ topServices }) => {
                 <div className="flex items-center justify-between gap-3 pt-0.5">
                   <div className="flex-1 h-1.5 rounded-full bg-slate-200/60 dark:bg-white/10 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-indigo-500/80 via-sky-400 to-indigo-500 transition-all duration-700"
+                      className="h-full rounded-full bg-gradient-to-r from-teal-500/80 via-sky-500 to-emerald-500 transition-all duration-700"
                       style={{ width: `${percent}%` }}
                     />
                   </div>

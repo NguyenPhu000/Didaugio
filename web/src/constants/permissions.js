@@ -39,11 +39,11 @@ export const MODULE_DISPLAY_NAMES = {
 
 export const MODULE_GRADIENTS = {
   [PERMISSION_MODULES.USERS]: "from-blue-500 to-cyan-500",
-  [PERMISSION_MODULES.ROLES]: "from-purple-500 to-pink-500",
+  [PERMISSION_MODULES.ROLES]: "from-amber-500 to-rose-500",
   [PERMISSION_MODULES.PLACES]: "from-green-500 to-emerald-500",
   [PERMISSION_MODULES.BOOKINGS]: "from-yellow-500 to-orange-500",
   [PERMISSION_MODULES.REVIEWS]: "from-pink-500 to-rose-500",
-  [PERMISSION_MODULES.BUSINESS]: "from-indigo-500 to-blue-500",
+  [PERMISSION_MODULES.BUSINESS]: "from-sky-600 to-teal-600",
   [PERMISSION_MODULES.REPORTS]: "from-red-500 to-orange-500",
   [PERMISSION_MODULES.SYSTEM]: "from-slate-500 to-gray-500",
   [PERMISSION_MODULES.CATEGORIES]: "from-teal-500 to-cyan-500",
@@ -59,7 +59,7 @@ export const ROLE_ICONS = {
 };
 
 export const ROLE_COLORS = {
-  super_admin: "from-purple-500 to-pink-500",
+  super_admin: "from-slate-900 to-slate-700",
   admin: "from-blue-500 to-cyan-500",
   business: "from-green-500 to-emerald-500",
   staff: "from-yellow-500 to-orange-500",

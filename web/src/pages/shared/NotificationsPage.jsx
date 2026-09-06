@@ -449,7 +449,7 @@ export const NotificationsPage = () => {
                                 type="button"
                                 onClick={(e) => handleQuickMarkRead(e, notification.id)}
                                 title="Đánh dấu đã đọc"
-                                className="hidden group-hover:flex h-7 px-2.5 items-center gap-1 rounded-full bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-emerald-950 dark:hover:text-emerald-300 text-xs font-medium transition-colors"
+                                className="hidden group-hover:flex h-7 px-2.5 items-center gap-1 rounded-full bg-muted hover:bg-emerald-50 text-muted-foreground hover:text-emerald-800 dark:bg-muted dark:text-muted-foreground dark:hover:bg-emerald-950 dark:hover:text-emerald-300 text-xs font-medium transition-colors"
                               >
                                 <Check className="h-3 w-3" />
                                 <span>Đã đọc</span>

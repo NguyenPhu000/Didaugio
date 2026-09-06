@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import {
   ExternalLink,
+  FileSignature,
   FileText,
   ImageIcon,
   Loader2,
@@ -565,6 +566,45 @@ const BusinessReviewApproveModal = ({
                             raw={certSource}
                           />
                         )}
+                        <div className="flex flex-col border border-black bg-white rounded-none p-4 justify-between space-y-3">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="font-mono text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5">
+                                <FileSignature className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                                {t("business.profile.contract", "Hợp đồng & Chữ ký")}
+                              </p>
+                              <span
+                                className={cn(
+                                  "font-mono text-[10px] uppercase px-1.5 py-0.5 border font-bold",
+                                  detail?.contractSigned
+                                    ? "bg-emerald-50 text-emerald-800 border-emerald-500"
+                                    : "bg-amber-50 text-amber-800 border-amber-500"
+                                )}
+                              >
+                                {detail?.contractSigned
+                                  ? t("business.profile.signed", "Bên A đã ký")
+                                  : t("business.profile.unsigned", "Bên A chưa ký")}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {detail?.contractSigned
+                                ? (detail.contractSignedAt
+                                    ? `Đã ký: ${new Date(detail.contractSignedAt).toLocaleString(i18n.language === "vi" ? "vi-VN" : "en-US")}`
+                                    : "Đã ký điện tử xác thực")
+                                : "Chờ doanh nghiệp hoàn tất ký xác thực"}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full rounded-none border-black font-mono text-[10px] uppercase gap-1.5 cursor-pointer bg-muted/20 hover:bg-muted"
+                            onClick={() => setPreviewPdfOpen(true)}
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                            {t("business.documents.contractPreview", "Thẩm định chữ ký PDF")}
+                          </Button>
+                        </div>
                       </div>
                 </div>
 
@@ -593,20 +633,39 @@ const BusinessReviewApproveModal = ({
                       </p>
                     </div>
 
-                    <label className="flex cursor-pointer items-start gap-3 border border-black bg-white p-4 hover:bg-muted/40 rounded-none">
-                      <Checkbox
-                        checked={acknowledged}
-                        onCheckedChange={(c) => setAcknowledged(Boolean(c))}
-                        className="mt-0.5"
-                        id="ack-compare"
-                      />
-                      <span className="text-sm leading-relaxed">
-                        <span className="font-bold text-foreground">
-                          {t("business.approveModal.confirmApprove")}
-                        </span>{" "}
-                        {t("business.detailModal.confirmCheckDocuments") || "Xác nhận thông tin hồ sơ doanh nghiệp đã khớp với các giấy tờ đính kèm."}
-                      </span>
-                    </label>
+                    <div className="border border-black bg-white p-4 space-y-2 rounded-none">
+                      <label className="flex cursor-pointer items-start gap-3 hover:bg-muted/40">
+                        <Checkbox
+                          checked={acknowledged}
+                          onCheckedChange={(c) => setAcknowledged(Boolean(c))}
+                          className="mt-0.5"
+                          id="ack-compare"
+                        />
+                        <span className="text-sm leading-relaxed">
+                          <span className="font-bold text-foreground">
+                            {t("business.approveModal.confirmApprove")}
+                          </span>{" "}
+                          {t("business.detailModal.confirmCheckDocuments") || "Xác nhận thông tin hồ sơ doanh nghiệp đã khớp với các giấy tờ đính kèm."}
+                        </span>
+                      </label>
+                      <div className="flex items-center justify-between pt-2 border-t border-dashed border-border/60 text-xs">
+                        <span className="text-muted-foreground text-[11px]">
+                          {acknowledged
+                            ? "✓ Đã bật xem trước con dấu chữ ký phê duyệt Bên B trên PDF"
+                            : "Tích chọn xác nhận để xem trước con dấu chữ ký Bên B"}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 font-mono text-[11px] uppercase text-primary hover:underline gap-1 cursor-pointer"
+                          onClick={() => setPreviewPdfOpen(true)}
+                        >
+                          <FileSignature className="h-3 w-3" />
+                          {t("business.documents.contractPreview", "Xem trước chữ ký hợp đồng")}
+                        </Button>
+                      </div>
+                    </div>
                   </>
                 ) : (
                   <div className="space-y-2 border border-red-500 bg-red-50/20 p-4 rounded-none">
@@ -698,10 +757,29 @@ const BusinessReviewApproveModal = ({
         <DialogContent className="max-w-4xl p-0 overflow-hidden flex flex-col gap-0 rounded-none border-2 border-black sm:rounded-none max-h-[90vh]">
           <div className="shrink-0 border-b-2 border-black bg-[#F4F4F4] px-5 py-4 text-left">
             <DialogHeader className="space-y-1">
-              <DialogTitle className="flex items-center gap-2 font-black uppercase tracking-tight text-base">
-                <FileText className="h-5 w-5 shrink-0" aria-hidden="true" />
-                {t("business.documents.contractPreview")}
+              <DialogTitle className="flex items-center justify-between gap-2 font-black uppercase tracking-tight text-base">
+                <span className="flex items-center gap-2">
+                  <FileSignature className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  {t("business.documents.contractPreview", "Hợp đồng thẩm định & Chữ ký điện tử")}
+                </span>
+                <span
+                  className={cn(
+                    "font-mono text-[10px] uppercase font-bold px-2 py-0.5 border",
+                    acknowledged
+                      ? "bg-emerald-100 text-emerald-950 border-emerald-500"
+                      : "bg-amber-100 text-amber-950 border-amber-500"
+                  )}
+                >
+                  {acknowledged
+                    ? "Bên B: Xem trước chữ ký duyệt"
+                    : "Bên B: Chờ thẩm định & phê duyệt"}
+                </span>
               </DialogTitle>
+              <DialogDescription className="font-mono text-[11px] uppercase text-muted-foreground">
+                {acknowledged
+                  ? "Đang hiển thị chữ ký điện tử phê duyệt dự kiến của Ban Quản Trị"
+                  : "Chữ ký Ban Quản Trị sẽ được đóng tự động sau khi phê duyệt hồ sơ"}
+              </DialogDescription>
             </DialogHeader>
           </div>
           <div className="flex-1 overflow-y-auto p-5 bg-white min-h-[60vh] flex flex-col justify-stretch">

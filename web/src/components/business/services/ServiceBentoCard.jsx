@@ -22,7 +22,7 @@ export const ServiceBentoCard = memo(({ svc, onEdit, onDelete }) => {
     <div className="p-4 sm:p-5 rounded-[24px] bg-white dark:bg-card border border-slate-200/80 dark:border-border/80 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div className="flex items-start gap-3.5 min-w-0 flex-1">
         {/* Service Type Icon */}
-        <div className="h-14 w-14 rounded-2xl border border-slate-200/70 dark:border-border/60 bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/40 dark:to-indigo-950/30 shrink-0 flex items-center justify-center text-violet-600 dark:text-violet-400 shadow-xs">
+        <div className="h-14 w-14 rounded-2xl border border-slate-200/70 dark:border-border/60 bg-gradient-to-br from-teal-50 to-sky-50 dark:from-teal-950/40 dark:to-sky-950/30 shrink-0 flex items-center justify-center text-teal-700 dark:text-teal-300 shadow-xs">
           <IconComponent className="h-6 w-6" />
         </div>
 

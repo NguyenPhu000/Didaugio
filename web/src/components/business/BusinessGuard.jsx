@@ -151,7 +151,7 @@ const BusinessGuard = ({ children, allowWhenPendingOrRejected = false }) => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black" />
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-black/20 border-t-black" />
       </div>
     );
   }

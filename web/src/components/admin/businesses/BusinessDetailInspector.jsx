@@ -278,17 +278,17 @@ export const BusinessDetailInspector = memo(
                 <button
                   type="button"
                   onClick={() => handleSuspend(selectedBusiness.id)}
-                  className="px-4 py-2.5 rounded-full bg-[#F4F2EC] hover:bg-amber-50 hover:text-amber-900 text-slate-800 font-semibold text-xs transition-all flex items-center gap-1.5 border border-black/[0.04] cursor-pointer"
+                  className="px-4 py-2.5 rounded-full bg-[#F4F2EC] hover:bg-amber-100/70 text-amber-950 font-semibold text-xs transition-all flex items-center gap-1.5 border border-amber-900/10 cursor-pointer"
                 >
-                  <Pause className="h-3.5 w-3.5 text-amber-600" />
+                  <Pause className="h-3.5 w-3.5 text-amber-700" />
                   Tạm ngưng hoạt động
                 </button>
                 <button
                   type="button"
                   onClick={() => handleTerminate(selectedBusiness.id)}
-                  className="px-4 py-2.5 rounded-full bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 font-semibold text-xs transition-all flex items-center gap-1.5 border border-black/[0.06] cursor-pointer"
+                  className="px-4 py-2.5 rounded-full bg-white hover:bg-rose-50 text-rose-900 font-semibold text-xs transition-all flex items-center gap-1.5 border border-rose-200/60 cursor-pointer"
                 >
-                  <XCircle className="h-3.5 w-3.5 text-rose-500" />
+                  <XCircle className="h-3.5 w-3.5 text-rose-600" />
                   Chấm dứt hợp đồng
                 </button>
               </>
@@ -307,7 +307,7 @@ export const BusinessDetailInspector = memo(
                 <button
                   type="button"
                   onClick={() => handleTerminate(selectedBusiness.id)}
-                  className="px-4 py-2.5 rounded-full bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 font-semibold text-xs transition-all flex items-center gap-1.5 border border-black/[0.06] cursor-pointer"
+                  className="px-4 py-2.5 rounded-full bg-white hover:bg-rose-50 text-rose-900 font-semibold text-xs transition-all flex items-center gap-1.5 border border-rose-200/60 cursor-pointer"
                 >
                   <XCircle className="h-3.5 w-3.5 text-rose-500" />
                   Chấm dứt hợp đồng

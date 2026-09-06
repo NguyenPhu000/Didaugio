@@ -60,14 +60,7 @@ export const PayoutQueueTable = memo(
         {STATUS_TABS.map((tab) => (
           <TabsContent key={tab.value} value={tab.value} className="mt-4">
             <div className="rounded-3xl border border-black/[0.04] bg-white shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden">
-              {payoutsLoading ? (
-                <div className="py-24 text-center space-y-3">
-                  <div className="w-9 h-9 border-3 border-slate-950 border-t-[#F3E600] rounded-full animate-spin mx-auto" />
-                  <span className="text-xs font-semibold text-slate-500">
-                    Đang tải danh sách rút tiền...
-                  </span>
-                </div>
-              ) : payouts.length === 0 ? (
+              {!payoutsLoading && payouts.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-16 text-slate-400">
                   <DollarSign className="h-10 w-10 text-slate-300 stroke-[1.5]" />
                   <p className="font-bold text-slate-800">
@@ -87,6 +80,7 @@ export const PayoutQueueTable = memo(
                                 payouts.length > 0
                               }
                               onCheckedChange={toggleSelectAll}
+                              disabled={payoutsLoading}
                               className="rounded-md"
                             />
                           </th>
@@ -100,7 +94,27 @@ export const PayoutQueueTable = memo(
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-black/[0.03]">
-                      {payouts.map((p) => {
+                      {payoutsLoading ? (
+                        Array.from({ length: 5 }).map((_, i) => (
+                          <tr key={i} className="animate-pulse">
+                            {activeTab === "pending" && (
+                              <td className="p-4"><div className="h-4 w-4 bg-slate-200 rounded" /></td>
+                            )}
+                            <td className="p-4">
+                              <div className="space-y-1.5">
+                                <div className="h-3.5 w-32 bg-slate-200 rounded" />
+                                <div className="h-2.5 w-20 bg-slate-200 rounded" />
+                              </div>
+                            </td>
+                            <td className="p-4 text-right"><div className="h-4 w-24 bg-slate-200 rounded ml-auto" /></td>
+                            <td className="p-4"><div className="h-3.5 w-28 bg-slate-200 rounded" /></td>
+                            <td className="p-4"><div className="h-5 w-20 bg-slate-200 rounded-full" /></td>
+                            <td className="p-4"><div className="h-3.5 w-24 bg-slate-200 rounded" /></td>
+                            <td className="p-4 text-right"><div className="h-8 w-20 bg-slate-200 rounded-full ml-auto" /></td>
+                          </tr>
+                        ))
+                      ) : (
+                        payouts.map((p) => {
                         const statusInfo =
                           STATUS_BADGE_MAP[p.status] || STATUS_BADGE_MAP.pending;
                         const isProcessing = reviewPending || transferPending;
@@ -202,7 +216,7 @@ export const PayoutQueueTable = memo(
                             </td>
                           </tr>
                         );
-                      })}
+                      }) )}
                     </tbody>
                   </table>
                 </div>

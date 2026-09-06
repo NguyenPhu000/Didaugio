@@ -70,7 +70,7 @@ export default function AiRollbackDialog({
             {errorMessage && (
               <p
                 role="alert"
-                className="border-l-4 border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                className="border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive rounded-sm"
               >
                 {errorMessage}
               </p>

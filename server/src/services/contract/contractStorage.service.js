@@ -21,6 +21,7 @@ import {
 } from "./eSignature.service.js";
 import logger from "../../config/logger.js";
 import { resolveSensitiveStorageDir } from "../document/sensitiveStoragePath.service.js";
+import { decryptField, isEncrypted } from "../../utils/fieldEncryption.js";
 
 const STORAGE_DIR = resolveSensitiveStorageDir();
 
@@ -215,19 +216,80 @@ export const signContract = async (businessId, signatureBase64, signerMetadata =
     throw err;
   }
 
-  // 1. Đọc và decrypt PDF gốc
-  await ensureStorageDir();
-  const encryptedBuffer = await fs.readFile(getContractPath(business.contractPdfPath));
-  const originalPdf = decryptFile(
-    encryptedBuffer,
-    business.contractPdfIv,
-    business.contractPdfAuthTag,
-  );
+  // 1. Tái tạo PDF hoàn chỉnh với thông tin chữ ký Bên A chuẩn xác
+  const signedAt = signerMetadata.signedAt
+    ? new Date(signerMetadata.signedAt)
+    : new Date();
 
-  // 2. Embed chữ ký vào PDF
-  const signedPdf = await embedSignatureInPdf(originalPdf, signatureBase64);
+  let signedPdf;
+  try {
+    const rawBusiness = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: {
+        businessName: true,
+        businessType: true,
+        taxCode: true,
+        idCardNumber: true,
+        commissionRate: true,
+        approvedAt: true,
+        status: true,
+        owner: {
+          select: {
+            email: true,
+            profile: { select: { fullName: true, address: true, phone: true } },
+          },
+        },
+      },
+    });
 
-  // 3. Re-encrypt PDF đã ký
+    const getDecrypted = (val) => {
+      if (!val) return "";
+      if (isEncrypted(val)) {
+        try {
+          return decryptField(val);
+        } catch {
+          return "";
+        }
+      }
+      return val;
+    };
+
+    const decTaxCode = getDecrypted(rawBusiness?.taxCode);
+    const decIdCard = getDecrypted(rawBusiness?.idCardNumber);
+
+    signedPdf = await generateContractPdf({
+      businessId,
+      businessName: rawBusiness?.businessName || `Business #${businessId}`,
+      businessType: rawBusiness?.businessType,
+      taxCode: decTaxCode || "",
+      address: signerMetadata.address || rawBusiness?.owner?.profile?.address || "",
+      commissionRate: rawBusiness?.commissionRate ? Number(rawBusiness.commissionRate) : 10,
+      ownerName: signerMetadata.fullName || rawBusiness?.owner?.profile?.fullName || "",
+      idCardNumberMasked: decIdCard || "",
+      idCardIssuedDate: signerMetadata.idCardIssuedDate || "",
+      idCardIssuedPlace: signerMetadata.idCardIssuedPlace || "",
+      phone: signerMetadata.phone || rawBusiness?.owner?.profile?.phone || "",
+      email: signerMetadata.email || rawBusiness?.owner?.email || "",
+      signatureImage: signatureBase64,
+      contractSigned: true,
+      contractSignedAt: signedAt,
+      signerIp: signerMetadata.ip || null,
+      approvedAt: rawBusiness?.approvedAt || null,
+      status: rawBusiness?.status || null,
+    });
+  } catch (err) {
+    logger.warn(`Lỗi tái tạo PDF trong signContract, fallback sang embed: ${err.message}`);
+    await ensureStorageDir();
+    const encryptedBuffer = await fs.readFile(getContractPath(business.contractPdfPath));
+    const originalPdf = decryptFile(
+      encryptedBuffer,
+      business.contractPdfIv,
+      business.contractPdfAuthTag,
+    );
+    signedPdf = await embedSignatureInPdf(originalPdf, signatureBase64);
+  }
+
+  // 2. Re-encrypt PDF đã ký
   const checksum = computeChecksum(signedPdf);
   const { encrypted, iv, authTag } = encryptFile(signedPdf);
 
@@ -244,10 +306,6 @@ export const signContract = async (businessId, signatureBase64, signerMetadata =
     .digest("hex");
 
   // 6. Update Business record
-  const signedAt = signerMetadata.signedAt
-    ? new Date(signerMetadata.signedAt)
-    : new Date();
-
   const updated = await finalizeContractWrite({
     tempPath,
     finalPath: filePath,
@@ -264,6 +322,7 @@ export const signContract = async (businessId, signatureBase64, signerMetadata =
           contractPdfChecksum: checksum,
           signerMetadata: {
             signatureHash,
+            signatureData: signatureBase64,
             signedAt: signedAt.toISOString(),
             ip: signerMetadata.ip || null,
             userAgent: signerMetadata.userAgent || null,
@@ -388,6 +447,8 @@ export const signContractWithHash = async (businessId, signatureBase64, req) => 
           contractPdfChecksum: checksum,
           signerMetadata: {
             hash: signatureHash,
+            signatureData: signatureBase64,
+            signedAt: signedAt.toISOString(),
             ip: signerMeta.ip,
             userAgent: signerMeta.userAgent,
             timezone: signerMeta.timezone,

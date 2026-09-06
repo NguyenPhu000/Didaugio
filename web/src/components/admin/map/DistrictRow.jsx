@@ -6,7 +6,7 @@ const DistrictRow = ({ name, count, total, color, active, onClick }) => {
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-4 py-3 border-b border-black/[0.03] text-left transition-all duration-200 ${
         active
-          ? "bg-[#FFFDE6] border-l-4 border-l-[#F3E600] text-slate-950 shadow-2xs"
+          ? "bg-[#FFFDE6] ring-1 ring-inset ring-[#F3E600] text-slate-950 shadow-2xs font-semibold"
           : "hover:bg-[#FAF9F5] text-slate-700"
       }`}
     >

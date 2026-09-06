@@ -21,20 +21,7 @@ export const AuditLogTableView = memo(
   }) => {
     const { t } = useTranslation();
 
-    if (loading) {
-      return (
-        <section className="bg-white rounded-3xl border border-black/[0.04] shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden">
-          <div className="py-24 text-center space-y-3">
-            <div className="w-9 h-9 border-3 border-slate-950 border-t-[#F3E600] rounded-full animate-spin mx-auto" />
-            <span className="text-xs font-semibold text-slate-500">
-              {t("auditLogs.loadingData")}
-            </span>
-          </div>
-        </section>
-      );
-    }
-
-    if (logs.length === 0) {
+    if (!loading && logs.length === 0) {
       return (
         <section className="bg-white rounded-3xl border border-black/[0.04] shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden">
           <div className="py-20 text-center text-slate-400 p-6">
@@ -84,7 +71,30 @@ export const AuditLogTableView = memo(
               </tr>
             </thead>
             <tbody className="divide-y divide-black/[0.03]">
-              {logs.map((log, index) => (
+              {loading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="p-4 hidden sm:table-cell"><div className="h-4 w-6 bg-slate-200 rounded" /></td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-slate-200 shrink-0" />
+                        <div className="space-y-1">
+                          <div className="h-3.5 w-28 bg-slate-200 rounded" />
+                          <div className="h-2.5 w-20 bg-slate-200 rounded" />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4 hidden md:table-cell"><div className="h-5 w-16 bg-slate-200 rounded-full" /></td>
+                    <td className="p-4"><div className="h-5 w-20 bg-slate-200 rounded-full" /></td>
+                    <td className="p-4 hidden sm:table-cell"><div className="h-5 w-20 bg-slate-200 rounded-md" /></td>
+                    <td className="p-4"><div className="h-3.5 w-36 bg-slate-200 rounded" /></td>
+                    <td className="p-4 hidden lg:table-cell"><div className="h-3.5 w-20 bg-slate-200 rounded" /></td>
+                    <td className="p-4 hidden md:table-cell"><div className="h-3.5 w-24 bg-slate-200 rounded" /></td>
+                    <td className="p-4 text-center"><div className="h-8 w-8 bg-slate-200 rounded-full mx-auto" /></td>
+                  </tr>
+                ))
+              ) : (
+                logs.map((log, index) => (
                 <tr
                   key={log.id}
                   className="hover:bg-[#FAF9F5] group transition-colors"
@@ -167,7 +177,7 @@ export const AuditLogTableView = memo(
                     </button>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

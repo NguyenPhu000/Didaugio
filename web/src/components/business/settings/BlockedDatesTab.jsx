@@ -122,7 +122,7 @@ const BlockedDatesTab = () => {
                   <button
                     type="button"
                     onClick={() => handleRemove(item.id)}
-                    className="rounded-full p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
+                    className="rounded-full p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0 cursor-pointer"
                     title="Mở lại nhận khách"
                   >
                     <Trash2 className="h-4 w-4" />

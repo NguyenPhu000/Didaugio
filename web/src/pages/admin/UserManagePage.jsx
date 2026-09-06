@@ -115,7 +115,16 @@ const UserManagePage = () => {
       </header>
 
       {/* KPI Stats Strip */}
-      {!loading && (
+      {loading ? (
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-28 rounded-2xl bg-white border border-black/[0.04] p-4 animate-pulse">
+              <div className="h-3.5 w-24 bg-slate-200 rounded-md mb-3" />
+              <div className="h-7 w-16 bg-slate-200 rounded-lg" />
+            </div>
+          ))}
+        </section>
+      ) : (
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <TimStatsCard
             title={t("users.stats.total")}

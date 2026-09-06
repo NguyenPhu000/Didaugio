@@ -106,10 +106,6 @@ export default function RoleManagePage() {
 
   return (
     <div className="min-h-screen p-6 sm:p-8 bg-background relative text-foreground">
-      {/* T.I.M Background grid with dots & lines */}
-      <div className="absolute inset-0 bg-grid-dots opacity-60 pointer-events-none" />
-      <div className="absolute inset-0 bg-grid-lines opacity-20 pointer-events-none" />
-
       <div className="relative z-10 space-y-6 max-w-[1600px] mx-auto">
         {/* T.I.M Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b-2 border-black pb-6">
@@ -145,7 +141,16 @@ export default function RoleManagePage() {
         </div>
 
         {/* T.I.M KPI Metrics Cards */}
-        {!loading && (
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-28 bg-white border border-black p-4 animate-pulse">
+                <div className="h-4 w-20 bg-gray-200 mb-4" />
+                <div className="h-8 w-16 bg-gray-200" />
+              </div>
+            ))}
+          </div>
+        ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <TimStatsCard
               title={t("roles.stats.count") || "SỐ VAI TRÒ"}

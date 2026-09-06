@@ -4,6 +4,7 @@ import { useDashboardStats } from "@/hooks/queries/useDashboardQuery";
 import { useCategories } from "@/hooks/queries/useCategoryQueries";
 import { usePlaces } from "@/hooks/queries/usePlaceQueries";
 import { useTranslation } from "react-i18next";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Admin components
 import SectionCards from "@/components/admin/SectionCards";
@@ -56,10 +57,51 @@ const DashboardPage = () => {
 
   if (loading) {
     return (
-      <div className="space-y-6 max-w-[1560px] mx-auto py-6">
-        <div className="py-28 text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mx-auto" />
-          <p className="text-xs font-semibold text-slate-500">Đang tải dữ liệu tổng quan...</p>
+      <div className="space-y-7 max-w-[1560px] mx-auto text-slate-900 antialiased" aria-busy="true">
+        {/* Header Skeleton */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-black/[0.04]">
+          <div className="space-y-2">
+            <Skeleton className="h-3.5 w-32 rounded-md" />
+            <Skeleton className="h-8 w-64 rounded-xl" />
+            <Skeleton className="h-3.5 w-48 rounded-md" />
+          </div>
+          <Skeleton className="h-10 w-full sm:w-72 rounded-full" />
+        </div>
+
+        {/* Stats Cards Skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-32 rounded-3xl" />
+          ))}
+        </div>
+
+        {/* Interactive Chart Skeleton */}
+        <div className="rounded-2xl sm:rounded-3xl bg-white border border-black/[0.04] p-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-40 rounded-lg" />
+              <Skeleton className="h-3 w-56 rounded-md" />
+            </div>
+            <Skeleton className="h-9 w-32 rounded-xl" />
+          </div>
+          <Skeleton className="h-64 w-full rounded-2xl" />
+        </div>
+
+        {/* Monitoring 3-col Skeleton */}
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-56 rounded-3xl" />
+          ))}
+        </div>
+
+        {/* Recent Places Table Skeleton */}
+        <div className="rounded-2xl sm:rounded-3xl border border-black/[0.04] bg-white p-6 space-y-4">
+          <Skeleton className="h-5 w-48 rounded-lg" />
+          <div className="space-y-2">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full rounded-xl" />
+            ))}
+          </div>
         </div>
       </div>
     );

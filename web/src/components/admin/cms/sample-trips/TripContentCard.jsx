@@ -19,18 +19,18 @@ export function TripContentCard({ item, onEdit, onManageDestinations, onDelete }
     destinations.map((destination) => getPlaceImage(destination?.place)).find(Boolean);
 
   return (
-    <Card className="group overflow-hidden border-violet-100 transition-all duration-200 hover:border-violet-200 hover:shadow-lg">
+    <Card className="group overflow-hidden border-border/70 transition-all duration-200 hover:border-primary/40 hover:shadow-md">
       <CardContent className="p-4">
         <div className="flex items-start gap-4">
-          <div className="relative h-20 w-24 shrink-0 overflow-hidden rounded-lg bg-violet-50">
+          <div className="relative h-20 w-24 shrink-0 overflow-hidden rounded-lg bg-teal-50">
             {previewImage ? (
               <img src={previewImage} alt={item.title} className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center">
-                <Compass className="h-8 w-8 text-violet-400" />
+                <Compass className="h-8 w-8 text-teal-500" />
               </div>
             )}
-            <div className="absolute bottom-1 left-1 rounded bg-white/95 px-1.5 py-0.5 text-[10px] font-bold text-violet-700 shadow-sm">
+            <div className="absolute bottom-1 left-1 rounded bg-white/95 px-1.5 py-0.5 text-[10px] font-bold text-teal-800 shadow-sm">
               {item.totalDays || 1}D
             </div>
           </div>
@@ -38,7 +38,7 @@ export function TripContentCard({ item, onEdit, onManageDestinations, onDelete }
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <h3 className="truncate text-base font-semibold transition-colors group-hover:text-violet-700">
+                <h3 className="truncate text-base font-semibold transition-colors group-hover:text-teal-700">
                   {item.title}
                 </h3>
                 {item.description ? (
@@ -55,7 +55,7 @@ export function TripContentCard({ item, onEdit, onManageDestinations, onDelete }
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-violet-700 hover:text-violet-800"
+                  className="h-8 w-8 text-teal-700 hover:text-teal-800"
                   onClick={() => onManageDestinations(item)}
                   title={t("admin.cms.itineraryDetails")}
                 >

@@ -199,7 +199,7 @@ const BusinessRegisterPage = () => {
     <div className="space-y-4 md:space-y-6 p-4 md:p-6 lg:p-8 min-h-screen">
       {isProfileLoading ? (
         <div className="flex min-h-[50vh] items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-black" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/20 border-t-black" />
         </div>
       ) : (
         <>

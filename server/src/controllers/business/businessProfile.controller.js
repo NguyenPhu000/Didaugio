@@ -266,6 +266,7 @@ export const downloadContract = async (req, res, next) => {
         idCardNumber: true,
         commissionRate: true,
         contractSigned: true,
+        contractSignedAt: true,
         signerMetadata: true,
         approvedAt: true,
         status: true,
@@ -319,16 +320,22 @@ export const downloadContract = async (req, res, next) => {
       phone: rawBusiness.owner?.profile?.phone || "",
       email: rawBusiness.owner?.email || "",
       signatureImage: meta.signatureData || null,
+      contractSignedAt: rawBusiness.contractSignedAt || meta.signedAt || null,
+      signerIp: meta.ip || null,
       approvedAt: adminSignedParam ? (rawBusiness.approvedAt || new Date()) : (rawBusiness.approvedAt || null),
       status: adminSignedParam ? "approved" : (rawBusiness.status || null),
-      contractSigned: rawBusiness.contractSigned,
+      contractSigned: Boolean(rawBusiness.contractSigned),
+      adminSigned: adminSignedParam,
     };
 
-    // Nếu là admin preview, hoặc chưa có file đĩa mã hóa -> Luôn sinh trực tiếp PDF thời gian thực
-    if (
-      !rawBusiness.contractSigned &&
-      (!rawBusiness.contractPdfPath || adminSignedParam || isAdmin)
-    ) {
+    // Khi admin preview (adminSignedParam = true), hoặc chưa có file đĩa,
+    // hoặc hồ sơ chưa được duyệt chính thức (status !== "approved") -> Luôn sinh trực tiếp PDF thời gian thực
+    const shouldGenerateRealtime =
+      adminSignedParam ||
+      !rawBusiness.contractPdfPath ||
+      rawBusiness.status !== "approved";
+
+    if (shouldGenerateRealtime) {
       const pdfBuffer = await contractStorageService.generateContractPdf(businessData);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", "inline");
@@ -343,7 +350,6 @@ export const downloadContract = async (req, res, next) => {
       res.setHeader("Content-Length", buffer.length);
       return res.send(buffer);
     } catch (error) {
-      if (rawBusiness.contractSigned) throw error;
       // Fallback sinh PDF thời gian thực nếu đọc file mã hóa gặp sự cố
       const pdfBuffer = await contractStorageService.generateContractPdf(businessData);
       res.setHeader("Content-Type", "application/pdf");

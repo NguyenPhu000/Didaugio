@@ -292,85 +292,334 @@ export const generateContractPdf = async (businessData) => {
   const sigY = y;
   ensureSpace(120);
 
+  const colW = (W - margin * 2 - 20) / 2;
+  const boxW = Math.min(230, colW);
+  const boxH = 72;
+  const xA = margin + 5;
+  const xB = margin + colW + 15;
+
   // --- CỘT BÊN A (DOANH NGHIỆP) ---
-  let yA = sigY;
-  page.drawText("ĐẠI DIỆN BÊN A (DOANH NGHIỆP)", { x: margin + 10, y: yA, size: 9.5, font: fontBoldEmbedded, color: rgb(0.1, 0.1, 0.1) });
-  yA -= 14;
+  page.drawText(safeStr("ĐẠI DIỆN BÊN A (DOANH NGHIỆP)"), {
+    x: xA,
+    y: sigY,
+    size: 9.5,
+    font: fontBoldEmbedded,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+
+  const topA = sigY - 12;
+  const centerXA = xA + boxW / 2;
+  const isSignedA = Boolean(
+    businessData.contractSigned ||
+    businessData.signatureImage ||
+    businessData.contractSignedAt
+  );
+
+  let yA = topA;
+
+  const drawSignedStampA = () => {
+    page.drawRectangle({
+      x: xA,
+      y: topA - boxH,
+      width: boxW,
+      height: boxH,
+      borderColor: rgb(0.15, 0.45, 0.85),
+      borderWidth: 1.2,
+      color: rgb(0.96, 0.98, 1.0),
+      dashArray: [4, 2],
+    });
+
+    const txtTitle = safeStr("CHỨNG THƯ KÝ ĐIỆN TỬ BÊN A");
+    const wTitle = fontBoldEmbedded.widthOfTextAtSize(txtTitle, 7);
+    page.drawText(txtTitle, {
+      x: centerXA - wTitle / 2,
+      y: topA - 14,
+      size: 7,
+      font: fontBoldEmbedded,
+      color: rgb(0.12, 0.4, 0.8),
+    });
+
+    const txtSigner = safeStr(businessData.ownerName || businessData.businessName || "Đại diện Bên A");
+    const wSigner = fontBoldEmbedded.widthOfTextAtSize(txtSigner, 8.5);
+    page.drawText(txtSigner, {
+      x: centerXA - wSigner / 2,
+      y: topA - 28,
+      size: 8.5,
+      font: fontBoldEmbedded,
+      color: rgb(0.08, 0.12, 0.2),
+    });
+
+    const signDate = businessData.contractSignedAt ? new Date(businessData.contractSignedAt) : new Date();
+    const txtDate = safeStr(`Thời gian ký: ${signDate.toLocaleDateString("vi-VN")} ${signDate.toLocaleTimeString("vi-VN")}`);
+    const wDate = fontNormal.widthOfTextAtSize(txtDate, 6.8);
+    page.drawText(txtDate, {
+      x: centerXA - wDate / 2,
+      y: topA - 42,
+      size: 6.8,
+      font: fontNormal,
+      color: rgb(0.35, 0.4, 0.5),
+    });
+
+    const ipStr = businessData.signerIp ? `IP: ${businessData.signerIp}` : "Xác thực OTP";
+    const txtMeta = safeStr(`Xác thực điện tử: HỢP LỆ (${ipStr})`);
+    const wMeta = fontNormal.widthOfTextAtSize(txtMeta, 6.5);
+    page.drawText(txtMeta, {
+      x: centerXA - wMeta / 2,
+      y: topA - 56,
+      size: 6.5,
+      font: fontNormal,
+      color: rgb(0.15, 0.45, 0.85),
+    });
+
+    yA = topA - boxH;
+  };
 
   if (businessData.signatureImage) {
     try {
       const base64Data = businessData.signatureImage.replace(/^data:image\/\w+;base64,/, "");
       const sigBytes = Buffer.from(base64Data, "base64");
       const sigImage = await pdfDoc.embedPng(sigBytes);
-      const maxW = 160;
-      const maxH = 60;
       const ratio = sigImage.width / sigImage.height;
-      const sigW = Math.min(maxW, sigImage.width);
-      const sigH = Math.min(maxH, sigW / ratio);
-      page.drawImage(sigImage, { x: margin + 10, y: yA - sigH, width: sigW, height: sigH });
-      yA -= (sigH + 8);
+
+      // Trường hợp 1: Tem chữ ký điện tử OTP (canvas 400x150, ratio ~ 2.67)
+      if (ratio > 2.0) {
+        const sigW = boxW;
+        const sigH = boxH;
+        page.drawImage(sigImage, {
+          x: xA,
+          y: topA - boxH,
+          width: sigW,
+          height: sigH,
+        });
+        yA = topA - boxH;
+      } else {
+        // Trường hợp 2: Chữ ký tay tự do canvas
+        const maxW = boxW - 20;
+        const maxH = 40;
+        const sigW = Math.min(maxW, sigImage.width);
+        const sigH = Math.min(maxH, sigW / ratio);
+
+        page.drawRectangle({
+          x: xA,
+          y: topA - boxH,
+          width: boxW,
+          height: boxH,
+          borderColor: rgb(0.15, 0.45, 0.85),
+          borderWidth: 1.2,
+          color: rgb(0.97, 0.98, 1.0),
+          dashArray: [4, 2],
+        });
+
+        page.drawImage(sigImage, {
+          x: xA + (boxW - sigW) / 2,
+          y: topA - sigH - 6,
+          width: sigW,
+          height: sigH,
+        });
+
+        const txtAOwner = safeStr(businessData.ownerName || businessData.businessName || "Đại diện Bên A");
+        const wAOwner = fontBoldEmbedded.widthOfTextAtSize(txtAOwner, 7.5);
+        page.drawText(txtAOwner, {
+          x: centerXA - wAOwner / 2,
+          y: topA - sigH - 17,
+          size: 7.5,
+          font: fontBoldEmbedded,
+          color: rgb(0.1, 0.15, 0.25),
+        });
+
+        const signDateA = businessData.contractSignedAt ? new Date(businessData.contractSignedAt) : new Date();
+        const txtADate = safeStr(`Đã ký: ${signDateA.toLocaleDateString("vi-VN")} ${signDateA.toLocaleTimeString("vi-VN")}`);
+        const wADate = fontNormal.widthOfTextAtSize(txtADate, 6.5);
+        page.drawText(txtADate, {
+          x: centerXA - wADate / 2,
+          y: topA - sigH - 27,
+          size: 6.5,
+          font: fontNormal,
+          color: rgb(0.4, 0.45, 0.55),
+        });
+
+        yA = topA - boxH;
+      }
     } catch {
-      page.drawText("[Lỗi hình ảnh chữ ký]", { x: margin + 10, y: yA, size: 9, font: fontNormal, color: rgb(0.5, 0.5, 0.5) });
-      yA -= 14;
+      drawSignedStampA();
     }
+  } else if (isSignedA) {
+    drawSignedStampA();
   } else {
-    page.drawText("CHƯA KÝ", { x: margin + 10, y: yA - 20, size: 12, font: fontBoldEmbedded, color: rgb(0.6, 0.6, 0.6) });
-    yA -= 40;
-  }
-
-  page.drawText(`Họ tên: ${businessData.ownerName || "—"}`, { x: margin + 10, y: yA, size: 9, font: fontNormal, color: rgb(0.3, 0.35, 0.45) });
-  yA -= 13;
-  if (businessData.signerIp) {
-    page.drawText(`IP ký: ${businessData.signerIp}`, { x: margin + 10, y: yA, size: 8, font: fontNormal, color: rgb(0.5, 0.5, 0.5) });
-    yA -= 12;
-  }
-
-  // --- CỘT BÊN B (NỀN TẢNG - ĐÃ DUYỆT) ---
-  let yB = sigY;
-  page.drawText("ĐẠI DIỆN BÊN B (NỀN TẢNG)", { x: W / 2 + 10, y: yB, size: 9.5, font: fontBoldEmbedded, color: rgb(0.1, 0.1, 0.1) });
-  yB -= 14;
-
-  const isApproved = businessData.approvedAt || businessData.status === "approved" || businessData.contractSigned;
-  if (isApproved) {
-    const boxW = 160;
-    const boxH = 60;
-    
     page.drawRectangle({
-      x: W / 2 + 10,
-      y: yB - boxH,
+      x: xA,
+      y: topA - boxH,
       width: boxW,
       height: boxH,
-      borderColor: rgb(0.1, 0.6, 0.3), // green-600
-      borderWidth: 1.5,
-      color: rgb(0.96, 0.99, 0.97), // light green bg
-      opacity: 1,
+      borderColor: rgb(0.7, 0.73, 0.78),
+      borderWidth: 1,
+      color: rgb(0.98, 0.98, 0.99),
       dashArray: [4, 3],
+    });
+
+    const txtUnsigned = safeStr("CHƯA KÝ ĐIỆN TỬ");
+    const wUnsigned = fontBoldEmbedded.widthOfTextAtSize(txtUnsigned, 9);
+    page.drawText(txtUnsigned, {
+      x: centerXA - wUnsigned / 2,
+      y: topA - 26,
+      size: 9,
+      font: fontBoldEmbedded,
+      color: rgb(0.55, 0.6, 0.65),
+    });
+
+    const txtSub1 = safeStr("(Bên A cần hoàn tất ký xác thực");
+    const wSub1 = fontNormal.widthOfTextAtSize(txtSub1, 7);
+    page.drawText(txtSub1, {
+      x: centerXA - wSub1 / 2,
+      y: topA - 42,
+      size: 7,
+      font: fontNormal,
+      color: rgb(0.55, 0.6, 0.65),
+    });
+
+    const txtSub2 = safeStr("để gửi thẩm định hồ sơ)");
+    const wSub2 = fontNormal.widthOfTextAtSize(txtSub2, 7);
+    page.drawText(txtSub2, {
+      x: centerXA - wSub2 / 2,
+      y: topA - 54,
+      size: 7,
+      font: fontNormal,
+      color: rgb(0.55, 0.6, 0.65),
+    });
+
+    yA = topA - boxH;
+  }
+
+  // --- CỘT BÊN B (NỀN TẢNG / BQT) ---
+  page.drawText(safeStr("ĐẠI DIỆN BÊN B (NỀN TẢNG)"), {
+    x: xB,
+    y: sigY,
+    size: 9.5,
+    font: fontBoldEmbedded,
+    color: rgb(0.1, 0.1, 0.1),
+  });
+
+  const topB = sigY - 12;
+  const centerXB = xB + boxW / 2;
+  const isApproved = Boolean(
+    businessData.approvedAt ||
+    businessData.status === "approved" ||
+    businessData.adminSigned
+  );
+
+  let yB = topB;
+
+  if (isApproved) {
+    const isPreview = Boolean(businessData.adminSigned && !businessData.approvedAt);
+
+    page.drawRectangle({
+      x: xB,
+      y: topB - boxH,
+      width: boxW,
+      height: boxH,
+      borderColor: rgb(0.1, 0.6, 0.3),
+      borderWidth: 1.2,
+      color: rgb(0.96, 0.99, 0.97),
+      dashArray: [4, 2],
     });
 
     const approvalDate = businessData.approvedAt ? new Date(businessData.approvedAt) : new Date();
     const dateText = approvalDate.toLocaleDateString("vi-VN") + " " + approvalDate.toLocaleTimeString("vi-VN");
-    const centerX = W / 2 + 10 + (boxW / 2);
 
-    const txtSig = "CHỮ KÝ ĐIỆN TỬ (DIGITAL SIGNATURE)";
+    const txtSig = safeStr(isPreview ? "CHỮ KÝ ĐIỆN TỬ (XEM TRƯỚC THẨM ĐỊNH)" : "CHỮ KÝ ĐIỆN TỬ (DIGITAL SIGNATURE)");
     const wSig = fontBoldEmbedded.widthOfTextAtSize(txtSig, 6.5);
-    page.drawText(txtSig, { x: centerX - (wSig / 2), y: yB - 13, size: 6.5, font: fontBoldEmbedded, color: rgb(0.1, 0.6, 0.3) });
+    page.drawText(txtSig, {
+      x: centerXB - wSig / 2,
+      y: topB - 14,
+      size: 6.5,
+      font: fontBoldEmbedded,
+      color: rgb(0.1, 0.6, 0.3),
+    });
 
-    const txtOrg = "TRƯỜNG ĐẠI HỌC TÂY ĐÔ";
-    const wOrg = fontBoldEmbedded.widthOfTextAtSize(txtOrg, 8);
-    page.drawText(txtOrg, { x: centerX - (wOrg / 2), y: yB - 28, size: 8, font: fontBoldEmbedded, color: rgb(0.07, 0.07, 0.07) });
+    const txtOrg = safeStr(PLATFORM.nameFull || "TRƯỜNG ĐẠI HỌC TÂY ĐÔ");
+    const wOrg = fontBoldEmbedded.widthOfTextAtSize(txtOrg, 8.5);
+    page.drawText(txtOrg, {
+      x: centerXB - wOrg / 2,
+      y: topB - 28,
+      size: 8.5,
+      font: fontBoldEmbedded,
+      color: rgb(0.07, 0.07, 0.07),
+    });
 
-    const txtRep = `Người đại diện: ${PLATFORM.representative}`;
-    const wRep = fontNormal.widthOfTextAtSize(txtRep, 7);
-    page.drawText(txtRep, { x: centerX - (wRep / 2), y: yB - 41, size: 7, font: fontNormal, color: rgb(0.3, 0.35, 0.45) });
+    const txtRep = safeStr(`Người đại diện: ${PLATFORM.representative}`);
+    const wRep = fontNormal.widthOfTextAtSize(txtRep, 7.2);
+    page.drawText(txtRep, {
+      x: centerXB - wRep / 2,
+      y: topB - 42,
+      size: 7.2,
+      font: fontNormal,
+      color: rgb(0.25, 0.3, 0.4),
+    });
 
-    const txtDate = `Thời gian ký: ${dateText}`;
-    const wDate = fontNormal.widthOfTextAtSize(txtDate, 6.5);
-    page.drawText(txtDate, { x: centerX - (wDate / 2), y: yB - 53, size: 6.5, font: fontNormal, color: rgb(0.5, 0.5, 0.5) });
+    const txtStatus = safeStr(isPreview ? `Thời gian: ${dateText} (Dự kiến)` : `Thời gian ký: ${dateText}`);
+    const wStatus = fontNormal.widthOfTextAtSize(txtStatus, 6.5);
+    page.drawText(txtStatus, {
+      x: centerXB - wStatus / 2,
+      y: topB - 56,
+      size: 6.5,
+      font: fontNormal,
+      color: rgb(0.1, 0.55, 0.28),
+    });
 
-    yB -= (boxH + 8);
+    yB = topB - boxH;
   } else {
-    page.drawText("CHƯA KÝ", { x: W / 2 + 10, y: yB - 20, size: 12, font: fontBoldEmbedded, color: rgb(0.6, 0.6, 0.6) });
-    yB -= 40;
+    page.drawRectangle({
+      x: xB,
+      y: topB - boxH,
+      width: boxW,
+      height: boxH,
+      borderColor: rgb(0.85, 0.55, 0.1),
+      borderWidth: 1,
+      color: rgb(1.0, 0.98, 0.94),
+      dashArray: [4, 3],
+    });
+
+    const txtPending = safeStr("CHỜ THẨM ĐỊNH & PHÊ DUYỆT");
+    const wPending = fontBoldEmbedded.widthOfTextAtSize(txtPending, 8);
+    page.drawText(txtPending, {
+      x: centerXB - wPending / 2,
+      y: topB - 18,
+      size: 8,
+      font: fontBoldEmbedded,
+      color: rgb(0.75, 0.4, 0.05),
+    });
+
+    const txtSubB1 = safeStr("Chữ ký điện tử BQT sẽ được cấp");
+    const wSubB1 = fontNormal.widthOfTextAtSize(txtSubB1, 7);
+    page.drawText(txtSubB1, {
+      x: centerXB - wSubB1 / 2,
+      y: topB - 34,
+      size: 7,
+      font: fontNormal,
+      color: rgb(0.45, 0.35, 0.2),
+    });
+
+    const txtSubB2 = safeStr("tự động khi hồ sơ được phê duyệt.");
+    const wSubB2 = fontNormal.widthOfTextAtSize(txtSubB2, 7);
+    page.drawText(txtSubB2, {
+      x: centerXB - wSubB2 / 2,
+      y: topB - 46,
+      size: 7,
+      font: fontNormal,
+      color: rgb(0.45, 0.35, 0.2),
+    });
+
+    const txtHint = safeStr("(Xem trước chữ ký bằng cách đối chiếu hồ sơ)");
+    const wHint = fontNormal.widthOfTextAtSize(txtHint, 5.8);
+    page.drawText(txtHint, {
+      x: centerXB - wHint / 2,
+      y: topB - 58,
+      size: 5.8,
+      font: fontNormal,
+      color: rgb(0.65, 0.5, 0.3),
+    });
+
+    yB = topB - boxH;
   }
 
   y = Math.min(yA, yB) - 15;
@@ -401,17 +650,16 @@ export const embedSignatureInPdf = async (pdfBuffer, signatureBase64, position =
   const pdfDoc = await PDFDocument.load(pdfBuffer);
   const pages = pdfDoc.getPages();
   const lastPage = pages[pages.length - 1];
-  const { width } = lastPage.getSize();
 
   const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, "");
   const signatureBytes = Buffer.from(base64Data, "base64");
   const signatureImage = await pdfDoc.embedPng(signatureBytes);
 
   lastPage.drawImage(signatureImage, {
-    x: position.x || width / 2 - 75,
-    y: position.y || 200,
-    width: position.width || 150,
-    height: position.height || 50,
+    x: position.x || 45,
+    y: position.y || 160,
+    width: position.width || 140,
+    height: position.height || 45,
   });
 
   const pdfBytes = await pdfDoc.save();

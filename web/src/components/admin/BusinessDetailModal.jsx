@@ -309,7 +309,15 @@ export default function BusinessDetailModal({
                         <div key={log.id} className="px-4 py-3 hover:bg-muted/30 transition-colors">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-2">
-                              <span className={cn("font-mono text-[10px] uppercase px-2 py-0.5 border", log.action === "APPROVE" && "bg-emerald-50 border-emerald-500 text-emerald-800", log.action === "REJECT" && "bg-red-50 border-red-500 text-red-700", log.action === "SUSPEND" && "bg-gray-100 border-gray-500 text-gray-800", log.action === "REACTIVATE" && "bg-blue-50 border-blue-500 text-blue-800", log.action === "TERMINATE" && "bg-red-100 border-red-700 text-red-900", !["APPROVE","REJECT","SUSPEND","REACTIVATE","TERMINATE"].includes(log.action) && "bg-yellow-50 border-yellow-500 text-yellow-800")}>{log.action}</span>
+                              <span className={cn(
+                                "font-mono text-[10px] uppercase px-2 py-0.5 border font-semibold",
+                                log.action === "APPROVE" && "bg-emerald-50 border-emerald-500 text-emerald-800",
+                                log.action === "REJECT" && "bg-rose-50 border-rose-500 text-rose-700",
+                                log.action === "SUSPEND" && "bg-zinc-100 border-zinc-400 text-zinc-800",
+                                log.action === "REACTIVATE" && "bg-blue-50 border-blue-500 text-blue-800",
+                                log.action === "TERMINATE" && "bg-rose-100 border-rose-700 text-rose-900",
+                                !["APPROVE","REJECT","SUSPEND","REACTIVATE","TERMINATE"].includes(log.action) && "bg-amber-50 border-amber-500 text-amber-800"
+                              )}>{log.action}</span>
                               <span className="text-xs text-muted-foreground flex items-center gap-1"><User className="h-3 w-3" />{log.user?.email || `User #${log.userId}`}</span>
                             </div>
                             <span className="text-[11px] text-muted-foreground font-mono whitespace-nowrap">{log.createdAt ? new Date(log.createdAt).toLocaleString("vi-VN") : "—"}</span>
@@ -609,7 +617,15 @@ export default function BusinessDetailModal({
                   <div>
                     <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("common.actions", "Hành động")}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {t("common.status", "Trạng thái")}: <span className={cn("font-mono text-[10px] uppercase px-1.5 py-0.5 border font-bold", detail.status === BUSINESS_STATUS.APPROVED && "bg-[#F3E600] text-black border-black", detail.status === BUSINESS_STATUS.PENDING && "bg-amber-100 text-amber-900 border-amber-400", detail.status === BUSINESS_STATUS.SUSPENDED && "bg-neutral-200 text-neutral-800 border-neutral-400", detail.status === BUSINESS_STATUS.REJECTED && "bg-red-100 text-red-800 border-red-400", detail.status === BUSINESS_STATUS.TERMINATED && "bg-red-200 text-red-900 border-red-600", detail.status === BUSINESS_STATUS.SUSPICIOUS && "bg-amber-200 text-amber-900 border-amber-600")}>{statusLabel}</span>
+                      {t("common.status", "Trạng thái")}: <span className={cn(
+                        "font-mono text-[10px] uppercase px-1.5 py-0.5 border font-bold",
+                        detail.status === BUSINESS_STATUS.APPROVED && "bg-[#F3E600] text-black border-black",
+                        detail.status === BUSINESS_STATUS.PENDING && "bg-amber-100 text-amber-950 border-amber-400",
+                        detail.status === BUSINESS_STATUS.SUSPENDED && "bg-zinc-200 text-zinc-900 border-zinc-400",
+                        detail.status === BUSINESS_STATUS.REJECTED && "bg-rose-100 text-rose-900 border-rose-400",
+                        detail.status === BUSINESS_STATUS.TERMINATED && "bg-rose-200 text-rose-950 border-rose-600",
+                        detail.status === BUSINESS_STATUS.SUSPICIOUS && "bg-amber-200 text-amber-950 border-amber-600"
+                      )}>{statusLabel}</span>
                       {detail.suspensionReason && <span className="ml-2 text-red-700 text-[11px]">{detail.suspensionReason}</span>}
                       {detail.terminationReason && <span className="ml-2 text-red-900 text-[11px]">{detail.terminationReason}</span>}
                     </p>

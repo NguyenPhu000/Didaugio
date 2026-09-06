@@ -340,7 +340,7 @@ export function HeaderNotificationDropdown({ triggerClassName }) {
                             type="button"
                             onClick={(e) => handleQuickMarkRead(e, n.id)}
                             title="Đánh dấu đã đọc"
-                            className="hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 transition-colors"
+                            className="hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 transition-colors"
                           >
                             <Check className="h-3 w-3" />
                           </button>

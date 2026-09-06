@@ -111,7 +111,7 @@ function ErrorMessage({ message, id }) {
     <p
       id={id}
       role="alert"
-      className="border-l-4 border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive"
+      className="border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive rounded-sm"
     >
       {message}
     </p>

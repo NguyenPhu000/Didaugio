@@ -109,7 +109,7 @@ export default function SpokenGuideEditor({ value = EMPTY_GUIDE, onChange }) {
                       size="icon"
                       aria-label={`Xóa câu hỏi ${index + 1}`}
                       onClick={() => removeFaq(index)}
-                      className="h-9 w-9 rounded-lg text-zinc-500 hover:bg-red-50 hover:text-red-600"
+                      className="h-9 w-9 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                     >
                       <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </Button>

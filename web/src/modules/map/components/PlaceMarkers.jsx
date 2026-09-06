@@ -452,9 +452,9 @@ const PlacePin = ({ place, isActive, onClick }) => {
       <div
         className="w-0 h-0 -mt-[1px]"
         style={{
-          borderLeft: "6px solid transparent",
-          borderRight: "6px solid transparent",
-          borderTop: `8px solid ${stemColor}`,
+          borderWidth: "8px 6px 0 6px",
+          borderStyle: "solid",
+          borderColor: `${stemColor} transparent transparent transparent`,
           filter: "drop-shadow(0 1px 1px rgba(0,0,0,.15))",
         }}
       />

@@ -33,10 +33,12 @@ export default defineConfig({
           // Core React libraries
           "react-vendor": ["react", "react-dom"],
           "react-router": ["react-router-dom"],
+          "query-vendor": ["@tanstack/react-query"],
           "ui-icons": ["lucide-react"],
 
-          // State management
+          // State & I18n
           state: ["zustand"],
+          i18n: ["i18next", "react-i18next", "i18next-browser-languagedetector"],
 
           // UI libraries - Split by usage frequency
           "radix-core": [
@@ -64,6 +66,20 @@ export default defineConfig({
           // Form libraries
           forms: ["react-hook-form", "@hookform/resolvers", "zod"],
 
+          // Data table & charts
+          table: ["@tanstack/react-table"],
+          charts: ["recharts"],
+
+          // Geospatial
+          geo: [
+            "@turf/bbox",
+            "@turf/boolean-point-in-polygon",
+            "@turf/centroid",
+            "@turf/difference",
+            "@turf/helpers",
+            "@turf/union",
+          ],
+
           // Map libraries (heavy, load separately)
           map: ["maplibre-gl", "react-map-gl"],
 
@@ -73,10 +89,11 @@ export default defineConfig({
             "clsx",
             "tailwind-merge",
             "class-variance-authority",
+            "socket.io-client",
           ],
 
           // Animation
-          animation: ["framer-motion", "motion"],
+          animation: ["motion"],
         },
       },
     },
