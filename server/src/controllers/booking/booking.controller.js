@@ -197,7 +197,7 @@ export const complete = async (req, res, next) => {
     const booking = await bookingService.complete(
       req.params.id,
       req.user.userId,
-      req.body.note,
+      req.body?.note || req.body?.businessNote,
     );
     res.json({
       success: true,

@@ -200,7 +200,7 @@ export const checkBusinessOwnershipByBookingCode = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         data: null,
-        message: "Booking không tồn tại",
+        message: "Mã đặt chỗ không tồn tại trong hệ thống. Vui lòng kiểm tra lại mã QR.",
         errorCode: ERROR_CODES.NOT_FOUND,
       });
     }
@@ -209,7 +209,7 @@ export const checkBusinessOwnershipByBookingCode = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         data: null,
-        message: "Không phải business của booking này",
+        message: "Mã đặt chỗ này không thuộc cơ sở kinh doanh của bạn, không thể check-in tại đây.",
         errorCode: "FORBIDDEN_NOT_OWNER",
       });
     }

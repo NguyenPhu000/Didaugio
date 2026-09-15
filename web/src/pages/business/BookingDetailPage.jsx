@@ -14,7 +14,7 @@ import * as bookingApi from "@/apis/bookingService";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { BOOKING_STATUS } from "@/constants/constants";
 import { usePermission } from "@/hooks/usePermission";
-import { StatusBadge, PaymentMethodBadge, getTimeOfDay } from "@/components/booking/BookingCard";
+import { StatusBadge, PaymentMethodBadge, getTimeOfDay, getBookingTimingState } from "@/components/booking/BookingCard";
 import { formatDateTime } from "@/components/business/dashboardWidgetHelpers";
 import { cn } from "@/lib/utils";
 
@@ -210,6 +210,7 @@ const BookingDetailPage = memo(() => {
 
   const timeOfDay = getTimeOfDay(booking.useTime, booking.useDate || booking.bookingDate);
   const placeName = booking.service?.place?.name || booking.place?.name;
+  const timing = getBookingTimingState(booking);
 
   return (
     <div className="min-h-screen bg-[#FAFAF8] dark:bg-background text-foreground p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1400px] mx-auto font-sans transition-colors duration-200">
@@ -296,27 +297,63 @@ const BookingDetailPage = memo(() => {
 
           {isConfirmed && (
             <>
-              {canComplete && (
+              {timing.isUpcoming ? (
                 <Button
                   size="sm"
-                  onClick={handleComplete}
-                  disabled={actionLoading}
-                  className="rounded-2xl px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
-                >
-                  {actionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
-                  {t("business.bookingDetail.complete")}
-                </Button>
-              )}
-              {canComplete && (
-                <Button
-                  size="sm"
+                  disabled
                   variant="outline"
-                  onClick={handleNoShow}
-                  disabled={actionLoading}
-                  className="rounded-2xl px-3 text-xs font-bold border-slate-200"
+                  className="rounded-2xl px-4 text-xs font-semibold bg-slate-100 dark:bg-muted text-slate-400 dark:text-muted-foreground border-slate-200 dark:border-border/60 cursor-not-allowed"
+                  title="Chưa tới ngày sử dụng dịch vụ của khách"
                 >
-                  {t("business.bookingDetail.noShow")}
+                  Chưa tới ngày hẹn
                 </Button>
+              ) : timing.isOverdue ? (
+                <>
+                  <Button
+                    size="sm"
+                    disabled
+                    variant="outline"
+                    className="rounded-2xl px-4 text-xs font-semibold bg-rose-50 text-rose-500 border-rose-200 dark:bg-rose-950/20 dark:border-rose-900/40 cursor-not-allowed"
+                  >
+                    {timing.isPast ? "Đã quá hạn" : "Đã quá giờ hẹn"}
+                  </Button>
+                  {canComplete && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleNoShow}
+                      disabled={actionLoading}
+                      className="rounded-2xl px-3 text-xs font-bold border-amber-200 text-amber-600 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400"
+                    >
+                      {t("business.bookingDetail.noShow")}
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <>
+                  {canComplete && (
+                    <Button
+                      size="sm"
+                      onClick={handleComplete}
+                      disabled={actionLoading}
+                      className="rounded-2xl px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                    >
+                      {actionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
+                      {t("business.bookingDetail.complete")}
+                    </Button>
+                  )}
+                  {canComplete && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleNoShow}
+                      disabled={actionLoading}
+                      className="rounded-2xl px-3 text-xs font-bold border-slate-200"
+                    >
+                      {t("business.bookingDetail.noShow")}
+                    </Button>
+                  )}
+                </>
               )}
             </>
           )}

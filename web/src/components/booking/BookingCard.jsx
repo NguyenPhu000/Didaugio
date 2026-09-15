@@ -64,6 +64,111 @@ export const getTimeOfDay = (timeStr, dateStr) => {
   }
 };
 
+/**
+ * Xác định trạng thái thời gian của đơn đặt chỗ:
+ * - isUpcoming: Chưa tới ngày hẹn (ví dụ hôm nay 15/09, hẹn 18/09)
+ * - isOverdue: Đã quá hạn (đã qua ngày từ hôm trước, hoặc quá giờ hẹn + 60 phút)
+ * - isReady: Đúng ngày và trong khung giờ sử dụng
+ */
+export function getBookingTimingState(booking) {
+  if (!booking) {
+    return { isUpcoming: false, isToday: false, isPast: false, isOverdue: false, isReady: true, label: "" };
+  }
+
+  const now = new Date();
+  const todayVnStr = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+
+  let useDateStr = null;
+  const rawDate = booking.useDate || booking.bookingDate || booking.bookingAt;
+  if (rawDate) {
+    if (typeof rawDate === "string") {
+      useDateStr = rawDate.slice(0, 10);
+    } else if (rawDate instanceof Date) {
+      useDateStr = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(rawDate);
+    }
+  }
+
+  if (!useDateStr) {
+    return { isUpcoming: false, isToday: true, isPast: false, isOverdue: false, isReady: true, label: "" };
+  }
+
+  // 1. Chưa tới ngày hẹn
+  if (todayVnStr < useDateStr) {
+    return {
+      isUpcoming: true,
+      isToday: false,
+      isPast: false,
+      isOverdue: false,
+      isReady: false,
+      label: "Chưa tới ngày hẹn",
+    };
+  }
+
+  // 2. Đã qua ngày hẹn từ hôm trước
+  if (todayVnStr > useDateStr) {
+    return {
+      isUpcoming: false,
+      isToday: false,
+      isPast: true,
+      isOverdue: true,
+      isReady: false,
+      label: "Đã quá hạn",
+    };
+  }
+
+  // 3. Hôm nay là ngày hẹn (todayVnStr === useDateStr)
+  if (booking.useTime) {
+    const timeMatch = /^(\d{1,2}):(\d{2})/.exec(booking.useTime);
+    if (timeMatch) {
+      const hours = parseInt(timeMatch[1], 10);
+      const minutes = parseInt(timeMatch[2], 10);
+
+      const currentVnHour = parseInt(
+        new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Ho_Chi_Minh", hour: "numeric", hour12: false }).format(now),
+        10
+      );
+      const currentVnMinute = parseInt(
+        new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Ho_Chi_Minh", minute: "numeric" }).format(now),
+        10
+      );
+      const currentTotalMin = currentVnHour * 60 + currentVnMinute;
+      const slotTotalMin = hours * 60 + minutes;
+
+      // Cho phép check-in trong ngày, quá giờ hẹn + 60 phút thì coi là quá giờ
+      const gracePeriodMin = 60;
+      if (currentTotalMin > slotTotalMin + gracePeriodMin) {
+        return {
+          isUpcoming: false,
+          isToday: true,
+          isPast: false,
+          isOverdue: true,
+          isReady: false,
+          label: "Đã quá giờ hẹn",
+        };
+      }
+    }
+  }
+
+  return {
+    isUpcoming: false,
+    isToday: true,
+    isPast: false,
+    isOverdue: false,
+    isReady: true,
+    label: "Sẵn sàng phục vụ",
+  };
+}
+
 const getStatusConfig = (t) => ({
   pending: {
     label: t("business.bookings.pending"),
@@ -193,6 +298,7 @@ export const BookingCard = memo(({
   const email = booking.user?.email || booking.guestEmail;
   const placeName = booking.service?.place?.name || booking.place?.name;
   const timeOfDay = getTimeOfDay(booking.useTime, booking.useDate || booking.bookingAt);
+  const timing = getBookingTimingState(booking);
 
   return (
     <motion.div
@@ -347,20 +453,72 @@ export const BookingCard = memo(({
 
             {isConfirmed && (
               <>
-                {canComplete && (
+                {timing.isUpcoming ? (
+                  /* 1. Chưa tới ngày hẹn: Thay nút Hoàn thành bằng nút thông báo 'Chưa tới ngày', ẩn nút Không đến */
                   <Button
                     size="sm"
-                    onClick={() => onComplete(booking.id)}
-                    disabled={actionLoading}
-                    className="h-8 rounded-xl px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                    disabled
+                    variant="outline"
+                    className="h-8 rounded-xl px-3 text-xs font-semibold bg-slate-100/80 dark:bg-muted text-slate-400 dark:text-muted-foreground border-slate-200 dark:border-border/60 cursor-not-allowed"
+                    title="Chưa tới ngày sử dụng dịch vụ của khách"
                   >
-                    {actionLoading === `complete-${booking.id}` ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                    ) : null}
-                    {t("business.bookings.complete")}
+                    Chưa tới ngày hẹn
                   </Button>
+                ) : timing.isOverdue ? (
+                  /* 2. Đã quá giờ / quá hạn: Thay nút Hoàn thành bằng 'Đã quá hạn', hiển thị nút Không đến */
+                  <>
+                    <Button
+                      size="sm"
+                      disabled
+                      variant="outline"
+                      className="h-8 rounded-xl px-3 text-xs font-semibold bg-rose-50 text-rose-500 border-rose-200 dark:bg-rose-950/20 dark:border-rose-900/40 cursor-not-allowed"
+                    >
+                      {timing.isPast ? "Đã quá hạn" : "Đã quá giờ hẹn"}
+                    </Button>
+                    {canComplete && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onNoShow(booking.id)}
+                        disabled={actionLoading}
+                        className="h-8 rounded-xl px-3 text-xs font-bold text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+                      >
+                        {t("business.bookings.noShow", { defaultValue: "Không đến" })}
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  /* 3. Đúng ngày hẹn và trong thời gian sử dụng: Nút Hoàn thành hoạt động bình thường */
+                  <>
+                    {canComplete && (
+                      <Button
+                        size="sm"
+                        onClick={() => onComplete(booking.id)}
+                        disabled={actionLoading}
+                        className="h-8 rounded-xl px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                      >
+                        {actionLoading === `complete-${booking.id}` ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                        ) : null}
+                        {t("business.bookings.complete")}
+                      </Button>
+                    )}
+                    {canComplete && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onNoShow(booking.id)}
+                        disabled={actionLoading}
+                        className="h-8 rounded-xl px-3 text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                      >
+                        {t("business.bookings.noShow")}
+                      </Button>
+                    )}
+                  </>
                 )}
-                {canCancel && (
+
+                {/* Nút Hủy: chỉ hiển thị nếu chưa quá hạn */}
+                {canCancel && !timing.isOverdue && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -369,17 +527,6 @@ export const BookingCard = memo(({
                     className="h-8 rounded-xl px-3 text-xs font-bold border-slate-200 dark:border-border/80"
                   >
                     {t("business.bookings.cancel")}
-                  </Button>
-                )}
-                {canComplete && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onNoShow(booking.id)}
-                    disabled={actionLoading}
-                    className="h-8 rounded-xl px-3 text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                  >
-                    {t("business.bookings.noShow")}
                   </Button>
                 )}
               </>

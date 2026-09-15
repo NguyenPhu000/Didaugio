@@ -168,18 +168,22 @@ const deriveBookingAtFromEntity = (booking) => {
 };
 
 const computeQrExpiryAt = (booking, graceMinutes) => {
-  const createdAt = new Date(booking.createdAt);
-  if (Number.isNaN(createdAt.getTime())) return null;
-
-  const byCreateTime = new Date(createdAt.getTime() + QR_CREATED_WINDOW_MS);
+  const effectiveGrace = Math.max(Number(graceMinutes) || 30, 60);
   const bookingAt = deriveBookingAtFromEntity(booking);
-
-  if (!bookingAt) return byCreateTime;
-
-  const byBookingTime = new Date(bookingAt.getTime() - graceMinutes * 60_000);
-  return byCreateTime.getTime() <= byBookingTime.getTime()
-    ? byCreateTime
-    : byBookingTime;
+  if (bookingAt && !Number.isNaN(bookingAt.getTime())) {
+    return new Date(bookingAt.getTime() + effectiveGrace * 60_000);
+  }
+  if (booking?.useDate) {
+    const endOfDay = combineUseDateAndTime(booking.useDate, "23:59");
+    if (!Number.isNaN(endOfDay.getTime())) {
+      return endOfDay;
+    }
+  }
+  const createdAt = new Date(booking.createdAt);
+  if (!Number.isNaN(createdAt.getTime())) {
+    return new Date(createdAt.getTime() + 24 * 60 * 60 * 1000);
+  }
+  return null;
 };
 
 const toUtcDateOnly = (value) => {
@@ -1582,6 +1586,40 @@ export const complete = async (bookingId, userId, businessNote = undefined) => {
       "Chỉ có thể hoàn thành booking đã xác nhận",
     );
 
+    // Không cho phép hoàn thành nếu chưa tới ngày khách đặt dịch vụ
+    const nowComplete = new Date();
+    const todayVnComplete = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(nowComplete);
+
+    let bookingDateVnComplete = null;
+    const rawDateComplete = existing.useDate || existing.bookingAt;
+    if (rawDateComplete) {
+      if (typeof rawDateComplete === "string") {
+        bookingDateVnComplete = rawDateComplete.slice(0, 10);
+      } else if (rawDateComplete instanceof Date) {
+        bookingDateVnComplete = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Ho_Chi_Minh",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(rawDateComplete);
+      }
+    }
+
+    if (bookingDateVnComplete && todayVnComplete < bookingDateVnComplete) {
+      const parts = bookingDateVnComplete.split("-");
+      const displayDate = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : bookingDateVnComplete;
+      throw new ServiceError(
+        `Hôm nay chưa tới ngày đặt dịch vụ (Lịch hẹn ngày ${displayDate}). Không thể hoàn thành trước thời gian sử dụng.`,
+        400,
+        ERROR_CODES.BOOKING_DATE_NOT_ARRIVED || "BOOKING_DATE_NOT_ARRIVED",
+      );
+    }
+
     const commissionRate =
       Number(existing.service?.business?.commissionRate) || 10;
     const commissionAmount = Math.floor(
@@ -1670,6 +1708,38 @@ export const markNoShow = async (bookingId, userId) => {
       BOOKING_TRANSITION.MARK_NO_SHOW,
       `Chỉ có thể đánh dấu không đến với booking đã xác nhận (hiện tại: ${existing.status})`,
     );
+
+    // Không thể đánh dấu không đến nếu chưa tới ngày hẹn dịch vụ
+    const nowNoShow = new Date();
+    const todayVnNoShow = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(nowNoShow);
+
+    let bookingDateVnNoShow = null;
+    const rawDateNoShow = existing.useDate || existing.bookingAt;
+    if (rawDateNoShow) {
+      if (typeof rawDateNoShow === "string") {
+        bookingDateVnNoShow = rawDateNoShow.slice(0, 10);
+      } else if (rawDateNoShow instanceof Date) {
+        bookingDateVnNoShow = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Ho_Chi_Minh",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(rawDateNoShow);
+      }
+    }
+
+    if (bookingDateVnNoShow && todayVnNoShow < bookingDateVnNoShow) {
+      throw new ServiceError(
+        "Chưa tới ngày hẹn dịch vụ, không thể đánh dấu khách không đến.",
+        400,
+        ERROR_CODES.BOOKING_DATE_NOT_ARRIVED || "BOOKING_DATE_NOT_ARRIVED",
+      );
+    }
 
     const noShowPolicy = existing.service?.business?.settings?.bookingRules?.noShowPolicy;
     const refundPercent = getNoShowRefundPercent(noShowPolicy);
@@ -1903,21 +1973,44 @@ export const verifyQR = async (payload = {}, actorUserId, actorRoleId) => {
       }
     }
 
-    if (
-      [BOOKING_STATUS.CANCELLED, BOOKING_STATUS.NO_SHOW].includes(
-        booking.status,
-      )
-    ) {
+    if (booking.status === BOOKING_STATUS.CANCELLED) {
       throw new ServiceError(
-        "Booking đã bị hủy hoặc không đến",
+        "Đơn đặt chỗ này đã bị hủy, không thể sử dụng mã QR.",
+        409,
+        ERROR_CODES.BOOKING_INVALID_STATUS,
+      );
+    }
+
+    if (booking.status === BOOKING_STATUS.NO_SHOW) {
+      throw new ServiceError(
+        "Đơn đặt chỗ này đã bị đánh dấu vắng mặt (Không đến).",
+        409,
+        ERROR_CODES.BOOKING_INVALID_STATUS,
+      );
+    }
+
+    if (booking.status === BOOKING_STATUS.REJECTED) {
+      throw new ServiceError(
+        "Đơn đặt chỗ này đã bị từ chối.",
         409,
         ERROR_CODES.BOOKING_INVALID_STATUS,
       );
     }
 
     if (booking.status === BOOKING_STATUS.COMPLETED) {
+      const completedTime = booking.completedAt
+        ? new Date(booking.completedAt).toLocaleTimeString("vi-VN", {
+            timeZone: "Asia/Ho_Chi_Minh",
+            hour: "2-digit",
+            minute: "2-digit",
+            day: "2-digit",
+            month: "2-digit",
+          })
+        : null;
       throw new ServiceError(
-        "QR đã được sử dụng",
+        completedTime
+          ? `Mã QR này đã được quét sử dụng trước đó (lúc ${completedTime}). Không thể tái sử dụng.`
+          : "Mã QR này đã được quét sử dụng trước đó. Không thể tái sử dụng.",
         409,
         ERROR_CODES.BOOKING_ALREADY_CHECKED_IN,
       );
@@ -1925,19 +2018,84 @@ export const verifyQR = async (payload = {}, actorUserId, actorRoleId) => {
 
     if (booking.status !== BOOKING_STATUS.CONFIRMED) {
       throw new ServiceError(
-        "Booking chưa được xác nhận",
+        booking.paymentStatus !== "paid"
+          ? "Đơn đặt chỗ chưa hoàn tất thanh toán hoặc chưa được xác nhận."
+          : "Đơn đặt chỗ đang chờ xác nhận từ cơ sở kinh doanh.",
         422,
         ERROR_CODES.BOOKING_NOT_CONFIRMED,
       );
     }
 
-    const graceMinutes = resolveQrGraceMinutes(booking.service?.terms);
-    const expiresAt = computeQrExpiryAt(booking, graceMinutes);
+    // ── Kiểm tra thời gian: Chưa tới ngày đặt / Quá hạn sử dụng ──
     const now = new Date();
+    const todayVn = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now);
+
+    let bookingDateVn = null;
+    const rawUseDate = booking.useDate || booking.bookingDate || booking.bookingAt;
+    if (rawUseDate) {
+      if (typeof rawUseDate === "string") {
+        bookingDateVn = rawUseDate.slice(0, 10);
+      } else if (rawUseDate instanceof Date) {
+        bookingDateVn = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Ho_Chi_Minh",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(rawUseDate);
+      }
+    }
+
+    const formatVnDateStr = (ymd) => {
+      if (!ymd) return "--/--/----";
+      const parts = ymd.split("-");
+      return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : ymd;
+    };
+    const bookingDateDisplay = formatVnDateStr(bookingDateVn);
+    const bookingTimeDisplay = booking.useTime || "";
+
+    // 1. Lỗi: Chưa tới ngày đặt
+    if (bookingDateVn && todayVn < bookingDateVn) {
+      throw new ServiceError(
+        `Hôm nay chưa tới ngày đặt dịch vụ. Lịch hẹn của đơn này là ngày ${bookingDateDisplay}${bookingTimeDisplay ? ` lúc ${bookingTimeDisplay}` : ""}. Vui lòng quay lại vào đúng ngày hẹn.`,
+        400,
+        ERROR_CODES.BOOKING_DATE_NOT_ARRIVED || "BOOKING_DATE_NOT_ARRIVED",
+      );
+    }
+
+    // 2. Lỗi: Đã quá ngày đặt
+    if (bookingDateVn && todayVn > bookingDateVn) {
+      throw new ServiceError(
+        `Mã QR đã quá ngày sử dụng (Lịch hẹn ngày ${bookingDateDisplay}). Mã đặt chỗ này đã hết hạn.`,
+        409,
+        ERROR_CODES.BOOKING_QR_EXPIRED,
+      );
+    }
+
+    // 3. Đúng ngày đặt -> Kiểm tra giờ hẹn nếu có
+    const graceMinutes = resolveQrGraceMinutes(booking.service?.terms);
+    const effectiveGraceMinutes = Math.max(Number(graceMinutes) || 30, 60);
+
+    let expiresAt = null;
+    if (booking.useDate && booking.useTime) {
+      const bookingAt = combineUseDateAndTime(booking.useDate, booking.useTime);
+      if (!Number.isNaN(bookingAt.getTime())) {
+        expiresAt = new Date(bookingAt.getTime() + effectiveGraceMinutes * 60_000);
+      }
+    } else if (booking.bookingAt) {
+      const bAt = new Date(booking.bookingAt);
+      if (!Number.isNaN(bAt.getTime())) {
+        expiresAt = new Date(bAt.getTime() + effectiveGraceMinutes * 60_000);
+      }
+    }
 
     if (expiresAt && now.getTime() > expiresAt.getTime()) {
       throw new ServiceError(
-        "QR đã hết hạn",
+        `Mã QR đã quá giờ sử dụng (Giờ hẹn: ${bookingTimeDisplay || "theo lịch"}). Mã đặt chỗ này đã hết hạn sử dụng.`,
         409,
         ERROR_CODES.BOOKING_QR_EXPIRED,
       );

@@ -88,6 +88,7 @@ export default function BookingQrScannerDialog({ open, onOpenChange, onSuccess }
 
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState("");
+  const [scanError, setScanError] = useState("");
   const [manualValue, setManualValue] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
@@ -144,10 +145,12 @@ export default function BookingQrScannerDialog({ open, onOpenChange, onSuccess }
 
       setSubmitting(true);
       submittingRef.current = true;
+      setScanError("");
       try {
         const response = await bookingApi.verifyQR(payload);
         const data = getResponseData(response);
         setResult(data);
+        setScanError("");
         toast.success(
           data?.action === "verify"
             ? t("business.bookings.qr.valid", { defaultValue: "QR hợp lệ" })
@@ -160,6 +163,8 @@ export default function BookingQrScannerDialog({ open, onOpenChange, onSuccess }
           error?.response?.data?.message ||
           error?.message ||
           t("business.bookings.qr.verifyFailed", { defaultValue: "Không thể xác thực mã QR" });
+        setScanError(message);
+        setResult(null);
         toast.error(message);
       } finally {
         setSubmitting(false);
@@ -171,6 +176,7 @@ export default function BookingQrScannerDialog({ open, onOpenChange, onSuccess }
 
   const startCamera = useCallback(async () => {
     setCameraError("");
+    setScanError("");
     setResult(null);
 
     if (!decodeVideoFrame) {
@@ -230,6 +236,7 @@ export default function BookingQrScannerDialog({ open, onOpenChange, onSuccess }
       stopCamera();
       setManualValue("");
       setCameraError("");
+      setScanError("");
       setResult(null);
       lastScannedRef.current = "";
     }
@@ -347,6 +354,39 @@ export default function BookingQrScannerDialog({ open, onOpenChange, onSuccess }
                 {t("business.bookings.qr.submit", { defaultValue: "Xác nhận check-in" })}
               </Button>
             </div>
+
+            {scanError && (
+              <div className="rounded-3xl border border-rose-200 bg-rose-50/80 p-5 dark:border-rose-900/40 dark:bg-rose-950/20 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-xl bg-rose-500/10 p-2 text-rose-600 dark:text-rose-400 shrink-0">
+                    <AlertTriangle className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-rose-900 dark:text-rose-200 text-sm">
+                      Không thể check-in đơn này
+                    </h4>
+                    <p className="mt-1 text-xs text-rose-700 dark:text-rose-300 leading-relaxed font-medium">
+                      {scanError}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-end pt-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setScanError("");
+                      lastScannedRef.current = "";
+                      if (!cameraActive) startCamera();
+                    }}
+                    className="text-xs h-8 rounded-xl border-rose-200 text-rose-700 hover:bg-rose-100 dark:border-rose-800 dark:text-rose-300"
+                  >
+                    Quét lại mã khác
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <BookingResultCard result={result} t={t} />
           </div>
