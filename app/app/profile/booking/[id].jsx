@@ -73,7 +73,10 @@ export default function BookingDetailScreen() {
   const { isOffline } = useOffline();
   const [cachedQr, setCachedQr] = useState(null);
 
-  const canShowQr = booking?.status === "confirmed";
+  const canShowQr =
+    booking?.status === "confirmed" ||
+    booking?.status === "completed" ||
+    booking?.paymentStatus === "paid";
   const isTerminal = TerminalStatuses.has(booking?.status);
   const {
     data: qrData,

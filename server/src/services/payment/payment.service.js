@@ -538,7 +538,7 @@ async function processVNPayIPNWithDependencies(query, dependencies) {
       });
 
       return {
-        type: collection.replayed ? "ALREADY_PROCESSED" : "SUCCESS",
+        type: collection.transitioned ? "SUCCESS" : collection.replayed ? "ALREADY_PROCESSED" : "SUCCESS",
         bookingId: payment.booking_id,
       };
     });
@@ -757,7 +757,7 @@ async function processMoMoIPNWithDependencies(body, dependencies) {
       });
 
       return {
-        type: collection.replayed ? "ALREADY_PROCESSED" : "SUCCESS",
+        type: collection.transitioned ? "SUCCESS" : collection.replayed ? "ALREADY_PROCESSED" : "SUCCESS",
         bookingId: payment.booking_id,
       };
     });
@@ -927,7 +927,7 @@ export async function processSePayIPN(body) {
         });
 
       return {
-        type: collection.replayed ? "ALREADY_PROCESSED" : "SUCCESS",
+        type: collection.transitioned ? "SUCCESS" : collection.replayed ? "ALREADY_PROCESSED" : "SUCCESS",
         bookingId: payment.booking_id,
       };
     });
@@ -1195,7 +1195,7 @@ async function processSePayBankWebhookWithDependencies(body, headers, rawBody, d
       });
 
       return {
-        type: collection.replayed ? "ALREADY_PROCESSED" : "SUCCESS",
+        type: collection.transitioned ? "SUCCESS" : collection.replayed ? "ALREADY_PROCESSED" : "SUCCESS",
         bookingId: payment.booking_id,
       };
     });

@@ -92,6 +92,7 @@ export function usePollPaymentStatus() {
       const maxPolls = options.maxPolls ?? DEFAULT_MAX_POLLS;
       const intervalMs = options.intervalMs ?? POLL_INTERVAL_MS;
 
+      stopPolling();
       pollCountRef.current = 0;
       isActiveRef.current = true;
 
@@ -102,8 +103,6 @@ export function usePollPaymentStatus() {
         logger.warn("[usePayment] safeAsyncStorage write failed:", err);
         // Continue polling even if storage fails
       }
-
-      stopPolling();
 
       intervalRef.current = setInterval(async () => {
         if (!isActiveRef.current) {

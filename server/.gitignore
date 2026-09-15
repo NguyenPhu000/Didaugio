@@ -29,16 +29,39 @@ scripts/
 check_db.js
 debug_turf.js
 import_boundaries.js
+node_modules/
+.env
+.env*.local
+thunder-collection.json
+/generated/prisma
+storage/sensitive/*
+!storage/sensitive/.gitkeep
+
+# Test directories & files
+test/
+tests/
+__tests__/
+*.test.js
+*.test.jsx
+*.test.ts
+*.test.tsx
+*.test.cjs
+*.test.mjs
+*.spec.js
+*.spec.jsx
+*.spec.ts
+*.spec.tsx
+*.spec.cjs
+*.spec.mjs
+coverage/
+
+# Scripts & temporary debug
+scripts/
+check_db.js
+debug_turf.js
+import_boundaries.js
 inspect_geojson.js
 inspect_ward_geojson.js
 test_lookup.js
 !src/scripts/
 !src/scripts/backfillTripPlans.js
-
-# Keep focused security regression tests under version control.
-!test/
-test/*
-!test/unit/
-test/unit/*
-!test/unit/paymentReturnRedirect.test.js
-!test/unit/tripAiPlannerSelection.test.js

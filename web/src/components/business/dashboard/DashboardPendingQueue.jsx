@@ -1,13 +1,15 @@
-import React, { memo } from "react";
+import React, { memo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Check, X as XIcon, QrCode } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BUSINESS_ROUTES } from "@/constants/routes";
 import { formatMoney } from "@/utils/formatters";
+import BookingQrScannerDialog from "@/components/business/BookingQrScannerDialog";
 
 export const DashboardPendingQueue = memo(
   ({ pendingQueue = [], queueLoading, approveMutation, rejectMutation }) => {
     const navigate = useNavigate();
+    const [qrScannerOpen, setQrScannerOpen] = useState(false);
     const count = pendingQueue.length;
 
     return (
@@ -30,15 +32,24 @@ export const DashboardPendingQueue = memo(
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate(BUSINESS_ROUTES.BOOKING_PROCESS)}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-slate-950 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 text-xs font-semibold shadow-sm hover:shadow transition-all active:scale-95 shrink-0 cursor-pointer self-start sm:self-auto"
-          >
-            <QrCode className="w-3.5 h-3.5" />
-            <span>Mở chế độ quẹt mã QR & xử lý nhanh</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setQrScannerOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-slate-950 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 text-xs font-semibold shadow-sm hover:shadow transition-all active:scale-95 shrink-0 cursor-pointer"
+            >
+              <QrCode className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Mở chế độ quẹt mã QR & xử lý nhanh</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(BUSINESS_ROUTES.BOOKING_QUICK)}
+              className="inline-flex items-center justify-center p-2 rounded-full border border-slate-200 dark:border-slate-800 text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white bg-white dark:bg-slate-900 text-xs transition-all hover:shadow-xs active:scale-95 cursor-pointer"
+              title="Đi đến trang Xử lý nhanh & Thiết lập Auto-duyệt"
+            >
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Queue Grid Cards */}
@@ -121,6 +132,13 @@ export const DashboardPendingQueue = memo(
               );
             })}
           </div>
+        )}
+
+        {qrScannerOpen && (
+          <BookingQrScannerDialog
+            open={qrScannerOpen}
+            onOpenChange={setQrScannerOpen}
+          />
         )}
       </div>
     );

@@ -83,7 +83,9 @@ export function normalizeBookingTicket(booking, t = i18n.t) {
       ? new Date(booking.createdAt).toLocaleDateString(locale)
       : null,
     heroImage: getBookingHeroImage(booking),
-    canShowQr: CONFIRMED_QR_STATUSES.has(String(booking?.status || "").toLowerCase()),
+    canShowQr:
+      CONFIRMED_QR_STATUSES.has(String(booking?.status || "").toLowerCase()) ||
+      String(booking?.paymentStatus || "").toLowerCase() === "paid",
     linkedTrip: booking?.linkedTrip || null,
   };
 }

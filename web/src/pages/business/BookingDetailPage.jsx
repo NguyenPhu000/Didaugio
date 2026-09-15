@@ -51,7 +51,13 @@ const BookingDetailPage = memo(() => {
       setBooking(res.data || res);
       try {
         const qrRes = await bookingApi.getQR(id);
-        setQrCodeUrl(qrRes.data?.qrCodeUrl || qrRes.qrCodeUrl || null);
+        const qr =
+          qrRes?.data?.qrCode ||
+          qrRes?.data?.qrCodeUrl ||
+          qrRes?.qrCode ||
+          qrRes?.qrCodeUrl ||
+          null;
+        setQrCodeUrl(qr);
       } catch {
         // QR fallback
       }
@@ -192,7 +198,9 @@ const BookingDetailPage = memo(() => {
     );
   }
 
-  const isPending = booking.status === BOOKING_STATUS.PENDING;
+  const isPending =
+    booking.status === BOOKING_STATUS.PENDING ||
+    booking.status === BOOKING_STATUS.PAID_PENDING_CONFIRM;
   const isConfirmed = booking.status === BOOKING_STATUS.CONFIRMED;
   const canConfirm = !isStaff || hasPermission("canConfirmBookings");
   const canCancel = !isStaff || hasPermission("canCancelBookings");

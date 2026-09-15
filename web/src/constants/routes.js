@@ -71,6 +71,7 @@ export const BUSINESS_ROUTES = {
   BOOKINGS: "/business/bookings",
   BOOKING_SCHEDULE: "/business/bookings/schedule",
   BOOKING_QUICK: "/business/bookings/quick",
+  BOOKING_PROCESS: "/business/bookings/quick",
   BOOKING_DETAIL: (id) => `/business/bookings/${id}`,
   VOUCHERS: "/business/vouchers",
   STAFF: "/business/staff",

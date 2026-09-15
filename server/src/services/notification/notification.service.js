@@ -592,15 +592,15 @@ eventEmitter.on(EVENTS.BOOKING.PAID, async ({ bookingId, bookingCode, userId, bu
   await Promise.all([
     notifyUser(
       userId,
-      "Đã thanh toán, chờ xác nhận",
-      `Booking #${bookingCode} đã thanh toán thành công. Đang chờ doanh nghiệp xác nhận.`,
+      "Đã thanh toán và xác nhận",
+      `Booking #${bookingCode} đã thanh toán thành công. Mã QR đã sẵn sàng.`,
       { bookingId, type: "booking_paid" },
     ),
     businessId
       ? notifyBusinessOwner(
           businessId,
-          "Có đơn thanh toán mới, vui lòng xác nhận",
-          `Booking #${bookingCode} đã được thanh toán. Vui lòng xác nhận đơn.`,
+          "Đơn đã thanh toán và tự động xác nhận",
+          `Booking #${bookingCode} đã được thanh toán và xác nhận tự động.`,
           { bookingId, type: "booking_paid_business" },
           null,
           { emailKey: "newBookingEmail", pushKey: "newBookingPush" },

@@ -687,6 +687,7 @@ export const getMyBookingQR = async (bookingId, userId) => {
       id: true,
       bookingCode: true,
       status: true,
+      paymentStatus: true,
     },
   });
 
@@ -694,12 +695,26 @@ export const getMyBookingQR = async (bookingId, userId) => {
     throw new ServiceError("Booking không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
-  if (booking.status !== BOOKING_STATUS.CONFIRMED) {
+  const isConfirmed = booking.status === BOOKING_STATUS.CONFIRMED;
+  const isPaid = booking.paymentStatus === PAYMENT_STATUS.PAID;
+
+  if (!isConfirmed && !isPaid) {
     throw new ServiceError(
-      "Booking chưa được xác nhận để lấy QR",
+      "Booking chưa được xác nhận hoặc chưa thanh toán để lấy QR",
       422,
       ERROR_CODES.BOOKING_NOT_CONFIRMED,
     );
+  }
+
+  // Tự động đồng bộ trạng thái confirmed cho booking đã thanh toán
+  if (isPaid && !isConfirmed) {
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        status: BOOKING_STATUS.CONFIRMED,
+        confirmedAt: new Date(),
+      },
+    }).catch(() => {});
   }
 
   const qrAction = "checkin";
@@ -1733,19 +1748,33 @@ export const getQR = async (bookingId) => {
 
   const booking = await prisma.booking.findUnique({
     where: { id: parseInt(bookingId) },
-    select: { id: true, bookingCode: true, status: true },
+    select: { id: true, bookingCode: true, status: true, paymentStatus: true },
   });
 
   if (!booking) {
     throw new ServiceError("Booking không tồn tại", 404, ERROR_CODES.NOT_FOUND);
   }
 
-  if (booking.status !== BOOKING_STATUS.CONFIRMED) {
+  const isConfirmed = booking.status === BOOKING_STATUS.CONFIRMED;
+  const isPaid = booking.paymentStatus === PAYMENT_STATUS.PAID;
+
+  if (!isConfirmed && !isPaid) {
     throw new ServiceError(
-      "Chỉ booking đã xác nhận mới có QR code",
+      "Chỉ booking đã xác nhận hoặc đã thanh toán mới có QR code",
       400,
       ERROR_CODES.VALIDATION_ERROR,
     );
+  }
+
+  // Tự động đồng bộ trạng thái confirmed cho booking đã thanh toán
+  if (isPaid && !isConfirmed) {
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        status: BOOKING_STATUS.CONFIRMED,
+        confirmedAt: new Date(),
+      },
+    }).catch(() => {});
   }
 
   const qrAction = "checkin";

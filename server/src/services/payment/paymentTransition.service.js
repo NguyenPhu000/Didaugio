@@ -124,6 +124,31 @@ function receiptResult({ receipt, payment, collectedAmount, replayed, transition
   };
 }
 
+async function confirmLegacyPaidBooking(tx, payment, collectedAmount) {
+  const obligation = Number(valueOf(payment, "amount"));
+  if (
+    valueOf(payment, "status") !== PAYMENT_STATUS.PAID ||
+    collectedAmount !== obligation
+  ) {
+    return false;
+  }
+
+  const paidAtValue = valueOf(payment, "paid_at", "paidAt");
+  const paidAt = paidAtValue ? new Date(paidAtValue) : new Date();
+  const result = await tx.booking.updateMany({
+    where: {
+      id: Number(valueOf(payment, "booking_id", "bookingId")),
+      status: BOOKING_STATUS.PAID_PENDING_CONFIRM,
+      paymentStatus: PAYMENT_STATUS.PAID,
+    },
+    data: {
+      status: BOOKING_STATUS.CONFIRMED,
+      confirmedAt: paidAt,
+    },
+  });
+  return result.count > 0;
+}
+
 export function createPaymentTransition({ processPaymentLedger = defaultProcessPaymentLedger } = {}) {
   async function receiptSummary(tx, paymentId) {
     const summary = await tx.paymentReceipt.aggregate({
@@ -153,7 +178,14 @@ export function createPaymentTransition({ processPaymentLedger = defaultProcessP
     if (replay) {
       assertSameReceiptCommand(replay, command, paymentId, fingerprint);
       const collectedAmount = await receiptSummary(tx, paymentId);
-      return receiptResult({ receipt: replay, payment, collectedAmount, replayed: true });
+      const transitioned = await confirmLegacyPaidBooking(tx, payment, collectedAmount);
+      return receiptResult({
+        receipt: replay,
+        payment,
+        collectedAmount,
+        replayed: true,
+        transitioned,
+      });
     }
 
     const externalReplay = await tx.paymentReceipt.findFirst({
@@ -165,7 +197,14 @@ export function createPaymentTransition({ processPaymentLedger = defaultProcessP
     if (externalReplay) {
       assertSameReceiptCommand(externalReplay, command, paymentId, fingerprint);
       const collectedAmount = await receiptSummary(tx, paymentId);
-      return receiptResult({ receipt: externalReplay, payment, collectedAmount, replayed: true });
+      const transitioned = await confirmLegacyPaidBooking(tx, payment, collectedAmount);
+      return receiptResult({
+        receipt: externalReplay,
+        payment,
+        collectedAmount,
+        replayed: true,
+        transitioned,
+      });
     }
 
     const obligation = Number(valueOf(payment, "amount"));
@@ -222,11 +261,12 @@ export function createPaymentTransition({ processPaymentLedger = defaultProcessP
       return receiptResult({ receipt, payment, collectedAmount });
     }
 
+    const paidAt = command.paidAt ? new Date(command.paidAt) : new Date();
     await tx.payment.update({
       where: { id: paymentId },
       data: {
         status: PAYMENT_STATUS.PAID,
-        paidAt: command.paidAt ? new Date(command.paidAt) : new Date(),
+        paidAt,
         paymentMethod: command.method,
         transactionId: command.externalTransactionId,
         bankCode: command.bankCode || null,
@@ -237,9 +277,9 @@ export function createPaymentTransition({ processPaymentLedger = defaultProcessP
     const booking = await tx.booking.update({
       where: { id: bookingId },
       data: {
-        status: BOOKING_STATUS.PAID_PENDING_CONFIRM,
+        status: BOOKING_STATUS.CONFIRMED,
         paymentStatus: PAYMENT_STATUS.PAID,
-        confirmedAt: null,
+        confirmedAt: paidAt,
       },
       select: {
         id: true,
@@ -255,7 +295,11 @@ export function createPaymentTransition({ processPaymentLedger = defaultProcessP
         bookingId,
         action: "approve",
         actorUserId: command.actorUserId || null,
-        metadata: { source: command.source, gateway: command.gateway },
+        metadata: {
+          source: command.source,
+          gateway: command.gateway,
+          autoConfirmed: true,
+        },
       },
     });
     return receiptResult({ receipt, payment, collectedAmount, transitioned: true });

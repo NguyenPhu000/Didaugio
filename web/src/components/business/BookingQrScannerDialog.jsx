@@ -124,7 +124,7 @@ export default function BookingQrScannerDialog({ open, onOpenChange, onSuccess }
     context.drawImage(video, 0, 0, width, height);
     const imageData = context.getImageData(0, 0, width, height);
     const code = jsQR(imageData.data, width, height, {
-      inversionAttempts: "dontInvert",
+      inversionAttempts: "attemptBoth",
     });
 
     return code?.data || "";
@@ -210,7 +210,7 @@ export default function BookingQrScannerDialog({ open, onOpenChange, onSuccess }
         } catch {
           // Keep the camera session alive; manual fallback remains available.
         }
-      }, 700);
+      }, 250);
     } catch (error) {
       setCameraError(
         error?.name === "NotAllowedError"
@@ -224,14 +224,16 @@ export default function BookingQrScannerDialog({ open, onOpenChange, onSuccess }
   }, [decodeVideoFrame, stopCamera, t, verifyText]);
 
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      startCamera();
+    } else {
       stopCamera();
       setManualValue("");
       setCameraError("");
       setResult(null);
       lastScannedRef.current = "";
     }
-  }, [open, stopCamera]);
+  }, [open, startCamera, stopCamera]);
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 

@@ -11,6 +11,7 @@ import {
   Plus,
   Clock,
   Sparkles,
+  QrCode,
 } from "lucide-react";
 import * as bookingApi from "@/apis/bookingService";
 import * as ruleApi from "@/apis/bookingAutoRuleApi";
@@ -34,6 +35,7 @@ import {
 import QuickProcessPendingTab from "@/components/business/quick-process/QuickProcessPendingTab";
 import QuickProcessRulesTab from "@/components/business/quick-process/QuickProcessRulesTab";
 import RuleConfigModal from "@/components/business/quick-process/RuleConfigModal";
+import BookingQrScannerDialog from "@/components/business/BookingQrScannerDialog";
 
 const BookingQuickProcessPage = memo(() => {
   const { t } = useTranslation();
@@ -57,6 +59,7 @@ const BookingQuickProcessPage = memo(() => {
   const [selectedPlaceId, setSelectedPlaceId] = useState("all");
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [confirmDeleteRule, setConfirmDeleteRule] = useState(null);
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
 
   const loadPending = useCallback(async () => {
     setLoading(true);
@@ -284,14 +287,26 @@ const BookingQuickProcessPage = memo(() => {
           </div>
         </div>
 
-        {tab === "rules" && (
+        <div className="flex flex-wrap items-center gap-2">
           <Button
-            onClick={() => setRuleOpen(true)}
-            className="w-full sm:w-auto justify-center rounded-[22px] px-5 text-xs font-bold bg-slate-950 hover:bg-slate-800 text-white dark:bg-primary dark:text-primary-foreground shadow-sm gap-1.5 cursor-pointer"
+            type="button"
+            onClick={() => setQrScannerOpen(true)}
+            variant="outline"
+            className="rounded-[22px] px-4 text-xs font-bold gap-1.5 cursor-pointer border-slate-300 dark:border-border bg-white dark:bg-card hover:bg-slate-50"
           >
-            <Plus className="w-3.5 h-3.5" /> Tạo quy tắc tự động
+            <QrCode className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            Quét mã QR Check-in
           </Button>
-        )}
+
+          {tab === "rules" && (
+            <Button
+              onClick={() => setRuleOpen(true)}
+              className="w-full sm:w-auto justify-center rounded-[22px] px-5 text-xs font-bold bg-slate-950 hover:bg-slate-800 text-white dark:bg-primary dark:text-primary-foreground shadow-sm gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" /> Tạo quy tắc tự động
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ── Top Bento Summary KPIs ── */}
@@ -410,6 +425,16 @@ const BookingQuickProcessPage = memo(() => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {qrScannerOpen && (
+        <BookingQrScannerDialog
+          open={qrScannerOpen}
+          onOpenChange={setQrScannerOpen}
+          onSuccess={() => {
+            loadPending();
+          }}
+        />
+      )}
     </div>
   );
 });

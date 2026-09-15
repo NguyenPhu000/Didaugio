@@ -1,4 +1,5 @@
 import * as sepayService from "../sepay.service.js";
+import * as sepayWebhookService from "../sepayWebhook.service.js";
 
 export const sepayStrategy = {
   name: "SEPAY",
@@ -6,19 +7,23 @@ export const sepayStrategy = {
   /**
    * Generate QR Code URL for SePay Bank Transfer.
    */
-  createPayment({ paymentCode, amount, accountNo, bankName }) {
-    return sepayService.generateQrUrl({
-      paymentCode,
+  createPayment({ amount, transactionRef, paymentCode }) {
+    return sepayService.buildQrUrl({
       amount,
-      accountNo,
-      bankName,
+      transactionRef: transactionRef || paymentCode,
     });
   },
 
   /**
    * Verify SePay bank webhook signature.
    */
-  verifyWebhook(headers, rawBody) {
-    return sepayService.verifyWebhookSignature(headers, rawBody);
+  verifyWebhook(rawBody, signature, timestamp, headers) {
+    return sepayWebhookService.verifyWebhookSignature(
+      rawBody,
+      signature,
+      timestamp,
+      headers,
+    );
   },
 };
+

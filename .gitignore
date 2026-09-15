@@ -132,5 +132,4 @@ blob-report/
 playwright/.cache/
 DESIGN.md
 PRODUCT.md
-app/test/modules/ai/hooks/useAIPlanner.test.js
-server/test/unit/tripAiPlannerSelection.test.js
+
