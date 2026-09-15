@@ -24,20 +24,6 @@ function normalizePlaceIds(ids, fallbackPlaces = []) {
   return ids.map((id) => Number(id)).filter(Boolean);
 }
 
-function getMessagePlaceIds(message) {
-  return (message?.suggestedPlaces || [])
-    .map((place) => Number(place?.id))
-    .filter(Boolean);
-}
-
-function getLatestSuggestedPlaceIds(messages = []) {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const ids = getMessagePlaceIds(messages[index]);
-    if (ids.length > 0) return [...new Set(ids)];
-  }
-  return [];
-}
-
 function buildTripSummaryMessage(trip, t) {
   const destCount = trip.destinations?.length || 0;
   const costLine = trip.estimatedCost
@@ -204,13 +190,6 @@ export function useAIPlanner() {
       appendMessage(userMsg);
 
       const inferred = inferPlannerPreferences(rawText);
-      const activeDraftIds = getMessagePlaceIds({ suggestedPlaces: draftPlan?.suggestedPlaces });
-      const latestSuggestedIds = activeDraftIds.length > 0
-        ? activeDraftIds
-        : getLatestSuggestedPlaceIds(messages);
-      const contextSelectedIds = selectedPlaceIds.length > 0
-        ? selectedPlaceIds
-        : latestSuggestedIds;
 
       const payload = {
         totalDays: preferences.totalDays ?? inferred.totalDays ?? 1,
@@ -220,7 +199,9 @@ export function useAIPlanner() {
         notes: normalizePlannerNotes(rawText),
         selectedPlaceIds:
           preferences.selectedPlaceIds ??
-          (contextSelectedIds.length > 0 ? [...new Set(contextSelectedIds)] : undefined),
+          (selectedPlaceIds.length > 0
+            ? [...new Set(selectedPlaceIds)]
+            : undefined),
       };
 
       setLastPreferences(payload);
@@ -242,8 +223,6 @@ export function useAIPlanner() {
       setDraftPlan,
       setLastPreferences,
       setSelectedPlaceIds,
-      draftPlan,
-      messages,
       selectedPlaceIds,
     ],
   );

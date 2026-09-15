@@ -114,6 +114,88 @@ export const assertAuthoritativeItineraryPlaces = (
   return itinerary;
 };
 
+export const reconcileGeneratedItinerarySelection = (
+  itinerary,
+  selectedPlaceIdSet,
+  allowedPlaceIds = selectedPlaceIdSet,
+) => {
+  if (!(selectedPlaceIdSet instanceof Set) || selectedPlaceIdSet.size === 0) {
+    return itinerary;
+  }
+
+  const existingDays = itinerary?.days || [];
+  if (existingDays.length === 0) return itinerary;
+
+  const safeAllowedPlaceIds =
+    allowedPlaceIds instanceof Set ? allowedPlaceIds : new Set();
+  const validSelectedPlaceIds = [...selectedPlaceIdSet]
+    .map((id) => toInt(id))
+    .filter((id) => id && safeAllowedPlaceIds.has(id));
+  const validSelectedPlaceIdSet = new Set(validSelectedPlaceIds);
+  const retainedPlaceIds = new Set();
+
+  let estimatedCost = 0;
+  const days = existingDays.map((day) => {
+    const destinations = (day?.destinations || [])
+      .filter((destination) =>
+        validSelectedPlaceIdSet.has(toInt(destination?.placeId)),
+      )
+      .map((destination, index) => {
+        const placeId = toInt(destination?.placeId);
+        retainedPlaceIds.add(placeId);
+        const normalizedCost = normalizeConfirmedMoney(
+          destination?.estimatedCost,
+        );
+        if (normalizedCost === null) {
+          return { ...destination, placeId, order: index + 1, estimatedCost: null };
+        }
+
+        const boundedCost = Math.min(
+          normalizedCost,
+          Math.max(ITINERARY_MONEY_MAX - estimatedCost, 0),
+        );
+        estimatedCost += boundedCost;
+        return { ...destination, placeId, order: index + 1, estimatedCost: boundedCost };
+      });
+
+    return {
+      ...day,
+      destinations,
+    };
+  });
+
+  for (const placeId of validSelectedPlaceIds) {
+    if (retainedPlaceIds.has(placeId)) continue;
+
+    const targetDay = days
+      .filter((day) => day.destinations.length < 12)
+      .sort(
+        (left, right) =>
+          left.destinations.length - right.destinations.length ||
+          left.dayNumber - right.dayNumber,
+      )[0];
+    if (!targetDay) break;
+
+    targetDay.destinations.push({
+      placeId,
+      order: targetDay.destinations.length + 1,
+      startTime: null,
+      endTime: null,
+      durationMinutes: null,
+      note: "Địa điểm được thêm khi xác nhận lịch trình",
+      transportToNext: null,
+      estimatedCost: null,
+    });
+    retainedPlaceIds.add(placeId);
+  }
+
+  return {
+    ...itinerary,
+    estimatedCost,
+    days: days.filter((day) => day.destinations.length > 0),
+  };
+};
+
 export const filterItineraryToSelectedPlaces = (
   itinerary,
   selectedPlaceIdSet,
@@ -133,7 +215,6 @@ export const filterItineraryToSelectedPlaces = (
     ),
   );
 
-  // Tìm những địa điểm được người dùng yêu cầu chọn mà chưa xuất hiện trong draft đại điểm AI tạo
   for (const selectedPlaceId of selectedPlaceIdSet) {
     if (!draftPlaceIds.has(selectedPlaceId)) {
       throw createInvalidConfirmationError();
@@ -141,7 +222,7 @@ export const filterItineraryToSelectedPlaces = (
   }
 
   let estimatedCost = 0;
-  const days = existingDays.map((day, dayIndex) => {
+  const days = existingDays.map((day) => {
     const destinations = (day?.destinations || [])
       .filter((destination) =>
         selectedPlaceIdSet.has(toInt(destination?.placeId)),
@@ -578,8 +659,13 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
       totalDays,
     );
   }
-  assertAuthoritativeItineraryPlaces(itinerary, placeIdSet);
-
+  if (!itineraryDraft && normalizedSelectedPlaceIds.length > 0) {
+    itinerary = reconcileGeneratedItinerarySelection(
+      itinerary,
+      new Set(normalizedSelectedPlaceIds),
+      placeIdSet,
+    );
+  }
   const suggestedPlaces = buildSuggestedPlaces(
     itinerary.days,
     placeById,
@@ -599,6 +685,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
   if (!previewOnly && selectedPlaceIdSet?.size) {
     itinerary = filterItineraryToSelectedPlaces(itinerary, selectedPlaceIdSet);
   }
+  assertAuthoritativeItineraryPlaces(itinerary, placeIdSet);
 
   const { itinerary: enrichedItinerary, tripRoutingSummary } = isRoutingEnabled
     ? await enrichItineraryWithRouting({

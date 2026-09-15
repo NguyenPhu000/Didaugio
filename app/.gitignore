@@ -30,3 +30,8 @@ test/modules/booking/*
 !test/modules/booking/utils/
 test/modules/booking/utils/*
 !test/modules/booking/utils/paymentResult.test.js
+!test/modules/ai/
+test/modules/ai/*
+!test/modules/ai/hooks/
+test/modules/ai/hooks/*
+!test/modules/ai/hooks/useAIPlanner.test.js

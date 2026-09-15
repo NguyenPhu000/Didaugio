@@ -41,3 +41,4 @@ test/*
 !test/unit/
 test/unit/*
 !test/unit/paymentReturnRedirect.test.js
+!test/unit/tripAiPlannerSelection.test.js
