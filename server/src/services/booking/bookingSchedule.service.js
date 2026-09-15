@@ -111,8 +111,12 @@ function matchRuleConditions(conditions, booking) {
   return true;
 }
 
-function assertBusinessBookingPolicy(settings, bookingAt) {
-  const result = evaluateBusinessBookingPolicy({ settings, bookingAt });
+function assertBusinessBookingPolicy(service, bookingAt) {
+  const result = evaluateBusinessBookingPolicy({
+    settings: service?.business?.settings,
+    placeOpeningHours: service?.place?.openingHours,
+    bookingAt,
+  });
   if (result.ok) return;
   throw new ServiceError(
     getBusinessBookingPolicyMessage(result.reason),
@@ -253,7 +257,10 @@ export async function rescheduleBooking(
       where: { id: parseInt(bookingId, 10) },
       include: {
         service: {
-          include: { business: { select: { settings: true } } },
+          include: {
+            business: { select: { settings: true } },
+            place: { select: { openingHours: { select: { dayOfWeek: true, isClosed: true, openTime: true, closeTime: true } } } },
+          },
         },
       },
     });
@@ -270,7 +277,7 @@ export async function rescheduleBooking(
       "Chỉ có thể đổi lịch booking đang chờ hoặc đã xác nhận",
     );
 
-    assertBusinessBookingPolicy(existing.service?.business?.settings, newAt);
+    assertBusinessBookingPolicy(existing.service, newAt);
     const avail = await checkAvailability(tx, {
       serviceId: existing.serviceId,
       bookingAt: newAt,
@@ -377,7 +384,10 @@ export async function quickApproveBooking(bookingId, actorUserId) {
       where: { id: parseInt(bookingId, 10) },
       include: {
         service: {
-          include: { business: { select: { settings: true } } },
+          include: {
+            business: { select: { settings: true } },
+            place: { select: { openingHours: { select: { dayOfWeek: true, isClosed: true, openTime: true, closeTime: true } } } },
+          },
         },
       },
     });
@@ -395,7 +405,7 @@ export async function quickApproveBooking(bookingId, actorUserId) {
     );
 
     const at = resolveBookingAt(existing);
-    assertBusinessBookingPolicy(existing.service?.business?.settings, at);
+    assertBusinessBookingPolicy(existing.service, at);
     const avail = await checkAvailability(tx, {
       serviceId: existing.serviceId,
       bookingAt: at,
@@ -520,7 +530,10 @@ export async function autoApproveIfMatchRules(bookingId) {
       where: { id: parseInt(bookingId, 10) },
       include: {
         service: {
-          include: { business: { select: { settings: true } } },
+          include: {
+            business: { select: { settings: true } },
+            place: { select: { openingHours: { select: { dayOfWeek: true, isClosed: true, openTime: true, closeTime: true } } } },
+          },
         },
       },
     });
@@ -534,7 +547,7 @@ export async function autoApproveIfMatchRules(bookingId) {
     if (booking.status !== BOOKING_STATUS.PENDING) {
       return { applied: false, reason: "NOT_PENDING" };
     }
-    assertBusinessBookingPolicy(booking.service?.business?.settings, resolveBookingAt(booking));
+    assertBusinessBookingPolicy(booking.service, resolveBookingAt(booking));
 
     const rules = await tx.autoApproveRule.findMany({
       where: {

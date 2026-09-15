@@ -319,8 +319,8 @@ const CMSContentPage = () => {
           title: form.title,
           description: form.description || null,
           image: form.image || undefined,
-          linkType: form.linkType || "none",
-          linkValue: form.link || null,
+          linkType: form.linkType ? String(form.linkType).trim().toLowerCase() : "none",
+          linkValue: form.linkType === "none" ? null : (form.link?.trim() || null),
           position: form.position || "home",
           priority: form.order || 0,
           startDate: form.startDate

@@ -47,8 +47,8 @@ import { useTranslation } from "react-i18next";
 import { showAppAlert } from "../../src/utils/appAlert";
 
 const buildTimeSlots = ({
-  startHour = 6,
-  endHour = 22,
+  startHour = 0,
+  endHour = 24,
   minuteStep = 30,
 } = {}) => {
   const totalMinutes = (endHour - startHour) * 60;

@@ -8,6 +8,9 @@ const DAY_KEYS = [
   "friday",
   "saturday",
 ];
+const DAY_INDEX_BY_KEY = Object.fromEntries(
+  DAY_KEYS.map((day, index) => [day, index]),
+);
 
 const DEFAULT_HOURS = { open: "08:00", close: "22:00", closed: false };
 const DEFAULT_BOOKING_RULES = {
@@ -65,13 +68,27 @@ const getLocalParts = (date) => {
   };
 };
 
-export function getOperatingHoursForDate(settings, date) {
+export function getOperatingHoursForDate(settings, date, placeOpeningHours = []) {
   const day = getLocalParts(date).day;
-  return settings?.general?.operatingHours?.[day] || DEFAULT_HOURS;
+  const businessHours = settings?.general?.operatingHours?.[day];
+  if (businessHours && typeof businessHours === "object") return businessHours;
+
+  const placeHours = Array.isArray(placeOpeningHours)
+    ? placeOpeningHours.find((hours) => Number(hours?.dayOfWeek) === DAY_INDEX_BY_KEY[day])
+    : null;
+  if (placeHours) {
+    return {
+      open: placeHours.openTime,
+      close: placeHours.closeTime,
+      closed: placeHours.isClosed === true,
+    };
+  }
+
+  return DEFAULT_HOURS;
 }
 
-export function isWithinOperatingHours(settings, date) {
-  const hours = getOperatingHoursForDate(settings, date);
+export function isWithinOperatingHours(settings, date, placeOpeningHours = []) {
+  const hours = getOperatingHoursForDate(settings, date, placeOpeningHours);
   if (hours.closed === true) return false;
 
   const open = parseTime(hours.open);
@@ -85,7 +102,7 @@ export function isWithinOperatingHours(settings, date) {
     : current >= open || current <= close;
 }
 
-export function evaluateBusinessBookingPolicy({ settings, bookingAt, now = new Date() }) {
+export function evaluateBusinessBookingPolicy({ settings, placeOpeningHours = [], bookingAt, now = new Date() }) {
   const target = new Date(bookingAt);
   const current = new Date(now);
   if (Number.isNaN(target.getTime()) || Number.isNaN(current.getTime())) {
@@ -103,7 +120,7 @@ export function evaluateBusinessBookingPolicy({ settings, bookingAt, now = new D
     return { ok: false, reason: "MAX_ADVANCE_DAYS" };
   }
 
-  if (!isWithinOperatingHours(settings, target)) {
+  if (!isWithinOperatingHours(settings, target, placeOpeningHours)) {
     return { ok: false, reason: "OUTSIDE_OPERATING_HOURS" };
   }
 
@@ -112,11 +129,11 @@ export function evaluateBusinessBookingPolicy({ settings, bookingAt, now = new D
 
 export function getBusinessBookingPolicyMessage(reason) {
   return {
-    INVALID_TIME: "Thoi gian dat cho khong hop le",
-    MIN_LEAD_TIME: "Thoi gian dat cho chua dat muc toi thieu",
-    MAX_ADVANCE_DAYS: "Thoi diem dat cho vuot qua gioi han cho phep",
-    OUTSIDE_OPERATING_HOURS: "Thoi diem dat cho nam ngoai gio hoat dong",
-  }[reason] || "Thoi gian dat cho khong duoc phep";
+    INVALID_TIME: "Thời gian đặt cho không hợp lệ",
+    MIN_LEAD_TIME: "Thời gian đặt cho chưa đặt mức tối thiểu",
+    MAX_ADVANCE_DAYS: "Thời điểm đặt cho vượt qua giới hạn cho phép",
+    OUTSIDE_OPERATING_HOURS: "Thời điểm đặt cho nằm ngoài giờ hoạt động",
+  }[reason] || "Thời gian đặt cho không được phép";
 }
 
 export function getUserCancellationRefundPercent(rules, bookingAt, now = new Date()) {

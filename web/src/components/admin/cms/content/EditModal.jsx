@@ -202,6 +202,7 @@ const EditModalContent = ({ open, onClose, item, onSave, type, loading }) => {
                         <SelectItem value="url">URL</SelectItem>
                         <SelectItem value="place">Địa điểm</SelectItem>
                         <SelectItem value="event">Sự kiện</SelectItem>
+                        <SelectItem value="trip">Lịch trình / Chuyến đi</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -214,7 +215,7 @@ const EditModalContent = ({ open, onClose, item, onSave, type, loading }) => {
                       id="generic-link"
                       value={form.link}
                       onChange={(e) => setField("link", e.target.value)}
-                      placeholder="Nhập URL, ID địa điểm hoặc ID sự kiện..."
+                      placeholder="Nhập URL, ID địa điểm, ID sự kiện hoặc ID chuyến đi..."
                     />
                   </div>
                 )}

@@ -7,12 +7,7 @@ export const ScheduleDayColumnGrid = ({ date, bookings, onViewBooking }) => {
   const isToday = isSameDay(date, new Date());
 
   const getBookingsForSlot = (timeId) => {
-    const slotHour = parseInt(timeId.split(":")[0], 10);
-    return bookings.filter((b) => {
-      if (!b.useTime) return false;
-      const bookingHour = parseInt(b.useTime.split(":")[0], 10);
-      return bookingHour === slotHour;
-    });
+    return bookings.filter((booking) => booking.useTime?.slice(0, 5) === timeId);
   };
 
   return (

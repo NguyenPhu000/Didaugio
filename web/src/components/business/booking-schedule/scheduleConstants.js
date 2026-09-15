@@ -6,24 +6,14 @@ export const BOOKING_MODELS = {
   SLOT: "slot",
 };
 
-export const TIME_SLOTS = [
-  { id: "06:00", label: "06:00", period: "morning" },
-  { id: "07:00", label: "07:00", period: "morning" },
-  { id: "08:00", label: "08:00", period: "morning" },
-  { id: "09:00", label: "09:00", period: "morning" },
-  { id: "10:00", label: "10:00", period: "morning" },
-  { id: "11:00", label: "11:00", period: "morning" },
-  { id: "12:00", label: "12:00", period: "afternoon" },
-  { id: "13:00", label: "13:00", period: "afternoon" },
-  { id: "14:00", label: "14:00", period: "afternoon" },
-  { id: "15:00", label: "15:00", period: "afternoon" },
-  { id: "16:00", label: "16:00", period: "afternoon" },
-  { id: "17:00", label: "17:00", period: "afternoon" },
-  { id: "18:00", label: "18:00", period: "evening" },
-  { id: "19:00", label: "19:00", period: "evening" },
-  { id: "20:00", label: "20:00", period: "evening" },
-  { id: "21:00", label: "21:00", period: "evening" },
-];
+export const TIME_SLOTS = Array.from({ length: 48 }, (_, index) => {
+  const hour = Math.floor(index / 2);
+  const minute = index % 2 === 0 ? "00" : "30";
+  const label = `${String(hour).padStart(2, "0")}:${minute}`;
+  const period = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+
+  return { id: label, label, period };
+});
 
 export const STATUS_CONFIGS = {
   [BOOKING_STATUS.PENDING]: {

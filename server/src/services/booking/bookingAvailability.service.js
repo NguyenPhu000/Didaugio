@@ -236,7 +236,7 @@ async function getResourceAvailability({ serviceId, dateStr, service, startOfDay
   return { date: dateStr, serviceId, available: dayHours.closed !== true && resourcesWithSlots.length > 0, bookingModel: "resource", slotDurationMinutes, bufferMinutes, resources: resourcesWithSlots };
 }
 
-function buildCapacityAvailability({ serviceId, dateStr, service, businessSettings, activeBookings }) {
+function buildCapacityAvailability({ serviceId, dateStr, service, businessSettings, placeOpeningHours, activeBookings }) {
   const cap = service.maxCapacity ?? 999_999;
   const overbookingAllowed = allowsCapacityOverbooking(service, businessSettings);
   const slots = [];
@@ -246,8 +246,8 @@ function buildCapacityAvailability({ serviceId, dateStr, service, businessSettin
     for (let minute = 0; minute < 60; minute += 30) {
       const slotStart = combineUseDateAndTime(dateStr, `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
       if (isToday && slotStart <= now) continue;
-      if (!isWithinOperatingHours(businessSettings, slotStart)) continue;
-      if (!evaluateBusinessBookingPolicy({ settings: businessSettings, bookingAt: slotStart, now }).ok) continue;
+      if (!isWithinOperatingHours(businessSettings, slotStart, placeOpeningHours)) continue;
+      if (!evaluateBusinessBookingPolicy({ settings: businessSettings, placeOpeningHours, bookingAt: slotStart, now }).ok) continue;
       const usedQty = activeBookings.filter((booking) => booking.bookingAt && startOfMinuteUtc(booking.bookingAt).getTime() === slotStart.getTime()).reduce((sum, booking) => sum + booking.quantity, 0);
       slots.push({ time: formatVietnamTime(slotStart), startTime: slotStart.toISOString(), available: overbookingAllowed || usedQty < cap, remaining: Math.max(0, cap - usedQty), capacity: cap });
     }
@@ -274,6 +274,7 @@ export async function getAvailableSlots(serviceId, dateStr) {
       allowOverbooking: true,
       businessId: true,
       placeId: true,
+      place: { select: { openingHours: { select: { dayOfWeek: true, isClosed: true, openTime: true, closeTime: true } } } },
       business: { select: { settings: true } },
     },
   });
@@ -286,9 +287,11 @@ export async function getAvailableSlots(serviceId, dateStr) {
   const slotDurationMinutes = resolveOccupiedDurationMinutes(service);
   const bufferMinutes = resolveBufferMinutes(service);
   const businessSettings = service.business?.settings;
+  const placeOpeningHours = service.place?.openingHours || [];
   const dayHours = getOperatingHoursForDate(
     businessSettings,
     combineUseDateAndTime(dateStr, "12:00"),
+    placeOpeningHours,
   );
 
   // Check if date is blocked
@@ -324,5 +327,5 @@ export async function getAvailableSlots(serviceId, dateStr) {
     },
   });
 
-  return buildCapacityAvailability({ serviceId: normalizedServiceId, dateStr, service, businessSettings, activeBookings });
+  return buildCapacityAvailability({ serviceId: normalizedServiceId, dateStr, service, businessSettings, placeOpeningHours, activeBookings });
 }

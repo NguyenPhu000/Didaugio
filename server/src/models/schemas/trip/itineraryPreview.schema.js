@@ -9,7 +9,7 @@ const boundedMoneySchema = z
   .max(ITINERARY_MONEY_MAX);
 const nullableTimeSchema = z
   .string()
-  .regex(timeHmRegex, "Thoi gian phai theo dinh dang HH:mm")
+  .regex(timeHmRegex, "Thời gian phải theo định dạng HH:mm")
   .nullable();
 
 export const itineraryPreviewDestinationSchema = z
@@ -53,7 +53,7 @@ export const itineraryPreviewSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["days", index, "dayNumber"],
-          message: "Ngay trong lich trinh khong duoc trung lap",
+          message: "Ngày trong lịch trình không được trùng lặp",
         });
       }
       seenDays.add(day.dayNumber);
@@ -62,7 +62,7 @@ export const itineraryPreviewSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["days", index, "dayNumber"],
-          message: "Ngay vuot qua tong so ngay cua lich trinh",
+          message: "Ngày vượt quá tổng số ngày của lịch trình",
         });
       }
     });
@@ -71,7 +71,7 @@ export const itineraryPreviewSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["days"],
-        message: "Lich trinh co qua nhieu dia diem",
+        message: "Lịch trình có quá nhiều địa điểm",
       });
     }
   });

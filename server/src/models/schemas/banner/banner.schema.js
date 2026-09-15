@@ -9,7 +9,14 @@ const trimAndEmptyToNull = (val) => {
   return val;
 };
 
-const LINK_TYPES = ["none", "url", "event", "trip"];
+export const LINK_TYPES = ["none", "url", "place", "event", "trip"];
+
+const normalizeLinkType = (val) => {
+  if (val === undefined || val === null) return undefined;
+  if (typeof val !== "string" || !val.trim()) return "none";
+  const lower = val.trim().toLowerCase();
+  return LINK_TYPES.includes(lower) ? lower : val;
+};
 
 export const bannerIdParamSchema = z.object({
   id: z.coerce.number().int().positive("ID banner không hợp lệ"),
@@ -31,7 +38,10 @@ export const createBannerSchema = z.object({
     .min(1, "Ảnh banner không được để trống")
     .max(5_000_000, "Ảnh quá lớn (tối đa 5MB)"),
 
-  linkType: z.enum(LINK_TYPES).default("none"),
+  linkType: z.preprocess(
+    (val) => normalizeLinkType(val) ?? "none",
+    z.enum(LINK_TYPES).default("none")
+  ),
 
   linkValue: z.preprocess(
     trimAndEmptyToNull,
@@ -65,7 +75,10 @@ export const updateBannerSchema = z.object({
 
   image: z.string().max(5_000_000).optional(),
 
-  linkType: z.enum(LINK_TYPES).optional(),
+  linkType: z.preprocess(
+    normalizeLinkType,
+    z.enum(LINK_TYPES).optional()
+  ),
 
   linkValue: z.preprocess(
     trimAndEmptyToNull,

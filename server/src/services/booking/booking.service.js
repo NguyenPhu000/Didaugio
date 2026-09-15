@@ -978,6 +978,7 @@ export const create = async (payload = {}, userId) => {
             name: true,
             status: true,
             businessId: true,
+            openingHours: { select: { dayOfWeek: true, isClosed: true, openTime: true, closeTime: true } },
           },
         },
         business: {
@@ -1042,6 +1043,7 @@ export const create = async (payload = {}, userId) => {
 
   const bookingPolicy = evaluateBusinessBookingPolicy({
     settings: service.business?.settings,
+    placeOpeningHours: service.place?.openingHours,
     bookingAt,
     now,
   });
@@ -1256,7 +1258,10 @@ export const confirm = async (bookingId, userId, businessNote = undefined) => {
       where: { id: parseInt(bookingId) },
       include: {
         service: {
-          include: { business: { select: { settings: true } } },
+          include: {
+            business: { select: { settings: true } },
+            place: { select: { openingHours: { select: { dayOfWeek: true, isClosed: true, openTime: true, closeTime: true } } } },
+          },
         },
         user: true,
       },
@@ -1281,6 +1286,7 @@ export const confirm = async (bookingId, userId, businessNote = undefined) => {
       : combineUseDateAndTime(existing.useDate, existing.useTime);
     const bookingPolicy = evaluateBusinessBookingPolicy({
       settings: existing.service?.business?.settings,
+      placeOpeningHours: existing.service?.place?.openingHours,
       bookingAt: at,
     });
     if (!bookingPolicy.ok) {

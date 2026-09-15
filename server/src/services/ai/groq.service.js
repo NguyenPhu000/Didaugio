@@ -267,30 +267,30 @@ function buildGroqSystemPrompt(context = {}, configuredPrompt = "") {
     `- Neu nguoi dung che "dat qua" hoac muon "re hon", goi y thay the tu du lieu co gia thap hon`,
     `- Tra loi ngan gon, xuong dong ro rang, moi y cach mot dong trong cho de doc tren dien thoai`,
     ``,
-    `Dinh dang gia ca (RAT QUAN TRONG):`,
-    `- Gia duoi 1 trieu: viet dang "120k", "50k", "250k"`,
-    `- Gia tu 1 trieu tro len: viet dang "1.5 trieu", "2 trieu"`,
-    `- Khoang gia: "120k - 250k" hoac "1.5 - 2 trieu"`,
-    `- KHONG BAO GIO viet dang "120000d" hay "1500000d" — rat kho doc`,
+    `Định dạng giá cả (RẤT QUAN TRỌNG):`,
+    `- Giá dưới 1 triệu: viết dạng "120k", "50k", "250k"`,
+    `- Giá từ 1 triệu trở lên: viết dạng "1.5 triệu", "2 triệu"`,
+    `- Khoảng giá: "120k - 250k" hoặc "1.5 - 2 triệu"`,
+    `- KHÔNG BAO GIỜ viết dạng "120000d" hay "1500000d" — rất khó đọc`,
     ``,
-    `Nguyen tac bat buoc:`,
-    `- Neu khong biet → thanh that noi "Genie chua co thong tin ne", KHONG bia dat`,
-    `- Tra loi bang tieng Viet tru khi duoc yeu cau`,
-    `- NGHIEM CAM su dung bat ky emoji hoac bieu tuong nao trong van ban tra ve. Chi tra ve van ban chu thuan tuy.`,
+    `Nguyên tắc bất buộc:`,
+    `- Nếu không biết → thành thật nói "Genie chưa có thông tin nè", KHÔNG bịa đặt`,
+    `- Trả lời bằng tiếng Việt`,
+    `- NGHIÊM CẤM sử dụng bất kỳ emoji hoặc biểu tượng nào trong văn bản trả về. Chỉ trả về văn bản chữ thuần túy.`,
   ];
 
   appendLocationContext(parts, context);
 
   // 2. Thoi gian (Time-aware Context)
   const hour = new Date().getHours();
-  const timeOfDay = context.timeOfDay || (hour < 5 ? "Buoi toi" : hour < 11 ? "Buoi sang" : hour < 14 ? "Buoi trua" : hour < 18 ? "Buoi chieu" : "Buoi toi");
-  parts.push(`Thoi diem hien tai: ${timeOfDay}`);
+  const timeOfDay = context.timeOfDay || (hour < 5 ? "Buổi tối" : hour < 11 ? "Buổi sáng" : hour < 14 ? "Buổi trưa" : hour < 18 ? "Buổi chiều" : "Buổi tối");
+  parts.push(`Thời điểm hiện tại: ${timeOfDay}`);
 
   appendPreferenceContext(parts, context);
 
   appendPlacesContext(parts, context);
 
-  parts.push(`\nLUU Y BAT BUOC CUOI CUNG: Khong bao gio nhac den bat ky ten dia diem nao nam ngoai danh sach CSDL tren.`);
+  parts.push(`\nLƯU Ý BẮT BUỘC CUỐI CÙNG: Không bao giờ nhắc đến bất kỳ tên địa điểm nào nằm ngoài danh sách CSDL trên.`);
 
   return parts.join("\n");
 }
