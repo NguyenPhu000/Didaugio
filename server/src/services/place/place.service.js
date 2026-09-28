@@ -177,6 +177,15 @@ const compactPlaceSelect = {
       isCover: true,
     },
   },
+  amenities: true,
+  openingHours: true,
+  tagLinks: {
+    select: {
+      tag: {
+        select: { id: true, name: true, slug: true, icon: true, color: true },
+      },
+    },
+  },
   _count: {
     select: { reviews: true, favorites: true },
   },

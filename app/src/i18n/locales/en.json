@@ -57,7 +57,9 @@
     "map": "Map",
     "explore": "Explore",
     "saved": "Saved",
-    "trips": "Trips"
+    "trips": "Trips",
+    "bookings": "Bookings",
+    "profile": "Account"
   },
   "auth": {
     "login": {
@@ -149,8 +151,11 @@
     "header": {
       "greeting": "What do you want to explore today?",
       "subtitle": "Pick a category, check out top spots and start your journey in Can Tho.",
-      "searchPlaceholder": "Search places, food, activities...",
+      "searchPlaceholder": "Search places or food",
       "location": "Can Tho",
+      "locationLabel": "Exploring",
+      "heroHeadline": "Can Tho,\nfor real",
+      "openMap": "Open Can Tho map",
       "searchHint": "Opens place search and filters"
     },
     "categories": {

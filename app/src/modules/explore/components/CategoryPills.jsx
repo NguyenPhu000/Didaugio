@@ -1,113 +1,69 @@
 import { memo, useCallback } from "react";
-import {
-  FlatList,
-  Platform,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Animated, {
-  useAnimatedStyle,
   useSharedValue,
+  useAnimatedStyle,
   withSpring,
 } from "react-native-reanimated";
-import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
-} from "../../../constants/design-tokens";
+import * as Haptics from "expo-haptics";
+import { EXPLORE_THEME as C } from "./exploreTheme";
+import { TOKENS } from "../../../constants/design-tokens";
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-const SPRING_CONFIG = TOKENS.spring.snappy;
-
-const PillItem = memo(function PillItem({
-  categoryId,
-  icon,
-  isActive,
-  label,
-  onPressCategory,
+const CategoryPillItem = memo(function CategoryPillItem({
+  item,
+  selected,
+  onSelect,
 }) {
   const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
+  const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
   const handlePressIn = useCallback(() => {
-scale.set(withSpring(0.94, SPRING_CONFIG));
+    scale.value = withSpring(0.95, TOKENS.spring.press);
   }, [scale]);
 
   const handlePressOut = useCallback(() => {
-scale.set(withSpring(1, SPRING_CONFIG));
+    scale.value = withSpring(1, TOKENS.spring.press);
   }, [scale]);
 
   const handlePress = useCallback(() => {
-    onPressCategory(categoryId);
-  }, [categoryId, onPressCategory]);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onSelect(item.categoryId);
+  }, [item.categoryId, onSelect]);
 
   return (
-    <AnimatedPressable
+    <Pressable
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       accessibilityRole="tab"
-      accessibilityLabel={label}
-      accessibilityState={{ selected: isActive }}
-      className="flex-row items-center gap-2 min-h-[40px] pl-3.5 pr-4 py-2 rounded-full border"
-      style={[
-        animatedStyle,
-        {
-          backgroundColor: isActive ? "#181819" : "#FDFCF9",
-          borderColor: isActive ? "#181819" : "rgba(24,24,25,0.13)",
-          borderCurve: "continuous",
-        },
-        isActive
-          ? Platform.select({
-              ios: {
-                shadowColor: "#181819",
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.18,
-                shadowRadius: 12,
-              },
-              android: { elevation: 3 },
-            })
-          : null,
-      ]}
+      accessibilityLabel={item.label}
+      accessibilityState={{ selected }}
     >
-      {/* Indicator dot: dấu chấm nhỏ bên trái pill đang active, tạo cảm giác
-          editorial "selected" như iOS segmented control. */}
-      {isActive ? (
-        <View
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: 3,
-            backgroundColor: APPLE_THEME.white,
-            opacity: 0.92,
-          }}
-        />
-      ) : null}
-      <MaterialCommunityIcons
-        name={icon}
-        size={16}
-        color={isActive ? APPLE_THEME.white : APPLE_THEME.text}
-      />
-      <Text
-        className="text-sm font-semibold"
-        style={{
-          color: isActive ? APPLE_THEME.white : APPLE_THEME.text,
-          fontFamily: TOKENS.font.semibold,
-        }}
-        numberOfLines={1}
+      <Animated.View
+        style={[
+          styles.pill,
+          selected ? styles.pillSelected : styles.pillDefault,
+          animStyle,
+        ]}
       >
-        {label}
-      </Text>
-    </AnimatedPressable>
+        <MaterialCommunityIcons
+          name={item.icon}
+          size={16}
+          color={selected ? "#FFFFFF" : C.muted}
+        />
+        <Text
+          style={[styles.label, selected ? styles.labelSelected : styles.labelDefault]}
+          numberOfLines={1}
+        >
+          {item.label}
+        </Text>
+      </Animated.View>
+    </Pressable>
   );
 });
-
-const keyExtractor = (item) => item.key;
 
 function CategoryPillsInner({
   categories,
@@ -116,61 +72,80 @@ function CategoryPillsInner({
 }) {
   const renderItem = useCallback(
     ({ item }) => (
-      <PillItem
-        categoryId={item.categoryId}
-        icon={item.icon}
-        isActive={
-          item.categoryId === null
-            ? selectedCategory === null
-            : String(selectedCategory) === String(item.categoryId)
+      <CategoryPillItem
+        item={item}
+        selected={
+          item.categoryId == null
+            ? selectedCategory == null
+            : String(item.categoryId) === String(selectedCategory)
         }
-        label={item.label}
-        onPressCategory={onSelectCategory}
+        onSelect={onSelectCategory}
       />
     ),
-    [selectedCategory, onSelectCategory],
+    [onSelectCategory, selectedCategory],
   );
 
   return (
-    <FlatList
-      data={categories}
-      renderItem={renderItem}
-      keyExtractor={keyExtractor}
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{
-        gap: 8,
-        paddingHorizontal: 20,
-        paddingTop: 4,
-        paddingBottom: 8,
-      }}
-      keyboardShouldPersistTaps="handled"
-    />
+    <View accessibilityRole="tablist" style={styles.wrap}>
+      <FlatList
+        data={categories}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.key}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.list}
+      />
+    </View>
   );
 }
 
-function areCategoryPillsPropsEqual(prev, next) {
-  if (prev.selectedCategory !== next.selectedCategory) return false;
-  if (prev.onSelectCategory !== next.onSelectCategory) return false;
-  if (prev.categories.length !== next.categories.length) return false;
+const styles = StyleSheet.create({
+  wrap: {
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  list: {
+    paddingHorizontal: C.spacing,
+    gap: 8,
+  },
+  pill: {
+    height: 38,
+    paddingHorizontal: 14,
+    borderRadius: 9999,
+    borderCurve: "continuous",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  pillDefault: {
+    backgroundColor: C.surface,
+    borderWidth: 0.5,
+    borderColor: "rgba(24, 48, 44, 0.08)",
+  },
+  pillSelected: {
+    backgroundColor: C.river,
+    borderWidth: 0.5,
+    borderColor: C.riverDark,
+    shadowColor: C.river,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.22,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  label: {
+    fontSize: 13,
+    letterSpacing: -0.2,
+  },
+  labelDefault: {
+    fontFamily: C.font.medium,
+    color: C.ink,
+  },
+  labelSelected: {
+    fontFamily: C.font.semibold,
+    color: "#FFFFFF",
+  },
+});
 
-  for (let i = 0; i < prev.categories.length; i += 1) {
-    const prevCat = prev.categories[i];
-    const nextCat = next.categories[i];
-    if (
-      prevCat.key !== nextCat.key ||
-      prevCat.categoryId !== nextCat.categoryId ||
-      prevCat.label !== nextCat.label ||
-      prevCat.icon !== nextCat.icon
-    ) {
-      return false;
-    }
-  }
+export const CategoryPills = memo(CategoryPillsInner);
 
-  return true;
-}
-
-export const CategoryPills = memo(
-  CategoryPillsInner,
-  areCategoryPillsPropsEqual,
-);

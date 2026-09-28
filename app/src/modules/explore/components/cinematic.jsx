@@ -15,24 +15,26 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { TOKENS } from "../../../constants/design-tokens";
+import { EXPLORE_THEME as C } from "./exploreTheme";
 import {
   PLACE_IMAGE_BLURHASH,
   getOptimizedCloudinaryUrl,
 } from "../../../lib/media-url";
 
 /** Mực in của hệ thống — sâu hơn #181819 để scrim không bị ngả xám. */
-export const INK = "#0B0B0C";
-export const CREAM = "#ECE7DE";
-export const STAR = "#F5B544";
+export const INK = C.ink;
+export const CREAM = C.sand;
+export const STAR = C.gold;
 
 /** Bán kính đồng tâm: media = outer - INSET để hai đường cong song song. */
-export const POSTER_RADIUS = 28;
-export const POSTER_INSET = 6;
+export const POSTER_RADIUS = 20;
+export const POSTER_INSET = 4;
 export const POSTER_MEDIA_RADIUS = POSTER_RADIUS - POSTER_INSET;
 
 export const CHIP_FILL = "rgba(11,11,12,0.52)";
@@ -62,21 +64,22 @@ export const posterShadow = Platform.select({
  */
 export function usePressScale({ to = 0.965, mediaTo = 1.05 } = {}) {
   const progress = useSharedValue(0);
+  const reduceMotion = useReducedMotion();
 
   const onPressIn = useCallback(() => {
-    progress.set(withSpring(1, SPRING));
-  }, [progress]);
+    if (!reduceMotion) progress.set(withSpring(1, SPRING));
+  }, [progress, reduceMotion]);
 
   const onPressOut = useCallback(() => {
-    progress.set(withSpring(0, SPRING));
-  }, [progress]);
+    if (!reduceMotion) progress.set(withSpring(0, SPRING));
+  }, [progress, reduceMotion]);
 
   const cardStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 - (1 - to) * progress.value }],
+    transform: [{ scale: reduceMotion ? 1 : 1 - (1 - to) * progress.value }],
   }));
 
   const mediaStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + (mediaTo - 1) * progress.value }],
+    transform: [{ scale: reduceMotion ? 1 : 1 + (mediaTo - 1) * progress.value }],
   }));
 
   return { onPressIn, onPressOut, cardStyle, mediaStyle };
@@ -90,26 +93,28 @@ export const PosterMedia = memo(function PosterMedia({
   uri,
   width = 800,
   fallbackIcon = "travel-explore",
+  fallbackBackground = CREAM,
+  fallbackIconColor = "rgba(11,11,12,0.28)",
   style,
 }) {
-  const [loadError, setLoadError] = useState(false);
+  const [failedUri, setFailedUri] = useState(null);
   const optimized = uri?.includes("res.cloudinary.com")
     ? getOptimizedCloudinaryUrl(uri, Math.round(width * 2))
     : uri;
 
-  if (!optimized || loadError) {
+  if (!optimized || optimized === failedUri) {
     return (
       <View
         style={[
           StyleSheet.absoluteFill,
-          { backgroundColor: CREAM, alignItems: "center", justifyContent: "center" },
+          { backgroundColor: fallbackBackground, alignItems: "center", justifyContent: "center" },
           style,
         ]}
       >
         <MaterialIconsRounded
           name={fallbackIcon}
           size={34}
-          color="rgba(11,11,12,0.28)"
+          color={fallbackIconColor}
         />
       </View>
     );
@@ -123,7 +128,7 @@ export const PosterMedia = memo(function PosterMedia({
       placeholder={{ blurhash: PLACE_IMAGE_BLURHASH }}
       placeholderContentFit="cover"
       cachePolicy="memory-disk"
-      onError={() => setLoadError(true)}
+      onError={() => setFailedUri(optimized)}
       style={[StyleSheet.absoluteFill, { width: "100%", height: "100%" }, style]}
     />
   );
@@ -254,7 +259,7 @@ export const ArrowCircle = memo(function ArrowCircle({
   );
 });
 
-/** Tiêu đề section: thanh dọc + chữ nặng, dùng lại ở mọi rail. */
+/** Shared heading for Explore sections. */
 export const SectionHeading = memo(function SectionHeading({ title, icon, right }) {
   return (
     <View
@@ -279,19 +284,15 @@ export const SectionHeading = memo(function SectionHeading({ title, icon, right 
           >
             {icon}
           </View>
-        ) : (
-          <View
-            style={{ width: 3, height: 22, borderRadius: 999, backgroundColor: INK }}
-          />
-        )}
+        ) : null}
         <Text
           style={{
             flex: 1,
             fontSize: 21,
-            lineHeight: 27,
-            letterSpacing: -0.6,
+            lineHeight: 29,
+            letterSpacing: -0.35,
             color: INK,
-            fontFamily: TOKENS.font.heading,
+            fontFamily: C.font.semibold,
           }}
           numberOfLines={1}
         >

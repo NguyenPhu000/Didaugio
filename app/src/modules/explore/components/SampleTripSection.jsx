@@ -1,23 +1,19 @@
 import { memo, useCallback } from "react";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
 import { SampleTripCard, SAMPLE_TRIP_CARD_W } from "./SampleTripCard";
-
-const ITEM_LENGTH = SAMPLE_TRIP_CARD_W + 14;
-
-const getItemLayout = (_, index) => ({
-  length: ITEM_LENGTH,
-  offset: ITEM_LENGTH * index,
-  index,
-});
+import { SectionHeading } from "./cinematic";
+import { EXPLORE_THEME as C } from "./exploreTheme";
 
 const keyExtractor = (item, index) =>
   item?.id != null ? String(item.id) : `sample-trip-${index}`;
 
 function SampleTripSectionInner({ sampleTrips, onPressTrip, onPressViewAll }) {
   const { t } = useTranslation();
+  const { width } = useWindowDimensions();
+  const itemLength = Math.min(SAMPLE_TRIP_CARD_W, width - TAB_SCREEN_PADDING * 2) + 14;
 
   const renderItem = useCallback(
     ({ item }) => {
@@ -30,40 +26,22 @@ function SampleTripSectionInner({ sampleTrips, onPressTrip, onPressViewAll }) {
   if (!sampleTrips?.length) return null;
 
   return (
-    <View className="mt-8">
-      {/* Section Header */}
+    <View style={{ marginTop: 30 }}>
       <View
-        style={{ paddingHorizontal: TAB_SCREEN_PADDING }}
-        className="mb-3.5 flex-row items-end justify-between"
+        style={{ paddingHorizontal: TAB_SCREEN_PADDING, marginBottom: 14 }}
       >
-        <View className="flex-1 space-y-0.5">
-          <View className="flex-row items-center space-x-2">
-            <Text className="text-2xl font-bold text-slate-900 tracking-tight">
-              {t("explore.sampleTrip.sectionTitle")}
-            </Text>
-            <View className="px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300/60">
-              <Text className="text-[10px] font-extrabold text-amber-800 uppercase">
-                {t("explore.sampleTrip.sectionBadge")}
-              </Text>
-            </View>
-          </View>
-          <Text className="text-xs font-medium text-slate-500">
-            {t("explore.sampleTrip.sectionSubtitle")}
-          </Text>
-        </View>
-
-        {onPressViewAll ? (
+        <SectionHeading title={t("explore.sampleTrip.sectionTitle")} right={onPressViewAll ? (
           <Pressable
             onPress={onPressViewAll}
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel={t("explore.sampleTrip.viewAll")}
-            className="flex-row items-center space-x-1.5 px-3 py-1.5 rounded-full bg-slate-100 active:bg-slate-200"
+            style={{ minHeight: 44, flexDirection: "row", alignItems: "center", gap: 4 }}
           >
-            <Text className="text-xs font-bold text-slate-800">Tất cả</Text>
-            <MaterialIconsRounded name="arrow-forward" size={15} color="#1E293B" />
+            <Text style={{ fontFamily: C.font.semibold, fontSize: 12, color: C.river }}>{t("common.viewAll")}</Text>
+            <MaterialIconsRounded name="arrow-forward" size={15} color={C.river} />
           </Pressable>
-        ) : null}
+        ) : null} />
       </View>
 
       {/* Horizontal Cards Carousel */}
@@ -73,9 +51,9 @@ function SampleTripSectionInner({ sampleTrips, onPressTrip, onPressViewAll }) {
         keyExtractor={keyExtractor}
         horizontal
         showsHorizontalScrollIndicator={false}
-        snapToInterval={ITEM_LENGTH}
+        snapToInterval={itemLength}
         decelerationRate="fast"
-        getItemLayout={getItemLayout}
+        getItemLayout={(_, index) => ({ length: itemLength, offset: itemLength * index, index })}
         contentContainerStyle={{
           paddingHorizontal: Math.max(0, TAB_SCREEN_PADDING),
         }}

@@ -57,7 +57,9 @@
     "map": "Bản đồ",
     "explore": "Khám phá",
     "saved": "Đã lưu",
-    "trips": "Chuyến đi"
+    "trips": "Chuyến đi",
+    "bookings": "Đặt chỗ",
+    "profile": "Tài khoản"
   },
   "auth": {
     "login": {
@@ -149,8 +151,11 @@
     "header": {
       "greeting": "Bạn muốn khám phá gì hôm nay?",
       "subtitle": "Chọn danh mục, xem địa điểm nổi bật và bắt đầu hành trình tại Cần Thơ.",
-      "searchPlaceholder": "Tìm địa điểm, món ăn, hoạt động...",
+      "searchPlaceholder": "Tìm địa điểm hoặc món ăn",
       "location": "Cần Thơ",
+      "locationLabel": "Đang khám phá",
+      "heroHeadline": "Cần Thơ\nđậm chất thật",
+      "openMap": "Mở bản đồ Cần Thơ",
       "searchHint": "Mở tìm kiếm và bộ lọc địa điểm"
     },
     "categories": {

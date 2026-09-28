@@ -7,6 +7,7 @@ import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRound
 import { TOKENS } from "../../../constants/design-tokens";
 import { resolveMediaUrl, getOptimizedCloudinaryUrl } from "../../../lib/media-url";
 import { formatDayMonthNumeric } from "@/utils/dateFormat";
+import { EXPLORE_THEME as C } from "./exploreTheme";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const SCREEN_W = Dimensions.get("window").width;
@@ -15,12 +16,13 @@ const CARD_H = 154;
 
 function EventCardInner({ event, onPress }) {
   const { t } = useTranslation();
-  const [imgError, setImgError] = useState(false);
+  const [failedUri, setFailedUri] = useState(null);
   const scale = useSharedValue(1);
   const imageUri = useMemo(() => {
     const raw = event?.thumbnail || event?.imageUrl;
-    return raw && !imgError ? getOptimizedCloudinaryUrl(resolveMediaUrl(raw), 480) : null;
-  }, [event?.imageUrl, event?.thumbnail, imgError]);
+    return raw ? getOptimizedCloudinaryUrl(resolveMediaUrl(raw), 480) : null;
+  }, [event?.imageUrl, event?.thumbnail]);
+  const displayUri = imageUri && imageUri !== failedUri ? imageUri : null;
   const dateRange = event?.startDate ? formatDayMonthNumeric(event.startDate) : null;
   const participantCount = event?._count?.participants || event?.participantCount || 0;
   const handlePress = useCallback(() => {
@@ -39,39 +41,34 @@ function EventCardInner({ event, onPress }) {
       style={[styles.card, animatedStyle]}
     >
       <View style={styles.imageWrap}>
-        {imageUri ? (
-          <Image source={{ uri: imageUri }} contentFit="cover" transition={220} cachePolicy="memory-disk" onError={() => setImgError(true)} style={StyleSheet.absoluteFill} />
+        {displayUri ? (
+          <Image source={{ uri: displayUri }} contentFit="cover" transition={220} cachePolicy="memory-disk" onError={() => setFailedUri(displayUri)} style={StyleSheet.absoluteFill} />
         ) : (
-          <View style={styles.placeholder}><MaterialIconsRounded name="celebration" size={28} color="#181819" /></View>
+          <View style={styles.placeholder}><MaterialIconsRounded name="event" size={28} color={C.muted} /></View>
         )}
       </View>
       <View style={styles.content}>
-        <View style={styles.eyebrowRow}><MaterialIconsRounded name="calendar-today" size={13} color="#181819" /><Text style={styles.eyebrow}>{t("explore.event.featuredBadge")}</Text></View>
         <Text style={styles.title} numberOfLines={2}>{event?.title}</Text>
         <Text style={styles.description} numberOfLines={1}>{event?.description || t("explore.event.defaultDescription")}</Text>
         <View style={styles.metaRow}>
-          {dateRange ? <View style={styles.meta}><MaterialIconsRounded name="schedule" size={13} color="#181819" /><Text style={styles.metaText}>{dateRange}</Text></View> : null}
-          <View style={styles.meta}><MaterialIconsRounded name="people" size={13} color="#181819" /><Text style={styles.metaText}>{t("explore.event.participants", { count: participantCount })}</Text></View>
+          {dateRange ? <View style={styles.meta}><MaterialIconsRounded name="schedule" size={13} color={C.river} /><Text style={styles.metaText}>{dateRange}</Text></View> : null}
+          {participantCount > 0 ? <View style={styles.meta}><Text style={styles.metaText}>{t("explore.event.participants", { count: participantCount })}</Text></View> : null}
         </View>
       </View>
-      <View style={styles.arrow}><MaterialIconsRounded name="arrow-forward" size={18} color="#FFFFFF" /></View>
     </AnimatedPressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { width: CARD_W, height: CARD_H, borderRadius: 22, padding: 10, backgroundColor: "#FFFFFF", borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(24,24,25,0.14)", flexDirection: "row", gap: 12, ...TOKENS.shadow.sm },
-  imageWrap: { width: 112, borderRadius: 15, overflow: "hidden", backgroundColor: "#EAE6DF" },
-  placeholder: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#EAE6DF" },
-  content: { flex: 1, paddingTop: 3, paddingRight: 26 },
-  eyebrowRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 6 },
-  eyebrow: { color: "#181819", fontSize: 11, fontFamily: TOKENS.font.bold, letterSpacing: 0.75 },
-  title: { color: "#181819", fontFamily: TOKENS.font.semibold, fontSize: 14, lineHeight: 19, letterSpacing: -0.2 },
-  description: { color: "rgba(24,24,25,0.56)", fontFamily: TOKENS.font.medium, fontSize: 12, marginTop: 4 },
+  card: { width: CARD_W, height: CARD_H, borderRadius: C.radius, padding: 10, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line, flexDirection: "row", gap: 12 },
+  imageWrap: { width: 112, borderRadius: 12, overflow: "hidden", backgroundColor: C.sand },
+  placeholder: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.sand },
+  content: { flex: 1, paddingTop: 3 },
+  title: { color: C.ink, fontFamily: C.font.semibold, fontSize: 14, lineHeight: 20, letterSpacing: -0.2 },
+  description: { color: C.muted, fontFamily: C.font.medium, fontSize: 12, marginTop: 4 },
   metaRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 10 },
   meta: { flexDirection: "row", alignItems: "center", gap: 4 },
-  metaText: { color: "rgba(24,24,25,0.7)", fontFamily: TOKENS.font.semibold, fontSize: 12 },
-  arrow: { position: "absolute", right: 10, bottom: 10, width: 38, height: 38, borderRadius: 19, backgroundColor: "#000000", alignItems: "center", justifyContent: "center" },
+  metaText: { color: C.river, fontFamily: C.font.medium, fontSize: 11 },
 });
 
 export const EventCard = memo(EventCardInner);

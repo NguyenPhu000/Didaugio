@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -16,11 +16,9 @@ import Animated, {
 } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
-} from "../../../constants/design-tokens";
+import { TOKENS } from "../../../constants/design-tokens";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
+import { EXPLORE_THEME as C } from "./exploreTheme";
 import {
   getOptimizedCloudinaryUrl,
   resolveMediaUrl,
@@ -28,17 +26,18 @@ import {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const BANNER_H = 196;
-const AUTO_SCROLL_INTERVAL = 10000;
 
 function BannerSlide({ banner, width, onPress }) {
   const { t } = useTranslation();
   const scale = useSharedValue(1);
+  const [failedUri, setFailedUri] = useState(null);
 
   const rawImage = banner.imageUrl || banner.imageData;
   const imageUri = rawImage
     ? getOptimizedCloudinaryUrl(resolveMediaUrl(rawImage), 900)
     : null;
-  const canNavigate = banner.linkType && banner.linkType !== "none";
+  const displayUri = imageUri && imageUri !== failedUri ? imageUri : null;
+  const canNavigate = Boolean(banner.linkType && banner.linkType !== "none" && banner.linkValue);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -60,6 +59,7 @@ scale.set(withSpring(1, TOKENS.spring.press));
   return (
     <AnimatedPressable
       onPress={handlePress}
+      disabled={!canNavigate}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       accessibilityRole={canNavigate ? "button" : undefined}
@@ -70,30 +70,25 @@ scale.set(withSpring(1, TOKENS.spring.press));
         {
           width,
           height: BANNER_H,
-          borderRadius: 28,
+          borderRadius: C.radius,
           overflow: "hidden",
-          backgroundColor: APPLE_THEME.surfaceMuted,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: "rgba(255,255,255,0.7)",
-          ...TOKENS.shadow.md,
+          backgroundColor: C.sand,
         },
       ]}
     >
-      {imageUri ? (
+      {displayUri ? (
         <Image
-          source={{ uri: imageUri }}
+          source={{ uri: displayUri }}
           contentFit="cover"
           transition={280}
           cachePolicy="memory-disk"
           style={StyleSheet.absoluteFill}
+          onError={() => setFailedUri(displayUri)}
         />
       ) : (
-        <LinearGradient
-          colors={["#181819", "#3F3B35", "#8A7C6C"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: C.ink, alignItems: "center", justifyContent: "center" }]}>
+          <MaterialIconsRounded name="landscape" size={32} color="rgba(255,255,255,0.28)" />
+        </View>
       )}
 
       <LinearGradient
@@ -106,20 +101,17 @@ scale.set(withSpring(1, TOKENS.spring.press));
         style={StyleSheet.absoluteFill}
       />
 
-      <View style={styles.topRow}>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{t("explore.heroBadge")}</Text>
-        </View>
-        {canNavigate ? (
+      {canNavigate ? (
+        <View style={styles.topRow}>
           <View style={styles.arrowCircle}>
             <MaterialIconsRounded
               name="arrow-forward"
               size={17}
-              color="#111827"
+              color={C.ink}
             />
           </View>
-        ) : null}
-      </View>
+        </View>
+      ) : null}
 
       <View style={styles.copy}>
         <Text style={styles.title} numberOfLines={2}>
@@ -128,12 +120,6 @@ scale.set(withSpring(1, TOKENS.spring.press));
         <Text style={styles.description} numberOfLines={2}>
           {banner.description || t("explore.cmsFallbackDesc")}
         </Text>
-        {canNavigate ? (
-          <View style={styles.ctaPill}>
-            <Text style={styles.ctaText}>{t("explore.heroExplore")}</Text>
-            <MaterialIconsRounded name="arrow-forward" size={15} color="#181819" />
-          </View>
-        ) : null}
       </View>
     </AnimatedPressable>
   );
@@ -147,22 +133,6 @@ function CmsBannerCarouselInner({ banners: rawBanners, onPressBanner }) {
   const banners = rawBanners?.length > 0 ? rawBanners : [];
 
   const [activeIndex, setActiveIndex] = useState(0);
-  const flatListRef = useRef(null);
-  const autoScrollTimer = useRef(null);
-
-  useEffect(() => {
-    if (banners.length <= 1) return undefined;
-
-    autoScrollTimer.current = setInterval(() => {
-      setActiveIndex((prev) => {
-        const next = (prev + 1) % banners.length;
-        flatListRef.current?.scrollToIndex({ index: next, animated: true });
-        return next;
-      });
-    }, AUTO_SCROLL_INTERVAL);
-
-    return () => clearInterval(autoScrollTimer.current);
-  }, [banners.length]);
 
   const renderItem = useCallback(
     ({ item }) => (
@@ -181,7 +151,6 @@ function CmsBannerCarouselInner({ banners: rawBanners, onPressBanner }) {
       const x = event?.nativeEvent?.contentOffset?.x || 0;
       const next = Math.round(x / bannerWidth);
       setActiveIndex(next);
-      clearInterval(autoScrollTimer.current);
     },
     [bannerWidth],
   );
@@ -191,7 +160,6 @@ function CmsBannerCarouselInner({ banners: rawBanners, onPressBanner }) {
   return (
     <View style={styles.container}>
       <FlatList
-        ref={flatListRef}
         data={banners}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
@@ -224,31 +192,16 @@ function CmsBannerCarouselInner({ banners: rawBanners, onPressBanner }) {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 14,
+    marginTop: 28,
     marginBottom: 4,
   },
   topRow: {
     position: "absolute",
     top: 16,
-    left: 16,
     right: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-  },
-  badge: {
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.36)",
-  },
-  badgeText: {
-    color: "#FFF",
-    fontSize: 10,
-    fontFamily: TOKENS.font.heading,
-    letterSpacing: 1.2,
   },
   arrowCircle: {
     width: 34,
@@ -266,33 +219,17 @@ const styles = StyleSheet.create({
   },
   title: {
     color: "#FFF",
-    fontSize: 24,
-    lineHeight: 29,
-    fontFamily: TOKENS.font.heading,
-    letterSpacing: -0.7,
+    fontSize: 21,
+    lineHeight: 27,
+    fontFamily: C.font.semibold,
+    letterSpacing: -0.35,
   },
   description: {
     color: "rgba(255,255,255,0.82)",
     fontSize: 13,
     lineHeight: 18,
-    fontFamily: TOKENS.font.medium,
+    fontFamily: C.font.medium,
     marginTop: 6,
-  },
-  ctaPill: {
-    alignSelf: "flex-start",
-    marginTop: 12,
-    paddingHorizontal: 12,
-    height: 30,
-    borderRadius: 999,
-    backgroundColor: "#FFFFFF",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  ctaText: {
-    color: "#181819",
-    fontSize: 12,
-    fontFamily: TOKENS.font.semibold,
   },
   dots: {
     marginTop: 10,
@@ -307,7 +244,7 @@ const styles = StyleSheet.create({
   },
   dotActive: {
     width: 20,
-    backgroundColor: "#181819",
+    backgroundColor: C.river,
   },
   dotInactive: {
     width: 6,

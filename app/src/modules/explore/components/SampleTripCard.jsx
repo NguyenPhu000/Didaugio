@@ -1,5 +1,5 @@
-import { memo, useCallback, useMemo } from "react";
-import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import { memo, useCallback, useMemo, useState } from "react";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { TOKENS } from "../../../constants/design-tokens";
 import { resolveTripCoverUri } from "../../../lib/media-url";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
+import { EXPLORE_THEME as C } from "./exploreTheme";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -56,12 +57,9 @@ function SampleTripCardInner({ trip, onPress }) {
       : visible;
   }, [destinations, t]);
 
-  const imageUri = useMemo(
-    () =>
-      resolveTripCoverUri(trip, 900) ||
-      "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=900&q=80",
-    [trip],
-  );
+  const imageUri = useMemo(() => resolveTripCoverUri(trip, 900), [trip]);
+  const [failedImageUri, setFailedImageUri] = useState(null);
+  const displayImageUri = imageUri && imageUri !== failedImageUri ? imageUri : null;
 
   const cardWidth = Math.min(
     SAMPLE_TRIP_CARD_W,
@@ -88,38 +86,32 @@ function SampleTripCardInner({ trip, onPress }) {
       accessibilityRole="button"
       accessibilityLabel={trip?.title || t("explore.sampleTrip.defaultTitle")}
       accessibilityHint={t("explore.accessibility.openTrip")}
-      style={[{ width: cardWidth, height: CARD_H }, animatedStyle]}
-      className="relative overflow-hidden rounded-3xl bg-slate-900 shadow-xl border border-white/20 mb-4"
+      style={[{ width: cardWidth, height: CARD_H, borderRadius: C.radius, overflow: "hidden", backgroundColor: C.ink, marginBottom: 12 }, animatedStyle]}
     >
-      {/* Background Image */}
-      <Image
-        source={{ uri: imageUri }}
-        contentFit="cover"
-        transition={300}
-        cachePolicy="memory-disk"
-        className="absolute inset-0 w-full h-full"
-      />
+      {displayImageUri ? (
+        <Image
+          source={{ uri: displayImageUri }}
+          contentFit="cover"
+          transition={240}
+          cachePolicy="memory-disk"
+          onError={() => setFailedImageUri(displayImageUri)}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : (
+        <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }]}>
+          <MaterialIconsRounded name="route" size={38} color="rgba(255,255,255,0.28)" />
+        </View>
+      )}
 
       {/* 3-Stop Linear Gradient Overlay */}
       <LinearGradient
         colors={["transparent", "rgba(8, 9, 12, 0.45)", "rgba(8, 9, 12, 0.95)"]}
         locations={[0, 0.55, 1]}
-        className="absolute inset-0 w-full h-full"
+        style={StyleSheet.absoluteFill}
       />
 
-      {/* Top Floating Badge */}
-      <View className="absolute top-3.5 left-3.5 flex-row items-center space-x-1.5 px-3 py-1.5 rounded-full bg-[#0B0D12]/80 border border-white/20">
-        <MaterialIconsRounded name="explore" size={14} color="#38BDF8" />
-        <Text className="text-[10px] font-bold tracking-wider text-sky-300 uppercase">
-          {t("explore.sampleTrip.badge", {
-            location: t("explore.header.location"),
-          })}
-        </Text>
-      </View>
-
-      {/* Right Top Days Tag */}
-      <View className="absolute top-3.5 right-3.5 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-400/40">
-        <Text className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-tight" style={{ fontVariant: ["tabular-nums"] }}>
+      <View className="absolute top-3.5 right-3.5 px-2.5 py-1 rounded-full bg-black/55">
+        <Text style={{ color: "#FFFFFF", fontFamily: C.font.semibold, fontSize: 11, fontVariant: ["tabular-nums"] }}>
           {t("explore.sampleTrip.days", { count: dayCount })}
         </Text>
       </View>
@@ -136,10 +128,10 @@ function SampleTripCardInner({ trip, onPress }) {
 
         {/* Route Preview */}
         <View className="flex-row items-center space-x-1 pr-10">
-          <MaterialIconsRounded name="place" size={13} color="#FCD34D" />
+          <MaterialIconsRounded name="place" size={13} color="#FFFFFF" />
           <Text
             numberOfLines={1}
-            className="text-xs font-medium text-amber-200/90"
+            className="text-xs font-medium text-white/90"
           >
             {routeSummary}
           </Text>
@@ -148,19 +140,6 @@ function SampleTripCardInner({ trip, onPress }) {
         {/* Bottom Meta & Action Arrow */}
         <View className="flex-row items-center justify-between pt-1.5 border-t border-white/15 mt-1">
           <View className="flex-row items-center space-x-3">
-            <View className="flex-row items-center space-x-1">
-              <MaterialIconsRounded
-                name="schedule"
-                size={14}
-                color="#E2E8F0"
-              />
-              <Text className="text-xs font-semibold text-slate-200" style={{ fontVariant: ["tabular-nums"] }}>
-                {t("explore.sampleTrip.days", { count: dayCount })}
-              </Text>
-            </View>
-
-            <View className="w-px h-3 bg-white/30" />
-
             <View className="flex-row items-center space-x-1">
               <MaterialIconsRounded name="route" size={14} color="#E2E8F0" />
               <Text className="text-xs font-semibold text-slate-200" style={{ fontVariant: ["tabular-nums"] }}>

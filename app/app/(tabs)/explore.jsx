@@ -31,10 +31,6 @@ import {
 } from "../../src/modules/explore/hooks/useExplore";
 import { useAuthStore } from "../../src/stores/authStore";
 import { useUIStore } from "../../src/stores/uiStore";
-import {
-  BOOKING_APPLE_THEME as APPLE_THEME,
-  TOKENS,
-} from "../../src/constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "./_layout";
 import { TAB_SCREEN_PADDING } from "./tabTheme";
 import {
@@ -47,7 +43,6 @@ import {
 import { getCategoryIconName } from "../../src/constants/categoryIcons";
 
 import { FeaturedSection } from "../../src/modules/explore/components/FeaturedSection";
-import { ExperienceBentoSection } from "../../src/modules/explore/components/ExperienceBentoSection";
 import { CategoryPlacesSection } from "../../src/modules/explore/components/CategoryPlacesSection";
 import { CategoryPlacesSheet } from "../../src/modules/explore/components/CategoryPlacesSheet";
 import { Skeleton } from "../../src/components/ui/Skeleton";
@@ -64,16 +59,18 @@ import { SampleTripSection } from "../../src/modules/explore/components/SampleTr
 import { AnnouncementBanner } from "../../src/modules/explore/components/AnnouncementBanner";
 
 import { BlurCarousel } from "../../src/components/reacticx/blur-carousel";
+import { resolvePlaceImageUri } from "../../src/lib/media-url";
+import { EXPLORE_THEME } from "../../src/modules/explore/components/exploreTheme";
 
 import { useSavePlace, useUnsavePlace, useSavedPlaces } from "../../src/modules/saved/hooks/useSaved";
 import { showAppAlert } from "../../src/utils/appAlert";
+import { useExploreLocation } from "../../src/modules/explore/hooks/useExploreLocation";
+import { ExplorePlaceCardHorizontal } from "../../src/modules/explore/components/ExplorePlaceCardHorizontal";
+import { SectionHeading } from "../../src/modules/explore/components/cinematic";
 
-const FOOD_HINTS = ["ẩm thực", "food", "restaurant", "ăn", "quán", "bánh"].map(
-  (item) => normalizeText(item),
-);
+const HERO_SKIP_CATEGORIES = ["ẩm thực", "food", "restaurant", "lưu trú", "hotel", "mua sắm", "shopping"].map(normalizeText);
 
-const FLOATING_TAB_CLEARANCE = TAB_BAR_HEIGHT + 84;
-const BUDGET_PRICE_RANGES = new Set(["FREE", "BUDGET", "MODERATE"]);
+const FLOATING_TAB_CLEARANCE = TAB_BAR_HEIGHT + 24;
 
 const getPlaceRatingValue = (place) => {
   const rating = Number(place?.ratingAvg ?? place?.averageRating ?? 0);
@@ -85,34 +82,27 @@ const getPlaceReviewCount = (place) => {
   return Number.isFinite(reviewCount) ? reviewCount : 0;
 };
 
-const getPlaceTimestamp = (place) => {
-  const value = new Date(
-    place?.createdAt || place?.updatedAt || place?.publishedAt || 0,
-  ).getTime();
-  return Number.isFinite(value) ? value : 0;
-};
-
 function ExplorePrimaryLoading() {
   return (
     <View style={styles.primaryLoading}>
       <View style={styles.primaryLoadingHeading}>
-        <Skeleton width={148} height={22} borderRadius={8} />
-        <Skeleton width={58} height={18} borderRadius={999} />
+        <Skeleton width={150} height={24} borderRadius={8} />
+        <Skeleton width={52} height={20} borderRadius={999} />
       </View>
 
       <View style={styles.primaryLoadingCards}>
-        <Skeleton width="48%" height={282} borderRadius={28} />
-        <Skeleton width="48%" height={282} borderRadius={28} />
+        <Skeleton width={290} height={360} borderRadius={20} />
+        <Skeleton width={180} height={360} borderRadius={20} />
       </View>
 
       <View style={styles.primaryLoadingHeading}>
-        <Skeleton width={132} height={22} borderRadius={8} />
-        <Skeleton width={54} height={18} borderRadius={999} />
+        <Skeleton width={138} height={22} borderRadius={8} />
+        <Skeleton width={64} height={18} borderRadius={999} />
       </View>
 
       <View style={styles.primaryLoadingCards}>
-        <Skeleton width="48%" height={238} borderRadius={28} />
-        <Skeleton width="48%" height={238} borderRadius={28} />
+        <Skeleton width={216} height={288} borderRadius={18} />
+        <Skeleton width={160} height={288} borderRadius={18} />
       </View>
     </View>
   );
@@ -123,6 +113,7 @@ export default function ExploreScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const isGuest = useAuthStore((s) => s.isGuest);
+  const { currentLocation } = useExploreLocation();
 
   const [searchVisible, setSearchVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -234,6 +225,15 @@ export default function ExploreScreen() {
     [exploreData],
   );
 
+  const heroPlace = useMemo(() => {
+    const featuredCandidates = Array.isArray(featuredPlaces) ? featuredPlaces : [];
+    const candidates = [...featuredCandidates, ...allPlaces].filter((place) => resolvePlaceImageUri(place));
+    return candidates.find((place) => {
+      const category = normalizeText(place?.category?.name || "");
+      return !HERO_SKIP_CATEGORIES.some((hint) => category.includes(hint));
+    }) || candidates[0] || null;
+  }, [featuredPlaces, allPlaces]);
+
   const categoryTabs = useMemo(() => {
     const normalizedCategories = Array.isArray(categories) ? categories : [];
     return [
@@ -280,6 +280,7 @@ export default function ExploreScreen() {
   const placesByCategory = useMemo(() => {
     return Array.from(fullPlacesByCategory.values())
       .sort((a, b) => b.places.length - a.places.length)
+      .slice(0, 3)
       .map((cat) => ({ ...cat, places: cat.places.slice(0, 8) }));
   }, [fullPlacesByCategory]);
 
@@ -297,16 +298,6 @@ export default function ExploreScreen() {
     [fullPlacesByCategory, allPlaces, selectedCategoryName],
   );
 
-  const culinaryPlaces = useMemo(() => {
-    const matched = allPlaces.filter((place) => {
-      const textToCheck = `${place?.category?.name || ""} ${place?.name || ""} ${place?.shortDescription || ""}`;
-      const content = normalizeText(textToCheck);
-      return FOOD_HINTS.some((keyword) => content.includes(keyword));
-    });
-    const source = matched.length >= 3 ? matched : allPlaces;
-    return source.slice(0, 3);
-  }, [allPlaces]);
-
   const curatedSections = useMemo(() => {
     if (selectedCategory != null) return [];
 
@@ -319,33 +310,12 @@ export default function ExploreScreen() {
       })
       .slice(0, 8);
 
-    const budgetPlaces = allPlaces
-      .filter((place) => BUDGET_PRICE_RANGES.has(place?.priceRange))
-      .slice(0, 8);
-
-    const newestPlaces = [...allPlaces]
-      .filter((place) => getPlaceTimestamp(place) > 0)
-      .sort((a, b) => getPlaceTimestamp(b) - getPlaceTimestamp(a))
-      .slice(0, 8);
-
     return [
       {
         id: "top-rated",
         title: t("explore.sections.topRated"),
         icon: "star-outline",
         places: topRatedPlaces,
-      },
-      {
-        id: "budget-friendly",
-        title: t("explore.sections.budgetFriendly"),
-        icon: "cash-multiple",
-        places: budgetPlaces,
-      },
-      {
-        id: "new-and-fresh",
-        title: t("explore.sections.newAndFresh"),
-        icon: "creation",
-        places: newestPlaces,
       },
     ].filter((section) => section.places.length >= 3);
   }, [allPlaces, selectedCategory, t]);
@@ -480,24 +450,29 @@ export default function ExploreScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
 
       <Animated.ScrollView
           showsVerticalScrollIndicator={false}
-          contentInsetAdjustmentBehavior="automatic"
+          contentInsetAdjustmentBehavior="never"
           contentContainerStyle={[styles.scrollContent, { paddingBottom: FLOATING_TAB_CLEARANCE }]}
           refreshControl={
             <RefreshControl
               refreshing={isRefetching || isCmsRefetching}
               onRefresh={handleRefresh}
-              tintColor={APPLE_THEME.focusBlue}
-              colors={[APPLE_THEME.focusBlue]}
+              tintColor={EXPLORE_THEME.river}
+              colors={[EXPLORE_THEME.river]}
             />
           }
           onScroll={handleScrollEvent}
           scrollEventThrottle={16}
         >
-          <ExploreModernHeader user={user} onPressSearch={handleOpenSearch} />
+          <ExploreModernHeader
+            heroPlace={heroPlace}
+            onPressHero={() => handlePressPlace(heroPlace)}
+            onPressMap={() => router.push("/(tabs)/map")}
+            onPressSearch={handleOpenSearch}
+          />
 
           {categoryTabs.length > 1 ? (
             <CategoryPills
@@ -507,73 +482,21 @@ export default function ExploreScreen() {
             />
           ) : null}
 
-          <AnnouncementBanner announcement={announcement} />
-
-          {showGlobalContent && banners.length > 0 ? (
-            <CmsBannerCarousel banners={banners} onPressBanner={handlePressBanner} />
-          ) : null}
-
-          {showGlobalContent && featuredEvents.length > 0 ? (
-            <View style={{ marginTop: 12, marginBottom: 4 }}>
-              <BlurCarousel
-                data={featuredEvents}
-                renderItem={renderEventBanner}
-                itemWidth={screenWidth - 32}
-                horizontalSpacing={16}
-                spacing={6}
-              />
-            </View>
-          ) : null}
-
-          {selectedCategoryName ? (
-            <View style={styles.filterPill}>
-              <View style={styles.filterDot} />
-              <Text style={styles.filterText}>
-                {selectedCategoryName} · {t("explore.results", { count: allPlaces.length })}
-              </Text>
-              <Pressable
-                haptic="none"
-                onPress={() => handleSelectCategory(null)}
-                hitSlop={8}
-                style={styles.filterCloseBtn}
-                accessibilityRole="button"
-                accessibilityLabel={t("explore.accessibility.clearCategory")}
-              >
-                <MaterialIconsRounded name="close" size={14} color={APPLE_THEME.text} />
-              </Pressable>
-            </View>
+          {showGlobalContent && Array.isArray(featuredPlaces) && featuredPlaces.length > 0 ? (
+            <FeaturedSection
+              places={featuredPlaces}
+              onPressPlace={handlePressPlace}
+              onSavePlace={handleSavePlace}
+              savedPlaceIds={savedPlaceIds}
+              userLocation={currentLocation}
+            />
           ) : null}
 
           <View>
-            {showGlobalContent && featuredPlaces.length > 0 ? (
-              <FeaturedSection
-                places={featuredPlaces}
-                onPressPlace={handlePressPlace}
-                onSavePlace={handleSavePlace}
-                savedPlaceIds={savedPlaceIds}
-              />
-            ) : null}
-
-            {showGlobalContent ? (
-              <SampleTripSection
-                sampleTrips={sampleTrips}
-                onPressTrip={handlePressTrip}
-                onPressViewAll={() => router.push("/(tabs)/trips")}
-              />
-            ) : null}
-
-            {showGlobalContent && regularEvents.length > 0 ? (
-              <EventSection events={regularEvents} onPressEvent={handlePressEvent} />
-            ) : null}
-
             {isPrimaryLoading ? (
               <ExplorePrimaryLoading />
             ) : (
               <>
-                {culinaryPlaces.length >= 3 ? (
-                  <ExperienceBentoSection places={culinaryPlaces} onPressPlace={handlePressPlace} />
-                ) : null}
-
                 {curatedSections.map((section) => (
                   <CategoryPlacesSection
                     key={section.id}
@@ -581,6 +504,9 @@ export default function ExploreScreen() {
                     categoryId={section.id}
                     places={section.places}
                     onPressPlace={handlePressPlace}
+                    onSavePlace={handleSavePlace}
+                    savedPlaceIds={savedPlaceIds}
+                    userLocation={currentLocation}
                     onPressViewAll={() => handleViewCategoryPlaces(section)}
                   />
                 ))}
@@ -594,31 +520,101 @@ export default function ExploreScreen() {
                         categoryId={category.id}
                         places={category.places}
                         onPressPlace={handlePressPlace}
+                        onSavePlace={handleSavePlace}
+                        savedPlaceIds={savedPlaceIds}
+                        userLocation={currentLocation}
                         onPressViewAll={() => handleViewCategoryPlaces(category)}
                       />
                     ))}
                   </View>
                 ) : null}
 
+                {/* Danh sách địa điểm đầy đủ thông tin khi người dùng lọc theo danh mục */}
                 {showFilteredContent && allPlaces.length > 0 ? (
-                  <CategoryPlacesSection
-                    categoryName={selectedCategoryName}
-                    categoryId={selectedCategory}
-                    places={allPlaces.slice(0, 8)}
-                    onPressPlace={handlePressPlace}
-                    onPressViewAll={() =>
-                      handleViewCategoryPlaces({ id: selectedCategory, name: selectedCategoryName })
-                    }
-                  />
+                  <View style={{ marginTop: 22 }}>
+                    <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+                      <SectionHeading
+                        title={selectedCategoryName || t("explore.sheet.allPlaces", "Danh sách địa điểm")}
+                        right={
+                          <Text style={{ fontSize: 12.5, color: EXPLORE_THEME.muted, fontFamily: EXPLORE_THEME.font.medium }}>
+                            {allPlaces.length} địa điểm
+                          </Text>
+                        }
+                      />
+                    </View>
+                    {allPlaces.map((place, idx) => (
+                      <ExplorePlaceCardHorizontal
+                        key={place?.id != null ? `filtered-${place.id}` : `filtered-${idx}`}
+                        place={place}
+                        index={idx}
+                        userLocation={currentLocation}
+                        onPress={() => handlePressPlace(place)}
+                        onSave={handleSavePlace}
+                        isSaved={savedPlaceIds?.has?.(Number(place?.id)) || false}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+
+                {/* Gợi ý điểm đến tiêu biểu đầy đủ thông tin trên trang chủ Explore */}
+                {showGlobalContent && allPlaces.length > 0 ? (
+                  <View style={{ marginTop: 24 }}>
+                    <View style={{ paddingHorizontal: 16, marginBottom: 14 }}>
+                      <SectionHeading
+                        title={t("explore.sections.recommendedForYou", "Gợi ý dành cho bạn")}
+                      />
+                    </View>
+                    {allPlaces.slice(0, 6).map((place, idx) => (
+                      <ExplorePlaceCardHorizontal
+                        key={place?.id != null ? `rec-${place.id}` : `rec-${idx}`}
+                        place={place}
+                        index={idx}
+                        userLocation={currentLocation}
+                        onPress={() => handlePressPlace(place)}
+                        onSave={handleSavePlace}
+                        isSaved={savedPlaceIds?.has?.(Number(place?.id)) || false}
+                      />
+                    ))}
+                  </View>
                 ) : null}
               </>
             )}
+
+            <AnnouncementBanner announcement={announcement} />
+
+            {showGlobalContent && banners.length > 0 ? (
+              <CmsBannerCarousel banners={banners} onPressBanner={handlePressBanner} />
+            ) : null}
+
+            {showGlobalContent && featuredEvents.length > 0 ? (
+              <View style={{ marginTop: 12, marginBottom: 4 }}>
+                <BlurCarousel
+                  data={featuredEvents}
+                  renderItem={renderEventBanner}
+                  itemWidth={screenWidth - 32}
+                  horizontalSpacing={16}
+                  spacing={6}
+                />
+              </View>
+            ) : null}
+
+            {showGlobalContent ? (
+              <SampleTripSection
+                sampleTrips={sampleTrips}
+                onPressTrip={handlePressTrip}
+                onPressViewAll={() => router.push("/(tabs)/trips")}
+              />
+            ) : null}
+
+            {showGlobalContent && regularEvents.length > 0 ? (
+              <EventSection events={regularEvents} onPressEvent={handlePressEvent} />
+            ) : null}
           </View>
 
           {showExploreError ? (
             <Animated.View style={[styles.emptyContainer, emptyAnimStyle]}>
               <View style={styles.emptyIconWrapper}>
-                <MaterialIconsRounded name="cloud-off" size={32} color={APPLE_THEME.textMuted} />
+                <MaterialIconsRounded name="cloud-off" size={32} color={EXPLORE_THEME.muted} />
               </View>
               <Text style={styles.emptyTitle}>{t("explore.error.title")}</Text>
               <Text style={styles.emptyDesc}>{t("explore.error.description")}</Text>
@@ -635,7 +631,7 @@ export default function ExploreScreen() {
           ) : showEmpty ? (
             <Animated.View style={[styles.emptyContainer, emptyAnimStyle]}>
               <View style={styles.emptyIconWrapper}>
-                <MaterialIconsRounded name="explore-off" size={32} color={APPLE_THEME.textMuted} />
+                <MaterialIconsRounded name="explore-off" size={32} color={EXPLORE_THEME.muted} />
               </View>
               <Text style={styles.emptyTitle}>
                 {selectedCategory == null ? t("explore.empty.noPlaces") : t("explore.empty.noResults")}
@@ -653,7 +649,7 @@ export default function ExploreScreen() {
 
           {isFetchingNextPage ? (
             <View style={styles.loadingMoreWrapper}>
-              <ActivityIndicator color={APPLE_THEME.focusBlue} />
+              <ActivityIndicator color={EXPLORE_THEME.river} />
             </View>
           ) : null}
       </Animated.ScrollView>
@@ -666,6 +662,9 @@ export default function ExploreScreen() {
         places={activeSheetCategory?.places || []}
         onClose={() => setActiveSheetCategory(null)}
         onPressPlace={handlePressPlace}
+        onSavePlace={handleSavePlace}
+        savedPlaceIds={savedPlaceIds}
+        userLocation={currentLocation}
       />
     </View>
   );
@@ -674,7 +673,7 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: TOKENS.color.surface.light,
+    backgroundColor: EXPLORE_THEME.background,
   },
   scrollContent: {
     paddingTop: 4,
@@ -694,45 +693,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
   },
-  filterPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 20,
-    marginTop: 12,
-    paddingHorizontal: 16,
-    height: 40,
-    borderRadius: 999,
-    backgroundColor: TOKENS.color.surface.light,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(24,24,25,0.14)",
-    gap: 10,
-  },
-  filterDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: TOKENS.color.surface.dark,
-  },
-  filterText: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
-    color: APPLE_THEME.text,
-    letterSpacing: -0.2,
-  },
-  filterCloseBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: APPLE_THEME.white,
-    shadowColor: TOKENS.color.semantic.apple.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
-  },
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",
@@ -746,21 +706,21 @@ const styles = StyleSheet.create({
     borderRadius: 36,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: APPLE_THEME.surfaceMuted,
+    backgroundColor: EXPLORE_THEME.sand,
     marginBottom: 8,
   },
   emptyTitle: {
     fontSize: 18,
-    fontFamily: TOKENS.font.bold,
-    color: APPLE_THEME.text,
+    fontFamily: EXPLORE_THEME.font.bold,
+    color: EXPLORE_THEME.ink,
     textAlign: "center",
     letterSpacing: -0.3,
   },
   emptyDesc: {
     fontSize: 14,
     lineHeight: 22,
-    fontFamily: TOKENS.font.medium,
-    color: APPLE_THEME.textMuted,
+    fontFamily: EXPLORE_THEME.font.medium,
+    color: EXPLORE_THEME.muted,
     textAlign: "center",
   },
   emptyActionBtn: {
@@ -770,12 +730,12 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: APPLE_THEME.text,
+    backgroundColor: EXPLORE_THEME.river,
   },
   emptyActionText: {
-    color: APPLE_THEME.white,
+    color: EXPLORE_THEME.surface,
     fontSize: 14,
-    fontFamily: TOKENS.font.semibold,
+    fontFamily: EXPLORE_THEME.font.semibold,
   },
   loadingMoreWrapper: {
     paddingVertical: 24,

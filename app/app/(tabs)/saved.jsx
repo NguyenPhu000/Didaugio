@@ -7,14 +7,21 @@ import {
   RefreshControl,
   ScrollView,
   Text,
+  TextInput,
   Pressable,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { showAppAlertLegacy } from "../../src/utils/appAlert";
+import Animated, {
+  FadeIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { showAppAlertLegacy } from "../../src/utils/appAlert";
 import { GuestGate } from "../../src/components/ui/GuestGate";
 import { OfflineBanner } from "../../src/components/ui/OfflineBanner";
 import {
@@ -24,9 +31,12 @@ import {
   Compass,
   Sparkles,
   Grid3x3,
-  BookmarkCheck,
-  SlidersHorizontal,
+  Bookmark,
+  Search,
   X,
+  MapPin,
+  ChevronDown,
+  FileEdit,
 } from "lucide-react-native";
 import {
   useSavePlace,
@@ -50,11 +60,93 @@ import {
   ALL_AREAS_KEY,
   ALL_CATEGORIES_KEY,
   ALL_COLLECTIONS_KEY,
+  NOTES_COLLECTION_KEY,
   buildAreaOptions,
   buildCategoryOptions,
   filterSavedEntries,
 } from "../../src/modules/saved/utils/savedHelpers";
 import { TAB_BAR_HEIGHT } from "./_layout";
+
+// Component Category Pill tương tác xúc giác Apple
+function FilterPill({
+  label,
+  count,
+  active,
+  Icon,
+  onPress,
+}) {
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.95, TOKENS.spring.press);
+  };
+  const handlePressOut = () => {
+    scale.value = withSpring(1, TOKENS.spring.press);
+  };
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      className="mr-2"
+    >
+      <Animated.View
+        style={[
+          animStyle,
+          {
+            borderRadius: 9999,
+            borderCurve: "continuous",
+          },
+        ]}
+        className={`flex-row items-center px-3.5 py-2 border-[0.5px] ${
+          active
+            ? "bg-[#1D1D1F] border-[#1D1D1F] shadow-sm shadow-black/10"
+            : "bg-white border-black/[0.08]"
+        }`}
+      >
+        {Icon ? (
+          <View className="mr-1.5">
+            <Icon
+              size={13}
+              color={active ? "#FFFFFF" : "#636366"}
+              strokeWidth={2.2}
+            />
+          </View>
+        ) : null}
+        <Text
+          className={`text-[13px] tracking-tight ${
+            active ? "text-white" : "text-[#1D1D1F]"
+          }`}
+          style={{
+            fontFamily: active ? TOKENS.font.semibold : TOKENS.font.medium,
+          }}
+        >
+          {label}
+        </Text>
+        {typeof count === "number" ? (
+          <View
+            className={`ml-1.5 px-1.5 py-0.5 rounded-full ${
+              active ? "bg-white/20" : "bg-black/[0.05]"
+            }`}
+          >
+            <Text
+              className={`text-[11px] leading-[14px] ${
+                active ? "text-white" : "text-[#636366]"
+              }`}
+              style={{ fontFamily: TOKENS.font.semibold }}
+            >
+              {count}
+            </Text>
+          </View>
+        ) : null}
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 export default function SavedScreen() {
   const { t } = useTranslation();
@@ -75,9 +167,10 @@ export default function SavedScreen() {
   const unsaveMutation = useUnsavePlace();
   const saveMutation = useSavePlace();
 
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedArea, setActiveArea] = useState(ALL_AREAS_KEY);
   const [selectedCategory, setActiveCategory] = useState(ALL_CATEGORIES_KEY);
-  const [activeFilterGroup, setActiveFilterGroup] = useState("category");
+  const [showOnlyNotes, setShowOnlyNotes] = useState(false);
   const [filterPickerVisible, setFilterPickerVisible] = useState(false);
   const [noteTarget, setNoteTarget] = useState(null);
   const [noteDraft, setNoteDraft] = useState("");
@@ -87,25 +180,156 @@ export default function SavedScreen() {
     () => buildCategoryOptions(savedData),
     [savedData],
   );
+
   const activeArea = areaOptions.some((option) => option.key === selectedArea)
     ? selectedArea
     : ALL_AREAS_KEY;
-  const activeCategory = categoryOptions.some((option) => option.key === selectedCategory)
+  const activeCategory = categoryOptions.some(
+    (option) => option.key === selectedCategory,
+  )
     ? selectedCategory
     : ALL_CATEGORIES_KEY;
 
-  const filteredSavedData = useMemo(
-    () =>
-      filterSavedEntries({
-        savedData,
-        activeCollection: ALL_COLLECTIONS_KEY,
-        activeArea,
-        activeCategory,
-      }),
-    [activeArea, activeCategory, savedData],
-  );
+  const getCategoryKey = useCallback((place) => {
+    const categoryId = place?.category?.id ?? place?.categoryId;
+    const categoryName = place?.category?.name ?? place?.categoryName;
+    return categoryId != null
+      ? `cat:${categoryId}`
+      : `cat-name:${String(categoryName || "").trim().toLowerCase()}`;
+  }, []);
 
-  // Chia dữ liệu thành 2 cột xen kẽ cho layout Masonry
+  const getCategoryIcon = (categoryName) => {
+    const name = String(categoryName || "").toLowerCase();
+    if (
+      name.includes("ăn") ||
+      name.includes("nhà hàng") ||
+      name.includes("ẩm thực")
+    )
+      return Utensils;
+    if (
+      name.includes("cà phê") ||
+      name.includes("cafe") ||
+      name.includes("trà")
+    )
+      return Coffee;
+    if (
+      name.includes("khách sạn") ||
+      name.includes("lưu trú") ||
+      name.includes("homestay")
+    )
+      return Hotel;
+    if (
+      name.includes("tham quan") ||
+      name.includes("du lịch") ||
+      name.includes("di tích")
+    )
+      return Compass;
+    if (
+      name.includes("vui chơi") ||
+      name.includes("giải trí") ||
+      name.includes("bar")
+    )
+      return Sparkles;
+    return Grid3x3;
+  };
+
+  // Số lượng có ghi chú
+  const notePlacesCount = useMemo(() => {
+    return savedData.filter((entry) => Boolean(String(entry?.note || "").trim()))
+      .length;
+  }, [savedData]);
+
+  // Danh sách Category kèm đếm
+  const catItems = useMemo(() => {
+    const items = [
+      {
+        key: ALL_CATEGORIES_KEY,
+        name: t("common.all", "Tất cả"),
+        count: savedData.length,
+      },
+    ];
+    categoryOptions.forEach((opt) => {
+      const count = savedData.filter((entry) => {
+        const place = entry?.place || entry;
+        return getCategoryKey(place) === opt.key;
+      }).length;
+      items.push({ ...opt, count });
+    });
+    return items;
+  }, [savedData, categoryOptions, getCategoryKey, t]);
+
+  // Danh sách Area kèm đếm
+  const areaItems = useMemo(() => {
+    const items = [
+      { key: ALL_AREAS_KEY, name: t("common.all", "Tất cả"), count: savedData.length },
+    ];
+    areaOptions.forEach((opt) => {
+      const count = savedData.filter((entry) => {
+        const place = entry?.place || entry;
+        const districtId =
+          place?.district?.id ?? place?.ward?.districtId ?? place?.districtId;
+        const districtName =
+          place?.district?.name ?? place?.ward?.district?.name ?? null;
+        let key;
+        if (districtId != null) key = `id:${districtId}`;
+        else if (districtName)
+          key = `name:${districtName.trim().toLowerCase()}`;
+        else return false;
+        return key === opt.key;
+      }).length;
+      items.push({ ...opt, count });
+    });
+    return items;
+  }, [savedData, areaOptions, t]);
+
+  const activeAreaName =
+    areaItems.find((item) => item.key === activeArea)?.name ||
+    t("common.all", "Tất cả");
+
+  // Bộ lọc dữ liệu chuẩn kết hợp Search client-side
+  const filteredSavedData = useMemo(() => {
+    let result = filterSavedEntries({
+      savedData,
+      activeCollection: showOnlyNotes
+        ? NOTES_COLLECTION_KEY
+        : ALL_COLLECTIONS_KEY,
+      activeArea,
+      activeCategory: showOnlyNotes ? ALL_CATEGORIES_KEY : activeCategory,
+    });
+
+    const query = searchQuery.trim().toLowerCase();
+    if (query) {
+      result = result.filter((entry) => {
+        const place = entry?.place || entry;
+        const name = String(place?.name || "").toLowerCase();
+        const address = String(place?.address || "").toLowerCase();
+        const cat = String(
+          place?.category?.name || place?.categoryName || "",
+        ).toLowerCase();
+        const district = String(
+          place?.district?.name || place?.ward?.district?.name || "",
+        ).toLowerCase();
+        const note = String(entry?.note || "").toLowerCase();
+        return (
+          name.includes(query) ||
+          address.includes(query) ||
+          cat.includes(query) ||
+          district.includes(query) ||
+          note.includes(query)
+        );
+      });
+    }
+
+    return result;
+  }, [
+    activeArea,
+    activeCategory,
+    savedData,
+    searchQuery,
+    showOnlyNotes,
+  ]);
+
+  // Chia 2 cột xen kẽ Pinterest-style Masonry
   const { leftColumn, rightColumn } = useMemo(() => {
     const left = [];
     const right = [];
@@ -117,16 +341,21 @@ export default function SavedScreen() {
   }, [filteredSavedData]);
 
   const isFiltered =
-    activeArea !== ALL_AREAS_KEY || activeCategory !== ALL_CATEGORIES_KEY;
+    activeArea !== ALL_AREAS_KEY ||
+    activeCategory !== ALL_CATEGORIES_KEY ||
+    showOnlyNotes ||
+    Boolean(searchQuery.trim());
 
   const handleClearFilters = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setActiveArea(ALL_AREAS_KEY);
     setActiveCategory(ALL_CATEGORIES_KEY);
+    setShowOnlyNotes(false);
+    setSearchQuery("");
     setFilterPickerVisible(false);
   }, []);
 
-  const handleOpenFilterPicker = useCallback(() => {
+  const handleOpenAreaPicker = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setFilterPickerVisible(true);
   }, []);
@@ -135,9 +364,31 @@ export default function SavedScreen() {
     setFilterPickerVisible(false);
   }, []);
 
-  const handleSelectFilterGroup = useCallback((groupKey) => {
-    setActiveFilterGroup(groupKey);
+  const handleSelectAreaOption = useCallback((value) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActiveArea(value ?? ALL_AREAS_KEY);
   }, []);
+
+  const filterPickerOptions = useMemo(() => {
+    return [
+      {
+        key: "area:all",
+        value: ALL_AREAS_KEY,
+        label: t("map.filters.allAreas", "Tất cả khu vực"),
+        icon: "public",
+        active: activeArea === ALL_AREAS_KEY,
+      },
+      ...areaItems
+        .filter((area) => area.key !== ALL_AREAS_KEY)
+        .map((area) => ({
+          key: `area:${area.key}`,
+          value: area.key,
+          label: `${area.name} (${area.count})`,
+          icon: "place",
+          active: area.key === activeArea,
+        })),
+    ];
+  }, [activeArea, areaItems, t]);
 
   const handleOpenNoteEditor = useCallback((entry) => {
     const place = entry?.place || entry;
@@ -163,21 +414,31 @@ export default function SavedScreen() {
       });
       handleCloseNoteEditor();
     } catch {
-      showAppAlertLegacy(t("saved.alert.noteError"), t("common.tryAgain"));
+      showAppAlertLegacy(
+        t("saved.alert.noteError", "Không thể lưu ghi chú"),
+        t("common.tryAgain", "Vui lòng thử lại"),
+      );
     }
   }, [handleCloseNoteEditor, noteDraft, noteTarget, saveMutation, t]);
 
   const handleUnsave = useCallback(
     (placeId) => {
       if (!placeId || unsaveMutation.isPending) return;
-      showAppAlertLegacy(t("saved.alert.unsaveTitle"), t("common.confirmDelete"), [
-        { text: t("common.cancel"), style: "cancel" },
-        {
-          text: t("common.delete"),
-          style: "destructive",
-          onPress: () => unsaveMutation.mutate(placeId),
-        },
-      ]);
+      showAppAlertLegacy(
+        t("saved.alert.unsaveTitle", "Bỏ lưu địa điểm"),
+        t(
+          "common.confirmDelete",
+          "Bạn có chắc muốn xóa địa điểm này khỏi danh sách đã lưu?",
+        ),
+        [
+          { text: t("common.cancel", "Hủy"), style: "cancel" },
+          {
+            text: t("common.delete", "Xóa"),
+            style: "destructive",
+            onPress: () => unsaveMutation.mutate(placeId),
+          },
+        ],
+      );
     },
     [unsaveMutation, t],
   );
@@ -194,182 +455,6 @@ export default function SavedScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push("/explore");
   }, [router]);
-
-  const getCategoryIcon = (categoryName) => {
-    const name = String(categoryName || "").toLowerCase();
-    if (
-      name.includes("ăn") ||
-      name.includes("nhà hàng") ||
-      name.includes("ẩm thực")
-    )
-      return { Icon: Utensils, color: "#F97316" };
-    if (
-      name.includes("cà phê") ||
-      name.includes("cafe") ||
-      name.includes("trà")
-    )
-      return { Icon: Coffee, color: "#EAB308" };
-    if (
-      name.includes("khách sạn") ||
-      name.includes("lưu trú") ||
-      name.includes("homestay")
-    )
-      return { Icon: Hotel, color: "#0EA5E9" };
-    if (
-      name.includes("tham quan") ||
-      name.includes("du lịch") ||
-      name.includes("di tích")
-    )
-      return { Icon: Compass, color: "#10B981" };
-    if (
-      name.includes("vui chơi") ||
-      name.includes("giải trí") ||
-      name.includes("bar")
-    )
-      return { Icon: Sparkles, color: "#A855F7" };
-    return { Icon: Grid3x3, color: "#6B7280" };
-  };
-
-  const getCategoryKey = useCallback((place) => {
-    const categoryId = place?.category?.id ?? place?.categoryId;
-    const categoryName = place?.category?.name ?? place?.categoryName;
-    return categoryId != null
-      ? `cat:${categoryId}`
-      : `cat-name:${String(categoryName || "").trim().toLowerCase()}`;
-  }, []);
-
-  // Build category items with counts
-  const catItems = useMemo(() => {
-    const items = [
-      {
-        key: ALL_CATEGORIES_KEY,
-        name: t("common.all"),
-        count: savedData.length,
-      },
-    ];
-    categoryOptions.forEach((opt) => {
-      const count = savedData.filter((entry) => {
-        const place = entry?.place || entry;
-        return getCategoryKey(place) === opt.key;
-      }).length;
-      items.push({ ...opt, count });
-    });
-    return items;
-  }, [savedData, categoryOptions, getCategoryKey, t]);
-
-  // Build area items with counts
-  const areaItems = useMemo(() => {
-    const items = [
-      { key: ALL_AREAS_KEY, name: t("common.all"), count: savedData.length },
-    ];
-    areaOptions.forEach((opt) => {
-      const count = savedData.filter((entry) => {
-        const place = entry?.place || entry;
-        const districtId =
-          place?.district?.id ?? place?.ward?.districtId ?? place?.districtId;
-        const districtName =
-          place?.district?.name ?? place?.ward?.district?.name ?? null;
-        let key;
-        if (districtId != null) key = `id:${districtId}`;
-        else if (districtName)
-          key = `name:${districtName.trim().toLowerCase()}`;
-        else return false;
-        return key === opt.key;
-      }).length;
-      items.push({ ...opt, count });
-    });
-    return items;
-  }, [savedData, areaOptions, t]);
-
-  const activeCategoryName =
-    catItems.find((item) => item.key === activeCategory)?.name ||
-    t("common.all");
-  const activeAreaName =
-    areaItems.find((item) => item.key === activeArea)?.name || t("common.all");
-  const activeCategoryIconMeta = useMemo(
-    () => getCategoryIcon(activeCategoryName),
-    [activeCategoryName],
-  );
-
-  const filterGroups = useMemo(
-    () => [
-      {
-        key: "category",
-        label: t("map.filters.groupOptions.category"),
-        icon: "apps",
-      },
-      {
-        key: "area",
-        label: t("map.filters.groupOptions.area"),
-        icon: "place",
-      },
-    ],
-    [t],
-  );
-
-  const activeFilterGroupMeta = useMemo(
-    () =>
-      filterGroups.find((group) => group.key === activeFilterGroup) ||
-      filterGroups[0],
-    [activeFilterGroup, filterGroups],
-  );
-
-  const activeFilterSummaryLabel =
-    activeFilterGroup === "area" ? activeAreaName : activeCategoryName;
-
-  const filterPickerOptions = useMemo(() => {
-    if (activeFilterGroup === "area") {
-      return [
-        {
-          key: "area:all",
-          value: ALL_AREAS_KEY,
-          label: t("map.filters.allAreas"),
-          icon: "public",
-          active: activeArea === ALL_AREAS_KEY,
-        },
-        ...areaItems
-          .filter((area) => area.key !== ALL_AREAS_KEY)
-          .map((area) => ({
-            key: `area:${area.key}`,
-            value: area.key,
-            label: `${area.name} (${area.count})`,
-            icon: "place",
-            active: area.key === activeArea,
-          })),
-      ];
-    }
-
-    return [
-      {
-        key: "category:all",
-        value: ALL_CATEGORIES_KEY,
-        label: t("map.filters.allCategories"),
-        icon: "apps",
-        active: activeCategory === ALL_CATEGORIES_KEY,
-      },
-      ...catItems
-        .filter((category) => category.key !== ALL_CATEGORIES_KEY)
-        .map((category) => ({
-          key: `category:${category.key}`,
-          value: category.key,
-          label: `${category.name} (${category.count})`,
-          icon: "category",
-          active: category.key === activeCategory,
-        })),
-    ];
-  }, [activeArea, activeCategory, activeFilterGroup, areaItems, catItems, t]);
-
-  const handleSelectFilterOption = useCallback(
-    (value) => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      if (activeFilterGroup === "area") {
-        setActiveArea(value ?? ALL_AREAS_KEY);
-        return;
-      }
-      setActiveCategory(value ?? ALL_CATEGORIES_KEY);
-    },
-    [activeFilterGroup],
-  );
 
   const renderMasonryCard = useCallback(
     (item) => {
@@ -388,229 +473,15 @@ export default function SavedScreen() {
     [handleOpenNoteEditor, handleOpenPlace, handleUnsave],
   );
 
-  const renderHeader = useCallback(() => {
-    if (isLoading || isError) return null;
-
-    const canFilter = catItems.length > 1 || areaItems.length > 1;
-    const FilterIcon =
-      activeFilterGroup === "category"
-        ? activeCategoryIconMeta.Icon
-        : SlidersHorizontal;
-    const filterIconColor =
-      activeFilterGroup === "category" ? activeCategoryIconMeta.color : "#0EA5E9";
-
-    return (
-      <View className="pt-3 pb-4 px-4">
-        {/* Tiêu đề + Badge */}
-        <View
-          className="bg-[#101E2C] overflow-hidden mb-4"
-          style={{ borderRadius: 30, borderCurve: "continuous" }}
-        >
-          <View
-            className="absolute rounded-full"
-            style={{
-              right: -40,
-              top: -48,
-              width: 160,
-              height: 160,
-              backgroundColor: "rgba(213,228,247,0.2)",
-            }}
-          />
-          <View
-            className="absolute rounded-full"
-            style={{
-              left: -48,
-              bottom: -42,
-              width: 144,
-              height: 144,
-              backgroundColor: "rgba(255,255,255,0.1)",
-            }}
-          />
-          <View className="px-5 pt-5 pb-4">
-            <View className="flex-row items-start justify-between gap-4">
-              <View className="flex-1">
-                <View className="flex-row items-center gap-2 mb-2">
-                  <BookmarkCheck size={17} color="#D5E4F7" strokeWidth={2} />
-                  <Text
-                    className="text-[12px] uppercase tracking-[1.8px]"
-                    style={{
-                      color: "rgba(255,255,255,0.65)",
-                      fontFamily: TOKENS.font.semibold,
-                    }}
-                  >
-                    {t("tabs.saved")}
-                  </Text>
-                </View>
-                <Text
-                  className="text-[30px] leading-[34px] tracking-tight text-white"
-                  style={{ fontFamily: TOKENS.font.heading }}
-                >
-                  {t("saved.title")}
-                </Text>
-              </View>
-
-              <View className="items-end">
-                <Text
-                  className="text-[32px] leading-[36px] text-white"
-                  style={{ fontFamily: TOKENS.font.heading }}
-                >
-                  {filteredSavedData.length}
-                </Text>
-                <Text
-                  className="text-[12px]"
-                  style={{
-                    color: "rgba(255,255,255,0.62)",
-                    fontFamily: TOKENS.font.medium,
-                  }}
-                >
-                  {t("saved.countLabel", { count: filteredSavedData.length })}
-                </Text>
-              </View>
-            </View>
-
-            <View className="mt-5 flex-row gap-2">
-              <View
-                className="flex-1 px-3 py-2.5 border"
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  borderColor: "rgba(255,255,255,0.1)",
-                  borderRadius: 18,
-                  borderCurve: "continuous",
-                }}
-              >
-                <Text
-                  numberOfLines={1}
-                  className="text-[11px]"
-                  style={{
-                    color: "rgba(255,255,255,0.5)",
-                    fontFamily: TOKENS.font.medium,
-                  }}
-                >
-                  {t("common.filter")}
-                </Text>
-                <Text
-                  numberOfLines={1}
-                  className="text-[14px] text-white mt-0.5"
-                  style={{ fontFamily: TOKENS.font.semibold }}
-                >
-                  {activeCategoryName}
-                </Text>
-              </View>
-              <View
-                className="flex-1 px-3 py-2.5 border"
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  borderColor: "rgba(255,255,255,0.1)",
-                  borderRadius: 18,
-                  borderCurve: "continuous",
-                }}
-              >
-                <Text
-                  numberOfLines={1}
-                  className="text-[11px]"
-                  style={{
-                    color: "rgba(255,255,255,0.5)",
-                    fontFamily: TOKENS.font.medium,
-                  }}
-                >
-                  {t("savedDashboard.areas")}
-                </Text>
-                <Text
-                  numberOfLines={1}
-                  className="text-[14px] text-white mt-0.5"
-                  style={{ fontFamily: TOKENS.font.semibold }}
-                >
-                  {activeAreaName}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {canFilter && (
-          <View className="flex-row items-center justify-between mb-3">
-            <Pressable
-              onPress={handleOpenFilterPicker}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={`${activeFilterGroupMeta.label}: ${activeFilterSummaryLabel}`}
-              className="flex-1 flex-row items-center gap-3 bg-white border border-[#E3E7EC] px-3.5 py-3 active:opacity-80"
-              style={{
-                borderRadius: 18,
-                borderCurve: "continuous",
-                shadowColor: "#101E2C",
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.06,
-                shadowRadius: 14,
-                elevation: 2,
-              }}
-            >
-              <View
-                className="w-9 h-9 rounded-full items-center justify-center"
-                style={{ backgroundColor: "rgba(16,30,44,0.08)" }}
-              >
-                <FilterIcon size={16} color={filterIconColor} strokeWidth={2.2} />
-              </View>
-              <View className="flex-1">
-                <Text
-                  numberOfLines={1}
-                  className="text-[11px] uppercase tracking-[1.3px] text-[#74777C]"
-                  style={{ fontFamily: TOKENS.font.semibold }}
-                >
-                  {activeFilterGroupMeta.label}
-                </Text>
-                <Text
-                  numberOfLines={1}
-                  className="mt-0.5 text-[15px] tracking-tight text-[#101E2C]"
-                  style={{ fontFamily: TOKENS.font.semibold }}
-                >
-                  {activeFilterSummaryLabel}
-                </Text>
-              </View>
-            </Pressable>
-
-            {isFiltered ? (
-              <Pressable
-                onPress={handleClearFilters}
-                className="ml-2 w-11 h-11 items-center justify-center active:opacity-80"
-                style={{
-                  backgroundColor: "rgba(0,0,0,0.04)",
-                  borderRadius: 16,
-                  borderCurve: "continuous",
-                }}
-              >
-                <X size={13} color="#54647A" strokeWidth={2.4} />
-              </Pressable>
-            ) : null}
-          </View>
-        )}
-
-      </View>
-    );
-  }, [
-    isLoading,
-    isError,
-    catItems,
-    areaItems,
-    activeAreaName,
-    activeCategoryName,
-    activeCategoryIconMeta,
-    activeFilterGroup,
-    activeFilterGroupMeta,
-    activeFilterSummaryLabel,
-    filteredSavedData.length,
-    isFiltered,
-    t,
-    handleClearFilters,
-    handleOpenFilterPicker,
-  ]);
-
   if (!isLoggedIn) {
     return (
       <GuestGate
         icon="bookmark-border"
-        title={t("guestGate.title")}
-        description={t("guestGate.description")}
+        title={t("guestGate.title", "Đăng nhập để xem Đã lưu")}
+        description={t(
+          "guestGate.description",
+          "Lưu lại các điểm du lịch, nhà hàng, quán cà phê yêu thích để tiện xem lại bất cứ lúc nào.",
+        )}
       />
     );
   }
@@ -637,14 +508,21 @@ export default function SavedScreen() {
       />
       <FilterPickerModal
         visible={filterPickerVisible}
-        activeFilterGroup={activeFilterGroup}
-        activeFilterGroupLabel={activeFilterGroupMeta.label}
-        filterGroups={filterGroups}
+        activeFilterGroup="area"
+        activeFilterGroupLabel={t("map.filters.groupOptions.area", "Khu vực")}
+        filterGroups={[
+          {
+            key: "area",
+            label: t("map.filters.groupOptions.area", "Khu vực"),
+            icon: "place",
+          },
+        ]}
         options={filterPickerOptions}
         onClose={handleCloseFilterPicker}
-        onSelectFilterGroup={handleSelectFilterGroup}
-        onSelectOption={handleSelectFilterOption}
+        onSelectFilterGroup={() => {}}
+        onSelectOption={handleSelectAreaOption}
       />
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -656,24 +534,207 @@ export default function SavedScreen() {
           />
         }
         contentContainerStyle={{
-          paddingBottom: TAB_BAR_HEIGHT + 24,
+          paddingBottom: TAB_BAR_HEIGHT + 28,
         }}
       >
-        {renderHeader()}
+        {/* Apple-Editorial Header */}
+        <View className="pt-3 pb-2 px-4">
+          {/* Top Title & Counter Row */}
+          <View className="flex-row items-end justify-between mb-3">
+            <View>
+              <Text
+                className="text-[28px] leading-[32px] text-[#1D1D1F] tracking-tight"
+                style={{ fontFamily: TOKENS.font.heading }}
+              >
+                {t("saved.title", "Đã lưu")}
+              </Text>
+            </View>
 
+            <View
+              className="flex-row items-center gap-1 px-3 py-1 bg-white border-[0.5px] border-black/[0.08]"
+              style={{ borderRadius: 9999, borderCurve: "continuous" }}
+            >
+              <Bookmark size={12} color="#007BFF" strokeWidth={2.4} />
+              <Text
+                className="text-[12px] text-[#1D1D1F] tracking-tight"
+                style={{ fontFamily: TOKENS.font.semibold }}
+              >
+                {savedData.length} {t("saved.countUnit", "địa điểm")}
+              </Text>
+            </View>
+          </View>
+
+          {/* Quick Search Bar */}
+          <View
+            className="flex-row items-center bg-white border-[0.5px] border-black/[0.08] px-3.5 py-2.5 mb-3"
+            style={{
+              borderRadius: 16,
+              borderCurve: "continuous",
+              shadowColor: "#000000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.03,
+              shadowRadius: 8,
+              elevation: 1,
+            }}
+          >
+            <Search size={16} color="#8E8E93" strokeWidth={2.2} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder={t(
+                "saved.searchPlaceholder",
+                "Tìm trong địa điểm đã lưu...",
+              )}
+              placeholderTextColor="#8E8E93"
+              className="flex-1 ml-2.5 text-[14px] text-[#1D1D1F] py-0"
+              style={{ fontFamily: TOKENS.font.body }}
+              returnKeyType="search"
+            />
+            {searchQuery ? (
+              <Pressable
+                onPress={() => setSearchQuery("")}
+                hitSlop={8}
+                className="w-5 h-5 rounded-full bg-black/[0.08] items-center justify-center"
+              >
+                <X size={11} color="#636366" strokeWidth={2.6} />
+              </Pressable>
+            ) : null}
+          </View>
+
+          {/* Horizontal Category Scroll Pill Bar (Direct 1-Tap Filter) */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="-mx-4 px-4 pb-2"
+          >
+            {/* Tất cả */}
+            <FilterPill
+              label={t("common.all", "Tất cả")}
+              count={savedData.length}
+              active={!showOnlyNotes && activeCategory === ALL_CATEGORIES_KEY}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowOnlyNotes(false);
+                setActiveCategory(ALL_CATEGORIES_KEY);
+              }}
+            />
+
+            {/* Có ghi chú */}
+            {notePlacesCount > 0 ? (
+              <FilterPill
+                label={t("saved.hasNotes", "Có ghi chú")}
+                count={notePlacesCount}
+                active={showOnlyNotes}
+                Icon={FileEdit}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowOnlyNotes((prev) => !prev);
+                }}
+              />
+            ) : null}
+
+            {/* Các danh mục */}
+            {catItems
+              .filter((c) => c.key !== ALL_CATEGORIES_KEY)
+              .map((cat) => {
+                const CatIcon = getCategoryIcon(cat.name);
+                const isActive =
+                  !showOnlyNotes && activeCategory === cat.key;
+                return (
+                  <FilterPill
+                    key={cat.key}
+                    label={cat.name}
+                    count={cat.count}
+                    active={isActive}
+                    Icon={CatIcon}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setShowOnlyNotes(false);
+                      setActiveCategory(
+                        activeCategory === cat.key
+                          ? ALL_CATEGORIES_KEY
+                          : cat.key,
+                      );
+                    }}
+                  />
+                );
+              })}
+          </ScrollView>
+
+          {/* Area Selector & Active Filter Strip */}
+          <View className="flex-row items-center justify-between pt-1 pb-1">
+            <Pressable
+              onPress={handleOpenAreaPicker}
+              hitSlop={6}
+              className={`flex-row items-center px-3 py-1.5 border-[0.5px] ${
+                activeArea !== ALL_AREAS_KEY
+                  ? "bg-[#007BFF]/10 border-[#007BFF]/30"
+                  : "bg-white border-black/[0.08]"
+              }`}
+              style={{ borderRadius: 12, borderCurve: "continuous" }}
+            >
+              <MapPin
+                size={12}
+                color={activeArea !== ALL_AREAS_KEY ? "#007BFF" : "#636366"}
+                strokeWidth={2.2}
+              />
+              <Text
+                className={`ml-1.5 text-[12px] tracking-tight ${
+                  activeArea !== ALL_AREAS_KEY
+                    ? "text-[#007BFF]"
+                    : "text-[#636366]"
+                }`}
+                style={{
+                  fontFamily:
+                    activeArea !== ALL_AREAS_KEY
+                      ? TOKENS.font.semibold
+                      : TOKENS.font.medium,
+                }}
+              >
+                {activeArea !== ALL_AREAS_KEY
+                  ? activeAreaName
+                  : t("saved.allAreas", "Tất cả quận/huyện")}
+              </Text>
+              <ChevronDown
+                size={12}
+                color={activeArea !== ALL_AREAS_KEY ? "#007BFF" : "#8E8E93"}
+                className="ml-1"
+              />
+            </Pressable>
+
+            {isFiltered ? (
+              <Pressable
+                onPress={handleClearFilters}
+                hitSlop={6}
+                className="flex-row items-center px-2.5 py-1 bg-black/[0.04] active:opacity-70"
+                style={{ borderRadius: 10, borderCurve: "continuous" }}
+              >
+                <X size={11} color="#636366" strokeWidth={2.4} />
+                <Text
+                  className="ml-1 text-[11px] text-[#636366] tracking-tight"
+                  style={{ fontFamily: TOKENS.font.medium }}
+                >
+                  {t("saved.resetFilter", "Đặt lại")}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+
+        {/* Content Body: Masonry Grid or States */}
         {showContent ? (
-          <View className="px-3 flex-row">
+          <View className="px-3.5 flex-row">
             {/* Cột trái */}
-            <View className="flex-1 pr-1">
+            <View className="flex-1 pr-1.5">
               {leftColumn.map(renderMasonryCard)}
             </View>
-            {/* Cột phải - Offset padding top để tạo hiệu ứng so le (Staggered Masonry) */}
-            <View className="flex-1 pl-1 pt-4">
+            {/* Cột phải - Staggered offset padding top */}
+            <View className="flex-1 pl-1.5 pt-3">
               {rightColumn.map(renderMasonryCard)}
             </View>
           </View>
         ) : (
-          <View className="px-3">
+          <View className="px-3.5">
             {isLoading ? (
               <LoadingState />
             ) : isError ? (
@@ -681,6 +742,7 @@ export default function SavedScreen() {
             ) : (
               <EmptyState
                 activeFilter={isFiltered}
+                searchQuery={searchQuery}
                 onExplore={handleExplore}
                 onClearFilters={handleClearFilters}
               />
@@ -691,3 +753,4 @@ export default function SavedScreen() {
     </View>
   );
 }
+

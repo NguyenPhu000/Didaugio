@@ -10,7 +10,6 @@ import { getPlaceLocation } from "../utils/exploreHelpers";
 import {
   CREAM,
   Eyebrow,
-  INK,
   POSTER_MEDIA_RADIUS,
   PosterMedia,
   PosterScrim,
@@ -148,37 +147,6 @@ function ExperienceBentoSectionInner({ places, onPressPlace }) {
       <View style={{ marginBottom: 18 }}>
         <SectionHeading
           title={t("explore.sections.culinary")}
-          right={
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 5,
-                paddingHorizontal: 11,
-                height: 26,
-                borderRadius: 13,
-                backgroundColor: "rgba(11,11,12,0.04)",
-                borderWidth: 1,
-                borderColor: "rgba(11,11,12,0.07)",
-              }}
-            >
-              <MaterialIconsRounded
-                name="auto-awesome"
-                size={13}
-                color={INK}
-              />
-              <Text
-                style={{
-                  color: INK,
-                  fontSize: 11,
-                  fontFamily: TOKENS.font.semibold,
-                  letterSpacing: 0.2,
-                }}
-              >
-                {t("explore.bento.curated", { defaultValue: "Tuyển chọn" })}
-              </Text>
-            </View>
-          }
         />
       </View>
 

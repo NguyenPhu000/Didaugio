@@ -1,194 +1,204 @@
 import { memo, useCallback, useMemo } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
-import Animated from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
-import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
-import { TOKENS } from "../../../constants/design-tokens";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withSequence,
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
+import { Star, MapPin, Bookmark, ArrowRight, Clock, ChevronRight } from "lucide-react-native";
 import { resolvePlaceImageUri } from "../../../lib/media-url";
-import { getPlaceLocation } from "../utils/exploreHelpers";
 import {
-  CREAM,
-  Eyebrow,
-  INK,
-  MetaChip,
-  POSTER_INSET,
-  POSTER_MEDIA_RADIUS,
-  POSTER_RADIUS,
-  PosterMedia,
-  PosterScrim,
-  SectionHeading,
-  STAR,
-  posterShadow,
-  usePressScale,
-} from "./cinematic";
+  getPlaceLocation,
+  getPlaceDistanceLabel,
+  getPlaceOpeningHoursInfo,
+  formatPlacePriceDisplay,
+} from "../utils/exploreHelpers";
+import { PosterMedia, SectionHeading, usePressScale } from "./cinematic";
+import { EXPLORE_THEME as C } from "./exploreTheme";
+
+const CARD_W = 216;
+const CARD_H = 312;
+const CARD_GAP = 12;
+const ITEM_LENGTH = CARD_W + CARD_GAP;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-/**
- * Card poster: rộng hơn card cũ (164) và ảnh chiếm trọn khung thay vì 148px
- * phía trên — diện tích ảnh tăng ~2.3 lần.
- */
-const CARD_W = 212;
-const CARD_H = 282;
-const CARD_GAP = 12;
-const ITEM_LENGTH = CARD_W + CARD_GAP;
-const MEDIA_W = CARD_W - POSTER_INSET * 2;
-
-const keyExtractor = (item, index) =>
-  item?.id != null ? String(item.id) : `cat-place-${index}`;
-
-function CategoryPlaceCard({ place, onPress }) {
+function CategoryPlaceCard({ place, onPress, onSave, isSaved, userLocation }) {
   const { t } = useTranslation();
   const imageUri = resolvePlaceImageUri(place);
   const location = getPlaceLocation(place);
+  const distanceLabel = getPlaceDistanceLabel(place, userLocation);
   const rating = Number(place?.ratingAvg ?? place?.averageRating);
+  const reviewCount = Number(
+    place?.ratingCount ?? place?.reviewCount ?? place?._count?.reviews ?? 0,
+  );
   const hasRating = Number.isFinite(rating) && rating > 0;
-  const categoryName = place?.category?.name;
+  const openingInfo = getPlaceOpeningHoursInfo(place);
+  const priceInfo = formatPlacePriceDisplay(place);
 
-  const { onPressIn, onPressOut, cardStyle, mediaStyle } = usePressScale();
+  const { onPressIn, onPressOut, cardStyle } = usePressScale({
+    to: 0.98,
+    mediaTo: 1,
+  });
+
+  const bookmarkScale = useSharedValue(1);
+  const bookmarkAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: bookmarkScale.value }],
+  }));
+
+  const handleSavePress = useCallback(
+    (event) => {
+      event?.stopPropagation();
+      bookmarkScale.value = withSequence(
+        withSpring(1.3, { damping: 10, stiffness: 220 }),
+        withSpring(1, { damping: 14, stiffness: 180 }),
+      );
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onSave?.(place);
+    },
+    [bookmarkScale, onSave, place],
+  );
+
+  const handleCardPress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress?.();
+  }, [onPress]);
 
   return (
     <AnimatedPressable
-      onPress={onPress}
+      onPress={handleCardPress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
       accessibilityRole="button"
-      accessibilityLabel={place?.name}
-      accessibilityHint={t("explore.accessibility.openPlace")}
-      style={[
-        cardStyle,
-        {
-          width: CARD_W,
-          height: CARD_H,
-          padding: POSTER_INSET,
-          borderRadius: POSTER_RADIUS,
-          borderCurve: "continuous",
-          backgroundColor: "#F7F3EB",
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: "rgba(11,11,12,0.06)",
-          ...posterShadow,
-        },
-      ]}
+      accessibilityLabel={place?.name || t("explore.card.recommended", "Địa điểm đề xuất")}
+      accessibilityHint={t("explore.accessibility.openPlace", "Chạm để xem chi tiết địa điểm")}
+      style={[styles.card, cardStyle]}
     >
-      {/* Lõi trong: ảnh full-bleed, bo cong đồng tâm với vỏ ngoài */}
-      <View
-        style={{
-          flex: 1,
-          borderRadius: POSTER_MEDIA_RADIUS,
-          borderCurve: "continuous",
-          overflow: "hidden",
-          backgroundColor: CREAM,
-        }}
-      >
-        <Animated.View style={[StyleSheet.absoluteFill, mediaStyle]}>
-          <PosterMedia uri={imageUri} width={MEDIA_W} />
-        </Animated.View>
+      {/* Khung ảnh 4:3 */}
+      <View style={styles.imageWrap}>
+        <PosterMedia uri={imageUri} width={CARD_W} />
 
-        <PosterScrim bottomHeight="62%" topHeight="30%" strength={0.78} />
-
-        {hasRating ? (
-          <View style={{ position: "absolute", top: 10, right: 10 }}>
-            <MetaChip icon="star" iconColor={STAR} label={rating.toFixed(1)} compact />
+        {/* Distance Badge Pill góc dưới trái */}
+        {distanceLabel ? (
+          <View style={styles.distanceBadge}>
+            <MapPin size={9.5} color="#FFFFFF" strokeWidth={2.4} />
+            <Text style={styles.distanceText} numberOfLines={1}>
+              {distanceLabel}
+            </Text>
           </View>
         ) : null}
 
-        <View style={{ position: "absolute", left: 13, right: 13, bottom: 13, gap: 3 }}>
-          {categoryName ? <Eyebrow>{categoryName}</Eyebrow> : null}
-
-          <Text
-            style={{
-              color: "#FFFFFF",
-              fontSize: 16.5,
-              lineHeight: 21,
-              letterSpacing: -0.4,
-              fontFamily: TOKENS.font.heading,
-            }}
-            numberOfLines={2}
-          >
-            {place?.name}
-          </Text>
-
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 1 }}>
-            <MaterialIconsRounded
-              name="place"
-              size={12}
-              color="rgba(255,255,255,0.62)"
+        {/* Bookmark Button */}
+        <Pressable
+          onPress={handleSavePress}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={t(
+            isSaved
+              ? "explore.accessibility.unsavePlace"
+              : "explore.accessibility.savePlace",
+            { name: place?.name },
+          )}
+          accessibilityState={{ selected: isSaved }}
+          style={styles.saveBtn}
+        >
+          <Animated.View style={bookmarkAnimStyle}>
+            <Bookmark
+              size={15}
+              color={isSaved ? C.river : C.ink}
+              fill={isSaved ? C.river : "transparent"}
+              strokeWidth={2.2}
             />
-            <Text
-              style={{
-                flex: 1,
-                color: "rgba(255,255,255,0.72)",
-                fontSize: 11.5,
-                fontFamily: TOKENS.font.medium,
-              }}
-              numberOfLines={1}
-            >
+          </Animated.View>
+        </Pressable>
+      </View>
+
+      {/* Thông tin thẻ */}
+      <View style={styles.body}>
+        <Text style={styles.name} numberOfLines={2}>
+          {place?.name || t("explore.card.recommended", "Địa điểm đề xuất")}
+        </Text>
+
+        {location ? (
+          <View style={styles.locationRow}>
+            <MapPin size={11} color={C.muted} strokeWidth={2.2} />
+            <Text style={styles.location} numberOfLines={1}>
               {location}
             </Text>
           </View>
+        ) : null}
+
+        {/* Giờ mở cửa */}
+        {openingInfo ? (
+          <View style={styles.hoursRow}>
+            <Clock size={11} color={openingInfo.color} strokeWidth={2} />
+            <Text style={[styles.hoursStatus, { color: openingInfo.color }]}>
+              {openingInfo.statusText}
+            </Text>
+            <Text style={styles.hoursText}> · {openingInfo.hoursText}</Text>
+          </View>
+        ) : null}
+
+        {/* Footer: Rating & Price */}
+        <View style={styles.meta}>
+          <View style={styles.rating}>
+            {hasRating ? (
+              <>
+                <Star size={11.5} color={C.gold} fill={C.gold} strokeWidth={0} />
+                <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
+              </>
+            ) : (
+              <Text style={styles.reviewCountText}>Mới</Text>
+            )}
+            {reviewCount > 0 ? (
+              <Text style={styles.reviewCountText}>({reviewCount})</Text>
+            ) : null}
+          </View>
+
+          {priceInfo ? (
+            <View style={styles.priceWrap}>
+              <Text style={styles.price} numberOfLines={1}>
+                {priceInfo.amount}
+              </Text>
+              <ChevronRight size={11.5} color="#71717A" strokeWidth={2.4} />
+            </View>
+          ) : null}
         </View>
       </View>
     </AnimatedPressable>
   );
 }
 
+
 function ViewMoreCard({ onPress, label }) {
-  const { onPressIn, onPressOut, cardStyle } = usePressScale({ mediaTo: 1 });
+  const { onPressIn, onPressOut, cardStyle } = usePressScale({
+    to: 0.97,
+    mediaTo: 1,
+  });
+
+  const handlePress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress?.();
+  }, [onPress]);
 
   return (
     <AnimatedPressable
-      onPress={onPress}
+      onPress={handlePress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityHint={label}
-      style={[
-        cardStyle,
-        {
-          width: CARD_W,
-          height: CARD_H,
-          borderRadius: POSTER_RADIUS,
-          borderCurve: "continuous",
-          backgroundColor: CREAM,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: "rgba(11,11,12,0.08)",
-          ...posterShadow,
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 12,
-        },
-      ]}
+      style={[styles.more, cardStyle]}
     >
-      <View
-        style={{
-          width: 46,
-          height: 46,
-          borderRadius: 23,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: INK,
-        }}
-      >
-        <MaterialIconsRounded name="arrow-forward" size={20} color="#FFFFFF" />
+      <View style={styles.moreIconCircle}>
+        <ArrowRight size={20} color={C.river} strokeWidth={2.4} />
       </View>
-      <Text
-        style={{
-          color: INK,
-          fontSize: 13.5,
-          letterSpacing: -0.2,
-          fontFamily: TOKENS.font.semibold,
-        }}
-      >
-        {label}
-      </Text>
+      <Text style={styles.moreText}>{label}</Text>
     </AnimatedPressable>
   );
-}
-
-function Separator() {
-  return <View style={{ width: CARD_GAP }} />;
 }
 
 function CategoryPlacesSectionInner({
@@ -196,62 +206,274 @@ function CategoryPlacesSectionInner({
   places,
   onPressPlace,
   onPressViewAll,
+  onSavePlace,
+  savedPlaceIds,
+  userLocation,
 }) {
   const { t } = useTranslation();
-  const viewAllLabel = t("common.viewAll");
-
-  const dataWithViewMore = useMemo(
+  const data = useMemo(
     () => [...(places || []), { id: "__view-more__" }],
     [places],
   );
-
-  /**
-   * Snap theo offset tuyệt đối: FlatList có paddingHorizontal nên
-   * snapToInterval một mình sẽ lệch đúng bằng phần padding đầu.
-   */
   const snapToOffsets = useMemo(
-    () => dataWithViewMore.map((_, index) => index * ITEM_LENGTH),
-    [dataWithViewMore],
+    () => data.map((_, index) => index * ITEM_LENGTH),
+    [data],
   );
 
   const renderItem = useCallback(
-    ({ item, index }) => {
-      if (index === places.length) {
-        return <ViewMoreCard onPress={onPressViewAll} label={viewAllLabel} />;
-      }
-      return <CategoryPlaceCard place={item} onPress={() => onPressPlace(item)} />;
-    },
-    [places, onPressPlace, onPressViewAll, viewAllLabel],
+    ({ item, index }) =>
+      index === places.length ? (
+        <ViewMoreCard
+          onPress={onPressViewAll}
+          label={t("common.viewAll", "Xem tất cả")}
+        />
+      ) : (
+        <CategoryPlaceCard
+          place={item}
+          userLocation={userLocation}
+          onPress={() => onPressPlace(item)}
+          onSave={onSavePlace}
+          isSaved={savedPlaceIds?.has?.(Number(item?.id)) || false}
+        />
+      ),
+    [places, onPressPlace, onPressViewAll, onSavePlace, savedPlaceIds, userLocation, t],
   );
 
   if (!places?.length) return null;
 
   return (
-    <View style={{ marginTop: 34 }}>
-      <View style={{ paddingHorizontal: TAB_SCREEN_PADDING, marginBottom: 14 }}>
+    <View style={styles.section}>
+      <View style={styles.heading}>
         <SectionHeading
           title={categoryName}
+          right={
+            onPressViewAll ? (
+              <Pressable
+                onPress={onPressViewAll}
+                hitSlop={8}
+                style={styles.viewAllBtn}
+              >
+                <Text style={styles.viewAllText}>
+                  {t("common.viewAll", "Xem tất cả")}
+                </Text>
+                <ArrowRight size={13} color={C.river} strokeWidth={2.2} />
+              </Pressable>
+            ) : null
+          }
         />
       </View>
-
       <FlatList
-        data={dataWithViewMore}
+        data={data}
         renderItem={renderItem}
-        keyExtractor={keyExtractor}
+        keyExtractor={(item, index) =>
+          item?.id != null ? String(item.id) : `place-${index}`
+        }
         horizontal
         showsHorizontalScrollIndicator={false}
         snapToOffsets={snapToOffsets}
         snapToAlignment="start"
         decelerationRate="fast"
-        contentContainerStyle={{
-          paddingHorizontal: TAB_SCREEN_PADDING,
-          paddingVertical: 4,
-        }}
-        ItemSeparatorComponent={Separator}
+        contentContainerStyle={styles.list}
+        ItemSeparatorComponent={() => <View style={{ width: CARD_GAP }} />}
       />
     </View>
   );
 }
 
+const styles = StyleSheet.create({
+  section: {
+    marginTop: 28,
+  },
+  heading: {
+    paddingHorizontal: C.spacing,
+    marginBottom: 12,
+  },
+  viewAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    minHeight: 36,
+  },
+  viewAllText: {
+    fontFamily: C.font.semibold,
+    fontSize: 12.5,
+    color: C.river,
+    letterSpacing: -0.2,
+  },
+  list: {
+    paddingHorizontal: C.spacing,
+    paddingBottom: 2,
+  },
+  card: {
+    width: CARD_W,
+    height: CARD_H,
+    backgroundColor: C.surface,
+    borderRadius: C.radius,
+    borderCurve: "continuous",
+    overflow: "hidden",
+    borderWidth: 0.5,
+    borderColor: "rgba(24, 48, 44, 0.08)",
+    shadowColor: C.ink,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  imageWrap: {
+    height: 145,
+    backgroundColor: C.sand,
+    overflow: "hidden",
+    position: "relative",
+  },
+  distanceBadge: {
+    position: "absolute",
+    left: 8,
+    bottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "rgba(18, 18, 19, 0.72)",
+    paddingHorizontal: 7.5,
+    paddingVertical: 3,
+    borderRadius: 9999,
+    borderCurve: "continuous",
+    borderWidth: 0.5,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  distanceText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontFamily: C.font.medium,
+    letterSpacing: -0.1,
+  },
+  saveBtn: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(255, 255, 255, 0.94)",
+    borderWidth: 0.5,
+    borderColor: "rgba(0, 0, 0, 0.06)",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  body: {
+    flex: 1,
+    padding: 12,
+    justifyContent: "space-between",
+  },
+  name: {
+    color: C.ink,
+    fontFamily: C.font.bold,
+    fontSize: 14.5,
+    lineHeight: 20,
+    letterSpacing: -0.2,
+    minHeight: 38,
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    marginTop: 2,
+  },
+  location: {
+    flex: 1,
+    color: C.muted,
+    fontFamily: C.font.medium,
+    fontSize: 11.5,
+  },
+  hoursRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 3,
+  },
+  hoursStatus: {
+    fontSize: 11,
+    fontFamily: C.font.bold,
+    marginLeft: 3,
+  },
+  hoursText: {
+    fontSize: 10.5,
+    fontFamily: C.font.body,
+    color: "#71717A",
+  },
+  meta: {
+    marginTop: "auto",
+    paddingTop: 8,
+    borderTopWidth: 0.5,
+    borderTopColor: "rgba(24, 48, 44, 0.06)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 5,
+  },
+  rating: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2.5,
+  },
+  ratingText: {
+    color: C.ink,
+    fontFamily: C.font.bold,
+    fontSize: 12,
+  },
+  reviewCountText: {
+    color: C.muted,
+    fontFamily: C.font.body,
+    fontSize: 10.5,
+  },
+  priceWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  price: {
+    maxWidth: 95,
+    color: C.river,
+    fontFamily: C.font.bold,
+    fontSize: 11.5,
+  },
+  more: {
+    width: CARD_W,
+    height: CARD_H,
+    borderRadius: C.radius,
+    borderCurve: "continuous",
+    backgroundColor: C.sand,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 0.5,
+    borderColor: "rgba(24, 48, 44, 0.08)",
+  },
+  moreIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: C.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: C.ink,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  moreText: {
+    color: C.river,
+    fontFamily: C.font.bold,
+    fontSize: 13,
+    letterSpacing: -0.2,
+  },
+});
+
 export const CategoryPlacesSection = memo(CategoryPlacesSectionInner);
 export { CARD_W as CATEGORY_CARD_W, CARD_H as CATEGORY_CARD_H };
+
+
