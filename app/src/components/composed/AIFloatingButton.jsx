@@ -33,16 +33,16 @@ export function AIFloatingButton({ router, pathname }) {
       .activeOffsetX([-10, 10])
       .activeOffsetY([-10, 10])
       .onStart(() => {
-        startX.value = translateX.value;
-        startY.value = translateY.value;
-        scale.value = withSpring(1.08);
+        startX.set(translateX.value);
+        startY.set(translateY.value);
+        scale.set(withSpring(1.08));
       })
       .onUpdate((event) => {
-        translateX.value = startX.value + event.translationX;
-        translateY.value = startY.value + event.translationY;
+        translateX.set(startX.value + event.translationX);
+        translateY.set(startY.value + event.translationY);
       })
       .onEnd(() => {
-        scale.value = withSpring(1);
+        scale.set(withSpring(1));
 
         const currentAbsoluteX = initialX + translateX.value;
         const snapToLeftX = margin - initialX;
@@ -57,8 +57,8 @@ export function AIFloatingButton({ router, pathname }) {
           screenHeight - insets.bottom - 90 - buttonSize
         ) - initialY;
 
-        translateX.value = withSpring(snapX, { damping: 15, stiffness: 120 });
-        translateY.value = withSpring(snapY, { damping: 15, stiffness: 120 });
+        translateX.set(withSpring(snapX, { damping: 15, stiffness: 120 }));
+        translateY.set(withSpring(snapY, { damping: 15, stiffness: 120 }));
       });
   }, [screenWidth, screenHeight, insets, initialX, initialY, translateX, translateY, startX, startY, scale]);
 

@@ -80,10 +80,10 @@ function SampleTripCardInner({ trip, onPress }) {
     <AnimatedPressable
       onPress={handlePress}
       onPressIn={() => {
-        scale.value = withSpring(0.975, TOKENS.spring.press);
+        scale.set(withSpring(0.975, TOKENS.spring.press));
       }}
       onPressOut={() => {
-        scale.value = withSpring(1, TOKENS.spring.press);
+        scale.set(withSpring(1, TOKENS.spring.press));
       }}
       accessibilityRole="button"
       accessibilityLabel={trip?.title || t("explore.sampleTrip.defaultTitle")}

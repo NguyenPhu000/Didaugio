@@ -45,11 +45,11 @@ function BannerSlide({ banner, width, onPress }) {
   }));
 
   const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.985, TOKENS.spring.press);
+scale.set(withSpring(0.985, TOKENS.spring.press));
   }, [scale]);
 
   const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, TOKENS.spring.press);
+scale.set(withSpring(1, TOKENS.spring.press));
   }, [scale]);
 
   const handlePress = useCallback(() => {

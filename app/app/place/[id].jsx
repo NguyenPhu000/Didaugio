@@ -222,7 +222,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
     const unsaveMutation = useUnsavePlace();
     const createReviewMutation = useCreateReview(resolvedPlaceId);
     const [activeImage, setActiveImage] = useState(0);
-    const [isSavedLocal, setIsSavedLocal] = useState(false);
+    const [savedOverride, setSavedOverride] = useState(null);
+    const isSavedLocal = savedOverride?.placeId === resolvedPlaceId &&
+      savedOverride.baseline === Boolean(place?.isSaved)
+      ? savedOverride.value
+      : Boolean(place?.isSaved);
     const [tripSheetKey, setTripSheetKey] = useState(0);
     const [activeSpeechKey, setActiveSpeechKey] = useState(null);
     const viewedPlaceIdRef = useRef(null);
@@ -234,10 +238,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
         // Analytics must never block a visitor's primary action.
       });
     }, [resolvedPlaceId]);
-
-    useEffect(() => {
-      setIsSavedLocal(Boolean(place?.isSaved));
-    }, [place?.id, place?.isSaved]);
 
     useEffect(() => {
       if (!resolvedPlaceId || viewedPlaceIdRef.current === resolvedPlaceId) return;
@@ -301,7 +301,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
       if (!place?.id) return;
 
       const currentStatus = isSavedLocal;
-      setIsSavedLocal(!currentStatus);
+      setSavedOverride({
+        placeId: resolvedPlaceId,
+        baseline: Boolean(place.isSaved),
+        value: !currentStatus,
+      });
 
       try {
         if (currentStatus) {
@@ -318,7 +322,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
           });
         }
       } catch (_error) {
-        setIsSavedLocal(currentStatus);
+        setSavedOverride(null);
         addToast({
           type: "error",
           message: currentStatus
@@ -326,7 +330,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
             : t("place.detail.toast.saveError"),
         });
       }
-    }, [accessToken, place, isSavedLocal, unsaveMutation, saveMutation, addToast, router, t]);
+    }, [accessToken, place, resolvedPlaceId, isSavedLocal, unsaveMutation, saveMutation, addToast, router, t]);
 
     const handleNavigate = useCallback(() => {
       trackPlaceAction("DIRECTION");
@@ -371,7 +375,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
       }
       setTripSheetKey((prev) => prev + 1);
       bottomSheetRef.current?.expand();
-    }, [accessToken, place?.id, router, t]);
+    }, [accessToken, place, router, setTripSheetKey, t]);
 
     const handleGetTicket = useCallback(() => {
       if (!accessToken) {
@@ -393,7 +397,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
       if (!place?.id) return;
       trackPlaceAction("BOOKING_CLICK");
       router.push(`/booking/${place.id}`);
-    }, [accessToken, place?.id, router, t, trackPlaceAction]);
+    }, [accessToken, place, router, t, trackPlaceAction]);
 
     const handleOpenReviewComposer = useCallback(() => {
       if (!accessToken) {

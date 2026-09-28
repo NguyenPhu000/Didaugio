@@ -2,7 +2,7 @@
 // ├── UI: @/modules/booking/components/{OrderSummary, PaymentMethodSelector}
 // └── API: @/modules/booking/hooks/usePayment, @/modules/booking/api/bookingApi
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
   AppState,
@@ -62,11 +62,11 @@ export default function PaymentCheckoutScreen() {
   const { startPolling } = usePollPaymentStatus();
   const momoPaymentRef = useRef(null);
 
-  const loadBooking = useCallback(async () => {
+  useEffect(() => {
     if (!bookingId) return;
-    try {
-      setLoadingBooking(true);
-      const res = await getMyBookingDetailApi(bookingId);
+    let cancelled = false;
+    getMyBookingDetailApi(bookingId).then((res) => {
+      if (cancelled) return;
       const data = res?.data || res;
       setBooking(data);
 
@@ -80,16 +80,14 @@ export default function PaymentCheckoutScreen() {
       const remaining = Math.max(0, Math.ceil((PAYMENT_EXPIRY_MS - elapsed) / 1000));
       setTimeLeft(remaining);
       if (remaining <= 0) setIsExpired(true);
-    } catch (err) {
+    }).catch((err) => {
+      if (cancelled) return;
       showAppAlertLegacy("Lỗi", err?.message || "Không thể tải thông tin đơn hàng");
-    } finally {
-      setLoadingBooking(false);
-    }
+    }).finally(() => {
+      if (!cancelled) setLoadingBooking(false);
+    });
+    return () => { cancelled = true; };
   }, [bookingId]);
-
-  useEffect(() => {
-    loadBooking();
-  }, [loadBooking]);
 
   useEffect(() => {
     if (isExpired) return;

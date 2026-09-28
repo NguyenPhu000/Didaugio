@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { ArrowUp, Mic, Square } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { TOKENS } from "../../../../constants/design-tokens";
 
 const LINE_HEIGHT = 22;
@@ -26,12 +26,7 @@ export function ChatInputBar({
   onToggleRecord,
 }) {
   const [inputHeight, setInputHeight] = useState(LINE_HEIGHT);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    if (!inputText || inputText.trim().length === 0) {
-      setInputHeight(LINE_HEIGHT);
-    }
-  }, [inputText]);
+  const [pulseAnim] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
     let animation;
@@ -64,6 +59,11 @@ export function ChatInputBar({
     setInputHeight(Math.min(nextHeight, MAX_INPUT_HEIGHT));
   }, []);
 
+  const handleChangeText = useCallback((text) => {
+    setInputText(text);
+    if (!text.trim()) setInputHeight(LINE_HEIGHT);
+  }, [setInputText]);
+
   const hasText = inputText.trim().length > 0;
 
   return (
@@ -74,10 +74,10 @@ export function ChatInputBar({
           placeholder="Hỏi Genie điều gì đó..."
           placeholderTextColor="#94A3B8"
           value={inputText}
-          onChangeText={setInputText}
+          onChangeText={handleChangeText}
           multiline
           maxLength={500}
-          scrollEnabled={inputHeight >= MAX_INPUT_HEIGHT}
+          scrollEnabled={hasText && inputHeight >= MAX_INPUT_HEIGHT}
           onContentSizeChange={handleContentSizeChange}
           selectionColor="#2563EB"
           textAlignVertical="top"
@@ -86,7 +86,7 @@ export function ChatInputBar({
           editable={!isSending}
           style={[
             s.input,
-            { height: Math.max(inputHeight, LINE_HEIGHT) },
+            { height: hasText ? Math.max(inputHeight, LINE_HEIGHT) : LINE_HEIGHT },
           ]}
         />
 

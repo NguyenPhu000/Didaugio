@@ -30,9 +30,7 @@ export function useMapTripPreview({
   const { height: viewportHeight } = useWindowDimensions();
   const [previewNow, setPreviewNow] = useState(() => new Date());
   const [selectedPreviewDayNumber, setSelectedPreviewDayNumber] = useState(null);
-  const [previewRouteResults, setPreviewRouteResults] = useState([]);
-  const [isPreviewRouteLoading, setIsPreviewRouteLoading] = useState(false);
-  const [isPreviewRouteError, setIsPreviewRouteError] = useState(false);
+  const [routeState, setRouteState] = useState({ stops: null, results: [], error: false });
 
   const previewDays = useMemo(
     () =>
@@ -49,10 +47,10 @@ export function useMapTripPreview({
   );
   const selectedPreviewDay = useMemo(
     () =>
-      previewDays.find((day) => day.dayNumber === selectedPreviewDayNumber) ||
+      previewDays.find((day) => day.dayNumber === (isTripPreviewMode ? selectedPreviewDayNumber : null)) ||
       previewDays.find((day) => day.dayNumber === defaultPreviewDayNumber) ||
       null,
-    [defaultPreviewDayNumber, previewDays, selectedPreviewDayNumber],
+    [defaultPreviewDayNumber, isTripPreviewMode, previewDays, selectedPreviewDayNumber],
   );
   const isSelectedPreviewDayStartAllowed =
     getTripPreviewDayStartState(selectedPreviewDay).canStart;
@@ -62,22 +60,8 @@ export function useMapTripPreview({
   );
 
   useEffect(() => {
-    if (!isTripPreviewMode) {
-      setSelectedPreviewDayNumber(null);
-      return;
-    }
-
-    setSelectedPreviewDayNumber((currentDayNumber) =>
-      previewDays.some((day) => day.dayNumber === currentDayNumber)
-        ? currentDayNumber
-        : defaultPreviewDayNumber,
-    );
-  }, [defaultPreviewDayNumber, isTripPreviewMode, previewDays]);
-
-  useEffect(() => {
     if (!isTripPreviewMode || !previewTrip?.startDate) return undefined;
 
-    setPreviewNow(new Date());
     let timer;
     const scheduleNextMidnight = () => {
       const nextMidnight = new Date();
@@ -87,7 +71,10 @@ export function useMapTripPreview({
         scheduleNextMidnight();
       }, Math.max(nextMidnight.getTime() - Date.now() + 100, 1000));
     };
-    scheduleNextMidnight();
+    timer = setTimeout(() => {
+      setPreviewNow(new Date());
+      scheduleNextMidnight();
+    }, 0);
     return () => clearTimeout(timer);
   }, [isTripPreviewMode, previewTrip?.startDate]);
 
@@ -95,6 +82,14 @@ export function useMapTripPreview({
     () => buildTripPreviewStops(previewDestinations),
     [previewDestinations],
   );
+  const hasPreviewRoute = isTripPreviewMode && previewStops.length >= 2;
+  const isCurrentRoute = hasPreviewRoute && routeState.stops === previewStops;
+  const previewRouteResults = useMemo(
+    () => (isCurrentRoute ? routeState.results : []),
+    [isCurrentRoute, routeState.results],
+  );
+  const isPreviewRouteLoading = hasPreviewRoute && !isCurrentRoute;
+  const isPreviewRouteError = isCurrentRoute && routeState.error;
 
   const previewSegments = useMemo(
     () => buildTripPreviewSegments(previewStops, previewRouteResults),
@@ -110,18 +105,10 @@ export function useMapTripPreview({
   const previewSheetHeight = getTripPreviewSheetHeight(viewportHeight);
 
   useEffect(() => {
-    if (!isTripPreviewMode || previewStops.length < 2) {
-      setPreviewRouteResults([]);
-      setIsPreviewRouteLoading(false);
-      setIsPreviewRouteError(false);
-      return;
-    }
+    if (!hasPreviewRoute) return undefined;
 
     let cancelled = false;
     const abortController = new AbortController();
-    setPreviewRouteResults([]);
-    setIsPreviewRouteLoading(true);
-    setIsPreviewRouteError(false);
 
     Promise.all(
       previewStops.slice(0, -1).map(async (from, index) => {
@@ -150,18 +137,14 @@ export function useMapTripPreview({
         const hasFallback = results.some(
           (result) => result.source === "fallback",
         );
-        setPreviewRouteResults(results);
-        setIsPreviewRouteError(hasFallback);
-      })
-      .finally(() => {
-        if (!cancelled) setIsPreviewRouteLoading(false);
+        setRouteState({ stops: previewStops, results, error: hasFallback });
       });
 
     return () => {
       cancelled = true;
       abortController.abort();
     };
-  }, [isTripPreviewMode, previewStops, resolveTravelMode]);
+  }, [hasPreviewRoute, previewStops, resolveTravelMode]);
 
   useEffect(() => {
     if (!isTripPreviewMode || previewFitCoordinates.length < 2) return;
@@ -186,7 +169,8 @@ export function useMapTripPreview({
   ]);
 
   const handleCancelTripPreview = useCallback(() => {
-    setPreviewRouteResults([]);
+    setSelectedPreviewDayNumber(null);
+    setRouteState({ stops: null, results: [], error: false });
     router.setParams({ tripPreviewId: undefined });
     router.back();
   }, [router]);

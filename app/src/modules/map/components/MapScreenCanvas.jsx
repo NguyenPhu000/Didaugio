@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Marker } from "react-native-maps";
 import { Image } from "expo-image";
@@ -19,15 +19,12 @@ const PreviewStopMarker = memo(function PreviewStopMarker({ stop, previewSegment
     previewSegments[stop.sequence - 2]?.color ||
     "#EF4444";
   const stopName = stop.name || placeData?.name || `Điểm ${stop.sequence}`;
-  const [tracksViewChanges, setTracksViewChanges] = useState(Boolean(imageUri));
-
-  useEffect(() => {
-    setTracksViewChanges(Boolean(imageUri));
-  }, [imageUri]);
+  const [settledImageUri, setSettledImageUri] = useState(null);
+  const tracksViewChanges = Boolean(imageUri) && settledImageUri !== imageUri;
 
   const handleImageSettled = useCallback(() => {
-    setTracksViewChanges(false);
-  }, []);
+    setSettledImageUri(imageUri);
+  }, [imageUri]);
 
   return (
     <Marker

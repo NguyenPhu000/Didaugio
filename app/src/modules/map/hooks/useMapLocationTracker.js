@@ -74,7 +74,7 @@ export function useMapLocationTracker({
       const now = Date.now();
       const elapsed = now - lastPublishedAtRef.current;
       const merged = mergeHeading(nextLocation);
-      currentLocationSharedValue.value = merged;
+      currentLocationSharedValue.set(merged);
       currentLocationRef.current = merged;
 
       if (typeof onLocationUpdate === "function") {
@@ -134,7 +134,7 @@ export function useMapLocationTracker({
           if (currentLocationRef.current) {
             const updated = mergeLocationHeading(currentLocationRef.current, raw, rawAcc);
             currentLocationRef.current = updated;
-            currentLocationSharedValue.value = updated;
+            currentLocationSharedValue.set(updated);
           }
 
           // Throttle React state dispatch to avoid high-frequency re-renders on the JS thread

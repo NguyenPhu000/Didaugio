@@ -2,7 +2,7 @@
 // ├── UI: @/modules/profile/components/{UpcomingTripCard, MemoriesSection}, @/components/reacticx/settings-v1/components
 // └── API: @/modules/profile/hooks/useProfile, @/modules/trips/hooks/useTrips, @/stores/authStore
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -95,7 +95,7 @@ function buildStats(profile, storedUser, tripsCount = 0, t) {
 }
 
 function CustomToast({ message, visible, onHide }) {
-  const opacity = useRef(new Animated.Value(0)).current;
+  const [opacity] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     if (visible) {

@@ -39,14 +39,16 @@ function FadeChar({ char, delay }) {
   );
 }
 
-export function StreamingText({ text, style, onComplete }) {
+function StreamingTextContent({ text, style, onComplete }) {
   const [visibleCount, setVisibleCount] = useState(0);
   const hasCompleted = useRef(false);
+  const onCompleteRef = useRef(onComplete);
 
   useEffect(() => {
-    hasCompleted.current = false;
-    setVisibleCount(0);
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
+  useEffect(() => {
     let i = 0;
     const interval = setInterval(() => {
       i++;
@@ -55,13 +57,13 @@ export function StreamingText({ text, style, onComplete }) {
         clearInterval(interval);
         if (!hasCompleted.current) {
           hasCompleted.current = true;
-          onComplete?.();
+          onCompleteRef.current?.();
         }
       }
     }, CHAR_DELAY);
 
     return () => clearInterval(interval);
-  }, [text, onComplete]);
+  }, [text]);
 
   return (
     <Text style={[styles.text, style]}>
@@ -73,6 +75,10 @@ export function StreamingText({ text, style, onComplete }) {
         ))}
     </Text>
   );
+}
+
+export function StreamingText(props) {
+  return <StreamingTextContent key={props.text} {...props} />;
 }
 
 const styles = StyleSheet.create({

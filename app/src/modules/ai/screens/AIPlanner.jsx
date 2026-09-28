@@ -208,18 +208,11 @@ export function AIPlanner() {
   const [loadingStep, setLoadingStep] = useState(0);
 
   useEffect(() => {
-    let interval = null;
-    if (isLoading) {
-      setLoadingStep(0);
-      interval = setInterval(() => {
-        setLoadingStep((step) => step + 1);
-      }, 2500);
-    } else {
-      setLoadingStep(0);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+    if (!isLoading) return;
+    const interval = setInterval(() => {
+      setLoadingStep((step) => step + 1);
+    }, 2500);
+    return () => clearInterval(interval);
   }, [isLoading]);
 
   const allMessages = messages;
@@ -292,6 +285,7 @@ export function AIPlanner() {
     async (text, options = {}) => {
       const message = (text ?? inputText).trim();
       if (!message || isLoading) return;
+      setLoadingStep(0);
       setInputText("");
       clearGenieRequestErrors({
         clearPlannerError,
@@ -343,6 +337,7 @@ export function AIPlanner() {
 
   const handleConfirmSelection = useCallback(async () => {
     if (!canConfirmSelection || isConfirming) return;
+    setLoadingStep(0);
     await confirmSelectionWithFreshErrors({
       clearPlannerError,
       setChatError,
@@ -359,6 +354,8 @@ export function AIPlanner() {
 
   const handleRetryChat = useCallback(async () => {
     if (isLoading || activeError?.source !== "chat") return;
+
+    setLoadingStep(0);
 
     setIsChatLoading(true);
     setChatError(null);

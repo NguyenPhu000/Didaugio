@@ -162,6 +162,8 @@ export function useNavigationController({
 
   useEffect(() => {
     if (!enabled) {
+      // Disabling navigation must reset its state together with native route work.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMachineState(NAVIGATION_STATES.IDLE);
       segmentIndexRef.current = null;
       offRouteCountRef.current = 0;
@@ -530,14 +532,6 @@ export function useNavigationController({
     const id = setInterval(tick, 3000);
     return () => clearInterval(id);
   }, [machineState]);
-
-  useEffect(() => {
-    setNavSnapshot((prev) => ({
-      ...prev,
-      state: machineState,
-      routeOverride,
-    }));
-  }, [machineState, routeOverride]);
 
   const isGpsLost = machineState === NAVIGATION_STATES.SUSPENDED;
 

@@ -67,6 +67,10 @@ module.exports = ({ config }) => {
     plugins.push(["expo-status-bar", { style: "light" }]);
   }
 
+  if (!plugins.includes("./plugins/withAndroidNativeParity")) {
+    plugins.push("./plugins/withAndroidNativeParity");
+  }
+
   return {
     ...expoConfig,
     plugins,

@@ -162,11 +162,11 @@ export const AmenityCard = memo(function AmenityCard({ icon, label, tag, onPress
   }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.95, TOKENS.spring.press);
+    scale.set(withSpring(0.95, TOKENS.spring.press));
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, TOKENS.spring.entrance);
+    scale.set(withSpring(1, TOKENS.spring.entrance));
   };
 
   return (
@@ -220,11 +220,11 @@ export const DetailRow = memo(function DetailRow({
   }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.98, TOKENS.spring.press);
+    scale.set(withSpring(0.98, TOKENS.spring.press));
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, TOKENS.spring.entrance);
+    scale.set(withSpring(1, TOKENS.spring.entrance));
   };
 
   const content = (

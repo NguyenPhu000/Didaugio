@@ -154,9 +154,10 @@ export default function ExploreScreen() {
     announcement = null,
   } = cmsData ?? {};
 
+  const [featuredEventsReferenceTime] = useState(Date.now);
   const featuredEvents = useMemo(() => {
     if (!Array.isArray(events)) return [];
-    const now = Date.now();
+    const now = featuredEventsReferenceTime;
     return events
       .filter((e) => e?.isFeaturedBanner)
       .sort((a, b) => {
@@ -168,7 +169,7 @@ export default function ExploreScreen() {
         // Sau đó theo startDate tăng dần
         return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
       });
-  }, [events]);
+  }, [events, featuredEventsReferenceTime]);
 
   const regularEvents = useMemo(() => {
     if (!Array.isArray(events)) return [];

@@ -87,10 +87,10 @@ function ExploreModernHeaderInner({ onPressSearch }) {
         accessibilityHint={t("explore.header.searchHint")}
         onPress={handlePress}
         onPressIn={() => {
-          scale.value = withSpring(0.982, TOKENS.spring.press);
+          scale.set(withSpring(0.982, TOKENS.spring.press));
         }}
         onPressOut={() => {
-          scale.value = withSpring(1, TOKENS.spring.press);
+          scale.set(withSpring(1, TOKENS.spring.press));
         }}
         style={[styles.search, animatedStyle]}
       >

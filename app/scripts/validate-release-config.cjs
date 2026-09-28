@@ -43,7 +43,7 @@ function assertStaticAppConfig() {
     typeof appConfig.runtimeVersion !== "string" ||
     appConfig.runtimeVersion !== appConfig.version
   ) {
-    throw new Error("app.json must use an explicit runtimeVersion matching expo.version for bare workflow.");
+    throw new Error("app.json must use an explicit runtimeVersion matching expo.version for native build compatibility.");
   }
 
   if (!appConfig.assetBundlePatterns?.includes("assets/splash.mp4")) {

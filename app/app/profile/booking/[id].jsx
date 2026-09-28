@@ -99,7 +99,6 @@ export default function BookingDetailScreen() {
       `${QR_CACHE_KEY}:${bookingId}`,
       JSON.stringify(cacheEntry),
     ).catch(() => {});
-    setCachedQr(cacheEntry.data);
   }, [qrData, bookingId]);
 
   // Load cached QR on mount (for offline support)
@@ -124,7 +123,8 @@ export default function BookingDetailScreen() {
   const linkBookingToTripMutation = useLinkBookingToTrip();
   const cancelBookingMutation = useCancelBooking();
   const savePlaceMutation = useSavePlace();
-  const [selectedTripId, setSelectedTripId] = useState(null);
+  const [selectedTripIdOverride, setSelectedTripId] = useState(null);
+  const selectedTripId = selectedTripIdOverride ?? booking?.linkedTrip?.id ?? null;
   const [isRetrying, setIsRetrying] = useState(false);
   const [showRefundPolicyModal, setShowRefundPolicyModal] = useState(false);
 
@@ -133,12 +133,6 @@ export default function BookingDetailScreen() {
     if (raw) return raw;
     return null;
   }, [booking?.useDate]);
-
-  useEffect(() => {
-    if (booking?.linkedTrip?.id) {
-      setSelectedTripId(booking.linkedTrip.id);
-    }
-  }, [booking?.linkedTrip?.id]);
 
   const handleSavePlace = async () => {
     const placeId = Number(booking?.service?.place?.id);

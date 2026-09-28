@@ -1,4 +1,4 @@
-import axios, { isCancel } from "axios";
+import axios, { create, isCancel } from "axios";
 import { API_BASE_CANDIDATES, API_BASE_URL, REQUEST_TIMEOUT } from "../constants/api";
 import { useAuthStore } from "../stores/authStore";
 import { ENDPOINTS } from "./endpoints";
@@ -9,7 +9,7 @@ const apiBaseCandidates = API_BASE_CANDIDATES.length > 0
   : [API_BASE_URL].filter(Boolean);
 let activeBaseURL = apiBaseCandidates[0] || "";
 
-const client = axios.create({
+const client = create({
   baseURL: activeBaseURL,
   timeout: REQUEST_TIMEOUT,
   headers: {

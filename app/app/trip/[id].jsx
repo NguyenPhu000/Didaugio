@@ -133,7 +133,7 @@ export default function TripDetailScreen() {
         },
       ],
     );
-  }, [deleteTripMutation, router, t, trip?.id]);
+  }, [deleteTripMutation, router, t, trip]);
 
   const handleSaveTrip = useCallback(
     (payload) => {
@@ -183,7 +183,7 @@ export default function TripDetailScreen() {
         },
       });
     }
-  }, [saveTripMutation, t, trip?.id, trip?.isSaved, unsaveTripMutation]);
+  }, [saveTripMutation, t, trip, unsaveTripMutation]);
 
   const handleDuplicateTrip = useCallback(() => {
     if (!trip?.id || duplicateMutation.isPending) return;
@@ -204,7 +204,7 @@ export default function TripDetailScreen() {
         showAppAlertLegacy(t("common.error"), error?.message || t("trip.detail.duplicateError"));
       },
     });
-  }, [duplicateMutation, router, t, trip?.id, trip?.title]);
+  }, [duplicateMutation, router, t, trip]);
 
   /* ─── Loading ─── */
   if (isLoading) {

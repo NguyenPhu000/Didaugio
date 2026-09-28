@@ -191,30 +191,30 @@ const Content = ({
     .onBegin((event) => {
       "worklet";
       const index = calculateActiveIndex(event.y);
-      activeItemIndex.value = index;
-      lastHapticIndex.value = index;
+      activeItemIndex.set(index);
+      lastHapticIndex.set(index);
       scheduleOnRN(triggerHaptic);
     })
     .onUpdate((event) => {
       "worklet";
       const index = calculateActiveIndex(event.y);
       if (index !== activeItemIndex.value) {
-        activeItemIndex.value = index;
+        activeItemIndex.set(index);
         if (index !== lastHapticIndex.value) {
-          lastHapticIndex.value = index;
+          lastHapticIndex.set(index);
           scheduleOnRN(triggerHaptic);
         }
       }
     })
     .onEnd(() => {
       "worklet";
-      activeItemIndex.value = -1;
-      lastHapticIndex.value = -1;
+      activeItemIndex.set(-1);
+      lastHapticIndex.set(-1);
     })
     .onFinalize(() => {
       "worklet";
-      activeItemIndex.value = -1;
-      lastHapticIndex.value = -1;
+      activeItemIndex.set(-1);
+      lastHapticIndex.set(-1);
     });
 
   const animatedStyle = useAnimatedStyle(() => {

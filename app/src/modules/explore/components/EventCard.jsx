@@ -34,8 +34,8 @@ function EventCardInner({ event, onPress }) {
       accessibilityLabel={event?.title}
       accessibilityHint={t("explore.accessibility.openEvent")}
       onPress={handlePress}
-      onPressIn={() => { scale.value = withSpring(0.985, TOKENS.spring.press); }}
-      onPressOut={() => { scale.value = withSpring(1, TOKENS.spring.press); }}
+      onPressIn={() => { scale.set(withSpring(0.985, TOKENS.spring.press)); }}
+      onPressOut={() => { scale.set(withSpring(1, TOKENS.spring.press)); }}
       style={[styles.card, animatedStyle]}
     >
       <View style={styles.imageWrap}>

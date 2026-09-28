@@ -35,11 +35,11 @@ const PillItem = memo(function PillItem({
   }));
 
   const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.94, SPRING_CONFIG);
+scale.set(withSpring(0.94, SPRING_CONFIG));
   }, [scale]);
 
   const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, SPRING_CONFIG);
+scale.set(withSpring(1, SPRING_CONFIG));
   }, [scale]);
 
   const handlePress = useCallback(() => {

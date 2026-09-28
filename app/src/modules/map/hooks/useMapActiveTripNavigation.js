@@ -192,7 +192,7 @@ export function useMapActiveTripNavigation({
       activeNextDestination.transportToNext || "motorcycle",
     );
   }, [
-    activeTripDetail?.destinations,
+    activeTripDetail,
     activeNextDestination,
     resolveTravelMode,
   ]);

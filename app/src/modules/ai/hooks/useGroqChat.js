@@ -222,6 +222,5 @@ export function useGroqChat() {
     sendMessage,
     retryLastMessage,
     clearHistory: clearChatMessages,
-    hasFailedMessage: Boolean(lastFailedRequestRef.current),
   };
 }

@@ -428,6 +428,8 @@ export default function MapScreen() {
   // Phát hiện sắp đến nơi (< 150m) → mở bottom banner không chặn bản đồ.
   useEffect(() => {
     if (!isActiveTripMode || !activeNextDestination) {
+      // Arrival banner tracks live GPS and the active navigation destination.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveArrivalVisible(false);
       return;
     }
@@ -442,6 +444,8 @@ export default function MapScreen() {
 
   // Reset nearbyTriggered và arrivalHandled khi đổi destination chặng tiếp theo
   useEffect(() => {
+    // A new leg starts a new proximity and arrival session.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNearbyTriggered(false);
     arrivalHandledRef.current = null;
   }, [activeNextDestination?.id]);
@@ -455,6 +459,8 @@ export default function MapScreen() {
       activeArrivalVisible ||
       activeDistanceToTarget <= ARRIVAL_RADIUS_M
     ) {
+      // Preserve the 150m/200m GPS hysteresis across location updates.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNearbyTriggered(false);
       return;
     }
@@ -468,6 +474,8 @@ export default function MapScreen() {
   // Screen dimming: giảm sáng khi đường thẳng dài (> 1km không có ngã rẽ)
   useEffect(() => {
     if (!isActiveTripMode || activeTrip.isPaused) {
+      // Dimming follows navigation pause and turn-distance transitions.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsScreenDimmed(false);
       dimActivatedRef.current = false;
       return;

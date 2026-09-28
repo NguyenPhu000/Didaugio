@@ -2,7 +2,7 @@
 // ├── UI: @/components/reacticx/settings-v1/components, @/components/ui/CustomModal
 // └── API: @/modules/profile/hooks/useProfile, @/modules/auth/hooks/useAuth, @/modules/notifications/hooks/useNotifications
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Animated,
   Linking,
@@ -183,7 +183,7 @@ function AccountDeletionModal({ visible, isDeleting, onCancel, onConfirm }) {
 }
 
 function CustomToast({ message, visible, onHide }) {
-  const opacity = useRef(new Animated.Value(0)).current;
+  const [opacity] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     if (visible) {

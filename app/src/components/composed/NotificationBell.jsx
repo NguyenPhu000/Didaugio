@@ -43,11 +43,11 @@ export function NotificationBell({
   }, [router]);
 
   const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.88, { damping: 15, stiffness: 300 });
+    scale.set(withSpring(0.88, { damping: 15, stiffness: 300 }));
   }, [scale]);
 
   const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, { damping: 12, stiffness: 280 });
+    scale.set(withSpring(1, { damping: 12, stiffness: 280 }));
   }, [scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({

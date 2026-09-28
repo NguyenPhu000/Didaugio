@@ -162,12 +162,12 @@ const Trigger = memo(function Trigger({ children, asChild, ...props }) {
 
   const onPressIn = () => {
     if (!scaleEnabled) return;
-    scale.value = withTiming(0.95, { duration: 100 });
+    scale.set(withTiming(0.95, { duration: 100 }));
   };
 
   const onPressOut = () => {
     if (!scaleEnabled) return;
-    scale.value = withTiming(1, { duration: 200 });
+    scale.set(withTiming(1, { duration: 200 }));
   };
 
   if (asChild && React.isValidElement(children)) {

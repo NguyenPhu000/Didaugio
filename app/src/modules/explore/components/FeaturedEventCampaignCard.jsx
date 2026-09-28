@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,6 +17,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 function FeaturedEventCampaignCardInner({ event, width, onPress }) {
   const { t } = useTranslation();
   const scale = useSharedValue(1);
+  const [now] = useState(() => Date.now());
 
   const imageUri = useMemo(() => {
     const raw = event?.thumbnail || event?.imageUrl;
@@ -28,13 +29,12 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
   const legCount = event?.trip?.destinations?.length || 0;
 
   const status = useMemo(() => {
-    const now = Date.now();
     const start = event?.startDate ? new Date(event.startDate).getTime() : null;
     const end = event?.endDate ? new Date(event.endDate).getTime() : null;
     if (start && end && now >= start && now <= end) return t("explore.event.ongoing");
     if (end && now > end) return t("explore.event.ended");
     return t("explore.event.upcoming");
-  }, [event?.endDate, event?.startDate, t]);
+  }, [event?.endDate, event?.startDate, now, t]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -48,10 +48,10 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
     <AnimatedPressable
       onPress={handlePress}
       onPressIn={() => {
-        scale.value = withSpring(0.985, TOKENS.spring.press);
+        scale.set(withSpring(0.985, TOKENS.spring.press));
       }}
       onPressOut={() => {
-        scale.value = withSpring(1, TOKENS.spring.press);
+        scale.set(withSpring(1, TOKENS.spring.press));
       }}
       accessibilityRole="button"
       accessibilityLabel={event?.title}

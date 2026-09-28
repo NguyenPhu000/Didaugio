@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -96,17 +96,15 @@ function AIPlannerMessageItemComponent({
     status: "idle",
     value: null,
   });
-  const feedbackSubmitterRef = useRef(null);
-  if (!feedbackSubmitterRef.current) {
-    feedbackSubmitterRef.current =
-      createAiFeedbackSubmitter(submitFeedbackApi);
-  }
+  const [feedbackSubmitter] = useState(() =>
+    createAiFeedbackSubmitter(submitFeedbackApi),
+  );
 
   const handleFeedback = useCallback(
     async (value) => {
       if (!canRate || feedbackState.status === "pending") return;
       setFeedbackState({ status: "pending", value });
-      const result = await feedbackSubmitterRef.current.submit({
+      const result = await feedbackSubmitter.submit({
         requestLogId: message.requestLogId,
         value,
       });
@@ -120,6 +118,7 @@ function AIPlannerMessageItemComponent({
     },
     [
       canRate,
+      feedbackSubmitter,
       feedbackState.status,
       message.requestLogId,
     ],

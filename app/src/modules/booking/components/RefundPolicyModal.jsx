@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -25,12 +25,6 @@ export default function RefundPolicyModal({
   const { t } = useTranslation();
   const [cancelReason, setCancelReason] = useState("");
 
-  useEffect(() => {
-    if (!visible) {
-      setCancelReason("");
-    }
-  }, [visible]);
-
   const refundAmount = useMemo(() => {
     const paymentAmount = Number(booking?.payment?.amount || booking?.finalPrice || 0);
     const refundableAmount = Number(booking?.payment?.amount || booking?.finalPrice || 0);
@@ -55,6 +49,7 @@ export default function RefundPolicyModal({
   return (
     <Modal
       visible={visible}
+      onShow={() => setCancelReason("")}
       animationType="slide"
       transparent
       onRequestClose={handleClose}

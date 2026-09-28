@@ -2,7 +2,7 @@
 // ├── UI: @/modules/saved/components/{SavedCard, NoteEditorModal, SavedStates}, @/modules/map/components/filters/FilterPickerModal
 // └── API: @/modules/saved/hooks/useSaved, @/modules/saved/hooks/useSavedOffline
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   RefreshControl,
   ScrollView,
@@ -75,8 +75,8 @@ export default function SavedScreen() {
   const unsaveMutation = useUnsavePlace();
   const saveMutation = useSavePlace();
 
-  const [activeArea, setActiveArea] = useState(ALL_AREAS_KEY);
-  const [activeCategory, setActiveCategory] = useState(ALL_CATEGORIES_KEY);
+  const [selectedArea, setActiveArea] = useState(ALL_AREAS_KEY);
+  const [selectedCategory, setActiveCategory] = useState(ALL_CATEGORIES_KEY);
   const [activeFilterGroup, setActiveFilterGroup] = useState("category");
   const [filterPickerVisible, setFilterPickerVisible] = useState(false);
   const [noteTarget, setNoteTarget] = useState(null);
@@ -87,6 +87,12 @@ export default function SavedScreen() {
     () => buildCategoryOptions(savedData),
     [savedData],
   );
+  const activeArea = areaOptions.some((option) => option.key === selectedArea)
+    ? selectedArea
+    : ALL_AREAS_KEY;
+  const activeCategory = categoryOptions.some((option) => option.key === selectedCategory)
+    ? selectedCategory
+    : ALL_CATEGORIES_KEY;
 
   const filteredSavedData = useMemo(
     () =>
@@ -112,24 +118,6 @@ export default function SavedScreen() {
 
   const isFiltered =
     activeArea !== ALL_AREAS_KEY || activeCategory !== ALL_CATEGORIES_KEY;
-
-  useEffect(() => {
-    if (
-      activeCategory !== ALL_CATEGORIES_KEY &&
-      !categoryOptions.some((option) => option.key === activeCategory)
-    ) {
-      setActiveCategory(ALL_CATEGORIES_KEY);
-    }
-  }, [activeCategory, categoryOptions]);
-
-  useEffect(() => {
-    if (
-      activeArea !== ALL_AREAS_KEY &&
-      !areaOptions.some((option) => option.key === activeArea)
-    ) {
-      setActiveArea(ALL_AREAS_KEY);
-    }
-  }, [activeArea, areaOptions]);
 
   const handleClearFilters = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -177,7 +165,7 @@ export default function SavedScreen() {
     } catch {
       showAppAlertLegacy(t("saved.alert.noteError"), t("common.tryAgain"));
     }
-  }, [handleCloseNoteEditor, noteDraft, noteTarget?.placeId, saveMutation, t]);
+  }, [handleCloseNoteEditor, noteDraft, noteTarget, saveMutation, t]);
 
   const handleUnsave = useCallback(
     (placeId) => {

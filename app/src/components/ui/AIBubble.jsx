@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -22,36 +22,12 @@ export function AIBubble({
   const isUser = role === "user";
   const { t } = useTranslation();
   const router = useRouter();
-  const [dismissedPlaceIds, setDismissedPlaceIds] = useState([]);
-
   const suggestedPlaces = useMemo(
     () => (!isUser && Array.isArray(places) ? places : []),
     [isUser, places]
   );
-  const dismissedPlaceIdSet = useMemo(
-    () => new Set(dismissedPlaceIds),
-    [dismissedPlaceIds],
-  );
-  const visibleSuggestedPlaces = useMemo(
-    () =>
-      suggestedPlaces.filter((place) => {
-        const placeId = Number(place?.id);
-        return !placeId || !dismissedPlaceIdSet.has(placeId);
-      }),
-    [suggestedPlaces, dismissedPlaceIdSet],
-  );
+  const visibleSuggestedPlaces = suggestedPlaces;
   const hasSuggestionCards = !isTyping && visibleSuggestedPlaces.length > 0;
-  const suggestionResetKey = useMemo(
-    () =>
-      suggestedPlaces
-        .map((place) => Number(place?.id) || place?.name || "")
-        .join("|"),
-    [suggestedPlaces],
-  );
-
-  useEffect(() => {
-    setDismissedPlaceIds([]);
-  }, [suggestionResetKey]);
 
   const handleOpenPlace = useCallback(
     (place) => {

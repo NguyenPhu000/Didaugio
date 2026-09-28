@@ -43,10 +43,10 @@ export default function GroqChatScreen() {
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState(null);
+  const [dismissedVoiceError, setDismissedVoiceError] = useState(null);
 
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
-  const lastConsumedVoiceErrorRef = useRef(null);
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -67,22 +67,16 @@ export default function GroqChatScreen() {
   const isRecording = voiceStatus === "listening";
   const isTranscribing = voiceStatus === "transcribing";
 
-  // Surface pre-upload voice failures (permission denied, empty recording,
-  // session errors) in the chat error banner instead of failing silently.
-  // Transcription HTTP errors are handled by handleToggleRecord's catch.
-  // Use a ref to avoid re-triggering after user closes the banner.
-  useEffect(() => {
-    if (voiceStatus !== "error" || !voiceError) return;
-    if (voiceError === lastConsumedVoiceErrorRef.current) return;
-    lastConsumedVoiceErrorRef.current = voiceError;
-    if (voiceError === VOICE_ERROR_CODES.PERMISSION_DENIED) {
-      setError("Genie cần quyền micro để nghe bạn nói. Hãy cấp quyền trong Cài đặt nghen!");
-    } else if (voiceError === VOICE_ERROR_CODES.EMPTY_RECORDING) {
-      setError("Genie chưa nghe được gì, bạn thử nói lại nghen!");
-    } else if (voiceError === VOICE_ERROR_CODES.SESSION_FAILED) {
-      setError("Không thể mở phiên ghi âm, thử lại nghen!");
-    }
-  }, [voiceStatus, voiceError]);
+  const voiceErrorMessage = voiceStatus === "error" && voiceError !== dismissedVoiceError
+    ? voiceError === VOICE_ERROR_CODES.PERMISSION_DENIED
+      ? "Genie cần quyền micro để nghe bạn nói. Hãy cấp quyền trong Cài đặt nghen!"
+      : voiceError === VOICE_ERROR_CODES.EMPTY_RECORDING
+        ? "Genie chưa nghe được gì, bạn thử nói lại nghen!"
+        : voiceError === VOICE_ERROR_CODES.SESSION_FAILED
+          ? "Không thể mở phiên ghi âm, thử lại nghen!"
+          : null
+    : null;
+  const displayedError = error || voiceErrorMessage;
 
   // Scroll to bottom on initial load with existing history AND when new messages arrive
   const prevMsgCountRef = useRef(0);
@@ -192,6 +186,7 @@ export default function GroqChatScreen() {
         setError(err?.message || "Không thể nhận dạng giọng nói, thử lại nghen!");
       }
     } else {
+      setDismissedVoiceError(null);
       await startRecording();
     }
   }, [isRecording, stopRecordingAndTranscribe, startRecording]);
@@ -346,10 +341,13 @@ export default function GroqChatScreen() {
               </View>
             )}
 
-            {error && (
+            {displayedError && (
               <View style={s.errorBanner}>
-                <Text style={s.errorText} selectable>{error}</Text>
-                <Pressable onPress={() => setError(null)}>
+                <Text style={s.errorText} selectable>{displayedError}</Text>
+                <Pressable onPress={() => {
+                  setError(null);
+                  setDismissedVoiceError(voiceError);
+                }}>
                   <Text style={s.closeText}>Đóng</Text>
                 </Pressable>
               </View>

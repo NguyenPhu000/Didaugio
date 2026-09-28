@@ -226,6 +226,8 @@ export function useActiveTrip() {
   }, []);
 
   useEffect(() => {
+    // Hydration sets state after asynchronous storage and network reads.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshActiveTripId();
     void flushSessionOutbox();
     const unsubscribe = NetInfo.addEventListener((state) => {

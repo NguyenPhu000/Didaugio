@@ -103,11 +103,12 @@ export default function SepayQrScreen() {
   const bankAccountName = params.bankAccountName;
   const amount = params.amount;
 
+  const [fallbackExpiresAt] = useState(() => Date.now() + PAYMENT_EXPIRY_MS);
   const expiresAt = useMemo(() => {
     const parsed = Number(params.expiresAt);
     if (Number.isFinite(parsed) && parsed > 0) return parsed;
-    return Date.now() + PAYMENT_EXPIRY_MS;
-  }, [params.expiresAt]);
+    return fallbackExpiresAt;
+  }, [params.expiresAt, fallbackExpiresAt]);
 
   const [timeLeft, setTimeLeft] = useState(() =>
     Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)),

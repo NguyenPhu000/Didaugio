@@ -36,10 +36,9 @@ function AnnouncementBannerInner({ announcement }) {
     () => TONE[announcement?.type] || TONE.info,
     [announcement?.type],
   );
-  const imageUri = useMemo(() => {
-    if (!announcement?.imageUrl) return null;
-    return getOptimizedCloudinaryUrl(resolveMediaUrl(announcement.imageUrl), 480);
-  }, [announcement?.imageUrl]);
+  const imageUri = announcement?.imageUrl
+    ? getOptimizedCloudinaryUrl(resolveMediaUrl(announcement.imageUrl), 480)
+    : null;
   const dateText = announcement?.sentAt
     ? formatDayMonthNumeric(announcement.sentAt)
     : null;
@@ -50,10 +49,10 @@ function AnnouncementBannerInner({ announcement }) {
   }));
 
   const handleDismiss = useCallback(() => {
-    opacity.value = withTiming(0, { duration: 180 });
-    translateY.value = withTiming(-10, { duration: 180 }, () => {
+    opacity.set(withTiming(0, { duration: 180 }));
+    translateY.set(withTiming(-10, { duration: 180 }, () => {
       runOnJS(setDismissed)(true);
-    });
+    }));
   }, [opacity, translateY]);
 
   const handleToggle = useCallback(() => {
@@ -70,8 +69,8 @@ function AnnouncementBannerInner({ announcement }) {
         accessibilityHint={t("explore.announcement.toggleHint")}
         accessibilityState={{ expanded }}
         onPress={handleToggle}
-        onPressIn={() => { scale.value = withSpring(0.987, TOKENS.spring.press); }}
-        onPressOut={() => { scale.value = withSpring(1, TOKENS.spring.press); }}
+        onPressIn={() => { scale.set(withSpring(0.987, TOKENS.spring.press)); }}
+        onPressOut={() => { scale.set(withSpring(1, TOKENS.spring.press)); }}
         style={styles.card}
       >
         {imageUri ? (

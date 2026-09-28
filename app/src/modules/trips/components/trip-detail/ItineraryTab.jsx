@@ -61,7 +61,7 @@ function ItineraryTab({
   const tripId = trip?.id;
   const destinations = useMemo(
     () => (Array.isArray(trip?.destinations) ? trip.destinations : []),
-    [trip?.destinations],
+    [trip],
   );
   const safeBookings = useMemo(
     () => (Array.isArray(bookings) ? bookings : []),
@@ -137,9 +137,10 @@ function ItineraryTab({
     const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1;
     if (diffDays < 1 || diffDays > totalDays) return null;
     return diffDays;
-  }, [trip?.startDate, totalDays]);
+  }, [trip, totalDays]);
 
-  const [selectedDay, setSelectedDay] = useState(1);
+  const [requestedDay, setSelectedDay] = useState(1);
+  const selectedDay = Math.min(requestedDay, totalDays);
   const [movingDest, setMovingDest] = useState(null);
   const [editingDest, setEditingDest] = useState(null);
   const initializedRef = useRef(false);
@@ -153,11 +154,6 @@ function ItineraryTab({
       setSelectedDay(currentDayNumber);
     }
   }, [currentDayNumber]);
-
-  // Keep selected day in valid range when totalDays changes
-  useEffect(() => {
-    if (selectedDay > totalDays) setSelectedDay(totalDays);
-  }, [selectedDay, totalDays]);
 
   // Auto-scroll day chips to selected day
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Pressable, Animated } from "react-native";
 import { Sparkles, CornerDownLeft } from "lucide-react-native";
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { TOKENS } from "../../../../constants/design-tokens";
 
 const runAnimation = (animatedValue, delay) => {
@@ -23,9 +23,9 @@ const runAnimation = (animatedValue, delay) => {
 };
 
 function ThreeDotLoader() {
-  const dot1 = useRef(new Animated.Value(0)).current;
-  const dot2 = useRef(new Animated.Value(0)).current;
-  const dot3 = useRef(new Animated.Value(0)).current;
+  const [dot1] = useState(() => new Animated.Value(0));
+  const [dot2] = useState(() => new Animated.Value(0));
+  const [dot3] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     const a1 = runAnimation(dot1, 0);

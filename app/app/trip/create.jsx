@@ -90,7 +90,7 @@ export default function CreateTripScreen() {
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
-  const [totalDays, setTotalDays] = useState(null);
+  const totalDays = calcTotalDays(startDate, endDate);
   const [selectedSavedPlaceIds, setSelectedSavedPlaceIds] = useState([]);
   const [destinationError, setDestinationError] = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
@@ -99,11 +99,6 @@ export default function CreateTripScreen() {
 
   const ctaScale = useSharedValue(1);
   const hasSavedRef = useRef(false);
-
-  useEffect(() => {
-    const computed = calcTotalDays(startDate, endDate);
-    if (computed !== null) setTotalDays(computed);
-  }, [startDate, endDate]);
 
   const handleStartDate = useCallback(
     (date) => {
@@ -284,10 +279,12 @@ export default function CreateTripScreen() {
   }));
 
   const handleCtaPressIn = useCallback(() => {
+    // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable in press callbacks.
     ctaScale.value = withSpring(0.96, TOKENS.spring.press);
   }, [ctaScale]);
 
   const handleCtaPressOut = useCallback(() => {
+    // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable in press callbacks.
     ctaScale.value = withSpring(1, TOKENS.spring.press);
   }, [ctaScale]);
 

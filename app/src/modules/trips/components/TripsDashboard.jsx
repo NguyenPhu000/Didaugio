@@ -56,14 +56,8 @@ export function TripsDashboard({
     [currentHeroTrip],
   );
 
-  const [imgSrc, setImgSrc] = useState({ uri: heroCoverUri });
-
-  useEffect(() => {
-    setImgSrc((current) => {
-      if (current?.uri === heroCoverUri) return current;
-      return { uri: heroCoverUri };
-    });
-  }, [heroCoverUri, currentHeroTrip?.id]);
+  const [failedHeroCoverUri, setFailedHeroCoverUri] = useState(null);
+  const imgSrc = heroCoverUri === failedHeroCoverUri ? null : { uri: heroCoverUri };
 
   const timelineLabel = currentHeroTrip ? getTimelineLabel(currentHeroTrip) : null;
   const heroDaysUntil = useMemo(
@@ -112,7 +106,7 @@ export function TripsDashboard({
                 contentFit="cover"
                 transition={350}
                 cachePolicy="memory-disk"
-                onError={() => setImgSrc({ uri: null })}
+                onError={() => setFailedHeroCoverUri(heroCoverUri)}
               />
             ) : (
               <Box className="absolute inset-0 bg-[#0D0E12]" />

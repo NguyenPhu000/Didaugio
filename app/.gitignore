@@ -4,6 +4,8 @@
 .env*.local
 node_modules/
 .expo/
+/android
+/ios
 dist/
 web-build/
 app/node_modules/react-native-css-interop/.cache/*.js

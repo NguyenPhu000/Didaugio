@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState, useEffect } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   View,
@@ -19,7 +19,7 @@ import { STYLES, T, ALPHA } from "../../utils/tripDetailTokens";
 import { cn } from "@/lib/cn";
 import TimeField from "./TimeField";
 
-function MoveDestinationModal({
+function MoveDestinationModalContent({
   visible,
   dest,
   trip,
@@ -30,19 +30,10 @@ function MoveDestinationModal({
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const [selectedDay, setSelectedDay] = useState(null);
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [note, setNote] = useState("");
-
-  useEffect(() => {
-    if (visible && dest) {
-      setSelectedDay(dest.dayNumber);
-      setStartTime(dest.startTime || "");
-      setEndTime(dest.endTime || "");
-      setNote(dest.note || "");
-    }
-  }, [visible, dest]);
+  const [selectedDay, setSelectedDay] = useState(dest?.dayNumber ?? null);
+  const [startTime, setStartTime] = useState(dest?.startTime || "");
+  const [endTime, setEndTime] = useState(dest?.endTime || "");
+  const [note, setNote] = useState(dest?.note || "");
 
   const days = useMemo(() => (trip ? buildDayList(trip) : []), [trip]);
 
@@ -218,6 +209,11 @@ function MoveDestinationModal({
       )}
     </Modal>
   );
+}
+
+function MoveDestinationModal(props) {
+  if (!props.visible) return null;
+  return <MoveDestinationModalContent key={props.dest?.id} {...props} />;
 }
 
 export default memo(MoveDestinationModal);

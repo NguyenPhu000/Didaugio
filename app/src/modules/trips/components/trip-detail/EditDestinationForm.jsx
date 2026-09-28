@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useEffect } from "react";
+import { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   View,
@@ -27,7 +27,7 @@ import { cn } from "@/lib/cn";
 import TimeField from "./TimeField";
 import CustomAlertModal from "../../../../components/composed/CustomAlertModal";
 
-function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLast }) {
+function EditDestinationFormContent({ dest, onSave, onCancel, isLoading, visible, isLast }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [startTime, setStartTime] = useState(dest?.startTime || "");
@@ -36,19 +36,10 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
   const [transportToNext, setTransportToNext] = useState(dest?.transportToNext || null);
   const [alertConfig, setAlertConfig] = useState({ visible: false, title: "", message: "" });
 
-  useEffect(() => {
-    if (visible) {
-      setStartTime(dest?.startTime || "");
-      setEndTime(dest?.endTime || "");
-      setNote(dest?.note || "");
-      setTransportToNext(dest?.transportToNext || null);
-    }
-  }, [visible, dest]);
-
   const calculatedDuration = calcDurationMinutes(startTime, endTime);
   const durationLabel = formatDuration(calculatedDuration);
 
-  const handleSave = useCallback(() => {
+  const handleSave = () => {
     if (isLoading || !dest?.id) return;
 
     if (startTime && endTime && toTimeSortValue(endTime) < toTimeSortValue(startTime)) {
@@ -74,7 +65,7 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
         transportToNext: isLast ? null : transportToNext,
       },
     });
-  }, [dest?.id, startTime, endTime, calculatedDuration, note, transportToNext, onSave, isLoading, isLast, t]);
+  };
 
   if (!visible) return null;
 
@@ -246,6 +237,11 @@ function EditDestinationForm({ dest, onSave, onCancel, isLoading, visible, isLas
       />
     </Modal>
   );
+}
+
+function EditDestinationForm(props) {
+  if (!props.visible) return null;
+  return <EditDestinationFormContent key={props.dest?.id} {...props} />;
 }
 
 export default memo(EditDestinationForm);

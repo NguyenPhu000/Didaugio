@@ -43,7 +43,7 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-function InlineAddPlaceModal({
+function InlineAddPlaceModalContent({
   visible,
   tripId,
   totalDays,
@@ -174,22 +174,6 @@ function InlineAddPlaceModal({
 
     return [...markedSaved, ...popularMatches, ...filteredServer];
   }, [searchQuery, normalizedSavedPlaces, popularPlaces, places]);
-
-  // Reset state on open/close
-  useEffect(() => {
-    if (visible) {
-      setStep(1);
-      setSearchQuery("");
-      setDebouncedQuery("");
-      setSelectedPlace(null);
-      setDayNumber(defaultDay || 1);
-      setStartTime("");
-      setEndTime("");
-      setNote("");
-      setTransportToNext(null);
-      setErrorMsg("");
-    }
-  }, [visible, defaultDay]);
 
   const handleSelectPlace = useCallback((place) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -621,6 +605,11 @@ function InlineAddPlaceModal({
       </View>
     </Modal>
   );
+}
+
+function InlineAddPlaceModal(props) {
+  if (!props.visible) return null;
+  return <InlineAddPlaceModalContent key={props.defaultDay} {...props} />;
 }
 
 export default memo(InlineAddPlaceModal);

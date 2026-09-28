@@ -166,6 +166,7 @@ function FloatingBottomTabBar() {
         .activeOffsetX([-14, 14])
         .failOffsetY([-12, 12])
         .onBegin(() => {
+          // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable inside gesture worklets.
           dragActive.value = withTiming(1, { duration: 110 });
         })
         .onUpdate((event) => {
@@ -173,6 +174,7 @@ function FloatingBottomTabBar() {
             -MAX_DRAG_OFFSET,
             Math.min(MAX_DRAG_OFFSET, event.translationX * 0.16),
           );
+          // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable inside gesture worklets.
           dragX.value = clamped;
         })
         .onEnd((event) => {
@@ -180,7 +182,9 @@ function FloatingBottomTabBar() {
             Math.abs(event.translationX) > SWIPE_DISTANCE ||
             Math.abs(event.velocityX) > SWIPE_VELOCITY;
 
+          // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable inside gesture worklets.
           dragActive.value = withTiming(0, { duration: 140 });
+          // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable inside gesture worklets.
           dragX.value = withSpring(0, { damping: 18, stiffness: 240 });
 
           if (!shouldSwipe) {
@@ -190,7 +194,9 @@ function FloatingBottomTabBar() {
           runOnJS(navigateBySwipe)(event.translationX < 0 ? 1 : -1);
         })
         .onFinalize(() => {
+          // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable inside gesture worklets.
           dragActive.value = withTiming(0, { duration: 140 });
+          // eslint-disable-next-line react-hooks/immutability -- Reanimated shared values are mutable inside gesture worklets.
           dragX.value = withSpring(0, { damping: 18, stiffness: 240 });
         }),
     [dragActive, dragX, navigateBySwipe],

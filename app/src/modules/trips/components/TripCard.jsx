@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
@@ -180,29 +180,26 @@ export const TripCard = memo(function TripCard({
   const status = STATUS_THEME[displayStatus] || STATUS_THEME.upcoming;
 
   const coverUri = resolveTripCoverUri(trip, IMMERSIVE_COVER_WIDTH);
-  const [displayUri, setDisplayUri] = useState(coverUri);
+  const [failedUri, setFailedUri] = useState(null);
+  const displayUri = coverUri === failedUri ? null : coverUri;
   const scale = useSharedValue(1);
-
-  useEffect(() => {
-    setDisplayUri(coverUri);
-  }, [coverUri, trip?.id]);
 
   const destinationCount = trip.destinations?.length || 0;
   const dateText = useMemo(() => getDateRangeLabel(trip), [trip]);
 
   const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.975, TOKENS.spring.press);
+    scale.set(withSpring(0.975, TOKENS.spring.press));
   }, [scale]);
 
   const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, TOKENS.spring.press);
+    scale.set(withSpring(1, TOKENS.spring.press));
   }, [scale]);
 
   const handlePress = useCallback(() => {
     onPress?.();
   }, [onPress]);
 
-  const handleImageError = useCallback(() => setDisplayUri(null), []);
+  const handleImageError = useCallback(() => setFailedUri(coverUri), [coverUri]);
 
   const cardAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],

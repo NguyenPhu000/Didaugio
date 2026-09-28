@@ -47,14 +47,9 @@ const BANNER_DURATION_MS = 4800;
 const MAX_BANNER_QUEUE = 3;
 
 const appendUniqueBanner = (queue, notification) => {
-  const seenIds = new Set();
-  return [...queue, notification]
-    .filter((item) => {
-      if (seenIds.has(item.id)) return false;
-      seenIds.add(item.id);
-      return true;
-    })
-    .slice(-MAX_BANNER_QUEUE);
+  if (queue.some((item) => item.id === notification.id)) return queue;
+  if (queue.length === 0) return [notification];
+  return [queue[0], ...[...queue.slice(1), notification].slice(-MAX_BANNER_QUEUE)];
 };
 
 function getProjectId() {
@@ -141,8 +136,8 @@ function normalizeIncomingNotification(raw) {
 }
 
 function ForegroundNotificationBanner({ notification, onPress, onDismiss }) {
-  const translate = useRef(new Animated.ValueXY({ x: 0, y: -80 })).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+  const [translate] = useState(() => new Animated.ValueXY({ x: 0, y: -80 }));
+  const [opacity] = useState(() => new Animated.Value(0));
   const screenWidth = Dimensions.get("window").width;
 
   const dismiss = useCallback(
@@ -163,7 +158,7 @@ function ForegroundNotificationBanner({ notification, onPress, onDismiss }) {
     [onDismiss, opacity, translate],
   );
 
-  const panResponder = useRef(
+  const [panResponder] = useState(() =>
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gesture) =>
         Math.abs(gesture.dx) > 10 || Math.abs(gesture.dy) > 8,
@@ -186,7 +181,7 @@ function ForegroundNotificationBanner({ notification, onPress, onDismiss }) {
         }).start();
       },
     }),
-  ).current;
+  );
 
   useEffect(() => {
     translate.setValue({ x: 0, y: -80 });
@@ -263,8 +258,8 @@ export function NotificationProvider({ children }) {
   const seenBannerIdsRef = useRef([]);
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [activeBanner, setActiveBanner] = useState(null);
   const [bannerQueue, setBannerQueue] = useState([]);
+  const activeBanner = bannerQueue[0] ?? null;
 
   const setBadgeCount = useCallback(async (count) => {
     if (!Notifications) return;
@@ -300,7 +295,7 @@ export function NotificationProvider({ children }) {
   }, []);
 
   const dismissBanner = useCallback(() => {
-    setActiveBanner(null);
+    setBannerQueue((prev) => prev.slice(1));
   }, []);
 
   const handleBannerPress = useCallback(() => {
@@ -317,13 +312,6 @@ export function NotificationProvider({ children }) {
     dismissBanner();
     if (route) router.push(route);
   }, [activeBanner, dismissBanner, invalidateNotificationQueries, router]);
-
-  useEffect(() => {
-    if (activeBanner || bannerQueue.length === 0) return;
-    const [next, ...rest] = bannerQueue;
-    setActiveBanner(next);
-    setBannerQueue(rest);
-  }, [activeBanner, bannerQueue]);
 
   useEffect(() => {
     if (!Notifications) return;

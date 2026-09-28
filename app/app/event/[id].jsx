@@ -88,7 +88,7 @@ export default function EventDetailScreen() {
   const moments = useMemo(() => getMomentList(momentsData), [momentsData]);
   const destinations = useMemo(
     () => (Array.isArray(event?.trip?.destinations) ? event.trip.destinations : []),
-    [event?.trip?.destinations],
+    [event],
   );
 
   const serverCheckedIds = useMemo(

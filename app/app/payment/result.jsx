@@ -264,7 +264,8 @@ export default function PaymentResultScreen() {
   const [isChecking, setIsChecking] = useState(false);
   const [currentStatus, setCurrentStatus] = useState("pending_verify");
   const [booking, setBooking] = useState(null);
-  const [loadingBooking, setLoadingBooking] = useState(true);
+  const [loadedBookingId, setLoadedBookingId] = useState(null);
+  const loadingBooking = Boolean(normalizedBookingId) && loadedBookingId !== normalizedBookingId;
 
   const isExpired = reason === "expired";
 
@@ -277,12 +278,8 @@ export default function PaymentResultScreen() {
   }, [router]);
 
   useEffect(() => {
-    if (!normalizedBookingId) {
-      setLoadingBooking(false);
-      return;
-    }
+    if (!normalizedBookingId) return;
     let cancelled = false;
-    setLoadingBooking(true);
     getMyBookingDetailApi(normalizedBookingId)
       .then((res) => {
         if (cancelled) return;
@@ -294,7 +291,7 @@ export default function PaymentResultScreen() {
       })
       .catch(() => {})
       .finally(() => {
-        if (!cancelled) setLoadingBooking(false);
+        if (!cancelled) setLoadedBookingId(normalizedBookingId);
       });
     return () => {
       cancelled = true;

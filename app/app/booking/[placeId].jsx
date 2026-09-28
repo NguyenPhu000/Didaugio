@@ -198,7 +198,7 @@ export default function BookingScreen() {
 
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState(null);
-  const [selectedResourceId, setSelectedResourceId] = useState(null);
+  const [requestedResourceId, setSelectedResourceId] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedDate, setSelectedDate] = useState(() =>
     formatDateYmd(new Date()),
@@ -206,8 +206,8 @@ export default function BookingScreen() {
   const [calendarMonth, setCalendarMonth] = useState(() =>
     normalizeMonthStart(new Date()),
   );
-  const [selectedTime, setSelectedTime] = useState("09:00");
-  const [activeTimeGroup, setActiveTimeGroup] = useState(() =>
+  const [requestedTime, setSelectedTime] = useState("09:00");
+  const [requestedTimeGroup, setActiveTimeGroup] = useState(() =>
     resolveTimeGroup("09:00"),
   );
   const [tripLinkMode, setTripLinkMode] = useState("none");
@@ -253,20 +253,11 @@ export default function BookingScreen() {
     () => getActiveResources(availabilityData),
     [availabilityData],
   );
+  const selectedResourceId = reconcileSelectedResource(requestedResourceId, availabilityData);
   const selectedResource = useMemo(
     () => getSelectedResource(availabilityData, selectedResourceId),
     [availabilityData, selectedResourceId],
   );
-
-  useEffect(() => {
-    setSelectedResourceId(null);
-  }, [selectedService?.id]);
-
-  useEffect(() => {
-    setSelectedResourceId((current) =>
-      reconcileSelectedResource(current, availabilityData),
-    );
-  }, [availabilityData]);
 
   useEffect(() => {
     const timer = setInterval(() => setNowTs(Date.now()), 30_000);
@@ -329,13 +320,6 @@ export default function BookingScreen() {
     () => formatMonthYearLabel(calendarMonth),
     [calendarMonth],
   );
-  const visibleTimeSlots = useMemo(
-    () =>
-      TIME_SLOTS.filter((slot) =>
-        isSlotWithinGroup(slot.value, activeTimeGroup),
-      ),
-    [activeTimeGroup],
-  );
   const canMovePrevMonth = useMemo(() => {
     const currentMonth = normalizeMonthStart(new Date(nowTs));
     return calendarMonth.getTime() > currentMonth.getTime();
@@ -377,25 +361,19 @@ export default function BookingScreen() {
   const createdTripDefaultTitle = useMemo(() => {
     const placeLabel = place?.name ? ` - ${place.name}` : "";
     return `${t("booking.title")} ${selectedDate}${placeLabel}`;
-  }, [place?.name, selectedDate, t]);
+  }, [place, selectedDate, t]);
 
-  useEffect(() => {
-    if (!selectedDate || !selectedService) return;
-    if (isSlotAvailable(selectedDate, selectedTime)) return;
-    const next = TIME_SLOTS.find((slot) =>
-      isSlotAvailable(selectedDate, slot.value),
-    );
-    if (next) {
-      setSelectedTime(next.value);
-      setActiveTimeGroup(resolveTimeGroup(next.value));
-    }
-  }, [selectedDate, selectedTime, nowTs, availabilityData, selectedService, isSlotAvailable]);
-
-  useEffect(() => {
-    if (tripLinkMode !== "create") return;
-    if (newTripTitle.trim()) return;
-    setNewTripTitle(createdTripDefaultTitle);
-  }, [tripLinkMode, newTripTitle, createdTripDefaultTitle]);
+  const selectedTime = selectedDate && selectedService &&
+    !isSlotAvailable(selectedDate, requestedTime)
+    ? TIME_SLOTS.find((slot) => isSlotAvailable(selectedDate, slot.value))?.value ?? requestedTime
+    : requestedTime;
+  const activeTimeGroup = selectedTime === requestedTime
+    ? requestedTimeGroup
+    : resolveTimeGroup(selectedTime);
+  const visibleTimeSlots = useMemo(
+    () => TIME_SLOTS.filter((slot) => isSlotWithinGroup(slot.value, activeTimeGroup)),
+    [activeTimeGroup],
+  );
 
   const unitPrice =
     selectedService?.salePrice ?? selectedService?.price ?? null;
@@ -407,14 +385,6 @@ export default function BookingScreen() {
 
     return Math.min(availableQuantity, 20);
   }, [availabilityData?.slots, isResourceBooking, selectedResource?.capacity, selectedTime]);
-
-  // Khi đổi service → reset voucher (voucher cũ có thể không còn áp dụng cho service mới).
-  useEffect(() => {
-    if (!selectedService?.id) return;
-    setVoucher((prev) =>
-      prev?.voucherId ? { voucherId: null, code: "", discountAmount: 0, finalPrice: null } : prev,
-    );
-  }, [selectedService?.id]);
 
   // Khi quantity thay đổi → re-validate voucher đang áp dụng để cập nhật discountAmount/finalPrice.
   // Lưu serviceId trong ref để effect không phụ thuộc cả object service (gây loop).
@@ -1013,7 +983,13 @@ export default function BookingScreen() {
                   key={svc.id}
                   service={svc}
                   isSelected={selectedService?.id === svc.id}
-                  onSelect={setSelectedService}
+                  onSelect={(service) => {
+                    if (service?.id !== selectedService?.id) {
+                      setSelectedResourceId(null);
+                      setVoucher({ voucherId: null, code: "", discountAmount: 0, finalPrice: null });
+                    }
+                    setSelectedService(service);
+                  }}
                 />
               ))
             )}
@@ -1727,7 +1703,7 @@ export default function BookingScreen() {
                 {tripLinkMode === "create" ? (
                   <View style={{ gap: 8 }}>
                     <TextInput
-                      value={newTripTitle}
+                  value={newTripTitle || createdTripDefaultTitle}
                       onChangeText={setNewTripTitle}
                       placeholder={t("booking.tripLink.newTripPlaceholder")}
                       placeholderTextColor={BOOKING_THEME.textMuted}

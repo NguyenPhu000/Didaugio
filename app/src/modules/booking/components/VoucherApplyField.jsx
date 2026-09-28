@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -59,7 +59,13 @@ export function VoucherApplyField({
   theme,
 }) {
   const { t } = useTranslation();
-  const [code, setCode] = useState(value?.code || "");
+  const parentCode = value?.code || "";
+  const [codeInput, setCodeInput] = useState({ code: parentCode, parentCode });
+  const code = codeInput.parentCode === parentCode ? codeInput.code : parentCode;
+  const setCode = useCallback(
+    (nextCode) => setCodeInput({ code: nextCode, parentCode }),
+    [parentCode],
+  );
   const [showPicker, setShowPicker] = useState(false);
 
   const { data: vouchers = [], isLoading: loadingList } = useApplicableVouchers({
@@ -69,10 +75,6 @@ export function VoucherApplyField({
   });
 
   const validateMutation = useValidateVoucherCode();
-
-  useEffect(() => {
-    if (value?.code) setCode(value.code);
-  }, [value?.code]);
 
   const handleApplyManual = async () => {
     const trimmed = code.trim();

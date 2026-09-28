@@ -64,11 +64,11 @@ export function usePressScale({ to = 0.965, mediaTo = 1.05 } = {}) {
   const progress = useSharedValue(0);
 
   const onPressIn = useCallback(() => {
-    progress.value = withSpring(1, SPRING);
+    progress.set(withSpring(1, SPRING));
   }, [progress]);
 
   const onPressOut = useCallback(() => {
-    progress.value = withSpring(0, SPRING);
+    progress.set(withSpring(0, SPRING));
   }, [progress]);
 
   const cardStyle = useAnimatedStyle(() => ({

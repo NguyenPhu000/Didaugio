@@ -116,9 +116,10 @@ export function useNetworkStatus() {
 
   useEffect(() => {
     _ensureNetSubscription();
-    _netListeners.add(setNet);
+    const handler = (state) => setNet({ ...state });
+    _netListeners.add(handler);
     return () => {
-      _netListeners.delete(setNet);
+      _netListeners.delete(handler);
     };
   }, []);
 
@@ -129,26 +130,22 @@ export function useNetworkStatus() {
 
 export function useTripsCached(enabled = true) {
   const queryClient = useQueryClient();
-  const isOnlineRef = useRef(false);
-  const [isOffline, setIsOffline] = useState(false);
+  const { isConnected } = useNetworkStatus();
+  const isOffline = !isConnected;
   const [cachedData, setCachedData] = useState(null);
 
   useEffect(() => {
     _ensureNetSubscription();
 
+    let wasOffline = !_netState.isConnected;
     const handler = (state) => {
-      const wasOffline = !isOnlineRef.current;
-      isOnlineRef.current = state.isConnected;
-
-      setIsOffline(!state.isConnected);
-
       if (wasOffline && state.isConnected) {
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.trips.all() });
       }
+      wasOffline = !state.isConnected;
     };
 
     _netListeners.add(handler);
-    handler(_netState);
 
     return () => {
       _netListeners.delete(handler);
@@ -161,7 +158,7 @@ export function useTripsCached(enabled = true) {
       const response = await getMyTripsApi();
       return response?.data || [];
     },
-    enabled: enabled && isOnlineRef.current,
+    enabled: enabled && !isOffline,
     staleTime: 5 * 60 * 1000,
     gcTime: TRIP_OFFLINE_GC_MS,
     retry: 2,
@@ -173,11 +170,7 @@ export function useTripsCached(enabled = true) {
 
   // Load cached data when offline
   useEffect(() => {
-    if (!isOffline) return;
-    if (query.data) {
-      setCachedData(query.data);
-      return;
-    }
+    if (!isOffline || query.data) return;
     loadTripsFromStorage().then((cache) => {
       if (cache?.data) setCachedData(cache.data);
     });
@@ -190,7 +183,7 @@ export function useTripsCached(enabled = true) {
     }
   }, [query.data]);
 
-  const rawData = isOffline ? cachedData : query.data;
+  const rawData = isOffline ? query.data || cachedData : query.data;
   const safeData = Array.isArray(rawData)
     ? rawData
     : Array.isArray(rawData?.data)

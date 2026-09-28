@@ -53,7 +53,7 @@ export default function CinematicSplash({ active, ready, onFinish }) {
 
   const beginExit = useCallback(
     (reason) => {
-      overlayOpacity.value = withTiming(
+      overlayOpacity.set(withTiming(
         0,
         {
           duration: SPLASH_TIMING.EXIT_FADE_MS,
@@ -62,7 +62,7 @@ export default function CinematicSplash({ active, ready, onFinish }) {
         (finished) => {
           if (finished) runOnJS(deliverFinish)(reason);
         },
-      );
+      ));
     },
     [deliverFinish, overlayOpacity],
   );
@@ -70,6 +70,8 @@ export default function CinematicSplash({ active, ready, onFinish }) {
   const revealFallback = useCallback(() => setShowFallback(true), []);
   const lifecycle = useMemo(
     () =>
+      // The lifecycle stores these callbacks and invokes them from effects or media events.
+      // eslint-disable-next-line react-hooks/refs
       createSplashLifecycle({
         onFallback: revealFallback,
         onExit: beginExit,
@@ -140,13 +142,13 @@ export default function CinematicSplash({ active, ready, onFinish }) {
     );
 
     if (!reduceMotionRef.current) {
-      brandTranslateY.value = withDelay(
+      brandTranslateY.set(withDelay(
         SPLASH_TIMING.BRAND_IN_MS,
         withTiming(0, {
           duration: 600,
           easing: Easing.out(Easing.cubic),
         }),
-      );
+      ));
     }
 
     progressScale.value = withDelay(

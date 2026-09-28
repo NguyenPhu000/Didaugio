@@ -3,73 +3,40 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
-const fail = (message) => {
-  throw new Error(`[native-config] ${message}`);
-};
 const expect = (condition, message) => {
-  if (!condition) fail(message);
+  if (!condition) throw new Error(`[native-config] ${message}`);
 };
-const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const has = (source, value) => source.includes(value);
 
-const appConfig = JSON.parse(read("app.json")).expo;
-const manifest = read("android/app/src/main/AndroidManifest.xml");
-const strings = read("android/app/src/main/res/values/strings.xml");
-const colors = read("android/app/src/main/res/values/colors.xml");
-const styles = read("android/app/src/main/res/values/styles.xml");
-const gradle = read("android/app/build.gradle");
-const splashLogoPath = path.join(root, "android/app/src/main/res/drawable/splashscreen_logo.xml");
+const config = JSON.parse(read("app.json")).expo;
+const resolvedConfig = require("../app.config.js")({ config });
+const pluginPath = "./plugins/withAndroidNativeParity";
+const ignoredPaths = new Set(read(".gitignore").split(/\r?\n/).map((line) => line.trim()));
 
-const androidPackage = appConfig.android?.package;
-expect(androidPackage, "expo.android.package is missing");
+expect(ignoredPaths.has("/android"), "generated Android directory must be ignored");
+expect(ignoredPaths.has("/ios"), "generated iOS directory must be ignored");
+expect(config.android?.package, "expo.android.package is missing");
+expect(config.android?.allowBackup === false, "Android backup must be disabled");
+expect(config.scheme, "expo.scheme is missing");
+expect(config.updates?.url, "expo.updates.url is missing");
+expect(config.runtimeVersion, "expo.runtimeVersion is missing");
+expect(config.orientation === "portrait", "portrait orientation is required");
 expect(
-  new RegExp(`applicationId\\s+['\"]${escapeRegExp(androidPackage)}['\"]`).test(gradle),
-  `native applicationId does not match ${androidPackage}`,
+  resolvedConfig.plugins?.includes(pluginPath) && fs.existsSync(path.join(root, "plugins/withAndroidNativeParity.js")),
+  "Android native parity config plugin is missing",
 );
 
-const updateUrl = appConfig.updates?.url;
-expect(updateUrl, "expo.updates.url is missing");
-expect(has(manifest, `android:value=\"${updateUrl}\"`), "native EAS Update URL is stale");
-
-const runtimeVersion = String(appConfig.runtimeVersion);
-expect(has(strings, `name=\"expo_runtime_version\" translatable=\"false\">${runtimeVersion}<`), "native runtime version is stale");
-
-const scheme = appConfig.scheme;
-expect(scheme, "expo.scheme is missing");
-expect(has(manifest, `android:scheme=\"${scheme}\"`), `native deep-link scheme ${scheme} is missing`);
-
-if (appConfig.orientation === "portrait") {
-  expect(has(manifest, 'android:screenOrientation=\"portrait\"'), "native orientation is not portrait");
-}
-
-const splashPlugin = appConfig.plugins?.find(
+const splashPlugin = config.plugins?.find(
   (plugin) => Array.isArray(plugin) && plugin[0] === "expo-splash-screen",
 );
-const splashBackground = Array.isArray(splashPlugin) ? splashPlugin[1]?.backgroundColor : undefined;
-expect(splashBackground, "expo-splash-screen backgroundColor is missing");
-expect(fs.existsSync(splashLogoPath), "native splash logo resource is missing");
-expect(
-  new RegExp(`<color\\s+name=\"splashscreen_background\">${escapeRegExp(splashBackground)}<`).test(colors),
-  "native splash background does not match app config",
-);
+expect(splashPlugin?.[1]?.backgroundColor, "splash background color is missing");
+expect(splashPlugin?.[1]?.image, "splash image is missing");
+expect(fs.existsSync(path.join(root, splashPlugin[1].image)), "splash image file is missing");
 
-const statusBarBackground = appConfig.androidStatusBar?.backgroundColor;
-expect(statusBarBackground, "expo.androidStatusBar.backgroundColor is missing");
-expect(has(styles, `android:statusBarColor\">${statusBarBackground}<`), "native status bar color does not match app config");
-
-if (appConfig.androidStatusBar?.barStyle === "light-content") {
-  expect(has(styles, 'android:windowLightStatusBar\">false<'), "native status bar text is not light-content");
+for (const permission of config.android.permissions || []) {
+  expect(typeof permission === "string" && permission.length > 0, "Android permission is invalid");
+}
+for (const permission of config.android.blockedPermissions || []) {
+  expect(typeof permission === "string" && permission.length > 0, "Android blocked permission is invalid");
 }
 
-for (const permission of appConfig.android?.permissions || []) {
-  expect(has(manifest, `android:name=\"${permission}\"`), `native permission is missing: ${permission}`);
-}
-
-for (const permission of appConfig.android?.blockedPermissions || []) {
-  expect(
-    new RegExp(`android:name=\"${escapeRegExp(permission)}\"[^>]*tools:node=\"remove\"`).test(manifest),
-    `native blocked permission is not removed: ${permission}`,
-  );
-}
-
-console.log("Native Android configuration matches app.json for release-critical fields.");
+console.log("Native Android configuration is declared for Expo prebuild.");
