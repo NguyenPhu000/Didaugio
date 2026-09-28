@@ -34,7 +34,7 @@ export function AIPlannerComposer({
           multiline
           maxLength={500}
           className="min-h-[38px] max-h-[120px] flex-1 px-2 py-1.5 text-[15px] text-slate-800"
-          style={{ fontFamily: TOKENS.font.body, textAlignVertical: "center" }}
+          style={{ fontFamily: TOKENS.font.body, textAlignVertical: "top" }}
         />
 
         <Pressable

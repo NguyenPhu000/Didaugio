@@ -9,7 +9,7 @@
  * GPU, đặt trong FlatList/ScrollView sẽ repaint liên tục và tụt frame trên
  * Android. Chip dùng nền rgba + hairline trắng, cho cảm giác kính mà rẻ hơn.
  */
-import { memo, useCallback } from "react";
+import { memo, useCallback, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -92,15 +92,16 @@ export const PosterMedia = memo(function PosterMedia({
   fallbackIcon = "travel-explore",
   style,
 }) {
+  const [loadError, setLoadError] = useState(false);
   const optimized = uri?.includes("res.cloudinary.com")
     ? getOptimizedCloudinaryUrl(uri, Math.round(width * 2))
     : uri;
 
-  if (!optimized) {
+  if (!optimized || loadError) {
     return (
       <View
         style={[
-          StyleSheet.absoluteFillObject,
+          StyleSheet.absoluteFill,
           { backgroundColor: CREAM, alignItems: "center", justifyContent: "center" },
           style,
         ]}
@@ -122,7 +123,8 @@ export const PosterMedia = memo(function PosterMedia({
       placeholder={{ blurhash: PLACE_IMAGE_BLURHASH }}
       placeholderContentFit="cover"
       cachePolicy="memory-disk"
-      style={[StyleSheet.absoluteFillObject, style]}
+      onError={() => setLoadError(true)}
+      style={[StyleSheet.absoluteFill, { width: "100%", height: "100%" }, style]}
     />
   );
 });

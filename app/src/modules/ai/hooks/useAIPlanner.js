@@ -24,6 +24,24 @@ function normalizePlaceIds(ids, fallbackPlaces = []) {
   return ids.map((id) => Number(id)).filter(Boolean);
 }
 
+function getMessagePlaceIds(message) {
+  const places = message?.suggestedPlaces || message?.plan?.suggestedPlaces;
+  return Array.isArray(places)
+    ? places.map((place) => Number(place?.id)).filter(Boolean)
+    : [];
+}
+
+function getLatestSuggestedPlaceIds(messages = []) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const ids = getMessagePlaceIds(messages[index]);
+    if (ids.length > 0) return [...new Set(ids)];
+  }
+  return [];
+}
+
+const FROM_SUGGESTION_PATTERN =
+  /(?:từ|dựa trên|lấy|theo)?\s*(?:các|những)?\s*(?:gợi ý|goi y|địa điểm|dia diem|quán|quan|chỗ|cho|nơi|noi)?\s*(?:này|nay|trên|tren|vừa rồi|vua roi|đã gợi ý|da goi y|gợi ý|goi y)/i;
+
 function buildTripSummaryMessage(trip, t) {
   const destCount = trip.destinations?.length || 0;
   const costLine = trip.estimatedCost
@@ -191,17 +209,29 @@ export function useAIPlanner() {
 
       const inferred = inferPlannerPreferences(rawText);
 
+      const isReferencingSuggestions =
+        (FROM_SUGGESTION_PATTERN.test(rawText) || /gợi ý|goi y/i.test(rawText)) &&
+        !/khác|khac|mới|moi/i.test(rawText);
+
+      const latestSuggestedIds = isReferencingSuggestions
+        ? getLatestSuggestedPlaceIds(messages)
+        : [];
+
+      const resolvedSelectedIds =
+        preferences.selectedPlaceIds ??
+        (selectedPlaceIds.length > 0
+          ? [...new Set(selectedPlaceIds)]
+          : latestSuggestedIds.length > 0
+            ? latestSuggestedIds
+            : undefined);
+
       const payload = {
         totalDays: preferences.totalDays ?? inferred.totalDays ?? 1,
         travelStyle: preferences.travelStyle ?? inferred.travelStyle,
         groupSize: preferences.groupSize ?? inferred.groupSize ?? 1,
         budget: preferences.budget ?? inferred.budget,
         notes: normalizePlannerNotes(rawText),
-        selectedPlaceIds:
-          preferences.selectedPlaceIds ??
-          (selectedPlaceIds.length > 0
-            ? [...new Set(selectedPlaceIds)]
-            : undefined),
+        selectedPlaceIds: resolvedSelectedIds,
       };
 
       setLastPreferences(payload);
@@ -224,6 +254,7 @@ export function useAIPlanner() {
       setLastPreferences,
       setSelectedPlaceIds,
       selectedPlaceIds,
+      messages,
     ],
   );
 

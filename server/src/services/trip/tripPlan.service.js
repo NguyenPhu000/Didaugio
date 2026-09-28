@@ -241,14 +241,21 @@ const toLegacyDestination = (stop) => {
   };
 };
 
-const normalizeTripPlanDetail = (tripPlan, { isSaved = false } = {}) => ({
-  id: tripPlan.id,
-  tripPlanId: tripPlan.id,
-  userId: tripPlan.userId,
-  title: tripPlan.title,
-  description: tripPlan.description,
-  thumbnail: tripPlan.coverImage,
-  coverImage: tripPlan.coverImage,
+const normalizeTripPlanDetail = (tripPlan, { isSaved = false } = {}) => {
+  const fallbackCover =
+    (tripPlan.stops || []).find((s) => s.place?.images?.[0]?.secureUrl || s.place?.thumbnail)?.place?.images?.[0]?.secureUrl ||
+    (tripPlan.stops || []).find((s) => s.place?.thumbnail)?.place?.thumbnail ||
+    null;
+  const cover = tripPlan.coverImage || fallbackCover;
+
+  return {
+    id: tripPlan.id,
+    tripPlanId: tripPlan.id,
+    userId: tripPlan.userId,
+    title: tripPlan.title,
+    description: tripPlan.description,
+    thumbnail: cover,
+    coverImage: cover,
   startDate: tripPlan.startDate,
   endDate: tripPlan.endDate,
   totalDays: tripPlan.totalDays,
@@ -270,7 +277,8 @@ const normalizeTripPlanDetail = (tripPlan, { isSaved = false } = {}) => ({
   destinations: (tripPlan.stops || []).map(toLegacyDestination),
   stops: tripPlan.stops || [],
   isSaved,
-});
+  };
+};
 
 const findStopByClientId = (stops, clientId) => {
   const id = Number(clientId);

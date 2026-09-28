@@ -61,7 +61,7 @@ function escapeUrl(url) {
 function rewriteLocalhostToOrigin(url, origin) {
   if (!url || !origin) return url;
   return url.replace(
-    /^https?:\/\/(localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\.\d+\.\d+)(:\d+)?/i,
+    /^https?:\/\/(localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?/i,
     origin,
   );
 }
@@ -74,9 +74,12 @@ function rewriteLocalhostToOrigin(url, origin) {
 export const PLACE_IMAGE_BLURHASH = "LGF5]+Yk^6#M@-5c,1J5@[or[Q6.";
 
 export function resolveMediaUrl(raw) {
-  if (raw == null || typeof raw !== "string") return null;
+  if (raw == null) return null;
 
-  const cleaned = raw.trim().replace(/\\/g, "/");
+  const imageValue = pickImageValue(raw);
+  if (!imageValue || typeof imageValue !== "string") return null;
+
+  const cleaned = imageValue.trim().replace(/\\/g, "/");
   if (!cleaned) return null;
 
   // Already a data URI
@@ -161,6 +164,8 @@ function pickImageValue(source) {
   if (!source || typeof source !== "object") return null;
 
   return (
+    source.originalUrl ||
+    source.fileUrl ||
     source.secureUrl ||
     source.secure_url ||
     source.thumbnailUrl ||
@@ -244,13 +249,14 @@ export function resolveTripCoverUri(trip, width = 400) {
     return tripThumb;
   }
 
-  const destinations = Array.isArray(trip.destinations)
-    ? trip.destinations
-    : Array.isArray(trip.stops)
-      ? trip.stops
-      : [];
+  const destinations =
+    Array.isArray(trip.destinations) && trip.destinations.length > 0
+      ? trip.destinations
+      : Array.isArray(trip.stops)
+        ? trip.stops
+        : [];
   for (const dest of destinations) {
-    const place = dest?.place;
+    const place = dest?.place || dest;
     if (!place) continue;
     const resolved = resolveMediaUrl(pickPlaceImageValue(place));
     if (resolved) {
@@ -268,16 +274,26 @@ export function getOptimizedCloudinaryUrl(url, width = 800) {
   if (!url || typeof url !== "string") return url;
   if (!url.includes("res.cloudinary.com")) return url;
 
-  const marker = "/upload/";
-  const markerIndex = url.indexOf(marker);
-  if (markerIndex < 0) return url;
+  // Clean trailing analytics/telemetry query string (e.g., ?_a=BAMAPqTI0)
+  const cleanUrl = url.split("?")[0].trim();
 
-  const prefix = url.slice(0, markerIndex + marker.length);
-  const suffix = url.slice(markerIndex + marker.length);
+  const marker = "/upload/";
+  const markerIndex = cleanUrl.indexOf(marker);
+  if (markerIndex < 0) return cleanUrl;
+
+  const prefix = cleanUrl.slice(0, markerIndex + marker.length);
+  const suffix = cleanUrl.slice(markerIndex + marker.length);
   const segments = suffix.split("/");
   const versionIndex = segments.findIndex((segment) => /^v\d+$/.test(segment));
-  if (versionIndex < 0) return url;
+  if (versionIndex < 0) {
+    const folderIndex = segments.findIndex((s) => s === "didaugio");
+    if (folderIndex >= 0) {
+      const publicPath = segments.slice(folderIndex).join("/");
+      return `${prefix}f_auto,q_auto,w_${width},c_limit/${publicPath}`;
+    }
+    return cleanUrl;
+  }
 
   const publicPath = segments.slice(versionIndex).join("/");
-  return `${prefix}f_auto,q_auto,w_${width},c_fill/${publicPath}`;
+  return `${prefix}f_auto,q_auto,w_${width},c_limit/${publicPath}`;
 }

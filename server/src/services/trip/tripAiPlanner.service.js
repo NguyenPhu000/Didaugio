@@ -659,7 +659,7 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
       totalDays,
     );
   }
-  if (!itineraryDraft && normalizedSelectedPlaceIds.length > 0) {
+  if (normalizedSelectedPlaceIds.length > 0) {
     itinerary = reconcileGeneratedItinerarySelection(
       itinerary,
       new Set(normalizedSelectedPlaceIds),
@@ -722,12 +722,25 @@ export const generateAndSaveTrip = async (userId, preferences = {}) => {
     selectedPlaceIdSet,
   );
 
+  const firstSelectedPlaceId =
+    itinerary.days?.[0]?.morning?.[0]?.placeId ||
+    itinerary.days?.[0]?.afternoon?.[0]?.placeId ||
+    itinerary.days?.[0]?.evening?.[0]?.placeId ||
+    effectiveSelectedPlaceIds?.[0] ||
+    null;
+  const firstPlace = firstSelectedPlaceId ? placeById.get(firstSelectedPlaceId) : null;
+  const initialCoverImage =
+    firstPlace?.images?.[0]?.secureUrl ||
+    firstPlace?.thumbnail ||
+    null;
+
   const trip = await prisma.$transaction(async (tx) => {
     const created = await tx.tripPlan.create({
       data: {
         userId,
         title: itinerary.title,
         description: itinerary.description ?? null,
+        coverImage: initialCoverImage,
         startDate: new Date(),
         endDate: new Date(Date.now() + (itinerary.totalDays - 1) * 24 * 60 * 60 * 1000),
         totalDays: itinerary.totalDays,

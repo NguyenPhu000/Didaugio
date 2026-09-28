@@ -300,7 +300,10 @@ export function AIPlanner() {
         await sendItineraryWithVoiceFeedback({
           message,
           inputMode: options.inputMode,
-          sendMessage,
+          sendMessage: (msg) =>
+            sendMessage(msg, {
+              selectedPlaceIds: options.selectedPlaceIds,
+            }),
           speakText,
           successText: t("aiPlanner.voiceItineraryQueued"),
         });

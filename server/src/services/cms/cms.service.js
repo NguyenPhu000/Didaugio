@@ -98,6 +98,11 @@ export const getExploreLandingData = async () => {
         slug: true,
         category: { select: { id: true, name: true } },
         district: { select: { id: true, name: true } },
+        images: {
+          take: 1,
+          orderBy: [{ isCover: "desc" }, { order: "asc" }],
+          select: { secureUrl: true, thumbnailUrl: true },
+        },
       },
       orderBy: { ratingAvg: "desc" },
     }),
@@ -176,6 +181,11 @@ export const getFeaturedPlaces = async ({ limit = 8 } = {}) => {
       slug: true,
       category: { select: { id: true, name: true } },
       district: { select: { id: true, name: true } },
+      images: {
+        take: 1,
+        orderBy: [{ isCover: "desc" }, { order: "asc" }],
+        select: { secureUrl: true, thumbnailUrl: true },
+      },
     },
     orderBy: { ratingAvg: "desc" },
   });

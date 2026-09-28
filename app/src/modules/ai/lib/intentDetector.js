@@ -33,6 +33,28 @@ export const INTENT_TYPES = Object.freeze({
   GENERAL: "GENERAL",
 });
 
+function removeVietnameseAccents(str) {
+  return String(str || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+}
+
+const INTENTS_UNACCENTED = {
+  NAVIGATE: /di den|chi duong|chi toi lo trinh|lo trinh tu|bao xa|may phut|cach day|duong den|lam sao den|tim duong/i,
+  BOOK: /dat|book|mua ve|gia ve|con cho|dat cho|dat ban|dat phong|reservation/i,
+  EAT: /an gi|mon ngon|quan|nha hang|dac san|quan an|do an|an uong|thuc an|com|pho|bun/i,
+  NEARBY: /gan day|xung quanh|khu vuc nay|gan toi|quanh day|lan can|trong vong/i,
+  SCHEDULE: /lich trinh|len lich|lap lich|tao lich|ke hoach|tao ke hoach|may ngay|tour|chuyen di|trip|itinerary|\bplan\b|tao plan|len plan|travel plan/i,
+  VOICE: /gioi thieu|ke ve|noi ve|thong tin ve|cho biet|tim hieu|kham pha|mo ta/i,
+  WEATHER: /thoi tiet|troi|mua|nang|nhiet do|nong|lanh|gio|bao/i,
+  SAVE: /luu lai|bookmark|yeu thich|favorite|danh sach|muon di|nho lai/i,
+  REVIEW: /danh gia|review|nhan xet|sao|rating|co tot khong|dang di khong/i,
+  OPEN_HOURS: /gio mo cua|may gio|dong cua|con mo|luc nao|thu may/i,
+};
+
 /**
  * Detect the intent of user input text.
  * @param {string} text
@@ -42,11 +64,15 @@ export function detectIntent(text) {
   if (!text || typeof text !== "string") return INTENT_TYPES.GENERAL;
 
   const trimmed = text.trim();
-  if (TRAVEL_JOURNEY_PATTERN.test(trimmed)) {
+  const unaccented = removeVietnameseAccents(trimmed);
+  if (TRAVEL_JOURNEY_PATTERN.test(trimmed) || /hanh trinh du lich/i.test(unaccented)) {
     return INTENT_TYPES.SCHEDULE;
   }
   for (const [intent, pattern] of Object.entries(INTENTS)) {
     if (pattern.test(trimmed)) return intent;
+  }
+  for (const [intent, pattern] of Object.entries(INTENTS_UNACCENTED)) {
+    if (pattern.test(unaccented)) return intent;
   }
   return INTENT_TYPES.GENERAL;
 }
@@ -60,15 +86,21 @@ export function detectAllIntents(text) {
   if (!text || typeof text !== "string") return [INTENT_TYPES.GENERAL];
 
   const trimmed = text.trim();
-  const matched = Object.entries(INTENTS)
-    .filter(([, pattern]) => pattern.test(trimmed))
-    .map(([intent]) => intent);
+  const unaccented = removeVietnameseAccents(trimmed);
+  const matched = new Set();
+
+  for (const [intent, pattern] of Object.entries(INTENTS)) {
+    if (pattern.test(trimmed)) matched.add(intent);
+  }
+  for (const [intent, pattern] of Object.entries(INTENTS_UNACCENTED)) {
+    if (pattern.test(unaccented)) matched.add(intent);
+  }
   if (
-    TRAVEL_JOURNEY_PATTERN.test(trimmed) &&
-    !matched.includes(INTENT_TYPES.SCHEDULE)
+    (TRAVEL_JOURNEY_PATTERN.test(trimmed) || /hanh trinh du lich/i.test(unaccented)) &&
+    !matched.has(INTENT_TYPES.SCHEDULE)
   ) {
-    matched.push(INTENT_TYPES.SCHEDULE);
+    matched.add(INTENT_TYPES.SCHEDULE);
   }
 
-  return matched.length > 0 ? matched : [INTENT_TYPES.GENERAL];
+  return matched.size > 0 ? Array.from(matched) : [INTENT_TYPES.GENERAL];
 }

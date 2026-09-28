@@ -20,6 +20,39 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
   },
+  messageItem: {
+    width: "100%",
+    alignSelf: "stretch",
+  },
+  userBubble: {
+    alignSelf: "flex-end",
+    maxWidth: "85%",
+    borderRadius: 20,
+    borderTopRightRadius: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  actionButton: {
+    width: "100%",
+    alignSelf: "stretch",
+    minHeight: 52,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  actionButtonContent: {
+    width: "100%",
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  actionButtonText: {
+    flexShrink: 1,
+    textAlign: "center",
+  },
   confirmBtnDisabled: {
     opacity: 0.6,
   },
@@ -135,7 +168,11 @@ function AIPlannerMessageItemComponent({
   return (
     <View
       key={message.id ?? index}
-      className={`gap-1.5 mb-4 ${isUser ? "items-end" : "items-start"}`}
+      className="gap-1.5 mb-4"
+      style={[
+        styles.messageItem,
+        { alignItems: isUser ? "flex-end" : "flex-start" },
+      ]}
     >
       {!isUser ? (
         <View className="ml-1 flex-row items-center gap-1.5">
@@ -168,8 +205,7 @@ function AIPlannerMessageItemComponent({
           colors={["#2563EB", "#1D4ED8", "#4338CA"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{ borderRadius: 20, borderTopRightRadius: 4 }}
-          className="max-w-[85%] px-4 py-3.5"
+          style={styles.userBubble}
         >
           <Text
             className="text-[14.5px] leading-[22px] text-white"
@@ -254,13 +290,13 @@ function AIPlannerMessageItemComponent({
                 router.push("/(tabs)/trips");
               }
             }}
-            className="overflow-hidden rounded-2xl"
+            style={styles.actionButton}
           >
             <LinearGradient
               colors={["#059669", "#047857"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              className="flex-row items-center justify-center gap-2 py-3 px-4"
+              style={styles.actionButtonContent}
             >
               <Text
                 className="text-[14px] text-white"
@@ -287,6 +323,38 @@ function AIPlannerMessageItemComponent({
               onViewDetail={handleOpenPlace}
             />
           ))}
+
+          <Pressable
+            onPress={() => {
+              const placeIds = message.suggestedPlaces
+                .map((p) => Number(p?.id))
+                .filter(Boolean);
+              handleSend("Tạo lịch trình từ các gợi ý này", {
+                selectedPlaceIds: placeIds,
+              });
+            }}
+            disabled={isConfirming}
+            className="mt-1"
+            style={styles.actionButton}
+          >
+            <LinearGradient
+              colors={["#2563EB", "#1D4ED8"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.actionButtonContent}
+            >
+              <MaterialIconsRounded name="auto-awesome" size={18} color="#FFFFFF" />
+              <Text
+                className="text-[13.5px] text-white"
+                style={[styles.actionButtonText, { fontFamily: TOKENS.font.semibold }]}
+              >
+                {t("aiPlanner.createFromSuggestions", {
+                  defaultValue: "Tạo lịch trình từ các gợi ý này",
+                })}
+              </Text>
+              <MaterialIconsRounded name="arrow-forward" size={16} color="#FFFFFF" />
+            </LinearGradient>
+          </Pressable>
         </View>
       ) : null}
 

@@ -1515,6 +1515,7 @@
     "addTrip": "Thêm chuyến đi",
     "details": "Chi tiết",
     "createFromSelection": "Tạo lịch trình từ lựa chọn",
+    "createFromSuggestions": "Tạo lịch trình từ gợi ý này",
     "creatingTrip": "Đang tạo chuyến đi...",
     "tripCreatedSuccess": "Đã tạo lịch trình thành công!",
     "viewCreatedTrip": "Xem chuyến đi vừa tạo",

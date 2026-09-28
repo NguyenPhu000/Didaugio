@@ -80,14 +80,21 @@ const planInclude = {
   },
 };
 
-export const serializeTripPlan = (plan, isSaved = false) => ({
-  id: plan.id,
-  tripPlanId: plan.id,
-  userId: plan.userId,
-  title: plan.title,
-  description: plan.description,
-  thumbnail: plan.coverImage,
-  coverImage: plan.coverImage,
+export const serializeTripPlan = (plan, isSaved = false) => {
+  const fallbackCover =
+    (plan.stops || []).find((s) => s.place?.images?.[0]?.secureUrl || s.place?.thumbnail)?.place?.images?.[0]?.secureUrl ||
+    (plan.stops || []).find((s) => s.place?.thumbnail)?.place?.thumbnail ||
+    null;
+  const cover = plan.coverImage || fallbackCover;
+
+  return {
+    id: plan.id,
+    tripPlanId: plan.id,
+    userId: plan.userId,
+    title: plan.title,
+    description: plan.description,
+    thumbnail: cover,
+    coverImage: cover,
   startDate: plan.startDate,
   endDate: plan.endDate,
   totalDays: plan.totalDays,
@@ -117,7 +124,8 @@ export const serializeTripPlan = (plan, isSaved = false) => ({
     visitedAt: stop.fulfilledAt,
   })),
   isSaved,
-});
+  };
+};
 
 export const withSavedTripFlags = (items = [], savedTrips = []) => {
   const ids = new Set(savedTrips.map((item) => item.tripId));
@@ -186,12 +194,27 @@ export async function createTrip(userId, data) {
     const totalDays = int(data.totalDays, 1);
     const startDate = data.startDate ? new Date(data.startDate) : new Date();
     const endDate = data.endDate ? new Date(data.endDate) : new Date(startDate.getTime() + (totalDays - 1) * 86400000);
+    let finalCoverImage = stagedCover.coverImage;
+    if (!finalCoverImage && Array.isArray(data.placeIds) && data.placeIds.length > 0) {
+      const firstPlace = await tx.place.findUnique({
+        where: { id: int(data.placeIds[0]) },
+        include: {
+          images: {
+            take: 1,
+            orderBy: [{ isCover: "desc" }, { order: "asc" }],
+            select: { secureUrl: true },
+          },
+        },
+      });
+      finalCoverImage = firstPlace?.images?.[0]?.secureUrl || firstPlace?.thumbnail || null;
+    }
+
     const plan = await tx.tripPlan.create({
       data: {
         userId,
         title: data.title || "Chuyến đi mới",
         description: data.description || null,
-        coverImage: stagedCover.coverImage,
+        coverImage: finalCoverImage,
         coverImagePublicId: stagedCover.coverImagePublicId,
         startDate,
         endDate,

@@ -20,7 +20,7 @@ import {
 } from "../utils/offlineSync";
 
 const TRIPS_CACHE_KEY = OFFLINE_STORAGE_KEYS.TRIPS_CACHE;
-const CACHE_VERSION = "v5";
+const CACHE_VERSION = "v6";
 const CACHE_EXPIRY_MS = TRIP_OFFLINE_GC_MS;
 
 const getCacheKey = (key) => `${CACHE_VERSION}:${key}`;
@@ -159,11 +159,11 @@ export function useTripsCached(enabled = true) {
       return response?.data || [];
     },
     enabled: enabled && !isOffline,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
     gcTime: TRIP_OFFLINE_GC_MS,
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnReconnect: false,
     placeholderData: (previousData) => previousData,
   });

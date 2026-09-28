@@ -24,20 +24,12 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key) => key }),
 }));
 vi.mock("@tanstack/react-query", () => ({
-  useMutation: vi
-    .fn()
-    .mockImplementationOnce(() => ({
-      mutateAsync: previewMutateAsync,
-      isPending: false,
-      error: null,
-      reset: vi.fn(),
-    }))
-    .mockImplementationOnce(() => ({
-      mutateAsync: vi.fn(),
-      isPending: false,
-      error: null,
-      reset: vi.fn(),
-    })),
+  useMutation: vi.fn(() => ({
+    mutateAsync: previewMutateAsync,
+    isPending: false,
+    error: null,
+    reset: vi.fn(),
+  })),
   useQuery: vi.fn(),
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
@@ -68,5 +60,24 @@ describe("AI planner dynamic place selection", () => {
 
     expect(previewMutateAsync).toHaveBeenCalledOnce();
     expect(previewMutateAsync.mock.calls[0][0].selectedPlaceIds).toBeUndefined();
+  });
+
+  it("extracts suggested place IDs when user requests itinerary from suggestions", async () => {
+    plannerState.messages = [
+      {
+        role: "assistant",
+        suggestedPlaces: [{ id: 41 }, { id: 42 }],
+      },
+    ];
+
+    const { useAIPlanner } = await import(
+      "../../../../src/modules/ai/hooks/useAIPlanner"
+    );
+    const planner = useAIPlanner();
+
+    await planner.sendMessage("Tạo lịch trình từ gợi ý");
+
+    expect(previewMutateAsync).toHaveBeenCalledOnce();
+    expect(previewMutateAsync.mock.calls[0][0].selectedPlaceIds).toEqual([41, 42]);
   });
 });

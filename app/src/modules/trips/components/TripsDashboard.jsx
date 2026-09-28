@@ -15,7 +15,7 @@ import {
   getDaysUntil,
   getTripFilters,
 } from "../utils/tripHelpers";
-import { resolveTripCoverUri } from "../../../lib/media-url";
+import { resolveTripCoverUri, PLACE_IMAGE_BLURHASH } from "../../../lib/media-url";
 
 const HERO_COVER_WIDTH = 800;
 
@@ -106,6 +106,8 @@ export function TripsDashboard({
                 contentFit="cover"
                 transition={350}
                 cachePolicy="memory-disk"
+                placeholder={{ blurhash: PLACE_IMAGE_BLURHASH }}
+                placeholderContentFit="cover"
                 onError={() => setFailedHeroCoverUri(heroCoverUri)}
               />
             ) : (
@@ -116,7 +118,7 @@ export function TripsDashboard({
             <LinearGradient
               colors={["transparent", "rgba(8, 9, 12, 0.4)", "rgba(8, 9, 12, 0.96)"]}
               locations={[0, 0.45, 1]}
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
               pointerEvents="none"
             />
 

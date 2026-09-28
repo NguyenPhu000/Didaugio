@@ -70,7 +70,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [16, 9],
         quality: 1,
@@ -147,7 +147,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
       statusBarTranslucent
     >
       <View className="flex-1 justify-end">
-        <Pressable style={StyleSheet.absoluteFillObject} className="bg-black/40" onPress={onCancel} />
+        <Pressable style={StyleSheet.absoluteFill} className="bg-black/40" onPress={onCancel} />
         <KeyboardAvoidingView
           className="w-full max-h-[85%]"
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -189,7 +189,7 @@ function EditTripModal({ visible, trip, isSaving, onCancel, onSave }) {
                   {thumbnailPreview ? (
                     <Image
                       source={{ uri: thumbnailPreview }}
-                      style={StyleSheet.absoluteFillObject}
+                      style={StyleSheet.absoluteFill}
                       contentFit="cover"
                       transition={200}
                     />

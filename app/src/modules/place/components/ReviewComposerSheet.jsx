@@ -92,7 +92,7 @@ export const ReviewComposerSheetContent = memo(function ReviewComposerSheetConte
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ["images"],
         allowsMultipleSelection: true,
         selectionLimit: remainingSlots,
         quality: 1,

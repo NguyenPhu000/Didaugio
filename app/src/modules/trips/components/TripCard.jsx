@@ -17,7 +17,7 @@ import {
   getDateRangeLabel,
   getDisplayStatus,
 } from "../utils/tripHelpers";
-import { resolveTripCoverUri } from "../../../lib/media-url";
+import { resolveTripCoverUri, PLACE_IMAGE_BLURHASH } from "../../../lib/media-url";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const IMMERSIVE_COVER_WIDTH = 720;
@@ -85,24 +85,32 @@ function ImmersiveCard({
         <Image
           source={{ uri: displayUri }}
           recyclingKey={`trip-${trip?.id}-cover`}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           contentFit="cover"
           transition={280}
           cachePolicy="memory-disk"
+          placeholder={{ blurhash: PLACE_IMAGE_BLURHASH }}
+          placeholderContentFit="cover"
           onError={onImageError}
         />
       ) : (
         <Box
-          className="absolute inset-0"
+          className="absolute inset-0 items-center justify-center"
           style={{ backgroundColor: TOKENS.color.semantic.apple.deepSurface }}
-        />
+        >
+          <MaterialIconsRounded
+            name="luggage"
+            size={42}
+            color="rgba(255,255,255,0.16)"
+          />
+        </Box>
       )}
 
       {/* 3-stop Linear Gradient Overlay cho độ tương phản tối ưu */}
       <LinearGradient
         colors={["transparent", "rgba(8, 9, 12, 0.35)", "rgba(8, 9, 12, 0.9)"]}
         locations={[0, 0.5, 1.0]}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
 
@@ -181,7 +189,7 @@ export const TripCard = memo(function TripCard({
 
   const coverUri = resolveTripCoverUri(trip, IMMERSIVE_COVER_WIDTH);
   const [failedUri, setFailedUri] = useState(null);
-  const displayUri = coverUri === failedUri ? null : coverUri;
+  const displayUri = coverUri && coverUri !== failedUri ? coverUri : null;
   const scale = useSharedValue(1);
 
   const destinationCount = trip.destinations?.length || 0;

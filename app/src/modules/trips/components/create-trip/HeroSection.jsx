@@ -34,7 +34,7 @@ function HeroSectionInner() {
           colors={["rgba(0,122,255,0.22)", "transparent"]}
           start={{ x: 1, y: 0 }}
           end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
 
