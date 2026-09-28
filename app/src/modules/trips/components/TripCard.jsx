@@ -136,7 +136,7 @@ function ImmersiveCard({
         <Box className="absolute inset-0 items-center justify-center pointer-events-none z-10">
           <Box className="border-2 border-slate-300/70 rounded-xl px-4 py-1.5 rotate-[-12deg] bg-black/40">
             <Text className="text-[12px] font-black tracking-[0.22em] text-slate-200 uppercase">
-              {t("tripCard.completedStamp")}
+              {t("tripDashboard.completedStamp")}
             </Text>
           </Box>
         </Box>

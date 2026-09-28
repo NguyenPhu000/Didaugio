@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo } from "react";
-import { InteractionManager, Platform, Pressable, StyleSheet, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { Tabs, useGlobalSearchParams, usePathname, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { MaterialIconsRounded } from "@/components/primitives/MaterialIconsRounded";
@@ -351,12 +351,12 @@ export default function TabsLayout() {
   const activeTab = resolveTabKey(pathname);
 
   useEffect(() => {
-    const task = InteractionManager.runAfterInteractions(() => {
+    const task = requestIdleCallback(() => {
       prefetchTabData(queryClient, activeTab);
     });
 
     return () => {
-      task.cancel?.();
+      cancelIdleCallback(task);
     };
   }, [activeTab, queryClient]);
 

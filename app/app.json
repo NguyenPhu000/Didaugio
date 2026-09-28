@@ -9,11 +9,6 @@
     "userInterfaceStyle": "light",
     "platforms": ["ios", "android"],
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#02030A"
-    },
     "assetBundlePatterns": [
       "assets/fonts/*",
       "assets/brand/*",
@@ -46,8 +41,11 @@
       [
         "expo-splash-screen",
         {
+          "image": "./assets/splash.png",
+          "imageWidth": 200,
           "backgroundColor": "#02030A",
-          "resizeMode": "contain"
+          "resizeMode": "contain",
+          "enableFullScreenImage_legacy": true
         }
       ],
       [
@@ -96,11 +94,6 @@
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.SYSTEM_ALERT_WINDOW"
       ]
-    },
-    "androidStatusBar": {
-      "translucent": false,
-      "backgroundColor": "#02030A",
-      "barStyle": "light-content"
     },
     "ios": {
       "bundleIdentifier": "vn.ipointgenie.app",

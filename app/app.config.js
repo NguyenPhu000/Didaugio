@@ -44,6 +44,29 @@ module.exports = ({ config }) => {
     plugins.push("expo-localization");
   }
 
+  for (const pluginName of [
+    "@react-native-community/datetimepicker",
+    "@sentry/react-native",
+    "expo-image",
+  ]) {
+    const alreadyConfigured = plugins.some((plugin) => {
+      if (Array.isArray(plugin)) return plugin[0] === pluginName;
+      return plugin === pluginName;
+    });
+
+    if (!alreadyConfigured) {
+      plugins.push(pluginName);
+    }
+  }
+
+  const hasStatusBarPlugin = plugins.some((plugin) => {
+    if (Array.isArray(plugin)) return plugin[0] === "expo-status-bar";
+    return plugin === "expo-status-bar";
+  });
+  if (!hasStatusBarPlugin) {
+    plugins.push(["expo-status-bar", { style: "light" }]);
+  }
+
   return {
     ...expoConfig,
     plugins,
