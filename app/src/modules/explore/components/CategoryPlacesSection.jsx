@@ -81,7 +81,7 @@ function CategoryPlaceCard({ place, onPress }) {
           backgroundColor: CREAM,
         }}
       >
-        <Animated.View style={[StyleSheet.absoluteFillObject, mediaStyle]}>
+        <Animated.View style={[StyleSheet.absoluteFill, mediaStyle]}>
           <PosterMedia uri={imageUri} width={MEDIA_W} />
         </Animated.View>
 

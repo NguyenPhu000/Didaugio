@@ -96,7 +96,7 @@ function FeaturedCardInner({ place, onPress, onSave, isSaved }) {
           backgroundColor: CREAM,
         }}
       >
-        <Animated.View style={[StyleSheet.absoluteFillObject, mediaStyle]}>
+        <Animated.View style={[StyleSheet.absoluteFill, mediaStyle]}>
           <PosterMedia uri={rawImageUri} width={MEDIA_W} />
         </Animated.View>
 
@@ -105,7 +105,7 @@ function FeaturedCardInner({ place, onPress, onSave, isSaved }) {
         <View
           pointerEvents="none"
           style={{
-            ...StyleSheet.absoluteFillObject,
+            ...StyleSheet.absoluteFill,
             backgroundColor: "rgba(255,255,255,0.04)",
             opacity: 0.6,
           }}
@@ -158,7 +158,7 @@ function FeaturedCardInner({ place, onPress, onSave, isSaved }) {
             borderColor: "rgba(255,255,255,0.34)",
           }}
         >
-          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
           <MaterialIconsRounded
             name={isSaved ? "favorite" : "favorite-border"}
             size={18}

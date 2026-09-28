@@ -40,7 +40,7 @@ function EventCardInner({ event, onPress }) {
     >
       <View style={styles.imageWrap}>
         {imageUri ? (
-          <Image source={{ uri: imageUri }} contentFit="cover" transition={220} cachePolicy="memory-disk" onError={() => setImgError(true)} style={StyleSheet.absoluteFillObject} />
+          <Image source={{ uri: imageUri }} contentFit="cover" transition={220} cachePolicy="memory-disk" onError={() => setImgError(true)} style={StyleSheet.absoluteFill} />
         ) : (
           <View style={styles.placeholder}><MaterialIconsRounded name="celebration" size={28} color="#181819" /></View>
         )}

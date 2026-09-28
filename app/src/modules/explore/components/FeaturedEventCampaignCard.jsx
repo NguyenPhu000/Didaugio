@@ -64,18 +64,18 @@ function FeaturedEventCampaignCardInner({ event, width, onPress }) {
           contentFit="cover"
           transition={260}
           cachePolicy="memory-disk"
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
       ) : (
         <LinearGradient
           colors={["#181819", "#403C36", "#847765"]}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
       )}
       <LinearGradient
         colors={["rgba(4,12,10,0.06)", "rgba(4,12,10,0.52)", "rgba(4,12,10,0.9)"]}
         locations={[0, 0.48, 1]}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       <View style={styles.topRow}>

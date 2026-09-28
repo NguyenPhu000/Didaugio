@@ -113,7 +113,7 @@ const CarouselItem = ({
 
         {Platform.OS === "ios" ? (
           <AnimatedBlurView
-            style={[StyleSheet.absoluteFillObject, styles.blurOverlay]}
+            style={[StyleSheet.absoluteFill, styles.blurOverlay]}
             tint="light"
             animatedProps={animatedBlurProps}
           />

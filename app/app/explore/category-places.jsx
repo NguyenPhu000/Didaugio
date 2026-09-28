@@ -63,7 +63,7 @@ const GridPlaceCard = memo(function GridPlaceCard({
             contentFit="cover"
             transition={300}
             cachePolicy="memory-disk"
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
         ) : (
           <View style={styles.imagePlaceholder}>

@@ -85,14 +85,14 @@ scale.set(withSpring(1, TOKENS.spring.press));
           contentFit="cover"
           transition={280}
           cachePolicy="memory-disk"
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
       ) : (
         <LinearGradient
           colors={["#181819", "#3F3B35", "#8A7C6C"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
       )}
 
@@ -103,7 +103,7 @@ scale.set(withSpring(1, TOKENS.spring.press));
           "rgba(5,10,20,0.86)",
         ]}
         locations={[0, 0.45, 1]}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       <View style={styles.topRow}>

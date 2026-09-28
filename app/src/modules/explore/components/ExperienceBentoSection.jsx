@@ -53,7 +53,7 @@ function BentoTile({ place, large = false, onPress, defaultCategoryLabel, defaul
         },
       ]}
     >
-      <Animated.View style={[StyleSheet.absoluteFillObject, mediaStyle]}>
+      <Animated.View style={[StyleSheet.absoluteFill, mediaStyle]}>
         <PosterMedia
           uri={imageUri}
           width={large ? 420 : 260}
@@ -65,7 +65,7 @@ function BentoTile({ place, large = false, onPress, defaultCategoryLabel, defaul
       <View
         pointerEvents="none"
         style={{
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
           backgroundColor: "rgba(255,255,255,0.05)",
           opacity: 0.55,
         }}

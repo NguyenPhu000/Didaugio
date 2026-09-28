@@ -39,11 +39,11 @@ function ExploreModernHeaderInner({ onPressSearch }) {
       <BlurView
         intensity={Platform.OS === "ios" ? 90 : 100}
         tint="light"
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
       <View
         style={[
-          StyleSheet.absoluteFillObject,
+          StyleSheet.absoluteFill,
           {
             backgroundColor:
               Platform.OS === "ios" ? "rgba(255,255,255,0.55)" : "#FFFFFFEE",
