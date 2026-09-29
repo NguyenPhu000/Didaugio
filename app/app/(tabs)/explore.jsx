@@ -473,7 +473,7 @@ export default function ExploreScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="light" translucent backgroundColor="transparent" />
 
       <Animated.ScrollView
           showsVerticalScrollIndicator={false}

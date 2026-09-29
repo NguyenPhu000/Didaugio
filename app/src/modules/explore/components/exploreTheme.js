@@ -1,16 +1,16 @@
 export const EXPLORE_THEME = {
-  background: "#F8F7F2",
+  background: "#FFF", 
   surface: "#FFFFFF",
-  surfaceMuted: "#F4F1EA",
+  surfaceMuted: "#E2DCD1",
   ink: "#181819",
   inkSecondary: "#2C2C2E",
-  muted: "#65746E",
+  muted: "#5E6C66",
   mutedLight: "#8E8E93",
-  river: "#181819", // Điểm nhấn chuyển thành màu đen theo yêu cầu
+  river: "#181819", 
   riverDark: "#000000",
   riverLight: "rgba(24, 24, 25, 0.06)",
-  line: "#E6E9E2",
-  sand: "#EEE9DF",
+  line: "#DFD9CD", // Viền tiệp màu tương phản mềm mại
+  sand: "#E4DED2",
   gold: "#D4A359", // Màu vàng đồng tinh tế cho dash và star
   emerald: "#10B981",
   radius: 20,
