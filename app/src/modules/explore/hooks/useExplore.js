@@ -4,7 +4,7 @@ import { QUERY_KEYS } from "../../../constants/query-keys";
 import { PLACE_STATUS } from "../../../constants/preferences";
 import { normalizePlaces } from "../../../lib/place";
 
-const PAGE_LIMIT = 12;
+const PAGE_LIMIT = 18;
 
 export function buildExploreQueryOptions({
   search = "",
@@ -54,7 +54,6 @@ export function buildExploreQueryOptions({
     staleTime: 3 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
-    placeholderData: (previousData) => previousData,
   };
 }
 

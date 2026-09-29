@@ -4,7 +4,7 @@ import { Skeleton } from "../../../components/ui/Skeleton.jsx";
 import { TOKENS } from "../../../constants/design-tokens";
 import { TAB_BAR_HEIGHT } from "../../../../app/(tabs)/_layout";
 import { TAB_SCREEN_PADDING } from "../../../../app/(tabs)/tabTheme";
-import { getFeaturedCardWidth } from "./FeaturedCard";
+import { FEATURED_CARD_H, getFeaturedCardWidth } from "./FeaturedCard";
 import { CATEGORY_CARD_H, CATEGORY_CARD_W } from "./CategoryPlacesSection";
 import { POSTER_RADIUS } from "./cinematic";
 
@@ -12,7 +12,7 @@ const SCREEN_W = Dimensions.get("window").width;
 const PAD = TAB_SCREEN_PADDING;
 /* Bám sát hình học thật của các card để lúc data về không bị nhảy layout. */
 const FEATURED_W = getFeaturedCardWidth(SCREEN_W);
-const FEATURED_H = 424;
+const FEATURED_H = FEATURED_CARD_H;
 const BENTO_H = 344;
 const MEDIA_W = SCREEN_W - PAD * 2;
 /** Poster 4:3 của ExplorePlaceList, cộng 2 lớp inset 6px của khung trắng. */
@@ -65,24 +65,11 @@ function ExploreSkeletonInner() {
         <Skeleton width={140} height={22} borderRadius={8} />
       </View>
 
-      <View className="flex-row gap-3">
-        <Skeleton
-          width={FEATURED_W}
-          height={FEATURED_H}
-          borderRadius={POSTER_RADIUS}
-        />
-        <Skeleton
-          width={FEATURED_W}
-          height={FEATURED_H}
-          borderRadius={POSTER_RADIUS}
-        />
-      </View>
-
-      <View className="flex-row gap-[5px] mt-3.5">
-        <Skeleton width={26} height={3} borderRadius={999} />
-        <Skeleton width={7} height={3} borderRadius={999} />
-        <Skeleton width={7} height={3} borderRadius={999} />
-      </View>
+      <Skeleton
+        width={FEATURED_W}
+        height={FEATURED_H}
+        borderRadius={24}
+      />
 
       <View className="flex-row justify-between items-center mt-[34px] mb-3.5">
         <Skeleton width={148} height={22} borderRadius={8} />

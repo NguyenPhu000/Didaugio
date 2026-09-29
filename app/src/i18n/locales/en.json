@@ -169,7 +169,20 @@
       "popular": "Popular",
       "topRated": "Top rated picks",
       "budgetFriendly": "Budget-friendly finds",
-      "newAndFresh": "New and fresh"
+      "newAndFresh": "New and fresh",
+      "recommendedForYou": "Recommended for you"
+    },
+    "recommendationsFooter": {
+      "badge": "Discovery Hub",
+      "countUnit": "places",
+      "title": "Explore at your own pace",
+      "loaded": "{{count}} places loaded",
+      "mapTitle": "Choose by area",
+      "mapDescription": "See distances and places on the map.",
+      "openMap": "Open places map",
+      "loadMore": "View more places",
+      "loading": "Loading more...",
+      "complete": "All {{count}} places have been loaded"
     },
     "card": {
       "featuredBadge": "Featured",

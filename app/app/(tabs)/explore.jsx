@@ -66,6 +66,7 @@ import { useSavePlace, useUnsavePlace, useSavedPlaces } from "../../src/modules/
 import { showAppAlert } from "../../src/utils/appAlert";
 import { useExploreLocation } from "../../src/modules/explore/hooks/useExploreLocation";
 import { ExplorePlaceCardHorizontal } from "../../src/modules/explore/components/ExplorePlaceCardHorizontal";
+import { RecommendationsFooter } from "../../src/modules/explore/components/RecommendationsFooter";
 import { SectionHeading } from "../../src/modules/explore/components/cinematic";
 
 const HERO_SKIP_CATEGORIES = ["ẩm thực", "food", "restaurant", "lưu trú", "hotel", "mua sắm", "shopping"].map(normalizeText);
@@ -118,6 +119,9 @@ export default function ExploreScreen() {
   const [searchVisible, setSearchVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [activeSheetCategory, setActiveSheetCategory] = useState(null);
+  const recommendationsEndRef = useRef(null);
+  const filteredPlacesEndRef = useRef(null);
+  const lastLazyLoadEndRef = useRef(null);
   const { data: categories = [] } = useCategories();
 
   const {
@@ -336,22 +340,41 @@ export default function ExploreScreen() {
     refetchCms();
   }, [refetch, refetchEvents, refetchCms]);
 
-  const handleEndReached = useCallback(() => {
+  const handleLazyLoad = useCallback((sectionEnd, viewportBottom) => {
+    if (
+      sectionEnd == null
+      || viewportBottom < sectionEnd - 320
+      || !hasNextPage
+      || isFetchingNextPage
+      || lastLazyLoadEndRef.current === sectionEnd
+    ) {
+      return;
+    }
+    lastLazyLoadEndRef.current = sectionEnd;
+    fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  const handleLoadMoreRecommendations = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleSelectCategory = useCallback((categoryId) => {
+    lastLazyLoadEndRef.current = null;
+    recommendationsEndRef.current = null;
+    filteredPlacesEndRef.current = null;
     setSelectedCategory(categoryId ?? null);
   }, []);
 
   const handleScroll = useCallback(
     (event) => {
-      const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-      if (contentSize.height - (layoutMeasurement.height + contentOffset.y) <= 240) {
-        handleEndReached();
-      }
+      const { layoutMeasurement, contentOffset } = event.nativeEvent;
+      const viewportBottom = layoutMeasurement.height + contentOffset.y;
+      const sectionEnd = selectedCategory == null
+        ? recommendationsEndRef.current
+        : filteredPlacesEndRef.current;
+      handleLazyLoad(sectionEnd, viewportBottom);
     },
-    [handleEndReached],
+    [handleLazyLoad, selectedCategory],
   );
 
   const handleScrollEvent = useCallback((e) => {
@@ -486,9 +509,6 @@ export default function ExploreScreen() {
             <FeaturedSection
               places={featuredPlaces}
               onPressPlace={handlePressPlace}
-              onSavePlace={handleSavePlace}
-              savedPlaceIds={savedPlaceIds}
-              userLocation={currentLocation}
             />
           ) : null}
 
@@ -504,8 +524,6 @@ export default function ExploreScreen() {
                     categoryId={section.id}
                     places={section.places}
                     onPressPlace={handlePressPlace}
-                    onSavePlace={handleSavePlace}
-                    savedPlaceIds={savedPlaceIds}
                     userLocation={currentLocation}
                     onPressViewAll={() => handleViewCategoryPlaces(section)}
                   />
@@ -520,8 +538,6 @@ export default function ExploreScreen() {
                         categoryId={category.id}
                         places={category.places}
                         onPressPlace={handlePressPlace}
-                        onSavePlace={handleSavePlace}
-                        savedPlaceIds={savedPlaceIds}
                         userLocation={currentLocation}
                         onPressViewAll={() => handleViewCategoryPlaces(category)}
                       />
@@ -531,7 +547,13 @@ export default function ExploreScreen() {
 
                 {/* Danh sách địa điểm đầy đủ thông tin khi người dùng lọc theo danh mục */}
                 {showFilteredContent && allPlaces.length > 0 ? (
-                  <View style={{ marginTop: 22 }}>
+                  <View
+                    style={{ marginTop: 22 }}
+                    onLayout={(event) => {
+                      const { y, height } = event.nativeEvent.layout;
+                      filteredPlacesEndRef.current = y + height;
+                    }}
+                  >
                     <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
                       <SectionHeading
                         title={selectedCategoryName || t("explore.sheet.allPlaces", "Danh sách địa điểm")}
@@ -549,8 +571,6 @@ export default function ExploreScreen() {
                         index={idx}
                         userLocation={currentLocation}
                         onPress={() => handlePressPlace(place)}
-                        onSave={handleSavePlace}
-                        isSaved={savedPlaceIds?.has?.(Number(place?.id)) || false}
                       />
                     ))}
                   </View>
@@ -558,13 +578,19 @@ export default function ExploreScreen() {
 
                 {/* Gợi ý điểm đến tiêu biểu đầy đủ thông tin trên trang chủ Explore */}
                 {showGlobalContent && allPlaces.length > 0 ? (
-                  <View style={{ marginTop: 24 }}>
+                  <View
+                    style={{ marginTop: 24 }}
+                    onLayout={(event) => {
+                      const { y, height } = event.nativeEvent.layout;
+                      recommendationsEndRef.current = y + height;
+                    }}
+                  >
                     <View style={{ paddingHorizontal: 16, marginBottom: 14 }}>
                       <SectionHeading
                         title={t("explore.sections.recommendedForYou", "Gợi ý dành cho bạn")}
                       />
                     </View>
-                    {allPlaces.slice(0, 6).map((place, idx) => (
+                    {allPlaces.map((place, idx) => (
                       <ExplorePlaceCardHorizontal
                         key={place?.id != null ? `rec-${place.id}` : `rec-${idx}`}
                         place={place}
@@ -575,6 +601,13 @@ export default function ExploreScreen() {
                         isSaved={savedPlaceIds?.has?.(Number(place?.id)) || false}
                       />
                     ))}
+                    <RecommendationsFooter
+                      loadedCount={allPlaces.length}
+                      hasNextPage={hasNextPage}
+                      isFetchingNextPage={isFetchingNextPage}
+                      onLoadMore={handleLoadMoreRecommendations}
+                      onOpenMap={() => router.push("/(tabs)/map")}
+                    />
                   </View>
                 ) : null}
               </>
@@ -662,8 +695,6 @@ export default function ExploreScreen() {
         places={activeSheetCategory?.places || []}
         onClose={() => setActiveSheetCategory(null)}
         onPressPlace={handlePressPlace}
-        onSavePlace={handleSavePlace}
-        savedPlaceIds={savedPlaceIds}
         userLocation={currentLocation}
       />
     </View>

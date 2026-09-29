@@ -131,7 +131,7 @@ export function getWeatherLabel() {
  * Tính khoảng cách đường chim bay theo công thức Haversine (km)
  */
 export function calculateDistanceKm(lat1, lon1, lat2, lon2) {
-  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
+  if ([lat1, lon1, lat2, lon2].some((value) => value == null || String(value).trim() === "")) return null;
   const numLat1 = Number(lat1);
   const numLon1 = Number(lon1);
   const numLat2 = Number(lat2);
@@ -139,6 +139,7 @@ export function calculateDistanceKm(lat1, lon1, lat2, lon2) {
   if (!Number.isFinite(numLat1) || !Number.isFinite(numLon1) || !Number.isFinite(numLat2) || !Number.isFinite(numLon2)) {
     return null;
   }
+  if (Math.abs(numLat1) > 90 || Math.abs(numLat2) > 90 || Math.abs(numLon1) > 180 || Math.abs(numLon2) > 180) return null;
   const R = 6371; // Bán kính trái đất (km)
   const dLat = ((numLat2 - numLat1) * Math.PI) / 180;
   const dLon = ((numLon2 - numLon1) * Math.PI) / 180;
@@ -159,6 +160,7 @@ export function calculateDistanceKm(lat1, lon1, lat2, lon2) {
 export function getPlaceDistanceLabel(place, userCoords) {
   if (place?.distance != null) {
     const dist = Number(place.distance);
+    if (!Number.isFinite(dist) || dist < 0) return null;
     if (dist < 1) return `${Math.round(dist * 1000)} m`;
     return `${dist.toFixed(1)} km`;
   }
@@ -171,9 +173,6 @@ export function getPlaceDistanceLabel(place, userCoords) {
     }
   }
 
-  // Nếu không có tọa độ GPS, hiển thị tên quận huyện thật từ DB
-  const districtName = place?.district?.name || place?.ward?.district?.name;
-  if (districtName) return districtName;
   return null;
 }
 
@@ -215,96 +214,52 @@ export function getPlaceAmenitiesList(place) {
 /**
  * Lấy trạng thái và giờ mở cửa THỰC TẾ hôm nay (không mock giờ nếu DB chưa có)
  */
-export function getPlaceOpeningHoursInfo(place) {
-  const today = new Date().getDay();
-  const todayHours = Array.isArray(place?.openingHours)
-    ? place.openingHours.find((h) => h?.dayOfWeek === today)
+export function getPlaceOpeningHoursInfo(place, now = new Date()) {
+  // Places are in Vietnam; the device may be configured for another timezone.
+  const today = new Date(now.getTime() + 7 * 60 * 60 * 1000).getUTCDay();
+  const hours = Array.isArray(place?.openingHours)
+    ? place.openingHours.find((item) => Number(item?.dayOfWeek) === today)
     : null;
-
-  if (todayHours) {
-    if (todayHours.isClosed) {
-      return {
-        isOpen: false,
-        statusText: "Đóng cửa",
-        hoursText: "Hôm nay",
-        color: "#DC2626",
-      };
-    }
-    if (todayHours.openTime && todayHours.closeTime) {
-      return {
-        isOpen: true,
-        statusText: "Mở cửa",
-        hoursText: `${todayHours.openTime} - ${todayHours.closeTime}`,
-        color: "#16A34A",
-      };
-    }
+  if (!hours) return null;
+  const vi = i18n.language?.startsWith("vi");
+  if (hours.isClosed) {
+    return { isOpen: false, statusText: vi ? "Đóng cửa" : "Closed", hoursText: vi ? "Hôm nay" : "Today", color: "#64748B" };
   }
-
-  return null;
+  const validTime = (value) => typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+  if (!validTime(hours.openTime) || !validTime(hours.closeTime)) return null;
+  const pause = validTime(hours.breakStart) && validTime(hours.breakEnd)
+    ? ` · ${vi ? "Nghỉ" : "Break"} ${hours.breakStart}–${hours.breakEnd}`
+    : "";
+  // Display the recorded schedule, without claiming the venue is open right now.
+  return {
+    isOpen: null,
+    statusText: vi ? "Giờ hôm nay" : "Today",
+    hoursText: `${hours.openTime}–${hours.closeTime}${pause}`,
+    color: "#64748B",
+  };
 }
 
 /**
  * Định dạng hiển thị giá THỰC TẾ từ database (không fake mức giá)
  */
 export function formatPlacePriceDisplay(place) {
-  const priceFrom = place?.priceFrom ?? place?.price_from;
-  if (priceFrom != null) {
-    const num = Number(priceFrom);
-    if (num === 0) {
-      return {
-        prefix: "",
-        amount: "Miễn phí",
-        display: "Miễn phí",
-        isFree: true,
-      };
-    }
-    if (num > 0) {
-      const formatted = new Intl.NumberFormat("vi-VN").format(num);
-      return {
-        prefix: "Từ",
-        amount: `${formatted}đ`,
-        display: `Từ ${formatted}đ`,
-        isFree: false,
-      };
-    }
+  const number = (value) => {
+    if (value == null || String(value).trim() === "") return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  };
+  const from = number(place?.priceFrom ?? place?.price_from);
+  const to = number(place?.priceTo);
+  const vi = i18n.language?.startsWith("vi");
+  const money = (value) => `${new Intl.NumberFormat(vi ? "vi-VN" : "en-US").format(value)}đ`;
+  const result = (prefix, amount, isFree = false) => ({ prefix, amount, display: [prefix, amount].filter(Boolean).join(" "), isFree });
+  if (from != null) {
+    if (to != null && to > from) return result("", `${money(from)}–${money(to)}`);
+    if (from === 0) return result("", i18n.t("exploreHelpers.free"), true);
+    return result(to === from ? "" : vi ? "Từ" : "From", money(from));
   }
-
-  if (place?.priceRange) {
-    const pr = String(place.priceRange).toUpperCase();
-    if (pr === "FREE") {
-      return {
-        prefix: "",
-        amount: "Miễn phí",
-        display: "Miễn phí",
-        isFree: true,
-      };
-    }
-    if (pr === "BUDGET") {
-      return {
-        prefix: "",
-        amount: "Giá bình dân",
-        display: "Giá bình dân",
-        isFree: false,
-      };
-    }
-    if (pr === "MODERATE") {
-      return {
-        prefix: "",
-        amount: "Giá vừa phải",
-        display: "Giá vừa phải",
-        isFree: false,
-      };
-    }
-    if (pr === "EXPENSIVE" || pr === "LUXURY") {
-      return {
-        prefix: "",
-        amount: "Cao cấp",
-        display: "Cao cấp",
-        isFree: false,
-      };
-    }
-  }
-
-  return null;
+  if (to != null && to > 0) return result(vi ? "Đến" : "Up to", money(to));
+  const range = String(place?.priceRange || "").toUpperCase();
+  const keys = { FREE: "free", BUDGET: "cheap", MODERATE: "budget", EXPENSIVE: "premium", LUXURY: "premium" };
+  return keys[range] ? result("", i18n.t(`exploreHelpers.${keys[range]}`), range === "FREE") : null;
 }
-

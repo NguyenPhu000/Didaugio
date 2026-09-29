@@ -13,8 +13,6 @@ export const CategoryPlacesSheet = memo(function CategoryPlacesSheet({
   places = [],
   onClose,
   onPressPlace,
-  onSavePlace,
-  savedPlaceIds,
   userLocation,
 }) {
   const { t } = useTranslation();
@@ -75,8 +73,6 @@ export const CategoryPlacesSheet = memo(function CategoryPlacesSheet({
                 place={item}
                 index={index}
                 userLocation={userLocation}
-                isSaved={savedPlaceIds?.has?.(Number(item?.id)) || false}
-                onSave={onSavePlace}
                 onPress={() => {
                   onClose();
                   onPressPlace(item);

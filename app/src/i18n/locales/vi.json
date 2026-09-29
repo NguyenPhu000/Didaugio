@@ -169,7 +169,20 @@
       "popular": "Phổ biến",
       "topRated": "Được đánh giá cao",
       "budgetFriendly": "Đi chơi tiết kiệm",
-      "newAndFresh": "Mới đáng thử"
+      "newAndFresh": "Mới đáng thử",
+      "recommendedForYou": "Gợi ý dành cho bạn"
+    },
+    "recommendationsFooter": {
+      "badge": "Trạm khám phá",
+      "countUnit": "địa điểm",
+      "title": "Khám phá theo nhịp riêng",
+      "loaded": "{{count}} địa điểm đã tải",
+      "mapTitle": "Chọn theo khu vực",
+      "mapDescription": "Xem khoảng cách và điểm đến trên bản đồ.",
+      "openMap": "Mở bản đồ địa điểm",
+      "loadMore": "Xem thêm địa điểm",
+      "loading": "Đang tải thêm...",
+      "complete": "Đã tải toàn bộ {{count}} địa điểm"
     },
     "card": {
       "featuredBadge": "Nổi bật",
